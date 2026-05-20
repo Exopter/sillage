@@ -1,0 +1,26 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+ENV["BUNDLE_GEMFILE"] ||= File.expand_path("../Gemfile", __dir__)
+
+deploy_env_path = File.expand_path("../.env.deploy.local", __dir__)
+if File.file?(deploy_env_path)
+  File.readlines(deploy_env_path, chomp: true).each do |line|
+    line = line.strip
+    next if line.empty? || line.start_with?("#")
+
+    line = line.sub(/\Aexport\s+/, "")
+    key, value = line.split("=", 2)
+    next if key.to_s.empty? || value.nil?
+
+    value = value.strip
+    quote = value[0]
+    value = value[1...-1] if ["'", '"'].include?(quote) && value.end_with?(quote)
+    ENV[key.strip] ||= value
+  end
+end
+
+require "rubygems"
+require "bundler/setup"
+
+load Gem.bin_path("kamal", "kamal")

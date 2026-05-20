@@ -1,6 +1,13 @@
 # Local environment
 .env*
 !.env.example
+!.env.deploy.local.example
+
+# Kamal local deployment environment
+/.kamal/secrets
+/.kamal/secrets.*
+!/.kamal/secrets.example
+/.kamal/deploy.env
 
 # Rails credentials key
 /config/master.key

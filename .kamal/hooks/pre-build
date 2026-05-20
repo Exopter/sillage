@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+builder="kamal-remote-ssh---root-sillage-wild-eu"
+context="${builder}-context"
+remote="ssh://root@sillage.wild.eu"
+host="root@sillage.wild.eu"
+container="buildx_buildkit_${builder}0"
+
+if ! docker context inspect "${context}" >/dev/null 2>&1; then
+  docker context create "${context}" \
+    --description "${builder} host" \
+    --docker "host=${remote}" >/dev/null
+fi
+
+if docker buildx inspect "${builder}" >/dev/null 2>&1; then
+  network_mode="$(ssh -o ConnectTimeout=5 "${host}" "docker inspect -f '{{.HostConfig.NetworkMode}}' ${container} 2>/dev/null" || true)"
+  if [ "${network_mode}" = "host" ]; then
+    exit 0
+  fi
+
+  docker buildx rm "${builder}" >/dev/null 2>&1 || true
+fi
+
+docker buildx create \
+  --name "${builder}" \
+  --driver-opt network=host \
+  "${context}" >/dev/null
+docker buildx inspect --bootstrap "${builder}" >/dev/null

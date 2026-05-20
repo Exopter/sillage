@@ -58,7 +58,9 @@ RUN apt-get update -qq && \
 
 ENV RAILS_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
+    BUNDLE_JOBS="1" \
     BUNDLE_PATH="/usr/local/bundle" \
+    BUNDLE_RETRY="3" \
     BUNDLE_WITHOUT="development" \
     LD_PRELOAD="/usr/local/lib/libjemalloc.so"
 
@@ -137,7 +139,8 @@ Ajoute enfin `.dockerignore` :
 La configuration concrete est deja en place :
 
 - `config/deploy.yml`
-- `.kamal/secrets`
+- `.kamal/secrets.example`
+- `.kamal/hooks/pre-build`
 - `Dockerfile`
 - `.dockerignore`
 - `bin/docker-entrypoint`
@@ -161,7 +164,10 @@ proxy:
   forward_headers: true
 
 registry:
-  server: localhost:5555
+  server: 127.0.0.1:5555
+  username: registry
+  password:
+    - KAMAL_REGISTRY_PASSWORD
 
 env:
   clear:
@@ -169,6 +175,7 @@ env:
     RAILS_LOG_LEVEL: info
   secret:
     - RAILS_MASTER_KEY
+    - CESIUM_ION_TOKEN
 
 volumes:
   - "paralogbis_storage:/rails/storage"
@@ -177,6 +184,8 @@ asset_path: /rails/public/assets
 
 builder:
   arch: amd64
+  remote: ssh://root@sillage.wild.eu
+  local: false
 
 aliases:
   console: app exec --interactive --reuse "bin/rails console"
@@ -185,20 +194,33 @@ aliases:
   dbc: app exec --interactive --reuse "bin/rails dbconsole --include-password"
 ```
 
-Cette config utilise le registry local Kamal (`localhost:5555`), donc elle ne
-demande pas de compte Docker Hub ou GHCR pour demarrer.
+Cette config utilise un registry prive sur le VPS (`127.0.0.1:5555`) et un
+builder Docker distant sur ce meme VPS. Elle ne demande pas de compte Docker Hub
+ou GHCR pour demarrer, et elle evite le tunnel de registry local Kamal.
 
-## 6. Configurer les secrets
+Le hook `.kamal/hooks/pre-build` force ce builder distant en `network=host`.
+C'est necessaire pour que BuildKit puisse pousser l'image vers la registry privee
+liee a `127.0.0.1:5555` sur le VPS.
 
-Dans `.kamal/secrets`, garde des references vers l'environnement ou des
-commandes locales, pas des mots de passe ecrits en dur :
+## 6. Configurer l'env local
+
+Copie l'exemple vers le fichier local ignore par Git :
+
+```sh
+cp .kamal/secrets.example .kamal/secrets
+```
+
+Dans `.kamal/secrets`, mets les valeurs locales ou garde des references vers
+des fichiers/commandes :
 
 ```sh
 RAILS_MASTER_KEY=$(cat config/master.key)
+KAMAL_REGISTRY_PASSWORD=registry
+CESIUM_ION_TOKEN=
 ```
 
-Le fichier ne contient pas le secret lui-meme : il lit `config/master.key`, qui
-reste ignore par Git.
+Ce fichier local peut contenir des vraies valeurs. Il est ignore par Git.
+`CESIUM_ION_TOKEN` est optionnel : laisse-le vide si tu n'en as pas.
 
 ## 7. Configurer Rails pour le domaine
 
@@ -308,6 +330,8 @@ Pour restaurer, stoppe l'app avant de remplacer le contenu du volume.
 - Volume absent ou mal monte : SQLite et les uploads seront perdus au redeploy.
 - Serveur ARM ou build depuis Mac Apple Silicon : garde `builder.arch: amd64`
   si ton VPS est x86_64.
+- VPS avec moins de 1 Go de RAM : ajoute un swapfile avant le premier build,
+  sinon `bundle install` peut rester bloque ou se faire tuer par l'OOM killer.
 
 ## 12. Variante sans domaine au debut
 

@@ -1,8 +1,27 @@
+<%
+  deploy_env_path = File.expand_path(".env.deploy.local", Dir.pwd)
+  if File.file?(deploy_env_path)
+    File.readlines(deploy_env_path, chomp: true).each do |line|
+      line = line.strip
+      next if line.empty? || line.start_with?("#")
+
+      line = line.sub(/\Aexport\s+/, "")
+      key, value = line.split("=", 2)
+      next if key.to_s.empty? || value.nil?
+
+      value = value.strip
+      quote = value[0]
+      value = value[1...-1] if ["'", '"'].include?(quote) && value.end_with?(quote)
+      ENV[key.strip] ||= value
+    end
+  end
+%>
+
 # Name of your application. Used to uniquely configure containers.
 service: paralogbis
 
-# Name of the container image. With the localhost registry below, Kamal resolves
-# this as localhost:5555/paralogbis.
+# Name of the container image. With the private registry below, Kamal resolves
+# this as 127.0.0.1:5555/paralogbis on the VPS.
 image: paralogbis
 
 # Deploy to the host serving the public domain.
@@ -17,9 +36,13 @@ proxy:
   app_port: 3000
   forward_headers: true
 
-# Use Kamal's local registry so no external registry credentials are needed.
+# Use a private registry on the VPS itself. This avoids tunneling large image
+# layers through Net::SSH during deploys.
 registry:
-  server: localhost:5555
+  server: 127.0.0.1:5555
+  username: registry
+  password:
+    - KAMAL_REGISTRY_PASSWORD
 
 # Inject ENV variables into containers. Secrets are read from .kamal/secrets.
 env:
@@ -28,6 +51,7 @@ env:
     RAILS_LOG_LEVEL: info
   secret:
     - RAILS_MASTER_KEY
+    - CESIUM_ION_TOKEN
 
 # Persist SQLite databases and local Active Storage uploads across deploys.
 volumes:
@@ -36,9 +60,11 @@ volumes:
 # Bridge fingerprinted assets between versions during deploys.
 asset_path: /rails/public/assets
 
-# Most VPS providers expose x86_64/amd64 hosts. Change to arm64 if needed.
+# Build on the VPS so the image is pushed directly to its local registry.
 builder:
   arch: amd64
+  remote: ssh://root@sillage.wild.eu
+  local: false
 
 aliases:
   console: app exec --interactive --reuse "bin/rails console"
