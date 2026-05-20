@@ -1,0 +1,47 @@
+# Name of your application. Used to uniquely configure containers.
+service: paralogbis
+
+# Name of the container image. With the localhost registry below, Kamal resolves
+# this as localhost:5555/paralogbis.
+image: paralogbis
+
+# Deploy to the host serving the public domain.
+servers:
+  web:
+    - sillage.wild.eu
+
+# kamal-proxy terminates HTTPS and forwards traffic to Puma.
+proxy:
+  ssl: true
+  host: sillage.wild.eu
+  app_port: 3000
+  forward_headers: true
+
+# Use Kamal's local registry so no external registry credentials are needed.
+registry:
+  server: localhost:5555
+
+# Inject ENV variables into containers. Secrets are read from .kamal/secrets.
+env:
+  clear:
+    SOLID_QUEUE_IN_PUMA: true
+    RAILS_LOG_LEVEL: info
+  secret:
+    - RAILS_MASTER_KEY
+
+# Persist SQLite databases and local Active Storage uploads across deploys.
+volumes:
+  - "paralogbis_storage:/rails/storage"
+
+# Bridge fingerprinted assets between versions during deploys.
+asset_path: /rails/public/assets
+
+# Most VPS providers expose x86_64/amd64 hosts. Change to arm64 if needed.
+builder:
+  arch: amd64
+
+aliases:
+  console: app exec --interactive --reuse "bin/rails console"
+  shell: app exec --interactive --reuse "bash"
+  logs: app logs -f
+  dbc: app exec --interactive --reuse "bin/rails dbconsole --include-password"
