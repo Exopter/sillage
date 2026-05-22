@@ -207,20 +207,25 @@ liee a `127.0.0.1:5555` sur le VPS.
 Copie l'exemple vers le fichier local ignore par Git :
 
 ```sh
-cp .kamal/secrets.example .kamal/secrets
+cp .env.deploy.local.example .env.deploy.local
 ```
 
-Dans `.kamal/secrets`, mets les valeurs locales ou garde des references vers
-des fichiers/commandes :
+Dans `.env.deploy.local`, mets les valeurs locales :
 
 ```sh
-RAILS_MASTER_KEY=$(cat config/master.key)
+RAILS_MASTER_KEY=
 KAMAL_REGISTRY_PASSWORD=registry
 CESIUM_ION_TOKEN=
 ```
 
 Ce fichier local peut contenir des vraies valeurs. Il est ignore par Git.
 `CESIUM_ION_TOKEN` est optionnel : laisse-le vide si tu n'en as pas.
+
+`.kamal/secrets` reste seulement un pont Kamal vers ces variables :
+
+```sh
+cp .kamal/secrets.example .kamal/secrets
+```
 
 ## 7. Configurer Rails pour le domaine
 
@@ -242,7 +247,7 @@ Git courant :
 
 ```sh
 git status
-git add Dockerfile .dockerignore bin/docker-entrypoint config/deploy.yml .kamal/secrets Gemfile Gemfile.lock config/database.yml config/environments/production.rb docs/deploiement-kamal.md
+git add Dockerfile .dockerignore bin/docker-entrypoint config/deploy.yml .kamal/secrets.example .env.deploy.local.example Gemfile Gemfile.lock config/database.yml config/environments/production.rb docs/deploiement-kamal.md
 git commit -m "Add Kamal deployment config"
 ```
 
