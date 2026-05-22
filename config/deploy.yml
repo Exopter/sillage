@@ -18,11 +18,11 @@
 %>
 
 # Name of your application. Used to uniquely configure containers.
-service: paralogbis
+service: sillage
 
 # Name of the container image. With the private registry below, Kamal resolves
-# this as 127.0.0.1:5555/paralogbis on the VPS.
-image: paralogbis
+# this as 127.0.0.1:5555/sillage on the VPS.
+image: sillage
 
 # Deploy to the host serving the public domain.
 servers:
@@ -55,7 +55,7 @@ env:
 
 # Persist SQLite databases and local Active Storage uploads across deploys.
 volumes:
-  - "paralogbis_storage:/rails/storage"
+  - "sillage_storage:/rails/storage"
 
 # Bridge fingerprinted assets between versions during deploys.
 asset_path: /rails/public/assets
