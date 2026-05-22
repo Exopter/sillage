@@ -13,8 +13,4 @@ class ApplicationController < ActionController::Base
     locale = params[:locale].presence&.to_sym
     I18n.with_locale(I18n.available_locales.include?(locale) ? locale : I18n.default_locale, &action)
   end
-
-  def default_url_options
-    { locale: I18n.locale }
-  end
 end

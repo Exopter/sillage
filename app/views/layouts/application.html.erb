@@ -36,11 +36,6 @@
         <%= link_to t("nav.jumps"), jumps_path %>
         <%= link_to t("nav.import"), new_flight_import_path %>
       </nav>
-
-      <div class="locale-switch" aria-label="<%= t("nav.language") %>">
-        <%= link_to "FR", root_path(locale: :fr), class: ("active" if I18n.locale == :fr) %>
-        <%= link_to "EN", root_path(locale: :en), class: ("active" if I18n.locale == :en) %>
-      </div>
     </header>
 
     <main class="app-shell">

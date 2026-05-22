@@ -12,7 +12,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     }
 
     jump = FlightImport.order(:created_at).last.jumps.first
-    assert_redirected_to jump_path(jump, locale: :fr)
+    assert_redirected_to jump_path(jump)
 
     follow_redirect!
     assert_response :success
@@ -27,5 +27,13 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "form.upload-form"
     assert_select "a", text: I18n.t("nav.jumps")
+  end
+
+  test "french locale falls back to english" do
+    get root_path(locale: :fr)
+
+    assert_response :success
+    assert_select "html[lang=en]"
+    assert_select ".locale-switch", count: 0
   end
 end

@@ -137,15 +137,13 @@ textarea {
   font-weight: 760;
 }
 
-.main-nav,
-.locale-switch {
+.main-nav {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.main-nav a,
-.locale-switch a {
+.main-nav a {
   min-height: 40px;
   padding: 10px 12px;
   border-radius: var(--ds-radius);
@@ -153,9 +151,7 @@ textarea {
   font-size: 0.95rem;
 }
 
-.main-nav a:hover,
-.locale-switch a:hover,
-.locale-switch .active {
+.main-nav a:hover {
   background: rgba(255, 255, 255, 0.72);
   color: var(--ds-ink);
   box-shadow: inset 0 0 0 1px var(--ds-line);
@@ -762,8 +758,7 @@ textarea {
     min-width: 0;
   }
 
-  .main-nav,
-  .locale-switch {
+  .main-nav {
     flex-wrap: wrap;
   }
 

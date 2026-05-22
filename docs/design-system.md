@@ -7,7 +7,7 @@ Sillage is a compact flight-analysis identity for FlySight logs. It should feel 
 - Name: Sillage
 - Tagline: Flight Lab
 - Mark: a dark instrument tile crossed by a coral-to-aqua trajectory, with a lime axis and amber event point.
-- Tone: concise operational French/English. Prefer action verbs like "charger", "importer", "analyser", "ajuster".
+- Tone: concise operational English. Prefer direct action verbs like "load", "import", "analyze", "adjust".
 
 ## Tokens
 
@@ -21,7 +21,7 @@ CSS tokens live in `app/assets/stylesheets/application.css` and use the `--ds-*`
 
 ## Components
 
-- App header: brand mark, product name, tagline, primary navigation, language switch.
+- App header: brand mark, product name, tagline, primary navigation.
 - Page heading: eyebrow with trajectory rule and a direct page action.
 - Tool panel: framed operational surface for forms, metadata and analysis controls.
 - Stats panel and metric strip: dense numeric summaries with muted labels and strong values.
