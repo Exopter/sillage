@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_15_180201) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_22_120000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -77,9 +77,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_15_180201) do
     t.integer "sensor_sample_count", default: 0, null: false
     t.datetime "started_at"
     t.datetime "updated_at", null: false
+    t.float "video_duration_seconds"
+    t.float "video_exit_offset_seconds"
+    t.text "video_processing_error"
+    t.string "video_processing_status", default: "empty", null: false
     t.index ["exit_at"], name: "index_jumps_on_exit_at"
     t.index ["flight_import_id"], name: "index_jumps_on_flight_import_id"
     t.index ["started_at"], name: "index_jumps_on_started_at"
+    t.index ["video_processing_status"], name: "index_jumps_on_video_processing_status"
   end
 
   create_table "sensor_samples", force: :cascade do |t|

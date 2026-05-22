@@ -11,7 +11,10 @@ export default class extends Controller {
     "powerChart",
     "scrubber",
     "timeLabel",
-    "playButton"
+    "playButton",
+    "video",
+    "videoExitOffsetInput",
+    "videoExitOffsetLabel"
   ]
 
   static values = {
@@ -19,7 +22,8 @@ export default class extends Controller {
     sensors: Array,
     bounds: Object,
     cesiumToken: String,
-    labels: Object
+    labels: Object,
+    videoExitOffset: Number
   }
 
   async connect() {
@@ -28,6 +32,8 @@ export default class extends Controller {
       Number.isFinite(Number(point.lon)) &&
       Number.isFinite(Number(point.alt))
     )
+    this.groundAltitude = this.groundAltitudeFromPoints()
+    this.points = this.points.map((point) => ({ ...point, height: this.heightFromGround(point) }))
     this.sensors = this.sensorsValue.filter((sample) => Number.isFinite(Number(sample.t)))
     this.charts = []
     this.renderFrame = null
@@ -45,22 +51,28 @@ export default class extends Controller {
     this.playbackStartElapsed = 0
     this.playbackLastRenderAt = 0
     this.playbackLastCameraAt = 0
+    this.videoExitOffset = this.hasVideoExitOffsetValue ? this.videoExitOffsetValue : null
+    this.videoSyncFrame = null
+    this.videoSyncLastRenderAt = 0
+    this.syncingVideo = false
     this.colors = this.designColors()
 
     const chartModule = await import("https://cdn.jsdelivr.net/npm/chart.js@4.4.9/+esm")
 
     this.Chart = chartModule.Chart
-    this.Chart.register(...chartModule.registerables, SILLAGE_BOUNDS_PLUGIN)
+    this.Chart.register(...chartModule.registerables, SILLAGE_BOUNDS_PLUGIN, SILLAGE_PLAYBACK_PLUGIN)
 
     this.setupCharts()
     this.updatePlayButton()
+    this.updateVideoExitLabel()
     if (this.hasSceneTarget && this.points.length >= 2) this.setupScene()
-    this.updateScrubbedElapsed(0)
+    this.updateScrubbedElapsed(this.defaultElapsed())
   }
 
   disconnect() {
     if (this.renderFrame) cancelAnimationFrame(this.renderFrame)
     if (this.playbackFrame) cancelAnimationFrame(this.playbackFrame)
+    if (this.videoSyncFrame) cancelAnimationFrame(this.videoSyncFrame)
     if (this.resizeObserver) this.resizeObserver.disconnect()
     this.boundSceneHandlers.forEach(([eventName, handler, target, options]) => target?.removeEventListener(eventName, handler, options))
     if (this.cesiumInteractionHandler && !this.cesiumInteractionHandler.isDestroyed()) this.cesiumInteractionHandler.destroy()
@@ -80,7 +92,12 @@ export default class extends Controller {
       return
     }
 
-    if (this.currentElapsed >= this.flightDuration) this.updateScrubbedElapsed(0)
+    if (this.videoCanSync()) {
+      this.playSyncedVideo()
+      return
+    }
+
+    if (this.currentElapsed >= this.flightDuration) this.updateScrubbedElapsed(this.defaultElapsed())
     this.isPlaying = true
     this.playbackStartedAt = performance.now()
     this.playbackStartElapsed = this.currentElapsed
@@ -90,10 +107,13 @@ export default class extends Controller {
     this.playbackFrame = requestAnimationFrame((timestamp) => this.stepPlayback(timestamp))
   }
 
-  pausePlayback() {
+  pausePlayback(options = {}) {
     if (this.playbackFrame) cancelAnimationFrame(this.playbackFrame)
+    if (this.videoSyncFrame) cancelAnimationFrame(this.videoSyncFrame)
 
     this.playbackFrame = null
+    this.videoSyncFrame = null
+    if (!options.skipVideoPause) this.pauseVideo()
     this.isPlaying = false
     this.updatePlayButton()
   }
@@ -115,6 +135,91 @@ export default class extends Controller {
       this.updateScrubbedElapsed(elapsed, { followCamera })
     }
     this.playbackFrame = requestAnimationFrame((nextTimestamp) => this.stepPlayback(nextTimestamp))
+  }
+
+  playSyncedVideo() {
+    if (!this.videoCanSync()) return
+
+    if (this.currentElapsed >= this.flightDuration) this.updateScrubbedElapsed(this.defaultElapsed())
+    this.syncVideoFromFlight()
+    this.isPlaying = true
+    this.videoSyncLastRenderAt = 0
+    this.updatePlayButton()
+
+    const playPromise = this.videoTarget.play()
+    if (playPromise?.catch) {
+      playPromise.catch(() => {
+        this.isPlaying = false
+        this.updatePlayButton()
+      })
+    }
+    this.startVideoSyncLoop()
+  }
+
+  pauseVideo() {
+    if (!this.hasVideoTarget || this.videoTarget.paused) return
+
+    this.syncingVideo = true
+    this.videoTarget.pause()
+    this.syncingVideo = false
+  }
+
+  videoPlaybackStarted() {
+    if (!this.videoCanSync() || this.syncingVideo) return
+
+    if (this.playbackFrame) cancelAnimationFrame(this.playbackFrame)
+    this.playbackFrame = null
+    this.isPlaying = true
+    this.videoSyncLastRenderAt = 0
+    this.updatePlayButton()
+    this.startVideoSyncLoop()
+  }
+
+  videoPlaybackPaused() {
+    if (this.syncingVideo) return
+
+    this.pausePlayback({ skipVideoPause: true })
+  }
+
+  videoSeeked() {
+    if (!this.videoCanSync()) return
+
+    this.updateScrubbedElapsed(this.elapsedForVideoTime(this.videoTarget.currentTime), {
+      followCamera: false,
+      syncVideo: false
+    })
+  }
+
+  videoTimeUpdated() {
+    if (!this.videoCanSync() || !this.videoTarget.paused) return
+
+    this.videoSeeked()
+  }
+
+  startVideoSyncLoop() {
+    if (this.videoSyncFrame || !this.videoCanSync()) return
+
+    this.videoSyncFrame = requestAnimationFrame((timestamp) => this.stepVideoPlayback(timestamp))
+  }
+
+  stepVideoPlayback(timestamp) {
+    this.videoSyncFrame = null
+    if (!this.isPlaying || !this.videoCanSync()) return
+
+    if (this.videoTarget.paused || this.videoTarget.ended) {
+      this.pausePlayback({ skipVideoPause: true })
+      return
+    }
+
+    if (timestamp - this.videoSyncLastRenderAt > 80) {
+      this.videoSyncLastRenderAt = timestamp
+      this.updateScrubbedElapsed(this.elapsedForVideoTime(this.videoTarget.currentTime), {
+        followCamera: true,
+        syncVideo: false
+      })
+    }
+
+    this.startVideoSyncLoop()
   }
 
   updatePlayButton() {
@@ -141,6 +246,70 @@ export default class extends Controller {
     this.scheduleRender()
   }
 
+  markVideoExit(event) {
+    event.preventDefault()
+    if (!this.hasVideoTarget || !this.hasVideoExitOffsetInputTarget) return
+
+    this.videoExitOffset = this.clamp(
+      this.videoTarget.currentTime || 0,
+      0,
+      this.number(this.videoTarget.duration) || Number.MAX_SAFE_INTEGER
+    )
+    this.videoExitOffsetInputTarget.value = this.videoExitOffset.toFixed(3)
+    this.updateVideoExitLabel()
+    event.currentTarget.closest("form")?.requestSubmit()
+  }
+
+  syncVideoFromFlight() {
+    this.updateVideoExitLabel()
+    if (!this.videoCanSync()) return
+
+    this.syncVideoToElapsed(this.currentElapsed)
+  }
+
+  syncVideoToElapsed(elapsed) {
+    if (!this.videoCanSync()) return
+    if (this.videoTarget.readyState === 0) return
+
+    const targetTime = this.videoTimeForElapsed(elapsed)
+    if (!Number.isFinite(targetTime)) return
+    if (Math.abs(this.videoTarget.currentTime - targetTime) < 0.12) return
+
+    this.syncingVideo = true
+    this.videoTarget.currentTime = targetTime
+    this.syncingVideo = false
+  }
+
+  videoCanSync() {
+    return this.hasVideoTarget &&
+      Number.isFinite(this.videoExitOffset) &&
+      this.videoExitOffset >= 0
+  }
+
+  videoTimeForElapsed(elapsed) {
+    const elapsedSeconds = this.number(elapsed)
+    if (!Number.isFinite(elapsedSeconds) || !this.videoCanSync()) return null
+
+    const targetTime = elapsedSeconds - this.exitElapsed() + this.videoExitOffset
+    const duration = this.number(this.videoTarget.duration)
+    return this.clamp(targetTime, 0, Number.isFinite(duration) ? duration : Math.max(targetTime, 0))
+  }
+
+  elapsedForVideoTime(currentTime) {
+    const videoTime = this.number(currentTime)
+    if (!Number.isFinite(videoTime) || !this.videoCanSync()) return this.currentElapsed
+
+    return videoTime - this.videoExitOffset + this.exitElapsed()
+  }
+
+  updateVideoExitLabel() {
+    if (!this.hasVideoExitOffsetLabelTarget) return
+
+    this.videoExitOffsetLabelTarget.textContent = this.videoCanSync()
+      ? this.label("video_exit_marked").replace("%{timestamp}", this.formatSeconds(this.videoExitOffset))
+      : this.label("video_exit_unmarked")
+  }
+
   setupCharts() {
     if (this.points.length >= 2) {
       this.setupProfileChart()
@@ -155,7 +324,7 @@ export default class extends Controller {
 
   setupProfileChart() {
     this.createTimeChart(this.profileChartTarget, [
-      this.dataset(this.label("altitude"), this.points, "alt", this.colors.violet, "altitude"),
+      this.dataset(this.label("height"), this.points, "height", this.colors.violet, "altitude"),
       this.dataset(this.label("horizontal_speed"), this.points, "hspeed", this.colors.teal, "speed"),
       this.dataset(this.label("vertical_speed"), this.points, "vspeed", this.colors.amber, "speed")
     ], {
@@ -165,7 +334,7 @@ export default class extends Controller {
   }
 
   setupGroundChart() {
-    const data = this.points.map((point) => ({ x: this.number(point.lon), y: this.number(point.lat) }))
+    const data = this.points.map((point) => ({ x: this.number(point.lon), y: this.number(point.lat), t: this.number(point.t) }))
       .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y))
 
     this.createChart(this.groundChartTarget, {
@@ -185,7 +354,7 @@ export default class extends Controller {
       options: this.chartOptions({
         x: this.axis("bottom", this.label("longitude")),
         y: this.axis("left", this.label("latitude"))
-      }, false)
+      }, false, "track")
     })
   }
 
@@ -240,14 +409,16 @@ export default class extends Controller {
     })
   }
 
-  setupScene() {
+  async setupScene() {
     if (this.cesiumTokenValue) {
-      this.setupCesiumScene()
+      await this.setupCesiumScene()
+      this.updateScrubbedElapsed(this.currentElapsed, { followCamera: false })
       return
     }
 
     this.showSceneFallbackMessage(this.label("cesium_token_missing"))
-    this.setupLocalScene()
+    await this.setupLocalScene()
+    this.updateScrubbedElapsed(this.currentElapsed, { followCamera: false })
   }
 
   async setupCesiumScene() {
@@ -421,6 +592,9 @@ export default class extends Controller {
   addCesiumTrajectory(Cesium, viewer) {
     const points = this.cesiumPoints()
     const positions = points.flatMap((point) => [point.lon, point.lat, this.cesiumAltitude(point)])
+    const markerElapsed = this.currentElapsed
+    const markerPoint = this.samplePointAtElapsed(markerElapsed, points) || points[0]
+    const markerLabelPoint = this.samplePointAtElapsed(markerElapsed, this.points) || this.points[0]
 
     this.cesiumPath = viewer.entities.add({
       name: this.label("trajectory"),
@@ -436,7 +610,7 @@ export default class extends Controller {
 
     this.cesiumMarker = viewer.entities.add({
       name: this.label("current_position"),
-      position: Cesium.Cartesian3.fromDegrees(points[0].lon, points[0].lat, this.cesiumAltitude(points[0])),
+      position: Cesium.Cartesian3.fromDegrees(markerPoint.lon, markerPoint.lat, this.cesiumAltitude(markerPoint)),
       point: {
         pixelSize: 14,
         color: Cesium.Color.fromCssColorString(this.colors.amber),
@@ -445,7 +619,7 @@ export default class extends Controller {
         disableDepthTestDistance: Number.POSITIVE_INFINITY
       },
       label: {
-        text: this.markerLabel(this.points[0]),
+        text: this.markerLabel(markerLabelPoint),
         font: "12px sans-serif",
         fillColor: Cesium.Color.WHITE,
         outlineColor: Cesium.Color.BLACK,
@@ -679,15 +853,17 @@ export default class extends Controller {
     this.sizeChartCanvas(target)
     const chart = new this.Chart(target, config)
     this.charts.push(chart)
+    this.installChartSync(chart)
   }
 
-  chartOptions(scales, showBounds) {
+  chartOptions(scales, showBounds, cursorMode = "time") {
     return {
       animation: false,
       maintainAspectRatio: false,
       normalized: true,
       parsing: false,
       responsive: false,
+      events: [],
       interaction: { mode: "nearest", axis: "x", intersect: false },
       elements: {
         line: { borderWidth: 2 },
@@ -697,13 +873,115 @@ export default class extends Controller {
         legend: { labels: { boxWidth: 10, usePointStyle: true } },
         tooltip: {
           callbacks: {
-            title: (items) => this.formatSeconds(items[0]?.parsed?.x)
+            title: (items) => this.formatTimer(this.chartItemElapsed(items[0]))
           }
         },
-        sillageBounds: showBounds ? { bounds: this.boundsValue, labels: this.labelsValue } : false
+        sillageBounds: showBounds ? { bounds: this.boundsValue, labels: this.labelsValue } : false,
+        sillagePlayback: {
+          elapsed: this.currentElapsed,
+          mode: cursorMode,
+          color: this.colors.amber,
+          pointColor: this.colors.coral
+        }
       },
       scales
     }
+  }
+
+  installChartSync(chart) {
+    const canvas = chart.canvas
+    this.addSceneHandler("pointermove", (event) => {
+      if (this.isPlaying && event.buttons === 0) return
+      if (event.buttons > 0) this.pausePlayback()
+
+      this.updateFromChartEvent(chart, event)
+    }, canvas)
+    this.addSceneHandler("pointerdown", (event) => {
+      this.pausePlayback()
+      canvas.setPointerCapture?.(event.pointerId)
+      this.updateFromChartEvent(chart, event)
+    }, canvas)
+    this.addSceneHandler("pointerup", (event) => {
+      canvas.releasePointerCapture?.(event.pointerId)
+    }, canvas)
+    this.addSceneHandler("pointercancel", (event) => {
+      canvas.releasePointerCapture?.(event.pointerId)
+    }, canvas)
+  }
+
+  updateFromChartEvent(chart, event) {
+    const elapsed = this.elapsedFromChartEvent(chart, event)
+    if (!Number.isFinite(elapsed)) return
+
+    this.updateScrubbedElapsed(elapsed, { followCamera: false })
+  }
+
+  elapsedFromChartEvent(chart, event) {
+    const position = this.chartEventPosition(chart, event)
+    if (!position || !this.positionInsideChartArea(chart, position)) return null
+
+    if (this.chartCursorMode(chart) === "track") {
+      return this.elapsedFromTrackChartPosition(chart, position)
+    }
+
+    const elapsed = chart.scales?.x?.getValueForPixel(position.x)
+    return Number.isFinite(Number(elapsed)) ? this.clamp(Number(elapsed), 0, this.flightDuration || 0) : null
+  }
+
+  chartEventPosition(chart, event) {
+    const rect = chart.canvas.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return null
+
+    return {
+      x: (event.clientX - rect.left) * (chart.width / rect.width),
+      y: (event.clientY - rect.top) * (chart.height / rect.height)
+    }
+  }
+
+  positionInsideChartArea(chart, position) {
+    const area = chart.chartArea
+    if (!area) return false
+
+    return position.x >= area.left && position.x <= area.right && position.y >= area.top && position.y <= area.bottom
+  }
+
+  elapsedFromTrackChartPosition(chart, position) {
+    let closestElapsed = null
+    let closestDistance = Number.POSITIVE_INFINITY
+
+    chart.data.datasets.forEach((dataset, datasetIndex) => {
+      const meta = chart.getDatasetMeta(datasetIndex)
+      dataset.data.forEach((point, index) => {
+        const element = meta.data[index]
+        const x = this.number(element?.x)
+        const y = this.number(element?.y)
+        const elapsed = this.dataElapsed(point)
+        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(elapsed)) return
+
+        const distance = ((x - position.x) ** 2) + ((y - position.y) ** 2)
+        if (distance >= closestDistance) return
+
+        closestDistance = distance
+        closestElapsed = elapsed
+      })
+    })
+
+    return closestElapsed
+  }
+
+  chartCursorMode(chart) {
+    return chart.options?.plugins?.sillagePlayback?.mode || "time"
+  }
+
+  chartItemElapsed(item) {
+    return this.dataElapsed(item?.raw) ?? this.number(item?.parsed?.x)
+  }
+
+  dataElapsed(point) {
+    const elapsed = this.number(point?.t)
+    if (Number.isFinite(elapsed)) return elapsed
+
+    return this.number(point?.x)
   }
 
   dataset(label, rows, key, color, axis) {
@@ -743,7 +1021,7 @@ export default class extends Controller {
       title: { display: true, text: this.label("time") },
       ticks: {
         maxTicksLimit: 8,
-        callback: (value) => this.formatSeconds(value)
+        callback: (value) => this.formatTimer(value)
       }
     }
   }
@@ -798,12 +1076,11 @@ export default class extends Controller {
     context.strokeStyle = this.colors.aqua
     context.lineWidth = 2
     context.beginPath()
-    const altitudes = this.points.map((row) => this.number(row.alt) || 0)
-    const minAltitude = Math.min(...altitudes)
-    const altitudeSpan = Math.max(Math.max(...altitudes) - minAltitude, 1)
+    const heights = this.points.map((row) => this.heightFromGround(row) ?? 0)
+    const heightSpan = Math.max(Math.max(...heights), 1)
     this.points.forEach((point, index) => {
       const x = (index / Math.max(this.points.length - 1, 1)) * width
-      const y = height - (((this.number(point.alt) || 0) - minAltitude) / altitudeSpan) * height * 0.78 - 24
+      const y = height - ((this.heightFromGround(point) ?? 0) / heightSpan) * height * 0.78 - 24
       if (index === 0) context.moveTo(x, y)
       else context.lineTo(x, y)
     })
@@ -848,6 +1125,7 @@ export default class extends Controller {
 
   updateScrubbedElapsed(elapsed, options = {}) {
     const followCamera = options.followCamera !== false
+    const syncVideo = options.syncVideo !== false
     const clampedElapsed = this.clamp(elapsed || 0, 0, this.flightDuration || 0)
     const point = this.samplePointAtElapsed(clampedElapsed, this.points)
     const visualPoint = this.samplePointAtElapsed(clampedElapsed, this.cesiumPoints()) || point
@@ -877,6 +1155,82 @@ export default class extends Controller {
       this.scheduleRender()
     }
     if (this.hasTimeLabelTarget) this.timeLabelTarget.textContent = this.playbackTimeLabel(clampedElapsed)
+    this.updateChartsPlaybackCursor(clampedElapsed)
+    if (syncVideo) this.syncVideoToElapsed(clampedElapsed)
+  }
+
+  updateChartsPlaybackCursor(elapsed) {
+    this.charts.forEach((chart) => {
+      const playback = chart.options?.plugins?.sillagePlayback
+      if (!playback) return
+
+      playback.elapsed = elapsed
+      const activeElements = this.chartActiveElementsAtElapsed(chart, elapsed)
+      chart.setActiveElements(activeElements)
+      chart.tooltip?.setActiveElements(activeElements, this.chartTooltipPosition(chart, activeElements, elapsed))
+      chart.update("none")
+    })
+  }
+
+  chartActiveElementsAtElapsed(chart, elapsed) {
+    return chart.data.datasets.filter((dataset) => dataset.data.length > 0).map((dataset) => {
+      const datasetIndex = chart.data.datasets.indexOf(dataset)
+      const index = this.nearestDataIndexAtElapsed(dataset.data, elapsed)
+      if (index === null) return null
+
+      return { datasetIndex, index }
+    }).filter(Boolean)
+  }
+
+  nearestDataIndexAtElapsed(data, elapsed) {
+    if (!data?.length || !Number.isFinite(Number(elapsed))) return null
+
+    let low = 0
+    let high = data.length - 1
+
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2)
+      const middleElapsed = this.dataElapsed(data[middle])
+      if (!Number.isFinite(middleElapsed)) return this.nearestDataIndexAtElapsedLinear(data, elapsed)
+      if (middleElapsed < elapsed) low = middle + 1
+      else high = middle
+    }
+
+    const candidates = [ low, low - 1, low + 1 ].filter((index) => index >= 0 && index < data.length)
+    return candidates.reduce((closestIndex, index) => {
+      if (closestIndex === null) return index
+
+      const closestDistance = Math.abs(this.dataElapsed(data[closestIndex]) - elapsed)
+      const distance = Math.abs(this.dataElapsed(data[index]) - elapsed)
+      return distance < closestDistance ? index : closestIndex
+    }, null)
+  }
+
+  nearestDataIndexAtElapsedLinear(data, elapsed) {
+    return data.reduce((closestIndex, point, index) => {
+      const pointElapsed = this.dataElapsed(point)
+      if (!Number.isFinite(pointElapsed)) return closestIndex
+      if (closestIndex === null) return index
+
+      const closestDistance = Math.abs(this.dataElapsed(data[closestIndex]) - elapsed)
+      const distance = Math.abs(pointElapsed - elapsed)
+      return distance < closestDistance ? index : closestIndex
+    }, null)
+  }
+
+  chartTooltipPosition(chart, activeElements, elapsed) {
+    const firstElement = activeElements[0]
+    if (firstElement) {
+      const point = chart.getDatasetMeta(firstElement.datasetIndex)?.data?.[firstElement.index]
+      if (point) return { x: point.x, y: point.y }
+    }
+
+    const area = chart.chartArea
+    const x = chart.scales?.x?.getPixelForValue(elapsed)
+    return {
+      x: Number.isFinite(x) ? x : area?.left || 0,
+      y: area ? area.top : 0
+    }
   }
 
   disposeScene() {
@@ -960,7 +1314,7 @@ export default class extends Controller {
 
   interpolatePoint(previous, next, ratio, elapsed) {
     const point = { ...previous, t: elapsed }
-    const keys = ["lat", "lon", "alt", "hspeed", "vspeed", "glide", "distance", "visualAlt", "groundAlt", "datumOffset"]
+    const keys = ["lat", "lon", "alt", "height", "hspeed", "vspeed", "glide", "distance", "visualAlt", "groundAlt", "datumOffset"]
 
     keys.forEach((key) => {
       const a = this.number(previous[key])
@@ -994,11 +1348,10 @@ export default class extends Controller {
     const lat0 = first.lat * Math.PI / 180
     const metersPerDegreeLat = 111_320
     const metersPerDegreeLon = Math.cos(lat0) * 111_320
-    const minAltitude = Math.min(...this.points.map((point) => point.alt))
 
     const raw = this.points.map((point) => ({
       x: (point.lon - first.lon) * metersPerDegreeLon,
-      y: (point.alt - minAltitude) * 0.45,
+      y: (this.heightFromGround(point) ?? 0) * 0.45,
       z: -(point.lat - first.lat) * metersPerDegreeLat
     }))
 
@@ -1081,6 +1434,23 @@ export default class extends Controller {
     return Number.isFinite(number) ? number : null
   }
 
+  groundAltitudeFromPoints() {
+    const altitudes = this.points.map((point) => this.number(point.alt)).filter((value) => Number.isFinite(value))
+    if (!altitudes.length) return null
+
+    return Math.min(...altitudes)
+  }
+
+  heightFromGround(point) {
+    const height = this.number(point?.height)
+    if (Number.isFinite(height)) return height
+
+    const altitude = this.number(point?.alt)
+    if (!Number.isFinite(altitude) || !Number.isFinite(this.groundAltitude)) return null
+
+    return Math.max(altitude - this.groundAltitude, 0)
+  }
+
   label(key) {
     return this.labelsValue[key] || key
   }
@@ -1089,7 +1459,9 @@ export default class extends Controller {
     if (!point) return ""
 
     return [
-      `${this.label("marker_altitude")} ${this.formatMetric(point.alt, this.label("meters"), 0)}`,
+      this.formatTimer(point.t),
+      `${this.label("marker_height")} ${this.formatMetric(this.heightFromGround(point), this.label("meters"), 0)}  ` +
+        `${this.label("marker_altitude")} ${this.formatMetric(point.alt, this.label("meters"), 0)}`,
       `${this.label("marker_hspeed")} ${this.formatMetric(point.hspeed, this.label("meters_per_second"), 1)}  ` +
         `${this.label("marker_vspeed")} ${this.formatMetric(point.vspeed, this.label("meters_per_second"), 1)}`,
       `${this.label("glide")} ${this.formatNumber(point.glide, 2)}`
@@ -1109,13 +1481,41 @@ export default class extends Controller {
   }
 
   playbackTimeLabel(elapsed) {
-    return `${this.formatSeconds(elapsed)} / ${this.formatSeconds(this.flightDuration)}`
+    return `${this.formatTimer(elapsed)} / ${this.formatSeconds(this.flightDurationFromExit())}`
+  }
+
+  formatTimer(elapsed) {
+    const relativeElapsed = this.elapsedFromExit(elapsed)
+    if (!Number.isFinite(relativeElapsed)) return "T --:--"
+
+    const prefix = relativeElapsed < 0 ? "T-" : "T+"
+    return `${prefix}${this.formatSeconds(Math.abs(relativeElapsed))}`
   }
 
   formatSeconds(value) {
     const seconds = Math.max(0, Math.round(value || 0))
     const minutes = Math.floor(seconds / 60)
     return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`
+  }
+
+  elapsedFromExit(elapsed) {
+    const elapsedSeconds = this.number(elapsed)
+    if (!Number.isFinite(elapsedSeconds)) return null
+
+    return elapsedSeconds - this.exitElapsed()
+  }
+
+  exitElapsed() {
+    const exit = this.number(this.boundsValue?.exit)
+    return Number.isFinite(exit) ? exit : 0
+  }
+
+  flightDurationFromExit() {
+    return Math.max(0, (this.flightDuration || 0) - this.exitElapsed())
+  }
+
+  defaultElapsed() {
+    return this.clamp(this.exitElapsed(), 0, this.flightDuration || 0)
   }
 }
 
@@ -1152,6 +1552,47 @@ const SILLAGE_BOUNDS_PLUGIN = {
 
       ctx.fillStyle = "rgba(22, 35, 32, 0.72)"
       ctx.fillText(labels[key] || key, x + 4, area.top + 4)
+    })
+    ctx.restore()
+  }
+}
+
+const SILLAGE_PLAYBACK_PLUGIN = {
+  id: "sillagePlayback",
+  afterDatasetsDraw(chart, _args, options) {
+    const elapsed = Number(options?.elapsed)
+    if (!Number.isFinite(elapsed)) return
+
+    const area = chart.chartArea
+    const xScale = chart.scales?.x
+    if (!xScale || !area) return
+
+    const ctx = chart.ctx
+    ctx.save()
+    ctx.strokeStyle = options.color || "rgba(216, 145, 34, 0.9)"
+    ctx.lineWidth = 2
+    if ((options.mode || "time") !== "track") {
+      const x = xScale.getPixelForValue(elapsed)
+      if (x >= area.left && x <= area.right) {
+        ctx.beginPath()
+        ctx.moveTo(x, area.top)
+        ctx.lineTo(x, area.bottom)
+        ctx.stroke()
+      }
+    }
+
+    ctx.fillStyle = options.pointColor || options.color || "rgba(216, 145, 34, 0.9)"
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.92)"
+    chart.getActiveElements().forEach(({ datasetIndex, index }) => {
+      const point = chart.getDatasetMeta(datasetIndex)?.data?.[index]
+      if (!point) return
+      if (point.x < area.left || point.x > area.right || point.y < area.top || point.y > area.bottom) return
+
+      ctx.beginPath()
+      ctx.arc(point.x, point.y, 4, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.lineWidth = 1.5
+      ctx.stroke()
     })
     ctx.restore()
   }
