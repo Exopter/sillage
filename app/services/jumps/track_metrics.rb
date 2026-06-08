@@ -30,11 +30,13 @@ module Jumps
       end
     end
 
-    def summary(points = prepared_points, sensor_count: 0)
+    def summary(points = prepared_points, sensor_count: 0, bounds: nil)
       altitudes = points.filter_map { |point| point[:altitude_m]&.to_f }
       horizontal_speeds = points.filter_map { |point| point[:horizontal_speed_mps]&.to_f }
       vertical_speeds = points.filter_map { |point| point[:vertical_speed_mps]&.to_f }
-      glide_ratios = points.filter_map { |point| point[:glide_ratio]&.to_f }.select(&:finite?)
+      glide_ratios = points_for_glide_average(points, bounds)
+        .filter_map { |point| point[:glide_ratio]&.to_f }
+        .select(&:finite?)
 
       {
         started_at: points.first&.fetch(:recorded_at, nil),
@@ -53,6 +55,21 @@ module Jumps
     end
 
     private
+
+    def points_for_glide_average(points, bounds)
+      return points unless bounds
+
+      exit_at = bounds[:exit_at]
+      opening_at = bounds[:opening_at]
+      return points unless exit_at || opening_at
+
+      points.select do |point|
+        recorded_at = point[:recorded_at]
+        recorded_at &&
+          (!exit_at || recorded_at >= exit_at) &&
+          (!opening_at || recorded_at <= opening_at)
+      end
+    end
 
     def duration(points)
       return nil if points.size < 2

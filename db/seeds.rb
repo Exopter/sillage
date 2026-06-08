@@ -176,7 +176,11 @@ def seed_synthetic_flight(config)
     opening_elapsed: config.fetch(:opening_elapsed),
     vbat_drop_per_second: config.fetch(:vbat_drop_per_second)
   )
-  summary = metrics.summary(points, sensor_count: sensors.size)
+  bounds = {
+    exit_at: start_time,
+    opening_at: start_time + config.fetch(:opening_elapsed)
+  }
+  summary = metrics.summary(points, sensor_count: sensors.size, bounds: bounds)
   jump = flight_import.jumps.order(:id).first_or_initialize
   flight_import.jumps.where.not(id: jump.id).destroy_all if jump.persisted?
   jump.assign_attributes(

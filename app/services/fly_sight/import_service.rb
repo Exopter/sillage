@@ -172,7 +172,7 @@ module FlySight
       metrics = Jumps::TrackMetrics.new(parsed_session.track_points)
       points = metrics.prepared_points
       bounds = Jumps::DetectBounds.new(points).call
-      summary = metrics.summary(points, sensor_count: parsed_session.sensor_samples.size)
+      summary = metrics.summary(points, sensor_count: parsed_session.sensor_samples.size, bounds: bounds)
 
       jump = flight_import.jumps.create!(
         {
