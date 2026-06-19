@@ -1,0 +1,388 @@
+<!-- Archived: codebase-faithful recreation of the real Sillage Flight Lab. Reverted out of the active kit per request; kept for reference. Not shown as a DS card. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sillage — Flight Lab</title>
+<link rel="stylesheet" href="../../../styles.css">
+<link rel="stylesheet" href="sillage.css">
+<link rel="icon" href="../../../assets/app-icon.svg">
+<style>
+  /* Visuals for the surfaces the real app renders via Cesium / Chart.js canvases.
+     Recreated here as SVG so the kit is self-contained and offline. */
+  .scene-svg { display:block; width:100%; height:100%; }
+  .chart-svg { display:block; width:100%; height:320px; }
+  .screen[hidden]{ display:none; }
+  .main-nav a.is-active{ background:rgba(255,255,255,.82); color:var(--ds-ink); box-shadow:inset 0 0 0 1px var(--ds-line); }
+  .lang-pill{ justify-self:end; display:inline-flex; align-items:center; min-height:34px; padding:0 12px;
+    border:1px solid var(--ds-line); border-radius:var(--ds-radius); background:rgba(255,255,255,.7);
+    color:var(--ds-muted); font-size:.78rem; font-weight:780; }
+  .jump-card{ cursor:pointer; }
+</style>
+</head>
+<body>
+  <header class="app-header">
+    <a class="brand" href="#" data-screen="dashboard">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-copy">
+        <span class="brand-name">Sillage</span>
+        <span class="brand-system">Flight Lab</span>
+      </span>
+    </a>
+    <nav class="main-nav" aria-label="Primary navigation">
+      <a href="#" data-screen="dashboard" class="is-active">Dashboard</a>
+      <a href="#" data-screen="jumps">Jumps</a>
+      <a href="#" data-screen="import">Import</a>
+      <a href="../../../guidelines/colors-signal.card.html">Design System</a>
+    </nav>
+    <span class="lang-pill">EN</span>
+  </header>
+
+  <main class="app-shell">
+
+    <!-- ===================== DASHBOARD ===================== -->
+    <div class="screen" data-screen="dashboard">
+      <section class="page-heading">
+        <div>
+          <p class="eyebrow">FlySight logbook</p>
+          <h1>Trajectory workshop</h1>
+        </div>
+        <a href="#" class="secondary-button" data-screen="jumps">All jumps</a>
+      </section>
+
+      <section class="flight-readiness-strip" aria-label="Flight Lab readiness">
+        <div><span>Mode</span><strong>GLD Flight Lab</strong></div>
+        <div><span>FDR</span><strong>Import ready</strong></div>
+        <div><span>Source</span><strong>FlySight V1/V2</strong></div>
+        <div><span>Analysis</span><strong>Replay ready</strong></div>
+      </section>
+
+      <section class="dashboard-grid">
+        <div class="tool-panel import-panel">
+          <h2>Load a flight trace</h2>
+          <div class="upload-form">
+            <label class="upload-drop">
+              <span class="upload-title">Drop a FlySight session</span>
+              <span class="upload-hint">ZIP session folder, or TRACK.CSV and SENSOR.CSV together.</span>
+              <input type="file" aria-label="Flight trace">
+            </label>
+            <div class="upload-actions">
+              <span class="file-summary">No file selected</span>
+              <button class="primary-button" type="button">Import</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-panel">
+          <div class="stat"><span>Jumps</span><strong>12</strong></div>
+          <div class="stat"><span>Imports</span><strong>15</strong></div>
+          <div class="stat"><span>Distance</span><strong>41.7 km</strong></div>
+          <div class="stat"><span>Duration</span><strong>00:21:38</strong></div>
+        </div>
+      </section>
+
+      <section class="content-split">
+        <div>
+          <div class="section-header"><h2>Recent jumps</h2></div>
+          <div class="jump-list" data-jumplist></div>
+        </div>
+        <aside class="tool-panel">
+          <h2>Recent imports</h2>
+          <div class="import-list">
+            <a class="import-row" href="#"><span>24-06-14_EMP_session.zip</span><strong class="status imported">Imported</strong></a>
+            <a class="import-row" href="#"><span>24-06-11_GAP_track.csv</span><strong class="status processing">Processing</strong></a>
+            <a class="import-row" href="#"><span>24-06-09_EMP_session.zip</span><strong class="status imported">Imported</strong></a>
+            <a class="import-row" href="#"><span>24-06-04_VOSS_sensor.csv</span><strong class="status failed">Failed</strong></a>
+          </div>
+        </aside>
+      </section>
+    </div>
+
+    <!-- ===================== JUMPS ===================== -->
+    <div class="screen" data-screen="jumps" hidden>
+      <section class="page-heading">
+        <div>
+          <p class="eyebrow">Logbook</p>
+          <h1>Jumps</h1>
+        </div>
+        <a href="#" class="primary-button" data-screen="import">Import</a>
+      </section>
+
+      <section class="flight-readiness-strip compact" aria-label="Logbook status">
+        <div><span>Mode</span><strong>GLD Flight Lab</strong></div>
+        <div><span>Jumps</span><strong>12</strong></div>
+        <div><span>Analysis</span><strong>3D + charts</strong></div>
+      </section>
+
+      <div class="jump-list" data-jumplist></div>
+    </div>
+
+    <!-- ===================== JUMP (replay) ===================== -->
+    <div class="screen" data-screen="jump" hidden>
+      <section class="page-heading">
+        <div>
+          <p class="eyebrow" data-jump-date>14 June 2026 · 09:42</p>
+          <h1 data-jump-name>Empuriabrava — Plana</h1>
+        </div>
+        <a href="#" class="secondary-button" data-screen="jumps">Back</a>
+      </section>
+
+      <section class="flight-readiness-strip compact" aria-label="Replay status">
+        <div><span>Mode</span><strong>GLD replay</strong></div>
+        <div><span>FDR</span><strong>Imported</strong></div>
+        <div><span>Samples</span><strong>8 412</strong></div>
+        <div><span>Sensors</span><strong>IMU / BARO / VBAT</strong></div>
+      </section>
+
+      <section class="metric-strip">
+        <div><span>Duration</span><strong>01:12</strong></div>
+        <div><span>Distance</span><strong>3.4 km</strong></div>
+        <div><span>Height</span><strong>3 420 m</strong></div>
+        <div><span>H-speed</span><strong>51 m/s</strong></div>
+        <div><span>V-speed</span><strong>24 m/s</strong></div>
+        <div><span>Glide</span><strong>2.3</strong></div>
+      </section>
+
+      <section class="trajectory">
+        <div class="trajectory-header">
+          <h2>3D trajectory</h2>
+          <div class="trajectory-toolbar">
+            <button type="button" class="trajectory-icon-button trajectory-play-button" data-play aria-label="Play" title="Play">
+              <span class="play-toggle-icon" aria-hidden="true"></span>
+            </button>
+            <output class="trajectory-time" data-time>00:00</output>
+            <button type="button" class="trajectory-icon-button trajectory-reset-button" data-reset aria-label="Reset camera" title="Reset camera">
+              <span class="camera-reset-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+        <div class="trajectory-scene">
+          <svg class="scene-svg" viewBox="0 0 1180 520" preserveAspectRatio="xMidYMid slice" data-scene>
+            <!-- ground grid -->
+            <g stroke="rgba(47,214,198,.16)" stroke-width="1" fill="none">
+              <path d="M120 470 L1060 470" />
+              <path d="M60 420 L1120 420" opacity=".6"/>
+              <path d="M250 470 L120 360 M470 470 L360 360 M690 470 L600 360 M910 470 L840 360" opacity=".4"/>
+              <path d="M120 360 L1060 360" opacity=".4"/>
+            </g>
+            <!-- altitude drop guides -->
+            <g stroke="rgba(245,248,246,.10)" stroke-width="1">
+              <path d="M180 60 L180 470" /><path d="M520 60 L520 470" /><path d="M860 60 L860 470" />
+            </g>
+            <!-- flight path -->
+            <path data-path d="M150 80 C 360 120, 380 250, 560 270 S 880 330, 1040 430"
+                  fill="none" stroke="#2fd6c6" stroke-width="3" stroke-linecap="round"/>
+            <path d="M150 80 C 360 120, 380 250, 560 270 S 880 330, 1040 430 L 1040 470 L 150 470 Z"
+                  fill="rgba(47,214,198,.06)" stroke="none"/>
+            <!-- exit & landing markers -->
+            <circle cx="150" cy="80" r="5" fill="#8cff4d"/>
+            <circle cx="1040" cy="430" r="5" fill="#f2a23a"/>
+            <!-- moving marker -->
+            <circle data-marker cx="150" cy="80" r="6" fill="#8cff4d" stroke="#070b0d" stroke-width="2"/>
+            <text x="158" y="74" fill="rgba(245,248,246,.7)" font-size="13" font-family="ui-monospace,Menlo,monospace">EXIT · 3420 m</text>
+            <text x="1000" y="455" fill="rgba(245,248,246,.7)" font-size="13" font-family="ui-monospace,Menlo,monospace" text-anchor="end">LANDING</text>
+          </svg>
+          <div class="trajectory-notice">FlySight V1/V2 trace · 8 412 GNSS samples · 3D view recreated (Cesium in app)</div>
+        </div>
+        <input class="scrubber" type="range" min="0" max="1000" value="0" data-scrubber aria-label="Replay position">
+      </section>
+
+      <section class="charts-grid">
+        <div class="tool-panel chart-panel">
+          <h2>Height / speed profile</h2>
+          <svg class="chart-svg" viewBox="0 0 560 320" data-chart="profile"></svg>
+        </div>
+        <div class="tool-panel chart-panel">
+          <h2>2D ground track</h2>
+          <svg class="chart-svg" viewBox="0 0 560 320" data-chart="ground"></svg>
+        </div>
+        <div class="tool-panel chart-panel">
+          <h2>Performance</h2>
+          <svg class="chart-svg" viewBox="0 0 560 320" data-chart="perf"></svg>
+        </div>
+        <div class="tool-panel chart-panel wide-chart">
+          <h2>IMU dynamics</h2>
+          <svg class="chart-svg" viewBox="0 0 1140 320" data-chart="imu"></svg>
+        </div>
+      </section>
+
+      <section class="content-split">
+        <div class="tool-panel video-sync">
+          <div class="video-sync-header">
+            <div>
+              <h2>Synced video</h2>
+              <p>Upload a video, move the playhead to the exit, then mark that point to align video playback with the FlySight data.</p>
+            </div>
+            <div class="video-upload-form">
+              <label class="secondary-button video-upload-button">Add video<input type="file" accept="video/*"></label>
+              <span class="file-summary">No file selected</span>
+              <button class="primary-button" type="button">Optimize</button>
+            </div>
+          </div>
+          <p class="video-status">No video linked to this jump.</p>
+        </div>
+
+        <div class="panel-stack">
+          <div class="tool-panel">
+            <h2>Samples</h2>
+            <dl class="details-grid">
+              <div><dt>GNSS</dt><dd>8 412</dd></div>
+              <div><dt>IMU</dt><dd>42 060</dd></div>
+              <div><dt>BARO</dt><dd>8 410</dd></div>
+              <div><dt>VBAT</dt><dd>842</dd></div>
+            </dl>
+          </div>
+          <div class="tool-panel danger-panel">
+            <h2>Delete</h2>
+            <button class="danger-button" type="button">Delete this jump</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===================== IMPORT ===================== -->
+    <div class="screen" data-screen="import" hidden>
+      <section class="page-heading">
+        <div>
+          <p class="eyebrow">FlySight</p>
+          <h1>Import a flight trace</h1>
+        </div>
+        <a href="#" class="secondary-button" data-screen="dashboard">Cancel</a>
+      </section>
+
+      <section class="flight-readiness-strip compact" aria-label="Flight import context">
+        <div><span>Format</span><strong>ZIP / CSV</strong></div>
+        <div><span>Source</span><strong>FlySight V1/V2</strong></div>
+        <div><span>State</span><strong>Awaiting file</strong></div>
+      </section>
+
+      <div class="tool-panel import-panel wide">
+        <h2>Load a flight trace</h2>
+        <div class="upload-form">
+          <label class="upload-drop">
+            <span class="upload-title">Drop a FlySight session</span>
+            <span class="upload-hint">ZIP session folder, or TRACK.CSV and SENSOR.CSV together.</span>
+            <input type="file" aria-label="Flight trace">
+          </label>
+          <div class="upload-actions">
+            <span class="file-summary">No file selected</span>
+            <button class="primary-button" type="button">Import</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // ---- jump data ----
+    const JUMPS = [
+      { name: 'Empuriabrava — Plana', date: '14 June 2026 · 09:42', loc: 'Empuriabrava', dur: '01:12', dist: '3.4 km' },
+      { name: 'Gap — Tallard ridge',  date: '11 June 2026 · 16:03', loc: 'Gap-Tallard', dur: '00:58', dist: '2.9 km' },
+      { name: 'Empuriabrava — Coast', date: '09 June 2026 · 11:27', loc: 'Empuriabrava', dur: '01:21', dist: '3.8 km' },
+      { name: 'Voss — Bavallen',       date: '04 June 2026 · 15:44', loc: 'Voss', dur: '00:47', dist: '2.4 km' },
+      { name: 'Gap — North exit',      date: '02 June 2026 · 10:09', loc: 'Gap-Tallard', dur: '01:04', dist: '3.1 km' },
+    ];
+    function jumpCard(j){
+      const a = document.createElement('a');
+      a.className = 'jump-card'; a.href = '#'; a.dataset.openJump = j.name;
+      a.innerHTML = `<span class="jump-date">${j.date}</span><strong>${j.name}</strong><span>${[j.loc, j.dur, j.dist].join(' / ')}</span>`;
+      return a;
+    }
+    document.querySelectorAll('[data-jumplist]').forEach(list => JUMPS.forEach(j => list.appendChild(jumpCard(j))));
+
+    // ---- screen switching ----
+    function show(screen){
+      document.querySelectorAll('.screen').forEach(s => s.hidden = s.dataset.screen !== screen);
+      document.querySelectorAll('.main-nav a[data-screen]').forEach(a => a.classList.toggle('is-active', a.dataset.screen === screen));
+      window.scrollTo(0,0);
+    }
+    document.addEventListener('click', (e) => {
+      const nav = e.target.closest('[data-screen]');
+      if (nav){ e.preventDefault(); show(nav.dataset.screen); return; }
+      const jc = e.target.closest('[data-open-jump]');
+      if (jc){ e.preventDefault();
+        const j = JUMPS.find(x => x.name === jc.dataset.openJump) || JUMPS[0];
+        document.querySelector('[data-jump-name]').textContent = j.name;
+        document.querySelector('[data-jump-date]').textContent = j.date;
+        show('jump');
+      }
+    });
+
+    // ---- replay transport ----
+    (function(){
+      const path = document.querySelector('[data-path]');
+      const marker = document.querySelector('[data-marker]');
+      const scrub = document.querySelector('[data-scrubber]');
+      const timeEl = document.querySelector('[data-time]');
+      const playBtn = document.querySelector('[data-play]');
+      const resetBtn = document.querySelector('[data-reset]');
+      if(!path) return;
+      const len = path.getTotalLength();
+      const TOTAL = 72; // seconds
+      let playing = false, raf = null, last = 0;
+      function place(t){ // t 0..1
+        const p = path.getPointAtLength(len * t);
+        marker.setAttribute('cx', p.x); marker.setAttribute('cy', p.y);
+        const secs = Math.round(t * TOTAL);
+        timeEl.textContent = String(Math.floor(secs/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0');
+      }
+      scrub.addEventListener('input', () => { stop(); place(scrub.value/1000); });
+      function tick(now){
+        if(!last) last = now; const dt = (now-last)/1000; last = now;
+        let v = Number(scrub.value) + dt*(1000/TOTAL)*6;
+        if(v >= 1000){ v = 1000; stop(); }
+        scrub.value = v; place(v/1000);
+        if(playing) raf = requestAnimationFrame(tick);
+      }
+      function play(){ playing = true; last = 0; playBtn.classList.add('is-playing'); raf = requestAnimationFrame(tick); }
+      function stop(){ playing = false; playBtn.classList.remove('is-playing'); if(raf) cancelAnimationFrame(raf); }
+      playBtn.addEventListener('click', () => playing ? stop() : play());
+      resetBtn.addEventListener('click', () => { stop(); scrub.value = 0; place(0); });
+      place(0);
+    })();
+
+    // ---- SVG analysis charts (stand in for Chart.js canvases) ----
+    function series(n, fn){ return Array.from({length:n}, (_,i)=>fn(i/(n-1))); }
+    function poly(data, w, h, pad, color, sw){
+      const min = Math.min(...data), max = Math.max(...data);
+      const pts = data.map((v,i)=>{
+        const x = pad + (i/(data.length-1))*(w-2*pad);
+        const y = pad + (1-(v-min)/((max-min)||1))*(h-2*pad);
+        return x.toFixed(1)+','+y.toFixed(1);
+      }).join(' ');
+      return `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="${sw||2}"/>`;
+    }
+    function grid(w,h,pad){
+      let g = '';
+      for(let i=0;i<=4;i++){ const y = pad + i*(h-2*pad)/4; g += `<line x1="${pad}" y1="${y}" x2="${w-pad}" y2="${y}" stroke="var(--ds-line)" stroke-width="1"/>`; }
+      return g;
+    }
+    function drawChart(el){
+      const vb = el.viewBox.baseVal, w = vb.width, h = vb.height, pad = 24;
+      const kind = el.dataset.chart; let body = grid(w,h,pad);
+      if(kind==='profile'){
+        body += poly(series(80,t=>3420*(1-t)+90*Math.sin(t*8)), w,h,pad,'#2fd6c6',2.5);
+        body += poly(series(80,t=>40+18*Math.sin(t*6+1)), w,h,pad,'#2ea8ff',2);
+      } else if(kind==='ground'){
+        const pts = series(120,t=>t).map((t)=>{
+          const x = pad + (0.5+0.42*Math.sin(t*6.5))*(w-2*pad);
+          const y = pad + (t)*(h-2*pad);
+          return x.toFixed(1)+','+y.toFixed(1);
+        }).join(' ');
+        body += `<polyline points="${pts}" fill="none" stroke="#4f7b4e" stroke-width="2.5"/>`;
+        body += `<circle cx="${pad+0.5*(w-2*pad)}" cy="${pad}" r="4" fill="#8cff4d"/>`;
+      } else if(kind==='perf'){
+        body += poly(series(80,t=>2.3+0.8*Math.sin(t*5+0.5)), w,h,pad,'#6658c7',2.5);
+      } else if(kind==='imu'){
+        body += poly(series(160,t=>Math.sin(t*22)*0.6+0.4*Math.sin(t*5)), w,h,pad,'#2ea8ff',1.5);
+        body += poly(series(160,t=>Math.sin(t*17+2)*0.5), w,h,pad,'#f2a23a',1.5);
+        body += poly(series(160,t=>Math.cos(t*13)*0.45), w,h,pad,'#2fd6c6',1.5);
+      }
+      el.innerHTML = body;
+    }
+    document.querySelectorAll('[data-chart]').forEach(drawChart);
+  </script>
+</body>
+</html>

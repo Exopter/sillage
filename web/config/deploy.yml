@@ -32,7 +32,9 @@ servers:
 # kamal-proxy terminates HTTPS and forwards traffic to Puma.
 proxy:
   ssl: true
-  host: sillage.wild.eu
+  hosts:
+    - sillage.wild.eu
+    - os.sillage.wild.eu
   app_port: 3000
   forward_headers: true
 
@@ -49,6 +51,8 @@ env:
   clear:
     SOLID_QUEUE_IN_PUMA: true
     RAILS_LOG_LEVEL: info
+    SILLAGE_LANDING_HOSTS: sillage.wild.eu
+    SILLAGE_OS_HOSTS: os.sillage.wild.eu
   secret:
     - RAILS_MASTER_KEY
     - CESIUM_ION_TOKEN

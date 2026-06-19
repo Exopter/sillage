@@ -1,0 +1,20 @@
+<!-- @dsCard group="Type" viewport="700x180" name="Body & UI" subtitle="Aptos — default interface text, 15px body with 13/11 supporting sizes" -->
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;font-family:var(--font-ui);background:var(--surface-app);padding:var(--sp-5);color:var(--text-body)}
+  .stack{display:flex;flex-direction:column;gap:var(--sp-3);max-width:560px}
+  .line{display:flex;align-items:baseline;gap:var(--sp-4)}
+  .meta{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-muted);width:120px;flex:none}
+  .h4{font-size:var(--fs-h4);font-weight:600;color:var(--text-strong)}
+  .body{font-size:var(--fs-body)}
+  .sm{font-size:var(--fs-sm);color:var(--text-muted)}
+</style></head>
+<body>
+  <div class="stack">
+    <div class="line"><span class="meta">H4 · 18 / 600</span><span class="h4">Readiness summary</span></div>
+    <div class="line"><span class="meta">Body · 15 / 400</span><span class="body">Verify the wing, pilot, weather, and FDR before arming the system.</span></div>
+    <div class="line"><span class="meta">Small · 13 / 400</span><span class="sm">Last synced 2 min ago — source: seat IMU.</span></div>
+  </div>
+</body></html>

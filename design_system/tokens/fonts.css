@@ -1,0 +1,242 @@
+/* Exopter webfonts.
+   The brand UI stack is "Aptos" (see --ex-font-sans), with Inter as the web fallback
+   loaded from Google Fonts. Aptos is now SELF-HOSTED from the licensed binaries in
+   /fonts (no longer dependent on a local Microsoft 365 / Windows install).
+   Sibling families ship too: "Aptos Display" (large display/headings),
+   "Aptos Serif", "Aptos Mono", "Aptos Narrow". */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ---- Aptos (brand sans) — self-hosted ---- */
+@font-face {
+  font-family: "Aptos";
+  src: local("Aptos Light"), local("Aptos-Light"),
+       url("../fonts/Aptos-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos";
+  src: local("Aptos Light Italic"),
+       url("../fonts/Aptos-Light-Italic.ttf") format("truetype");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos";
+  src: local("Aptos"), local("Aptos-Regular"),
+       url("../fonts/Aptos.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos";
+  src: local("Aptos Italic"),
+       url("../fonts/Aptos-Italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos";
+  src: local("Aptos SemiBold"), local("Aptos-SemiBold"),
+       url("../fonts/Aptos-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos";
+  src: local("Aptos SemiBold Italic"),
+       url("../fonts/Aptos-SemiBold-Italic.ttf") format("truetype");
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos";
+  src: local("Aptos Bold"), local("Aptos-Bold"),
+       url("../fonts/Aptos-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos";
+  src: local("Aptos Bold Italic"),
+       url("../fonts/Aptos-Bold-Italic.ttf") format("truetype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos";
+  src: local("Aptos ExtraBold"), local("Aptos-ExtraBold"),
+       url("../fonts/Aptos-ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos";
+  src: local("Aptos ExtraBold Italic"),
+       url("../fonts/Aptos-ExtraBold-Italic.ttf") format("truetype");
+  font-weight: 800;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos";
+  src: local("Aptos Black"), local("Aptos-Black"),
+       url("../fonts/Aptos-Black.ttf") format("truetype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos";
+  src: local("Aptos Black Italic"),
+       url("../fonts/Aptos-Black-Italic.ttf") format("truetype");
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ---- Aptos Display (large display / headings) ---- */
+@font-face {
+  font-family: "Aptos Display";
+  src: local("Aptos Display"), local("Aptos-Display"),
+       url("../fonts/Aptos-Display.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos Display";
+  src: local("Aptos Display Italic"),
+       url("../fonts/Aptos-Display-Italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos Display";
+  src: local("Aptos Display Bold"),
+       url("../fonts/Aptos-Display-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos Display";
+  src: local("Aptos Display Bold Italic"),
+       url("../fonts/Aptos-Display-Bold-Italic.ttf") format("truetype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ---- Aptos Narrow (condensed) ---- */
+@font-face {
+  font-family: "Aptos Narrow";
+  src: local("Aptos Narrow"),
+       url("../fonts/Aptos-Narrow.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos Narrow";
+  src: local("Aptos Narrow Italic"),
+       url("../fonts/Aptos-Narrow-Italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos Narrow";
+  src: local("Aptos Narrow Bold"),
+       url("../fonts/Aptos-Narrow-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos Narrow";
+  src: local("Aptos Narrow Bold Italic"),
+       url("../fonts/Aptos-Narrow-Bold-Italic.ttf") format("truetype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ---- Aptos Serif ---- */
+@font-face {
+  font-family: "Aptos Serif";
+  src: local("Aptos Serif"),
+       url("../fonts/Aptos-Serif.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos Serif";
+  src: local("Aptos Serif Italic"),
+       url("../fonts/Aptos-Serif-Italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos Serif";
+  src: local("Aptos Serif Bold"),
+       url("../fonts/Aptos-Serif-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos Serif";
+  src: local("Aptos Serif Bold Italic"),
+       url("../fonts/Aptos-Serif-Bold-Italic.ttf") format("truetype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ---- Aptos Mono ---- */
+@font-face {
+  font-family: "Aptos Mono";
+  src: local("Aptos Mono"),
+       url("../fonts/Aptos-Mono.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos Mono";
+  src: local("Aptos Mono Italic"),
+       url("../fonts/Aptos-Mono-Italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos Mono";
+  src: local("Aptos Mono Bold"),
+       url("../fonts/Aptos-Mono-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos Mono";
+  src: local("Aptos Mono Bold Italic"),
+       url("../fonts/Aptos-Mono-Bold-Italic.ttf") format("truetype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}

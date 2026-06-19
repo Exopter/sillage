@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="<%= I18n.locale %>">
+  <head>
+    <title><%= content_for(:title) || "Exopter" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Exopter">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.svg?v=exopter-e" type="image/svg+xml">
+    <style>
+      @font-face { font-family: "Aptos"; src: url("<%= asset_path("Aptos.ttf") %>") format("truetype"); font-weight: 400; font-display: swap; }
+      @font-face { font-family: "Aptos"; src: url("<%= asset_path("Aptos-Light.ttf") %>") format("truetype"); font-weight: 300; font-display: swap; }
+      @font-face { font-family: "Aptos"; src: url("<%= asset_path("Aptos-SemiBold.ttf") %>") format("truetype"); font-weight: 600; font-display: swap; }
+      @font-face { font-family: "Aptos"; src: url("<%= asset_path("Aptos-Bold.ttf") %>") format("truetype"); font-weight: 700; font-display: swap; }
+      @font-face { font-family: "Aptos"; src: url("<%= asset_path("Aptos-ExtraBold.ttf") %>") format("truetype"); font-weight: 800; font-display: swap; }
+      @font-face { font-family: "Aptos Display"; src: url("<%= asset_path("Aptos-Display.ttf") %>") format("truetype"); font-weight: 400; font-display: swap; }
+      @font-face { font-family: "Aptos Mono"; src: url("<%= asset_path("Aptos-Mono.ttf") %>") format("truetype"); font-weight: 400; font-display: swap; }
+      @font-face { font-family: "Aptos Mono"; src: url("<%= asset_path("Aptos-Mono-Bold.ttf") %>") format("truetype"); font-weight: 700; font-display: swap; }
+    </style>
+    <%= stylesheet_link_tag "landing", "data-turbo-track": "reload" %>
+  </head>
+
+  <body class="landing-page">
+    <%= yield %>
+  </body>
+</html>

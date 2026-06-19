@@ -1,0 +1,106 @@
+<% content_for :title, "HUD preview" %>
+
+<section class="hud-screen">
+  <input class="hud-failsafe-checkbox" id="hud-failsafe" type="checkbox">
+
+  <header class="kit-page-header hud-kit-header">
+    <div>
+      <h1>HUD preview</h1>
+      <p>Pilot display concept · readable in sun, fail-safe to black, never full white.</p>
+    </div>
+
+    <div class="hud-toolbar">
+      <div class="hud-mode-control" aria-label="HUD mode">
+        <span class="is-selected">GLD</span>
+        <span>EDF</span>
+        <span aria-disabled="true">JET</span>
+      </div>
+
+      <label class="kit-switch" for="hud-failsafe">
+        <span>Fail-safe</span>
+        <i aria-hidden="true"></i>
+      </label>
+    </div>
+  </header>
+
+  <section class="hud-preview-kit" aria-label="HUD preview canvas">
+    <div class="hud-failsafe-state">
+      <span>Fail-safe · display blank</span>
+      <small>Recover outside HUD context — no white flash</small>
+    </div>
+
+    <div class="hud-normal-state">
+      <div class="hud-compass" aria-hidden="true">
+        <span>33</span>
+        <span>N</span>
+        <strong>036</strong>
+        <span>06</span>
+        <span>09</span>
+      </div>
+
+      <div class="hud-horizon" aria-hidden="true"></div>
+
+      <div class="hud-marker" aria-hidden="true">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="24" cy="24" r="7"></circle>
+          <line x1="31" y1="24" x2="42" y2="24"></line>
+          <line x1="17" y1="24" x2="6" y2="24"></line>
+          <line x1="24" y1="17" x2="24" y2="9"></line>
+        </svg>
+      </div>
+
+      <div class="hud-waypoint" aria-hidden="true">
+        <svg viewBox="0 0 26 34" fill="none" stroke="currentColor" stroke-width="1.5">
+          <ellipse cx="13" cy="6" rx="11" ry="4"></ellipse>
+          <ellipse cx="13" cy="28" rx="11" ry="4"></ellipse>
+          <line x1="2" y1="6" x2="2" y2="28"></line>
+          <line x1="24" y1="6" x2="24" y2="28"></line>
+        </svg>
+        <span>WPT 2 · 3.1 km</span>
+      </div>
+
+      <div class="hud-alert">
+        <%= sillage_icon "triangle-alert", size: 13 %>
+        <span>BATT 74%</span>
+      </div>
+
+      <div class="hud-ladder is-left">
+        <span>Airspeed</span>
+        <% [204, 209, 214, 219, 224].each do |value| %>
+          <% if value == 214 %>
+            <strong><%= value %></strong>
+          <% else %>
+            <small><%= value %></small>
+          <% end %>
+        <% end %>
+        <em>km/h</em>
+      </div>
+
+      <div class="hud-ladder is-right">
+        <span>Altitude</span>
+        <% [1380, 1430, 1480, 1530, 1580].each do |value| %>
+          <% if value == 1480 %>
+            <strong><%= value %></strong>
+          <% else %>
+            <small><%= value %></small>
+          <% end %>
+        <% end %>
+        <em>m</em>
+      </div>
+
+      <div class="hud-bottom-data">
+        <div><span>Glide</span><strong>12.4</strong></div>
+        <div><span>Dist</span><strong>8.6<small> km</small></strong></div>
+        <div><span>TCAS</span><strong class="is-muted">—</strong></div>
+      </div>
+
+      <span class="hud-mode-tag">GLD</span>
+    </div>
+  </section>
+
+  <section class="hud-legend" aria-label="HUD color legend">
+    <span><i style="--legend-color: var(--ex-hud-green)"></i>Primary data</span>
+    <span><i style="--legend-color: var(--ex-amber-500)"></i>Caution</span>
+    <span><i style="--legend-color: var(--ex-graphite-600)"></i>Inactive / unknown</span>
+  </section>
+</section>

@@ -2,9 +2,14 @@
   <div class="jump-list">
     <% jumps.each do |jump| %>
       <%= link_to jump, class: "jump-card" do %>
-        <span class="jump-date"><%= l(jump.display_started_at, format: :short) %></span>
-        <strong><%= jump.name %></strong>
-        <span><%= [jump.location.presence, duration(jump.duration_seconds), meters(jump.distance_m)].compact.join(" / ") %></span>
+        <span class="jump-card-icon"><%= sillage_icon "route", size: 18 %></span>
+        <span class="jump-card-body">
+          <span class="jump-date"><%= l(jump.display_started_at, format: :short) %></span>
+          <strong><%= jump.name %></strong>
+          <span><%= [jump.location.presence, duration(jump.duration_seconds), meters(jump.distance_m)].compact.join(" / ") %></span>
+        </span>
+        <span class="status imported">GLD</span>
+        <span class="row-chevron"><%= sillage_icon "chevron-right", size: 16 %></span>
       <% end %>
     <% end %>
   </div>

@@ -14,37 +14,99 @@
     <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
     <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
 
-    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="icon" href="/icon.svg?v=exopter-e" type="image/svg+xml">
 
     <%# Includes all stylesheet files in app/assets/stylesheets %>
-    <%= stylesheet_link_tag "exopter_design_system", "application", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "exopter_fonts", "exopter_design_system", "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
 
   <body>
-    <header class="app-header">
-      <%= link_to root_path, class: "brand" do %>
-        <span class="brand-mark" aria-hidden="true"></span>
-        <span class="brand-copy">
-          <span class="brand-name"><%= t("app.name") %></span>
-          <span class="brand-system"><%= t("app.tagline") %></span>
-        </span>
-      <% end %>
+    <div class="sillage-workbench">
+      <aside class="sillage-rail" aria-label="Sillage rooms">
+        <%= link_to root_path, class: "sillage-rail-brand", title: t("app.name") do %>
+          <%= image_tag "app-icon.svg", alt: t("app.name") %>
+        <% end %>
 
-      <nav class="main-nav" aria-label="<%= t("nav.primary") %>">
-        <%= link_to t("nav.dashboard"), root_path %>
-        <%= link_to t("nav.jumps"), jumps_path %>
-        <%= link_to t("nav.import"), new_flight_import_path %>
-        <%= link_to t("nav.design_system"), devreference_design_system_path %>
-      </nav>
-    </header>
+        <nav class="sillage-room-nav" aria-label="Primary rooms">
+          <% sillage_room_items.each do |item| %>
+            <% classes = ["sillage-room-link", ("is-active" if item[:id] == sillage_current_room), ("is-disabled" unless item[:enabled])].compact.join(" ") %>
+            <% if item[:href].present? %>
+              <%= link_to item[:href], class: classes, title: item[:label], aria: { current: ("page" if item[:id] == sillage_current_room) } do %>
+                <span class="sillage-room-icon"><%= sillage_icon item[:icon], size: 18, class_name: "sillage-room-svg" %></span>
+                <span class="sillage-room-label"><%= item[:label] %></span>
+              <% end %>
+            <% else %>
+              <span class="<%= classes %>" title="<%= item[:label] %>" aria-disabled="true">
+                <span class="sillage-room-icon"><%= sillage_icon item[:icon], size: 18, class_name: "sillage-room-svg" %></span>
+                <span class="sillage-room-label"><%= item[:label] %></span>
+              </span>
+            <% end %>
+          <% end %>
+        </nav>
+      </aside>
 
-    <main class="app-shell">
-      <% flash.each do |type, message| %>
-        <div class="flash <%= type %>"><%= message %></div>
-      <% end %>
+      <div class="sillage-main">
+        <header class="sillage-topbar">
+          <div class="sillage-title-block">
+            <nav class="sillage-breadcrumb" aria-label="Breadcrumb">
+              <ol>
+                <% sillage_breadcrumb_items.each do |item| %>
+                  <li>
+                    <% if item[:current] %>
+                      <span aria-current="page"><%= item[:label] %></span>
+                    <% elsif item[:href].present? %>
+                      <%= link_to item[:label], item[:href] %>
+                    <% else %>
+                      <span><%= item[:label] %></span>
+                    <% end %>
+                  </li>
+                <% end %>
+              </ol>
+            </nav>
+            <strong><%= sillage_shell_title %></strong>
+          </div>
 
-      <%= yield %>
-    </main>
+          <div class="sillage-topbar-spacer"></div>
+
+          <details class="sillage-account-menu">
+            <summary aria-label="Open account menu">
+              <span class="sillage-avatar" aria-hidden="true">AR</span>
+            </summary>
+            <div class="sillage-account-popover" role="menu">
+              <strong>Account</strong>
+              <span>Signed in</span>
+              <%= button_to logout_path, method: :delete, class: "sillage-account-action", form: { role: "none" } do %>
+                <%= sillage_icon "log-out", size: 15 %>
+                <span>Log out</span>
+              <% end %>
+            </div>
+          </details>
+        </header>
+
+        <% if sillage_show_flight_tabs? %>
+          <nav class="sillage-subtabs" aria-label="Flights workspace">
+            <% sillage_flight_tabs.each do |tab| %>
+              <% classes = ["sillage-subtab", ("is-active" if tab[:id] == sillage_current_flight_tab), ("is-disabled" unless tab[:enabled])].compact.join(" ") %>
+              <% if tab[:href].present? %>
+                <%= link_to tab[:label], tab[:href], class: classes, aria: { current: ("page" if tab[:id] == sillage_current_flight_tab) } %>
+              <% else %>
+                <span class="<%= classes %>" aria-disabled="true"><%= tab[:label] %></span>
+              <% end %>
+            <% end %>
+          </nav>
+        <% end %>
+
+        <main class="sillage-content">
+          <div class="<%= sillage_content_shell_class %>">
+            <% flash.each do |type, message| %>
+              <div class="flash <%= type %>"><%= message %></div>
+            <% end %>
+
+            <%= yield %>
+          </div>
+        </main>
+      </div>
+    </div>
   </body>
 </html>

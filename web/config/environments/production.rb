@@ -64,9 +64,11 @@ Rails.application.configure do
   config.active_record.attributes_for_inspect = [ :id ]
 
   # Enable DNS rebinding protection and other `Host` header attacks.
-  config.hosts = [
-    "sillage.wild.eu"
-  ]
+  configured_hosts = [
+    ENV.fetch("SILLAGE_LANDING_HOSTS", "sillage.wild.eu"),
+    ENV.fetch("SILLAGE_OS_HOSTS", "os.sillage.wild.eu")
+  ].flat_map { |hosts| hosts.split(",").map { |host| host.strip } }.reject(&:empty?).uniq
+  config.hosts = configured_hosts
   #
   # Skip DNS rebinding protection for the default health check endpoint.
   config.host_authorization = { exclude: ->(request) { request.path == "/up" } }

@@ -1,0 +1,52 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+**/.kamal/secrets
+**/.kamal/secrets.*
+!**/.kamal/secrets.example
+**/.kamal/deploy.env
+**/config/master.key
+
+# Logs and runtime state
+log/*
+tmp/*
+storage/*
+!log/.keep
+!tmp/.keep
+!tmp/pids/
+tmp/pids/*
+!tmp/pids/.keep
+!storage/.keep
+
+# Ruby and Rails artifacts
+.bundle/
+**/vendor/bundle/
+*.sqlite3
+*.sqlite3-*
+**/public/assets/
+**/public/packs/
+**/public/packs-test/
+coverage/
+
+# JavaScript dependencies and build caches
+node_modules/
+.npm/
+.yarn/
+.parcel-cache/
+.vite/
+dist/
+build/
+
+# Local integration drops
+integration_files/*

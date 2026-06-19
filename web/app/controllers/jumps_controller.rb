@@ -2,7 +2,12 @@ class JumpsController < ApplicationController
   before_action :set_jump, only: [ :show, :update, :destroy ]
 
   def index
+    @query = params[:q].to_s.strip
     @jumps = Jump.recent.includes(:flight_import)
+    return if @query.blank?
+
+    pattern = "%#{Jump.sanitize_sql_like(@query)}%"
+    @jumps = @jumps.where("jumps.name LIKE :pattern OR jumps.location LIKE :pattern", pattern:)
   end
 
   def show

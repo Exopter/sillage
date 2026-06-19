@@ -1,4 +1,10 @@
 Rails.application.routes.draw do
+  host_list = ->(key, fallback) do
+    ENV.fetch(key, fallback).split(",").map { |host| host.strip }.reject(&:empty?)
+  end
+
+  landing_hosts = host_list.call("SILLAGE_LANDING_HOSTS", "landing.localhost,sillage.wild.eu")
+
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
@@ -9,7 +15,20 @@ Rails.application.routes.draw do
   # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
   # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
 
+  constraints ->(request) { landing_hosts.include?(request.host) } do
+    root "landing#show", as: :landing_root
+  end
+  get "landing" => "landing#show", as: :landing
+
+  delete "logout" => "sessions#destroy", as: :logout
+
   root "dashboard#index"
+  get "atlas" => "dashboard#atlas", as: :atlas
+  get "hangar" => "dashboard#hangar", as: :hangar
+  get "signal" => "dashboard#signal", as: :signal
+  get "forge" => "dashboard#forge", as: :forge
+  get "core" => "dashboard#core", as: :core
+  get "flight/hud" => "dashboard#hud", as: :flight_hud
 
   get "devreference/design-system" => "devreference/design_system#show", as: :devreference_design_system
 

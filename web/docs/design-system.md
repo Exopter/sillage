@@ -355,7 +355,7 @@ brand but stay more utilitarian than public brand pages.
 
 Current and planned surfaces:
 
-- **Sillage Flight**: flight preparation, import, replay, logbook, maintenance,
+- **Sillage Flights**: flight preparation, import, replay, logbook, maintenance,
   HUD/FDR support, and flight analysis.
 - **Sillage Forge**: agent workflows, OpenProject orchestration, engineering
   tasks, and documentation support.
@@ -392,7 +392,7 @@ Rules:
 Item 1 remains intentionally open: produce vector Exopter and EXO marks from the
 original artwork, not the photo.
 
-Items 2 through 6 are now implemented in the Sillage Flight Lab migration.
+Items 2 through 6 are now implemented in the Sillage Flights Lab migration.
 
 | Item | Status | Implementation |
 | --- | --- | --- |
@@ -404,7 +404,7 @@ Items 2 through 6 are now implemented in the Sillage Flight Lab migration.
 
 ## Public Brand Page Direction
 
-When Exopter needs a public page, it should inherit the Sillage Flight Lab
+When Exopter needs a public page, it should inherit the Sillage Flights Lab
 language but become more object-led and cinematic.
 
 First viewport:

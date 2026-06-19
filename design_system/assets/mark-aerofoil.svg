@@ -1,0 +1,5 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64" role="img" aria-label="Aerofoil section">
+  <path d="M4 40 C 40 18, 120 8, 196 26 C 150 30, 90 36, 4 40 Z" fill="currentColor"></path>
+  <line x1="8" y1="38" x2="190" y2="27" stroke="currentColor" stroke-width="1" stroke-dasharray="3 4" opacity="0.5"></line>
+</svg>

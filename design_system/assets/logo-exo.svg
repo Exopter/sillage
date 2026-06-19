@@ -1,0 +1,7 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 64" fill="currentColor" role="img" aria-label="EXO">
+  <rect x="0" y="6" width="40" height="12" rx="1"></rect>
+  <rect x="0" y="26" width="33" height="12" rx="1"></rect>
+  <rect x="0" y="46" width="40" height="12" rx="1"></rect>
+  <text x="50" y="50" font-family="Inter, system-ui, sans-serif" font-size="56" font-weight="800" letter-spacing="1">XO</text>
+</svg>

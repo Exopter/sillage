@@ -41,7 +41,7 @@ suite**.
 Sillage should be treated as one coherent product family rather than a generic
 cloud back office. The suite can expose distinct surfaces as the program grows:
 
-- **Sillage Flight**: pre-flight preparation, flight support, post-flight
+- **Sillage Flights**: pre-flight preparation, flight support, post-flight
   analysis, replay, logbook, HUD/FDR support, and maintenance workflows.
 - **Sillage Forge**: AI tooling, agent workflows, OpenProject integration,
   engineering support, documentation, and backlog execution.
@@ -158,7 +158,7 @@ Planned placement:
 ## Ground and Cloud Application
 
 The `web/` application is the current software state. It currently acts as the
-Sillage Flight Lab base for importing and analyzing FlySight sessions.
+Sillage Flights Lab base for importing and analyzing FlySight sessions.
 
 Current stack:
 

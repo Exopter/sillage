@@ -5,14 +5,14 @@
     <p class="eyebrow"><%= t("design_system.eyebrow") %></p>
     <h1><%= t("design_system.title") %></h1>
     <p>
-      A working reference for Exopter's product language: matte carbon, exact
-      telemetry, restrained signal colors, and Sillage components that stay
-      useful under operational pressure.
+      The Rails app now uses the Sillage Flights UI kit as its base: left room
+      rail, carbon topbar, Flights subtabs, compact telemetry surfaces, and
+      restrained operational states.
     </p>
     <div class="reference-mode-row" aria-label="Program modes">
       <span>GLD</span>
-      <span>EPW</span>
-      <span>JPW</span>
+      <span>EDF</span>
+      <span>JET</span>
     </div>
   </div>
 
@@ -20,6 +20,42 @@
     <%= image_tag "exopter-wing-reference.jpeg", alt: "Matte black Exopter rigid wing with white wordmark in a grass test field" %>
     <figcaption>Current physical reference: matte wing, white mark, sky and field context.</figcaption>
   </figure>
+</section>
+
+<section class="reference-section reference-two-column">
+  <div class="reference-panel">
+    <p class="eyebrow">Sillage Base</p>
+    <h2>Workbench Shell</h2>
+    <p class="reference-muted">
+      The application shell follows <code>design_system/ui_kits/sillage-flight/</code>:
+      Flights, Atlas, Hangar, Signal, Forge, and Core in the rail; Sillage
+      context in the header; and task-level tabs for Logbook, Flight prep,
+      Replay, and HUD.
+    </p>
+  </div>
+
+  <div class="reference-panel">
+    <p class="eyebrow">Rails Mapping</p>
+    <h2>Current Routes</h2>
+    <dl class="reference-token-list">
+      <div>
+        <dt>Logbook</dt>
+        <dd><code>/jumps</code></dd>
+      </div>
+      <div>
+        <dt>Flight prep</dt>
+        <dd><code>/flight_imports/new</code></dd>
+      </div>
+      <div>
+        <dt>Replay</dt>
+        <dd><code>/jumps/:id</code></dd>
+      </div>
+      <div>
+        <dt>Forge</dt>
+        <dd><code>/devreference/design-system</code></dd>
+      </div>
+    </dl>
+  </div>
 </section>
 
 <section class="reference-section">
@@ -139,7 +175,7 @@
         <strong>Done</strong>
       </div>
       <h2>Component Set</h2>
-      <p class="reference-muted">Header, readiness strip, metric tiles, telemetry charts, checklist, requirement row, and trajectory surface are represented here and in app screens.</p>
+      <p class="reference-muted">Rail, topbar, subtabs, readiness strip, metric tiles, telemetry charts, checklist, requirement row, and trajectory surface are represented here and in app screens.</p>
     </article>
 
     <article class="reference-panel">
@@ -156,8 +192,8 @@
         <span>06</span>
         <strong>Done</strong>
       </div>
-      <h2>Public Direction</h2>
-      <p class="reference-muted">Public brand pages should lead with the real wing, operational proof, and restrained product claims after the app language is stable.</p>
+      <h2>Sillage Base</h2>
+      <p class="reference-muted">The active implementation is grounded in the Sillage Flights kit, not the Exopter brand/public page exploration.</p>
     </article>
   </div>
 </section>
@@ -265,10 +301,10 @@
 
   <div class="reference-panel reference-source-panel">
     <p class="eyebrow">Source</p>
-    <h2>Design System Doc</h2>
+    <h2>UI Kit Source</h2>
     <p>
-      The canonical written reference lives in <code>web/docs/design-system.md</code>.
-      Keep this page aligned with that file as tokens and components mature.
+      The active visual source lives in <code>design_system/ui_kits/sillage-flight/</code>.
+      Keep this page and the Rails shell aligned with that kit as screens mature.
     </p>
   </div>
 </section>

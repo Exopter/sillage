@@ -1,0 +1,26 @@
+<!-- @dsCard group="Type" viewport="700x150" name="Status labels" subtitle="Uppercase mono tokens with label tracking — GLD, READY, FAULT, T0+6" -->
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;font-family:var(--font-ui);background:var(--surface-app);padding:var(--sp-5)}
+  .row{display:flex;flex-wrap:wrap;gap:var(--sp-3);align-items:center}
+  .lab{font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:600;letter-spacing:var(--ls-label);text-transform:uppercase;padding:4px 8px;border-radius:var(--radius-compact);border:1px solid var(--border-rule);background:var(--surface-card);color:var(--text-body)}
+  .ready{color:var(--ex-field-500);border-color:var(--ex-field-500)}
+  .fault{color:var(--ex-red-600);border-color:var(--ex-red-600)}
+  .caution{color:var(--ex-amber-500);border-color:var(--ex-amber-500)}
+  .mode{background:var(--ex-carbon-900);color:var(--ex-white);border-color:var(--ex-carbon-900)}
+</style></head>
+<body>
+  <div class="row">
+    <span class="lab mode">GLD</span>
+    <span class="lab mode">EDF</span>
+    <span class="lab mode">JET</span>
+    <span class="lab ready">READY</span>
+    <span class="lab">ARMED</span>
+    <span class="lab caution">PENDING</span>
+    <span class="lab fault">FAULT</span>
+    <span class="lab">T0+06</span>
+    <span class="lab">NO DATA</span>
+  </div>
+</body></html>

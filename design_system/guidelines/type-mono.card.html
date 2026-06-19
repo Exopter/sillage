@@ -1,0 +1,27 @@
+<!-- @dsCard group="Type" viewport="700x190" name="Instrument data & mono" subtitle="IBM Plex Mono with tabular figures — telemetry, metrics, logs" -->
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;font-family:var(--font-ui);background:var(--surface-app);padding:var(--sp-5);color:var(--text-body)}
+  .stack{display:flex;flex-direction:column;gap:var(--sp-4)}
+  .line{display:flex;align-items:baseline;gap:var(--sp-5)}
+  .meta{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-muted);width:120px;flex:none}
+  .data{font-family:var(--font-data);font-variant-numeric:tabular-nums;color:var(--text-strong)}
+  .metric{font-size:var(--fs-metric);font-weight:500}
+  .unit{font-size:var(--fs-sm);color:var(--text-muted);margin-left:4px}
+  .log{font-size:var(--fs-sm)}
+  .row3{display:flex;gap:var(--sp-8)}
+</style></head>
+<body>
+  <div class="stack">
+    <div class="line"><span class="meta">Metric · 32</span>
+      <div class="row3">
+        <span class="data metric">214<span class="unit">km/h</span></span>
+        <span class="data metric">1 480<span class="unit">m</span></span>
+        <span class="data metric">12.4<span class="unit">L/D</span></span>
+      </div>
+    </div>
+    <div class="line"><span class="meta">Log · 13</span><span class="data log">T0+06:32 · FDR-118 · seat.imu · OK · Δ -2.1°</span></div>
+  </div>
+</body></html>

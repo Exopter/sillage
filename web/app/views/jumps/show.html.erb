@@ -1,219 +1,305 @@
-<% content_for :title, @jump.name %>
+<% content_for :title, "Replay" %>
 <% content_for :head do %>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@1.124.0/Build/Cesium/Widgets/widgets.css">
 <% end %>
 
-<section class="page-heading">
-  <div>
-    <p class="eyebrow"><%= l(@jump.display_started_at, format: :long) %></p>
-    <h1><%= @jump.name %></h1>
-  </div>
-  <%= link_to t("jumps.show.back"), jumps_path, class: "secondary-button" %>
-</section>
+<%
+  replay_points = @visualization_points.filter_map do |point|
+    t = point[:t]
+    alt = point[:alt]
+    next unless t.present? && alt.present?
 
-<section class="flight-readiness-strip compact" aria-label="<%= t("flight_lab.replay_label") %>">
-  <div>
-    <span><%= t("flight_lab.mode") %></span>
-    <strong><%= t("flight_lab.mode_gld_replay") %></strong>
-  </div>
-  <div>
-    <span><%= t("flight_lab.fdr") %></span>
-    <strong><%= t("flight_lab.fdr_imported") %></strong>
-  </div>
-  <div>
-    <span><%= t("flight_lab.samples") %></span>
-    <strong><%= @jump.sample_count %></strong>
-  </div>
-  <div>
-    <span><%= t("flight_lab.sensors") %></span>
-    <strong><%= @sensor_counts.keys.presence&.join(" / ") || t("flight_lab.none") %></strong>
-  </div>
-</section>
+    {
+      t: t.to_f,
+      alt: alt.to_f,
+      speed: ((point[:hspeed] || 0).to_f * 3.6),
+      glide: (point[:glide] || @jump.avg_glide_ratio || 0).to_f,
+      vspeed: (point[:vspeed] || 0).to_f,
+      distance: (point[:distance] || 0).to_f
+    }
+  end
 
-<section class="metric-strip">
-  <div><span><%= t("stats.duration") %></span><strong><%= duration(@jump.duration_seconds) %></strong></div>
-  <div><span><%= t("stats.distance") %></span><strong><%= meters(@jump.distance_m) %></strong></div>
-  <div><span><%= t("stats.height") %></span><strong><%= meters(@jump.height_m) %></strong></div>
-  <div><span><%= t("stats.hspeed") %></span><strong><%= speed_ms(@jump.max_horizontal_speed_mps) %></strong></div>
-  <div><span><%= t("stats.vspeed") %></span><strong><%= speed_ms(@jump.max_vertical_speed_mps) %></strong></div>
-  <div><span><%= t("stats.glide") %></span><strong><%= glide(@jump.avg_glide_ratio) %></strong></div>
-</section>
+  if replay_points.size < 2
+    replay_points = [
+      { t: 0.0, alt: (@jump.max_altitude_m || 1_520).to_f, speed: 198.0, glide: (@jump.avg_glide_ratio || 12.6).to_f, vspeed: -4.6, distance: 0.0 },
+      { t: (@jump.duration_seconds || 432).to_f, alt: (@jump.min_altitude_m || 30).to_f, speed: 214.0, glide: (@jump.avg_glide_ratio || 12.6).to_f, vspeed: -3.0, distance: (@jump.distance_m || 8_600).to_f }
+    ]
+  end
 
-<div
-  data-controller="flight-viewer"
-  data-flight-viewer-points-value="<%= json_escape(@visualization_points.to_json) %>"
-  data-flight-viewer-sensors-value="<%= json_escape(@visualization_sensors.to_json) %>"
-  data-flight-viewer-bounds-value="<%= json_escape(@bounds.to_json) %>"
-  data-flight-viewer-cesium-token-value="<%= @cesium_ion_token %>"
-  data-flight-viewer-labels-value="<%= json_escape(t("jumps.charts").to_json) %>"
-  <% if @jump.video_exit_offset_seconds.present? %>
-    data-flight-viewer-video-exit-offset-value="<%= @jump.video_exit_offset_seconds %>"
-  <% end %>>
-  <section class="trajectory">
-    <div class="trajectory-header">
-      <h2><%= t("jumps.show.trajectory") %></h2>
-      <div class="trajectory-toolbar">
-        <button
-          type="button"
-          class="trajectory-icon-button trajectory-play-button"
-          data-flight-viewer-target="playButton"
-          data-action="flight-viewer#togglePlayback"
-          aria-label="<%= t("jumps.charts.play") %>"
-          title="<%= t("jumps.charts.play") %>">
-          <span class="play-toggle-icon" aria-hidden="true"></span>
-        </button>
-        <output data-flight-viewer-target="timeLabel" class="trajectory-time">00:00</output>
-        <button
-          type="button"
-          class="trajectory-icon-button trajectory-reset-button"
-          data-action="flight-viewer#resetCamera"
-          aria-label="<%= t("jumps.charts.reset_camera") %>"
-          title="<%= t("jumps.charts.reset_camera") %>">
-          <span class="camera-reset-icon" aria-hidden="true"></span>
-        </button>
-      </div>
+  if replay_points.size > 120
+    step = (replay_points.size.to_f / 120).ceil
+    replay_points = replay_points.each_with_index.filter_map { |point, index| point if (index % step).zero? }
+  end
+
+  replay_duration = (@jump.duration_seconds.presence || replay_points.last[:t]).to_f
+  replay_index = [(replay_points.size * 0.46).floor, replay_points.size - 1].min
+  replay_current = replay_points[replay_index]
+  altitude_values = replay_points.map { |point| point[:alt] }
+  speed_values = replay_points.map { |point| point[:speed] }
+  min_altitude = [altitude_values.min.to_f, 0.0].min
+  max_altitude = [altitude_values.max.to_f, min_altitude + 1.0].max
+  min_speed = [speed_values.min.to_f, 0.0].min
+  max_speed = [speed_values.max.to_f, min_speed + 1.0].max
+
+  path_for = lambda do |points, key, min_value, max_value, width, height, pad|
+    span = [max_value - min_value, 1.0].max
+    points.each_with_index.map do |point, index|
+      x = pad + (index.to_f / [points.size - 1, 1].max) * (width - (2 * pad))
+      y = pad + (1 - ((point[key] - min_value) / span)) * (height - (2 * pad))
+      "#{index.zero? ? "M" : "L"}#{number_with_precision(x, precision: 1)} #{number_with_precision(y, precision: 1)}"
+    end.join(" ")
+  end
+
+  profile_width = 760
+  profile_height = 240
+  profile_pad = 24
+  chart_width = 760
+  chart_height = 150
+  chart_pad = 18
+  altitude_path = path_for.call(replay_points, :alt, min_altitude, max_altitude, profile_width, profile_height, profile_pad)
+  speed_path = path_for.call(replay_points, :speed, min_speed, max_speed, chart_width, chart_height, chart_pad)
+  altitude_mini_path = path_for.call(replay_points, :alt, min_altitude, max_altitude, chart_width, chart_height, chart_pad)
+  scrub_ratio = replay_index.to_f / [replay_points.size - 1, 1].max
+  dot_x = profile_pad + scrub_ratio * (profile_width - (2 * profile_pad))
+  dot_y = profile_pad + (1 - ((replay_current[:alt] - min_altitude) / [max_altitude - min_altitude, 1.0].max)) * (profile_height - (2 * profile_pad))
+  scrub_x = chart_pad + scrub_ratio * (chart_width - (2 * chart_pad))
+  current_elapsed = replay_current[:t].presence || replay_duration * scrub_ratio
+  event_rows = [
+    [ duration(@bounds[:exit] || 0), "T0 exit · #{number_with_delimiter((@jump.max_altitude_m || replay_points.first[:alt]).round, delimiter: " ")} m", "ready" ],
+    [ duration(replay_duration * 0.31), "Best glide window", "live" ],
+    [ duration(replay_duration * 0.56), "Airspeed dip −12 km/h", "caution" ],
+    [ duration(@bounds[:landing] || replay_duration), "Flare · landing", "ready" ]
+  ]
+%>
+
+<h1 class="sr-only"><%= @jump.name %></h1>
+
+<section class="replay-kit-screen ex-dark">
+  <header class="replay-kit-bar">
+    <%= link_to jumps_path, class: "kit-icon-button", title: "Back to logbook", aria: { label: "Back to logbook" } do %>
+      <%= sillage_icon "chevron-right", size: 18, class_name: "is-back-icon" %>
+    <% end %>
+    <span class="replay-kit-id"><%= flight_code(@jump) %></span>
+    <span class="mode-badge is-gld">GLD</span>
+    <span class="mode-badge is-neutral">Replay</span>
+    <div class="replay-kit-spacer"></div>
+    <button class="secondary-button replay-kit-action" type="button">
+      <%= sillage_icon "activity", size: 18 %>
+      <span>Compare</span>
+    </button>
+    <button class="secondary-button replay-kit-action" type="button">
+      <%= sillage_icon "download", size: 18 %>
+      <span>Export FDR</span>
+    </button>
+  </header>
+
+  <div class="replay-kit-body">
+    <div class="replay-kit-main">
+      <section class="replay-kit-panel">
+        <div class="replay-kit-panel-title">
+          <span>Altitude profile · side view</span>
+          <strong>Exit → flare</strong>
+        </div>
+        <svg viewBox="0 0 <%= profile_width %> <%= profile_height %>" class="replay-kit-svg" aria-hidden="true">
+          <% 5.times do |index| %>
+            <% y = profile_pad + (index / 4.0) * (profile_height - (2 * profile_pad)) %>
+            <% value = max_altitude - (index / 4.0) * (max_altitude - min_altitude) %>
+            <line x1="<%= profile_pad %>" y1="<%= y %>" x2="<%= profile_width - profile_pad %>" y2="<%= y %>" class="replay-grid-line"></line>
+            <text x="4" y="<%= y + 3 %>" class="replay-axis-label"><%= value.round %></text>
+          <% end %>
+          <path d="<%= altitude_path %> L <%= profile_width - profile_pad %> <%= profile_height - profile_pad %> L <%= profile_pad %> <%= profile_height - profile_pad %> Z" class="replay-altitude-fill"></path>
+          <path d="<%= altitude_path %>" class="replay-altitude-line"></path>
+          <line x1="<%= dot_x %>" y1="<%= profile_pad %>" x2="<%= dot_x %>" y2="<%= profile_height - profile_pad %>" class="replay-scrub-line"></line>
+          <circle cx="<%= dot_x %>" cy="<%= dot_y %>" r="5" class="replay-current-dot"></circle>
+        </svg>
+      </section>
+
+      <section class="replay-kit-panel">
+        <div class="replay-kit-legend">
+          <span>Telemetry</span>
+          <strong><i class="is-sky"></i>Airspeed</strong>
+          <strong><i class="is-aqua"></i>Altitude</strong>
+        </div>
+        <svg viewBox="0 0 <%= chart_width %> <%= chart_height %>" class="replay-kit-svg" aria-hidden="true">
+          <path d="<%= altitude_mini_path %>" class="replay-telemetry-altitude"></path>
+          <path d="<%= speed_path %>" class="replay-telemetry-speed"></path>
+          <line x1="<%= scrub_x %>" y1="4" x2="<%= scrub_x %>" y2="<%= chart_height - 4 %>" class="replay-telemetry-cursor"></line>
+        </svg>
+      </section>
     </div>
-    <div data-flight-viewer-target="scene" class="trajectory-scene"></div>
-    <input data-flight-viewer-target="scrubber" data-action="input->flight-viewer#scrub" class="scrubber" type="range" min="0" max="1000" value="0">
-  </section>
 
-  <section class="tool-panel video-sync">
-    <div class="video-sync-header">
-      <div>
-        <h2><%= t("jumps.video.title") %></h2>
-        <p><%= t("jumps.video.hint") %></p>
+    <aside class="replay-kit-side">
+      <div class="replay-kit-metrics">
+        <div class="kit-metric-tile is-sunken is-live">
+          <span>Airspeed</span>
+          <strong><%= replay_current[:speed].round %><small>km/h</small></strong>
+        </div>
+        <div class="kit-metric-tile is-sunken">
+          <span>Altitude</span>
+          <strong><%= replay_current[:alt].round %><small>m</small></strong>
+        </div>
+        <div class="kit-metric-tile is-sunken is-ready">
+          <span>Glide</span>
+          <strong><%= number_with_precision(replay_current[:glide], precision: 1) %><small>L/D</small></strong>
+        </div>
+        <div class="kit-metric-tile is-sunken">
+          <span>V-speed</span>
+          <strong><%= number_with_precision(replay_current[:vspeed], precision: 1) %><small>m/s</small></strong>
+        </div>
       </div>
 
-      <%= form_with model: @jump, html: { multipart: true, class: "video-upload-form", data: { controller: "upload" } } do |form| %>
-        <label class="secondary-button video-upload-button">
-          <%= t(@jump.video.attached? ? "jumps.video.replace" : "jumps.video.upload") %>
-          <%= form.file_field :video_upload,
-            accept: "video/*,.avi,.m4v,.mkv,.mov,.mp4,.webm",
-            data: { upload_target: "input", action: "change->upload#showFiles" } %>
-        </label>
-        <span class="file-summary" data-upload-target="summary"><%= t("jumps.video.no_file") %></span>
-        <%= form.submit t("jumps.video.process"), class: "primary-button", data: { upload_target: "submit" } %>
+      <section class="replay-events-panel">
+        <span>Events</span>
+        <div>
+          <% event_rows.each do |time, label, state| %>
+            <p>
+              <time><%= time %></time>
+              <span class="status-dot is-<%= state %>"><span></span><%= label %></span>
+            </p>
+          <% end %>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <footer class="replay-kit-scrubber">
+    <button class="kit-icon-button is-solid" type="button" aria-label="Play">
+      <%= sillage_icon "play", size: 18 %>
+    </button>
+    <button class="kit-icon-button" type="button" aria-label="Restart">
+      <%= sillage_icon "rotate-ccw", size: 18 %>
+    </button>
+    <time class="is-current"><%= duration(current_elapsed) %></time>
+    <input type="range" min="0" max="1000" value="<%= (scrub_ratio * 1000).round %>" aria-label="Replay position">
+    <time><%= duration(replay_duration) %></time>
+  </footer>
+</section>
+
+<section class="replay-analysis-dock">
+  <div
+    data-controller="flight-viewer"
+    data-flight-viewer-points-value="<%= json_escape(@visualization_points.to_json) %>"
+    data-flight-viewer-sensors-value="<%= json_escape(@visualization_sensors.to_json) %>"
+    data-flight-viewer-bounds-value="<%= json_escape(@bounds.to_json) %>"
+    data-flight-viewer-cesium-token-value="<%= @cesium_ion_token %>"
+    data-flight-viewer-labels-value="<%= json_escape(t("jumps.charts").to_json) %>"
+    <% if @jump.video_exit_offset_seconds.present? %>
+      data-flight-viewer-video-exit-offset-value="<%= @jump.video_exit_offset_seconds %>"
+    <% end %>>
+    <section class="trajectory">
+      <div class="trajectory-header">
+        <h2><%= t("jumps.show.trajectory") %></h2>
+        <div class="trajectory-toolbar">
+          <button type="button" class="trajectory-icon-button trajectory-play-button" data-flight-viewer-target="playButton" data-action="flight-viewer#togglePlayback" aria-label="<%= t("jumps.charts.play") %>" title="<%= t("jumps.charts.play") %>">
+            <span class="play-icon is-play"><%= sillage_icon "play", size: 18 %></span>
+            <span class="play-icon is-pause"><%= sillage_icon "pause", size: 18 %></span>
+          </button>
+          <output data-flight-viewer-target="timeLabel" class="trajectory-time">00:00</output>
+          <button type="button" class="trajectory-icon-button trajectory-reset-button" data-action="flight-viewer#resetCamera" aria-label="<%= t("jumps.charts.reset_camera") %>" title="<%= t("jumps.charts.reset_camera") %>">
+            <%= sillage_icon "rotate-ccw", size: 18 %>
+          </button>
+        </div>
+      </div>
+      <div data-flight-viewer-target="scene" class="trajectory-scene"></div>
+      <input data-flight-viewer-target="scrubber" data-action="input->flight-viewer#scrub" class="scrubber" type="range" min="0" max="1000" value="0">
+    </section>
+
+    <section class="tool-panel video-sync">
+      <div class="video-sync-header">
+        <div>
+          <h2><%= t("jumps.video.title") %></h2>
+          <p><%= t("jumps.video.hint") %></p>
+        </div>
+
+        <%= form_with model: @jump, html: { multipart: true, class: "video-upload-form", data: { controller: "upload" } } do |form| %>
+          <label class="secondary-button video-upload-button">
+            <%= sillage_icon "upload", size: 18 %>
+            <span><%= t(@jump.video.attached? ? "jumps.video.replace" : "jumps.video.upload") %></span>
+            <%= form.file_field :video_upload, accept: "video/*,.avi,.m4v,.mkv,.mov,.mp4,.webm", data: { upload_target: "input", action: "change->upload#showFiles" } %>
+          </label>
+          <span class="file-summary" data-upload-target="summary"><%= t("jumps.video.no_file") %></span>
+          <%= form.button class: "primary-button", data: { upload_target: "submit" } do %>
+            <%= sillage_icon "settings", size: 18 %>
+            <span><%= t("jumps.video.process") %></span>
+          <% end %>
+        <% end %>
+      </div>
+
+      <% if @jump.video_ready? %>
+        <div class="video-stage">
+          <video data-flight-viewer-target="video" data-action="loadedmetadata->flight-viewer#syncVideoFromFlight play->flight-viewer#videoPlaybackStarted pause->flight-viewer#videoPlaybackPaused seeked->flight-viewer#videoSeeked timeupdate->flight-viewer#videoTimeUpdated" class="jump-video" controls playsinline preload="metadata" src="<%= url_for(@jump.video) %>"></video>
+        </div>
+        <div class="video-sync-controls">
+          <%= form_with model: @jump, class: "video-exit-form" do |form| %>
+            <%= form.hidden_field :video_exit_offset_seconds, value: @jump.video_exit_offset_seconds, data: { flight_viewer_target: "videoExitOffsetInput" } %>
+            <%= button_tag type: "button", class: "secondary-button", data: { action: "flight-viewer#markVideoExit" } do %>
+              <%= sillage_icon "crosshair", size: 18 %>
+              <span><%= t("jumps.video.mark_exit") %></span>
+            <% end %>
+          <% end %>
+          <span data-flight-viewer-target="videoExitOffsetLabel" class="video-sync-state">
+            <%= @jump.video_exit_offset_seconds.present? ? t("jumps.video.exit_marked", timestamp: duration(@jump.video_exit_offset_seconds)) : t("jumps.video.exit_unmarked") %>
+          </span>
+        </div>
+      <% elsif @jump.video_processing? %>
+        <p class="video-status"><%= t("jumps.video.processing") %></p>
+      <% elsif @jump.video_failed? %>
+        <p class="video-status error-text"><%= t("jumps.video.failed", error: @jump.video_processing_error.presence || t("jumps.video.unknown_error")) %></p>
+      <% else %>
+        <p class="video-status"><%= t("jumps.video.empty") %></p>
+      <% end %>
+    </section>
+
+    <section class="charts-grid">
+      <div class="tool-panel chart-panel"><h2><%= t("jumps.charts.profile") %></h2><canvas data-flight-viewer-target="profileChart" class="analysis-chart"></canvas></div>
+      <div class="tool-panel chart-panel"><h2><%= t("jumps.charts.ground") %></h2><canvas data-flight-viewer-target="groundChart" class="analysis-chart"></canvas></div>
+      <div class="tool-panel chart-panel"><h2><%= t("jumps.charts.performance") %></h2><canvas data-flight-viewer-target="performanceChart" class="analysis-chart"></canvas></div>
+      <div class="tool-panel chart-panel wide-chart"><h2><%= t("jumps.charts.dynamics") %></h2><canvas data-flight-viewer-target="dynamicsChart" class="analysis-chart"></canvas></div>
+      <div class="tool-panel chart-panel"><h2><%= t("jumps.charts.environment") %></h2><canvas data-flight-viewer-target="environmentChart" class="analysis-chart"></canvas></div>
+      <div class="tool-panel chart-panel"><h2><%= t("jumps.charts.power") %></h2><canvas data-flight-viewer-target="powerChart" class="analysis-chart"></canvas></div>
+    </section>
+  </div>
+
+  <section class="content-split">
+    <div class="tool-panel">
+      <h2><%= t("jumps.show.details") %></h2>
+      <%= form_with model: @jump, class: "details-form" do |form| %>
+        <%= form.label :name, t("jumps.form.name") %>
+        <%= form.text_field :name %>
+        <%= form.label :location, t("jumps.form.location") %>
+        <%= form.text_field :location %>
+        <%= form.label :exit_at, t("jumps.form.exit_at") %>
+        <%= form.datetime_field :exit_at, value: @jump.exit_at&.strftime("%Y-%m-%dT%H:%M:%S") %>
+        <%= form.label :opening_at, t("jumps.form.opening_at") %>
+        <%= form.datetime_field :opening_at, value: @jump.opening_at&.strftime("%Y-%m-%dT%H:%M:%S") %>
+        <%= form.label :landing_at, t("jumps.form.landing_at") %>
+        <%= form.datetime_field :landing_at, value: @jump.landing_at&.strftime("%Y-%m-%dT%H:%M:%S") %>
+        <%= form.label :notes, t("jumps.form.notes") %>
+        <%= form.text_area :notes, rows: 4 %>
+        <%= form.button class: "primary-button" do %>
+          <%= sillage_icon "check", size: 18 %>
+          <span><%= t("jumps.form.save") %></span>
+        <% end %>
       <% end %>
     </div>
 
-    <% if @jump.video_ready? %>
-      <div class="video-stage">
-        <video
-          data-flight-viewer-target="video"
-          data-action="loadedmetadata->flight-viewer#syncVideoFromFlight play->flight-viewer#videoPlaybackStarted pause->flight-viewer#videoPlaybackPaused seeked->flight-viewer#videoSeeked timeupdate->flight-viewer#videoTimeUpdated"
-          class="jump-video"
-          controls
-          playsinline
-          preload="metadata"
-          src="<%= url_for(@jump.video) %>"></video>
-      </div>
-
-      <div class="video-sync-controls">
-        <%= form_with model: @jump, class: "video-exit-form" do |form| %>
-          <%= form.hidden_field :video_exit_offset_seconds,
-            value: @jump.video_exit_offset_seconds,
-            data: { flight_viewer_target: "videoExitOffsetInput" } %>
-          <%= button_tag t("jumps.video.mark_exit"),
-            type: "button",
-            class: "secondary-button",
-            data: { action: "flight-viewer#markVideoExit" } %>
-        <% end %>
-        <span data-flight-viewer-target="videoExitOffsetLabel" class="video-sync-state">
-          <% if @jump.video_exit_offset_seconds.present? %>
-            <%= t("jumps.video.exit_marked", timestamp: duration(@jump.video_exit_offset_seconds)) %>
-          <% else %>
-            <%= t("jumps.video.exit_unmarked") %>
+    <div class="panel-stack">
+      <div class="tool-panel">
+        <h2><%= t("jumps.show.samples") %></h2>
+        <dl class="details-grid">
+          <div><dt>GNSS</dt><dd><%= @jump.sample_count %></dd></div>
+          <% @sensor_counts.each do |sensor, count| %>
+            <div><dt><%= sensor %></dt><dd><%= count %></dd></div>
           <% end %>
-        </span>
+        </dl>
       </div>
-    <% elsif @jump.video_processing? %>
-      <p class="video-status"><%= t("jumps.video.processing") %></p>
-    <% elsif @jump.video_failed? %>
-      <p class="video-status error-text"><%= t("jumps.video.failed", error: @jump.video_processing_error.presence || t("jumps.video.unknown_error")) %></p>
-    <% else %>
-      <p class="video-status"><%= t("jumps.video.empty") %></p>
-    <% end %>
-  </section>
-
-  <section class="charts-grid">
-    <div class="tool-panel chart-panel">
-      <h2><%= t("jumps.charts.profile") %></h2>
-      <canvas data-flight-viewer-target="profileChart" class="analysis-chart"></canvas>
-    </div>
-
-    <div class="tool-panel chart-panel">
-      <h2><%= t("jumps.charts.ground") %></h2>
-      <canvas data-flight-viewer-target="groundChart" class="analysis-chart"></canvas>
-    </div>
-
-    <div class="tool-panel chart-panel">
-      <h2><%= t("jumps.charts.performance") %></h2>
-      <canvas data-flight-viewer-target="performanceChart" class="analysis-chart"></canvas>
-    </div>
-
-    <% if @sensor_counts["IMU"].present? %>
-      <div class="tool-panel chart-panel wide-chart">
-        <h2><%= t("jumps.charts.dynamics") %></h2>
-        <canvas data-flight-viewer-target="dynamicsChart" class="analysis-chart"></canvas>
-      </div>
-    <% end %>
-
-    <% if @sensor_counts["BARO"].present? %>
-      <div class="tool-panel chart-panel">
-        <h2><%= t("jumps.charts.environment") %></h2>
-        <canvas data-flight-viewer-target="environmentChart" class="analysis-chart"></canvas>
-      </div>
-    <% end %>
-
-    <% if @sensor_counts["VBAT"].present? %>
-      <div class="tool-panel chart-panel">
-        <h2><%= t("jumps.charts.power") %></h2>
-        <canvas data-flight-viewer-target="powerChart" class="analysis-chart"></canvas>
-      </div>
-    <% end %>
-  </section>
-</div>
-
-<section class="content-split">
-  <div class="tool-panel">
-    <h2><%= t("jumps.show.details") %></h2>
-    <%= form_with model: @jump, class: "details-form" do |form| %>
-      <%= form.label :name, t("jumps.form.name") %>
-      <%= form.text_field :name %>
-
-      <%= form.label :location, t("jumps.form.location") %>
-      <%= form.text_field :location %>
-
-      <%= form.label :exit_at, t("jumps.form.exit_at") %>
-      <%= form.datetime_field :exit_at, value: @jump.exit_at&.strftime("%Y-%m-%dT%H:%M:%S") %>
-
-      <%= form.label :opening_at, t("jumps.form.opening_at") %>
-      <%= form.datetime_field :opening_at, value: @jump.opening_at&.strftime("%Y-%m-%dT%H:%M:%S") %>
-
-      <%= form.label :landing_at, t("jumps.form.landing_at") %>
-      <%= form.datetime_field :landing_at, value: @jump.landing_at&.strftime("%Y-%m-%dT%H:%M:%S") %>
-
-      <%= form.label :notes, t("jumps.form.notes") %>
-      <%= form.text_area :notes, rows: 4 %>
-
-      <%= form.submit t("jumps.form.save"), class: "primary-button" %>
-    <% end %>
-  </div>
-
-  <div class="panel-stack">
-    <div class="tool-panel">
-    <h2><%= t("jumps.show.samples") %></h2>
-      <dl class="details-grid">
-        <div><dt>GNSS</dt><dd><%= @jump.sample_count %></dd></div>
-        <% @sensor_counts.each do |sensor, count| %>
-          <div><dt><%= sensor %></dt><dd><%= count %></dd></div>
+      <div class="tool-panel danger-panel">
+        <h2><%= t("jumps.show.danger") %></h2>
+        <%= button_to @jump, method: :delete, class: "danger-button", form: { data: { turbo_confirm: t("jumps.show.confirm_delete") } } do %>
+          <%= sillage_icon "octagon-x", size: 18 %>
+          <span><%= t("jumps.show.delete") %></span>
         <% end %>
-      </dl>
+      </div>
     </div>
-
-    <div class="tool-panel danger-panel">
-      <h2><%= t("jumps.show.danger") %></h2>
-      <%= button_to t("jumps.show.delete"), @jump, method: :delete, class: "danger-button", form: { data: { turbo_confirm: t("jumps.show.confirm_delete") } } %>
-    </div>
-  </div>
+  </section>
 </section>

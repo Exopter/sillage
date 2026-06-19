@@ -1,0 +1,148 @@
+/* ============================================================
+   Exopter — semantic aliases & convenience tokens.
+   A thin layer over exopter-tokens.css so components can use role names.
+   Real --ex-* tokens are canonical; everything here maps onto them.
+   ============================================================ */
+:root {
+  /* --- Type families --- */
+  --font-ui:   var(--ex-font-sans);
+  --font-mono: var(--ex-font-mono);
+  --font-data: var(--ex-font-mono); /* instrument/telemetry, used with tabular figures */
+
+  --num-tabular: "tnum" 1, "lnum" 1; /* @kind other */
+
+  /* --- Type scale (rem) — compact UI; large reserved for brand pages --- */
+  --fs-display: 3.5rem;
+  --fs-h1:      2.25rem;
+  --fs-h2:      1.75rem;
+  --fs-h3:      1.375rem;
+  --fs-h4:      1.125rem;
+  --fs-body:    0.9375rem;
+  --fs-sm:      0.8125rem;
+  --fs-xs:      0.6875rem;
+  --fs-metric:    2rem;
+  --fs-metric-lg: 3rem;
+
+  --fw-regular:  400; /* @kind font */
+  --fw-medium:   500; /* @kind font */
+  --fw-semibold: 600; /* @kind font */
+  --fw-bold:     700; /* @kind font */
+
+  --lh-tight:  1.1;  /* @kind font */
+  --lh-snug:   1.25; /* @kind font */
+  --lh-normal: 1.5;  /* @kind font */
+
+  --ls-label: 0.08em;  /* @kind font */
+  --ls-wide:  0.16em;  /* @kind font */
+  --ls-tight: -0.01em; /* @kind font */
+
+  /* --- Spacing (alias to --ex-space-*) --- */
+  --sp-0:  0;                  /* @kind spacing */
+  --sp-1:  var(--ex-space-1);
+  --sp-2:  var(--ex-space-2);
+  --sp-3:  var(--ex-space-3);
+  --sp-4:  var(--ex-space-4);
+  --sp-5:  var(--ex-space-5);
+  --sp-6:  var(--ex-space-6);
+  --sp-8:  var(--ex-space-8);
+  --sp-10: var(--ex-space-10);
+  --sp-12: var(--ex-space-12);
+  --sp-16: 64px; /* @kind spacing */
+  --sp-20: 80px; /* @kind spacing */
+
+  /* --- Radius --- */
+  --radius-compact: var(--ex-radius-instrument);
+  --radius:         var(--ex-radius-surface);
+  --radius-lg:      12px;
+  --radius-round:   999px;
+
+  /* --- Borders --- */
+  --bw-rule:   1px; /* @kind spacing */
+  --bw-strong: 2px; /* @kind spacing */
+
+  /* --- Elevation (alias to --ex-shadow-*) --- */
+  --shadow-sm:    var(--ex-shadow-panel);
+  --shadow:       var(--ex-shadow-panel);
+  --shadow-md:    var(--ex-shadow-raised);
+  --shadow-inset: inset 0 1px 2px rgba(7, 11, 13, 0.10);
+
+  /* --- Motion --- */
+  --ease-out:    cubic-bezier(0.2, 0.7, 0.2, 1); /* @kind other */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);   /* @kind other */
+  --dur-fast: 120ms; /* @kind other */
+  --dur:      180ms;  /* @kind other */
+  --dur-slow: 280ms;  /* @kind other */
+
+  /* --- Control sizing --- */
+  --control-h:    42px; /* matches app .primary/.secondary button min-height */
+  --control-h-sm: 32px;
+  --control-h-lg: 44px;
+
+  /* --- Supplementary palette (UI tints not in the canonical file) --- */
+  --ex-graphite-400: #97a1a0;
+  --ex-vapor-200:    var(--ex-line-200);
+  --ex-sky-100:   #dceeff;
+  --ex-field-100: var(--ex-state-ready-bg);
+  --ex-aqua-100:  var(--ex-state-live-bg);
+  --ex-amber-100: var(--ex-state-caution-bg);
+  --ex-red-100:   var(--ex-state-fault-bg);
+
+  /* ============================================================
+     Semantic aliases — LIGHT (vapor) workbench, the default
+     ============================================================ */
+  --surface-app:    var(--ex-vapor-50);
+  --surface-card:   var(--ex-white);
+  --surface-panel:  var(--ex-vapor-100);
+  --surface-sunken: var(--ex-vapor-100);
+  --surface-hover:  var(--ex-vapor-100);
+
+  --text-strong:  var(--ex-carbon-950);
+  --text-body:    var(--ex-carbon-900);
+  --text-muted:   var(--ex-graphite-600);
+  --text-inverse: var(--ex-vapor-50);
+
+  --border-rule:   var(--ex-line-200);
+  --border-strong: var(--ex-line-300);
+
+  --focus-ring: var(--ex-sky-500);
+  --link:       var(--ex-sky-500);
+
+  --state-ready:   var(--ex-field-500);
+  --state-live:    var(--ex-aqua-500);
+  --state-pending: var(--ex-amber-500);
+  --state-caution: var(--ex-amber-500);
+  --state-fault:   var(--ex-red-600);
+  --state-unknown: var(--ex-graphite-500);
+
+  --accent:          var(--ex-carbon-900);
+  --accent-contrast: var(--ex-vapor-50);
+}
+
+/* ============================================================
+   Dark instrument scope — cockpit / replay / HUD bands.
+   class="ex-dark" or data-surface="carbon".
+   ============================================================ */
+.ex-dark,
+[data-surface="carbon"] {
+  --surface-app:    var(--ex-carbon-950);
+  --surface-card:   var(--ex-carbon-900);
+  --surface-panel:  var(--ex-carbon-800);
+  --surface-sunken: var(--ex-carbon-950);
+  --surface-hover:  var(--ex-carbon-800);
+
+  --text-strong:  var(--ex-white);
+  --text-body:    var(--ex-vapor-50);
+  --text-muted:   var(--ex-graphite-400);
+  --text-inverse: var(--ex-carbon-950);
+
+  --border-rule:   var(--ex-carbon-700);
+  --border-strong: var(--ex-graphite-600);
+
+  --state-ready: var(--ex-hud-green);
+
+  --accent:          var(--ex-aqua-500);
+  --accent-contrast: var(--ex-carbon-950);
+
+  color: var(--text-body);
+  background: var(--surface-app);
+}

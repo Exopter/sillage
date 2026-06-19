@@ -1,0 +1,23 @@
+<!-- @dsCard group="Spacing" viewport="700x160" name="Radius & elevation" subtitle="8px standard, 4px compact, round only when shape is the control" -->
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;font-family:var(--font-ui);background:var(--surface-app);padding:var(--sp-5)}
+  .row{display:flex;gap:var(--sp-6);align-items:flex-end}
+  .col{display:flex;flex-direction:column;align-items:center;gap:var(--sp-2)}
+  .box{width:72px;height:56px;background:var(--surface-card);border:1px solid var(--border-rule)}
+  .n{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-muted)}
+  .sep{width:1px;align-self:stretch;background:var(--border-rule);margin:0 var(--sp-2)}
+</style></head>
+<body>
+  <div class="row">
+    <div class="col"><div class="box" style="border-radius:var(--radius-compact)"></div><span class="n">compact · 4</span></div>
+    <div class="col"><div class="box" style="border-radius:var(--radius)"></div><span class="n">standard · 8</span></div>
+    <div class="col"><div class="box" style="border-radius:var(--radius-lg)"></div><span class="n">large · 12</span></div>
+    <div class="col"><div class="box" style="border-radius:var(--radius-round);width:56px"></div><span class="n">round · control</span></div>
+    <div class="sep"></div>
+    <div class="col"><div class="box" style="border-radius:var(--radius);box-shadow:var(--shadow-sm)"></div><span class="n">shadow-sm</span></div>
+    <div class="col"><div class="box" style="border-radius:var(--radius);box-shadow:var(--shadow-md)"></div><span class="n">shadow-md</span></div>
+  </div>
+</body></html>

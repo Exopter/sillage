@@ -1,0 +1,38 @@
+<!-- @dsCard group="Exopter Brand" viewport="1280x760" name="Exopter public site" subtitle="Deep-tech, object-led brand page — hero, program specs, evidence, Sillage, roadmap" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exopter — Personal rigid-wing flight</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="icon" href="../../assets/app-icon.svg">
+<style>
+  html, body { margin: 0; background: var(--ex-carbon-950); font-family: var(--font-ui); }
+  a { color: inherit; }
+  /* subtle blueprint quadrillage */
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(95,108,107,.10) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(95,108,107,.10) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s var(--ease-out), transform .6s var(--ease-out); }
+  .reveal.in { opacity: 1; transform: none; }
+  .evi:hover { border-color: var(--ex-aqua-500) !important; }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+</style>
+</head>
+<body>
+<div id="site"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel" src="Brand.jsx" data-presets="react"></script>
+<script type="text/babel" data-presets="react">
+  const Page = window.ExopterBrand.Page;
+  ReactDOM.createRoot(document.getElementById('site')).render(<Page />);
+</script>
+</body>
+</html>

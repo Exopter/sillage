@@ -1,0 +1,8 @@
+/* Exopter Design System — global entry point.
+   Consumers link this single file. Keep this as @import lines only.
+   - exopter-tokens.css mirrors the Sillage app's exopter_design_system.css (canonical).
+   - aliases.css adds role/convenience names mapped onto those tokens. */
+
+@import "tokens/fonts.css";
+@import "tokens/exopter-tokens.css";
+@import "tokens/aliases.css";

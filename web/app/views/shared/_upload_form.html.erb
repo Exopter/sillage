@@ -10,6 +10,9 @@
 
   <div class="upload-actions">
     <span class="file-summary" data-upload-target="summary"><%= t("imports.form.empty") %></span>
-    <%= form.submit t("imports.form.submit"), class: "primary-button", data: { upload_target: "submit" } %>
+    <%= form.button class: "primary-button", data: { upload_target: "submit" } do %>
+      <%= sillage_icon "upload", size: 18 %>
+      <span><%= t("imports.form.submit") %></span>
+    <% end %>
   </div>
 <% end %>

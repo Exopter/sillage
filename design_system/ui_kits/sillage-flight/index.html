@@ -1,0 +1,118 @@
+<!-- @dsCard group="Sillage Flight" viewport="1280x820" name="Sillage · Flight Lab" subtitle="Operations workbench — Logbook, Flight prep, Replay, HUD across Flight / Atlas / Hangar / Signal / Forge / Core" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sillage Flight</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="icon" href="../../assets/app-icon.svg">
+<style>
+  html, body { margin: 0; height: 100%; background: var(--surface-app); font-family: var(--font-ui); }
+  #app { height: 100vh; }
+  .subtabs { display: flex; gap: 2px; padding: 10px 24px 0; background: var(--surface-app); border-bottom: 1px solid var(--border-rule); }
+  .subtab { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-muted); background: transparent; border: none; cursor: pointer; padding: 10px 14px; border-bottom: 2px solid transparent; }
+  .subtab[data-active="true"] { color: var(--text-strong); border-bottom-color: var(--ex-aqua-500); }
+  .subtab:hover:not([data-active="true"]) { color: var(--text-body); }
+  input[type=range] { cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel" src="icons.jsx" data-presets="react"></script>
+<script type="text/babel" src="Shell.jsx" data-presets="react"></script>
+<script type="text/babel" src="Logbook.jsx" data-presets="react"></script>
+<script type="text/babel" src="Replay.jsx" data-presets="react"></script>
+<script type="text/babel" src="FlightPrep.jsx" data-presets="react"></script>
+<script type="text/babel" src="Hud.jsx" data-presets="react"></script>
+
+<script type="text/babel" data-presets="react">
+  const { Shell } = window.SillageShell;
+  const { Logbook } = window.SillageLogbook;
+  const { Replay } = window.SillageReplay;
+  const { FlightPrep } = window.SillageFlightPrep;
+  const { Hud } = window.SillageHud;
+  const { Icon } = window.SillageIcons;
+
+  const SUBTABS = [
+    { id: 'logbook', label: 'Logbook' },
+    { id: 'prep', label: 'Flight prep' },
+    { id: 'replay', label: 'Replay' },
+    { id: 'hud', label: 'HUD' },
+  ];
+
+  function Placeholder({ room }) {
+    const names = { atlas: 'Sillage Atlas', hangar: 'Sillage Hangar', signal: 'Sillage Signal', forge: 'Sillage Forge', core: 'Sillage Core' };
+    const desc = {
+      atlas: 'Maps, terrain, route comparison, airspace context, and waypoint planning.',
+      hangar: 'Fleet, wing hardware, equipment, maintenance, and spare parts.',
+      signal: 'Telemetry, live feeds, sensor streams, communications, and ground station.',
+      forge: 'Agent workflows, OpenProject orchestration, and documentation support.',
+      core: 'Authentication, authorization, audit trails, storage, and operations.',
+    };
+    return (
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', maxWidth: 420, padding: 24 }}>
+          <div style={{ color: 'var(--text-muted)', display: 'flex', justifyContent: 'center', marginBottom: 14 }}><Icon name="layers" size={28} /></div>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: 'var(--text-strong)' }}>{names[room]}</h2>
+          <p style={{ margin: '8px 0 0', fontSize: 14, color: 'var(--text-muted)' }}>{desc[room]}</p>
+          <p style={{ margin: '14px 0 0', fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--ex-graphite-400)' }}>Not built in this UI kit</p>
+        </div>
+      </div>
+    );
+  }
+
+  function App() {
+    const [room, setRoom] = React.useState('flight');
+    const [sub, setSub] = React.useState('logbook');
+    const [flight, setFlight] = React.useState(null);
+    const [mode, setMode] = React.useState('gld');
+
+    const openFlight = (f) => { setFlight(f); setSub('replay'); };
+
+    let title = 'Logbook', crumb = 'Operations';
+    if (room === 'flight') {
+      if (sub === 'logbook') { title = 'Logbook'; crumb = 'Operations'; }
+      if (sub === 'prep') { title = 'Flight prep'; crumb = 'Pre-flight'; }
+      if (sub === 'replay') { title = flight ? flight.id : 'Replay'; crumb = 'Replay & analysis'; }
+      if (sub === 'hud') { title = 'HUD preview'; crumb = 'Pilot display'; }
+    } else { title = ''; crumb = ''; }
+
+    let body;
+    if (room !== 'flight') {
+      body = <Placeholder room={room} />;
+    } else if (sub === 'replay') {
+      body = <Replay flight={flight} onBack={() => setSub('logbook')} />;
+    } else {
+      body = (
+        <div>
+          <div className="subtabs">
+            {SUBTABS.map((t) => (
+              <button key={t.id} className="subtab" data-active={sub === t.id} onClick={() => setSub(t.id)}>{t.label}</button>
+            ))}
+          </div>
+          {sub === 'logbook' && <Logbook onOpen={openFlight} />}
+          {sub === 'prep' && <FlightPrep />}
+          {sub === 'hud' && <Hud />}
+        </div>
+      );
+    }
+
+    return (
+      <Shell room={room} onRoom={(r) => { setRoom(r); if (r === 'flight') setSub('logbook'); }}
+        mode={mode} onMode={setMode} title={title} crumb={crumb}>
+        {body}
+      </Shell>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('app')).render(<App />);
+</script>
+</body>
+</html>

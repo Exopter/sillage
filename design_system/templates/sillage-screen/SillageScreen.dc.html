@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Sillage Screen" description="Sillage workbench screen scaffold — carbon header, readiness band, checklist + metric tiles" -->
+<helmet>
+  <script src="./ds-base.js"></script>
+</helmet>
+<div style="min-height:100vh;background:var(--surface-app);font-family:var(--font-ui);color:var(--text-body)">
+
+  <header style="display:flex;align-items:center;gap:16px;height:56px;padding:0 20px;background:var(--ex-carbon-900);color:var(--ex-vapor-50);border-bottom:1px solid var(--ex-carbon-700)">
+    <span style="font-family:var(--font-mono);font-weight:700;letter-spacing:.16em;font-size:15px">≡XOPTER</span>
+    <span style="width:1px;height:22px;background:var(--ex-carbon-700)"></span>
+    <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ex-graphite-400)">Sillage Flight · Pre-flight</span>
+    <span style="flex:1"></span>
+    <span style="font-family:var(--font-mono);font-size:12px;font-weight:600;letter-spacing:.08em;color:var(--ex-vapor-50);background:var(--ex-carbon-950);padding:6px 10px;border-radius:4px">GLD</span>
+  </header>
+
+  <div style="padding:24px;max-width:1100px;margin:0 auto">
+    <h1 style="margin:0;font-size:24px;font-weight:700;letter-spacing:-.01em;color:var(--text-strong)">Flight prep · GLD-2026-019</h1>
+    <p style="margin:4px 0 18px;font-size:14px;color:var(--text-muted)">Verify GLD flight readiness before arming the system.</p>
+
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px">
+      <span style="display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:var(--surface-card);border:1px solid var(--border-rule);border-radius:4px;padding:7px 11px"><span style="width:8px;height:8px;border-radius:50%;background:var(--ex-field-500)"></span>Pilot · ready</span>
+      <span style="display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:var(--surface-card);border:1px solid var(--border-rule);border-radius:4px;padding:7px 11px"><span style="width:8px;height:8px;border-radius:50%;background:var(--ex-field-500)"></span>Weather · CAVOK</span>
+      <span style="display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:var(--surface-card);border:1px solid var(--border-rule);border-radius:4px;padding:7px 11px"><span style="width:8px;height:8px;border-radius:50%;background:var(--ex-amber-500)"></span>Battery · 74%</span>
+      <span style="display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:var(--surface-card);border:1px solid var(--border-rule);border-radius:4px;padding:7px 11px"><span style="width:9px;height:9px;border-radius:50%;border:2px solid var(--ex-amber-500)"></span>Parachute · pending</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;align-items:start">
+      <x-import component-from-global-scope="ExopterDesignSystem_4c9fc9.Card" eyebrow="Pre-flight" title="Readiness checklist" flush="{{ true }}" hint-size="100%,300px">
+        <div style="padding:4px">
+          <x-import component-from-global-scope="ExopterDesignSystem_4c9fc9.ChecklistRow" title="Harness, hooks & attachment inspected" state="done" owner="PILOT" hint-size="100%,46px"></x-import>
+          <x-import component-from-global-scope="ExopterDesignSystem_4c9fc9.ChecklistRow" title="Wing surface & control check" state="done" owner="ENG-2" hint-size="100%,46px"></x-import>
+          <x-import component-from-global-scope="ExopterDesignSystem_4c9fc9.ChecklistRow" title="Parachute pack & jettison verified" state="active" owner="ENG-1" hint-size="100%,46px"></x-import>
+          <x-import component-from-global-scope="ExopterDesignSystem_4c9fc9.ChecklistRow" title="Battery above 80%" state="blocked" blocker="At 74% — charge before EDF leg" owner="OPS" hint-size="100%,46px"></x-import>
+          <x-import component-from-global-scope="ExopterDesignSystem_4c9fc9.ChecklistRow" title="Weather window confirmed" state="pending" owner="OPS" hint-size="100%,46px"></x-import>
+        </div>
+      </x-import>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <x-import component-from-global-scope="ExopterDesignSystem_4c9fc9.MetricTile" label="Wind" value="6" unit="kt" state="ready" hint-size="100%,82px"></x-import>
+        <x-import component-from-global-scope="ExopterDesignSystem_4c9fc9.MetricTile" label="OAT" value="19" unit="°C" hint-size="100%,82px"></x-import>
+        <x-import component-from-global-scope="ExopterDesignSystem_4c9fc9.MetricTile" label="Battery" value="74" unit="%" state="caution" hint-size="100%,82px"></x-import>
+        <x-import component-from-global-scope="ExopterDesignSystem_4c9fc9.MetricTile" label="Ceiling" value="5 000" unit="m" hint-size="100%,82px"></x-import>
+        <div style="grid-column:1 / -1;display:flex;gap:10px;margin-top:4px">
+          <x-import component-from-global-scope="ExopterDesignSystem_4c9fc9.Button" variant="primary" hint-size="130px,36px">Arm system</x-import>
+          <x-import component-from-global-scope="ExopterDesignSystem_4c9fc9.Button" variant="secondary" hint-size="100px,36px">Cancel</x-import>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

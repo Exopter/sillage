@@ -1,0 +1,24 @@
+<!-- @dsCard group="Colors" viewport="700x210" name="State legend" subtitle="Every state pairs color with a label, icon, or pattern — never color alone" -->
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;font-family:var(--font-ui);background:var(--surface-app);padding:var(--sp-5)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2) var(--sp-6)}
+  .st{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-1) 0}
+  .dot{width:10px;height:10px;border-radius:var(--radius-round);flex:none}
+  .ring{width:10px;height:10px;border-radius:var(--radius-round);border:2px solid var(--ex-amber-500);background:transparent;flex:none}
+  .lab{font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:600;letter-spacing:.06em;text-transform:uppercase;width:78px}
+  .desc{font-size:var(--fs-sm);color:var(--text-muted)}
+</style></head>
+<body>
+  <div class="grid">
+    <div class="st"><span class="dot" style="background:var(--ex-hud-green)"></span><span class="lab">Ready</span><span class="desc">solid, check icon, stable</span></div>
+    <div class="st"><span class="dot" style="background:var(--ex-aqua-500)"></span><span class="lab">Active</span><span class="desc">moving trace, live dot, timestamp</span></div>
+    <div class="st"><span class="ring"></span><span class="lab">Pending</span><span class="desc">hollow, required next action</span></div>
+    <div class="st"><span class="dot" style="background:var(--ex-amber-500)"></span><span class="lab">Caution</span><span class="desc">label + explanation + action</span></div>
+    <div class="st"><span class="dot" style="background:var(--ex-red-600)"></span><span class="lab">Fault</span><span class="desc">label, icon, location, action</span></div>
+    <div class="st"><span class="dot" style="background:var(--ex-graphite-500)"></span><span class="lab">Unknown</span><span class="desc">explicit "No data"</span></div>
+    <div class="st"><span class="dot" style="background:var(--ex-carbon-950);border:1px solid var(--border-rule)"></span><span class="lab">Fail-safe</span><span class="desc">carbon black, no white flash</span></div>
+  </div>
+</body></html>

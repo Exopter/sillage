@@ -1,0 +1,10 @@
+<% content_for :title, @room.fetch(:title) %>
+
+<section class="room-placeholder" aria-labelledby="room-placeholder-title">
+  <div class="room-placeholder-card">
+    <div class="room-placeholder-icon"><%= sillage_icon @room.fetch(:icon), size: 28 %></div>
+    <h1 id="room-placeholder-title"><%= @room.fetch(:title) %></h1>
+    <p><%= @room.fetch(:description) %></p>
+    <span>Not built in this UI kit</span>
+  </div>
+</section>

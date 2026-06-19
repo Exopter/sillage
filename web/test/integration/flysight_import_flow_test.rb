@@ -19,8 +19,10 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_response :success
     assert_select "h1", jump.name
-    assert_select ".flight-readiness-strip strong", text: I18n.t("flight_lab.mode_gld_replay")
-    assert_select ".metric-strip span", text: I18n.t("stats.height")
+    assert_select ".replay-kit-screen"
+    assert_select ".replay-kit-id", text: /\AGLD-\d{4}-\d{3}\z/
+    assert_select ".mode-badge", text: "Replay"
+    assert_select ".replay-kit-metrics span", text: "Altitude"
     assert_select ".trajectory-scene"
     assert_select ".video-sync"
     assert_select "canvas.analysis-chart", minimum: 6
@@ -31,13 +33,63 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_in_delta 0.0, points.last["height"]
   end
 
-  test "dashboard renders import form and recent jumps" do
+  test "dashboard renders the Sillage logbook" do
+    jump = Jump.recent.first
+
     get root_path
 
     assert_response :success
-    assert_select "form.upload-form"
-    assert_select ".flight-readiness-strip strong", text: I18n.t("flight_lab.mode_gld")
-    assert_select "a", text: I18n.t("nav.jumps")
+    assert_select "link[rel='icon'][href='/icon.svg?v=exopter-e'][type='image/svg+xml']"
+    assert_select "h1", "Logbook"
+    assert_sillage_breadcrumb room: "Flights", tab: "Logbook"
+    assert_select ".sillage-mode-switcher", count: 0
+    assert_select ".sillage-live-badge", count: 0
+    assert_select ".sillage-account-menu"
+    assert_select "form[action='#{logout_path}'][method='post'] button", text: "Log out"
+    assert_select ".logbook-table"
+    assert_select ".logbook-table tbody tr", minimum: 1
+    assert_select ".logbook-row[data-controller='row-link'][data-row-link-url-value='#{jump_path(jump)}']"
+    assert_select "a[href='#{jumps_path}']", text: "Logbook"
+    assert_select "a[href='#{new_flight_import_path}']", text: "Import FDR"
+    assert_select "a[href='#{forge_path}']", text: "Forge"
+
+    get forge_path
+
+    assert_response :success
+    assert_select "h1", "Sillage Forge"
+    assert_sillage_breadcrumb room: "Forge", tab: "Overview"
+    assert_select ".room-placeholder-card"
+    assert_select ".room-placeholder-card span", text: "Not built in this UI kit"
+    assert_select ".reference-layout", count: 0
+  end
+
+  test "top breadcrumb follows the current room and tab" do
+    jump = jumps(:one)
+
+    get new_flight_import_path
+    assert_response :success
+    assert_sillage_breadcrumb room: "Flights", tab: "Flight prep"
+
+    get jump_path(jump)
+    assert_response :success
+    assert_sillage_breadcrumb room: "Flights", tab: "Replay"
+
+    get flight_hud_path
+    assert_response :success
+    assert_sillage_breadcrumb room: "Flights", tab: "HUD"
+
+    get atlas_path
+    assert_response :success
+    assert_sillage_breadcrumb room: "Atlas", tab: "Overview"
+  end
+
+  test "logout clears the local session" do
+    delete logout_path
+
+    assert_redirected_to root_path
+    follow_redirect!
+    assert_response :success
+    assert_select ".flash.notice", text: "Signed out."
   end
 
   test "french locale falls back to english" do
@@ -97,5 +149,15 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
 
     viewer = css_select("[data-controller='flight-viewer']").first
     assert_equal "4.2", viewer["data-flight-viewer-video-exit-offset-value"]
+  end
+
+  private
+
+  def assert_sillage_breadcrumb(room:, tab:)
+    assert_select ".sillage-breadcrumb[aria-label='Breadcrumb']"
+    assert_select ".sillage-breadcrumb ol li", 3
+    assert_select ".sillage-breadcrumb ol li:nth-child(1) a[href='#{root_path}']", text: "Sillage"
+    assert_select ".sillage-breadcrumb ol li:nth-child(2) a", text: room
+    assert_select ".sillage-breadcrumb ol li:nth-child(3) [aria-current='page']", text: tab
   end
 end

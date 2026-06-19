@@ -1,27 +1,142 @@
-<% content_for :title, t("imports.new.title") %>
+<% content_for :title, "Flight prep" %>
 
-<section class="page-heading">
-  <div>
-    <p class="eyebrow"><%= t("imports.new.eyebrow") %></p>
-    <h1><%= t("imports.new.title") %></h1>
+<section class="flight-prep-screen">
+  <header class="kit-page-header">
+    <div>
+      <h1>Flight prep · GLD-2026-019</h1>
+      <p>Verify GLD flight readiness before arming the system.</p>
+    </div>
+  </header>
+
+  <section class="kit-readiness-strip" aria-label="Flight readiness">
+    <div class="kit-readiness-mode" aria-hidden="true">GLD</div>
+    <% [
+      [ "Pilot", "A. Renaud · 88 kg", "ready" ],
+      [ "Weather", "CAVOK · 6 kt", "ready" ],
+      [ "Battery", "74%", "caution" ],
+      [ "FDR", "Armed", "live" ],
+      [ "Comms", "VHF + intercom", "ready" ],
+      [ "Parachute", "Check pending", "pending" ]
+    ].each do |label, value, state| %>
+      <div class="kit-readiness-item is-<%= state %>">
+        <span><%= label %></span>
+        <strong><%= value %></strong>
+      </div>
+    <% end %>
+  </section>
+
+  <div class="flight-prep-kit-grid">
+    <section class="kit-card checklist-card">
+      <header class="kit-card-header">
+        <div>
+          <span>Pre-flight</span>
+          <h2>Readiness checklist</h2>
+        </div>
+        <strong>4 / 7 passed</strong>
+      </header>
+
+      <ol class="kit-checklist">
+        <li class="is-done">
+          <%= sillage_icon "circle-check", size: 18 %>
+          <span>Harness, hooks & attachment inspected</span>
+          <strong>PILOT</strong>
+          <a href="#">Evidence</a>
+        </li>
+        <li class="is-done">
+          <%= sillage_icon "circle-check", size: 18 %>
+          <span>Wing surface & control check</span>
+          <strong>ENG-2</strong>
+          <a href="#">Evidence</a>
+        </li>
+        <li class="is-done">
+          <%= sillage_icon "circle-check", size: 18 %>
+          <span>Pitot / pressure probe clear</span>
+          <strong>ENG-2</strong>
+          <a href="#">Evidence</a>
+        </li>
+        <li class="is-active">
+          <%= sillage_icon "circle-check", size: 18 %>
+          <span>Parachute pack & jettison verified</span>
+          <strong>ENG-1</strong>
+          <em>In progress</em>
+        </li>
+        <li class="is-blocked">
+          <%= sillage_icon "triangle-alert", size: 18 %>
+          <span>Battery above 80%</span>
+          <strong>OPS</strong>
+          <em>At 74% — charge before EDF leg</em>
+        </li>
+        <li>
+          <%= sillage_icon "clock", size: 18 %>
+          <span>Audible altimeter test</span>
+          <strong>PILOT</strong>
+        </li>
+        <li>
+          <%= sillage_icon "clock", size: 18 %>
+          <span>Weather window confirmed</span>
+          <strong>OPS</strong>
+        </li>
+      </ol>
+    </section>
+
+    <aside class="flight-prep-side">
+      <div class="kit-metric-grid">
+        <div class="kit-metric-tile is-ready">
+          <span><%= sillage_icon "wind", size: 13 %> Wind</span>
+          <strong>6 <small>kt</small></strong>
+        </div>
+        <div class="kit-metric-tile">
+          <span><%= sillage_icon "thermometer", size: 13 %> OAT</span>
+          <strong>19 <small>°C</small></strong>
+        </div>
+        <div class="kit-metric-tile is-caution">
+          <span><%= sillage_icon "battery", size: 13 %> Battery</span>
+          <strong>74 <small>%</small></strong>
+        </div>
+        <div class="kit-metric-tile">
+          <span>Ceiling</span>
+          <strong>5 000 <small>m</small></strong>
+        </div>
+      </div>
+
+      <section class="kit-safety-gate">
+        <div class="kit-safety-title">
+          <%= sillage_icon "shield", size: 18 %>
+          <span>Safety gate · arm system</span>
+        </div>
+        <p>Requires human approval. All readiness items must pass before arming. This is a safety-critical action.</p>
+        <div class="kit-safety-actions">
+          <button class="primary-button" type="button">
+            <%= sillage_icon "shield", size: 18 %>
+            <span>Arm system</span>
+          </button>
+          <span class="mode-badge is-caution">Awaiting approval</span>
+        </div>
+      </section>
+
+      <section class="kit-card kit-hardware-card">
+        <header class="kit-card-header">
+          <div>
+            <span>Hardware</span>
+            <h2>Sensor placement</h2>
+          </div>
+        </header>
+        <dl class="hardware-list">
+          <div><dt>Wing</dt><dd>Pitot · GPS · camera</dd></div>
+          <div><dt>Seat</dt><dd>Attitude · GPS · VHF</dd></div>
+          <div><dt>Helmet</dt><dd>GPS · intercom · HUD</dd></div>
+        </dl>
+      </section>
+
+      <section class="kit-card kit-import-card">
+        <header class="kit-card-header">
+          <div>
+            <span>FDR</span>
+            <h2>Import FlySight trace</h2>
+          </div>
+        </header>
+        <%= render "shared/upload_form" %>
+      </section>
+    </aside>
   </div>
 </section>
-
-<section class="flight-readiness-strip compact" aria-label="<%= t("flight_lab.import_label") %>">
-  <div>
-    <span><%= t("flight_lab.mode") %></span>
-    <strong><%= t("flight_lab.mode_gld") %></strong>
-  </div>
-  <div>
-    <span><%= t("flight_lab.trace_source") %></span>
-    <strong><%= t("flight_lab.source_flysight") %></strong>
-  </div>
-  <div>
-    <span><%= t("flight_lab.format") %></span>
-    <strong><%= t("flight_lab.format_zip_csv") %></strong>
-  </div>
-</section>
-
-<div class="tool-panel wide">
-  <%= render "shared/upload_form" %>
-</div>

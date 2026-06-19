@@ -1,0 +1,85 @@
+<section class="logbook-screen">
+  <div class="logbook-header">
+    <div class="logbook-title">
+      <h1>Logbook</h1>
+      <p>Recorded flights — replay, compare glide ratio, and inspect FDR.</p>
+    </div>
+
+    <div class="logbook-actions">
+      <%= form_with url: jumps_path, method: :get, class: "logbook-search" do |form| %>
+        <label class="search-control">
+          <%= sillage_icon "search", size: 16 %>
+          <%= form.search_field :q, value: local_assigns[:query], placeholder: "Search flight ID", autocomplete: "off" %>
+        </label>
+        <% if local_assigns[:query].present? %>
+          <%= link_to jumps_path, class: "icon-button", title: "Clear search", aria: { label: "Clear search" } do %>
+            <%= sillage_icon "x", size: 16 %>
+          <% end %>
+        <% end %>
+      <% end %>
+
+      <%= link_to new_flight_import_path, class: "primary-button logbook-import-button" do %>
+        <%= sillage_icon "upload", size: 18 %>
+        <span>Import FDR</span>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="logbook-table-wrap">
+    <table class="logbook-table">
+      <colgroup>
+        <col class="logbook-col-flight">
+        <col class="logbook-col-mode">
+        <col class="logbook-col-date">
+        <col class="logbook-col-duration">
+        <col class="logbook-col-altitude">
+        <col class="logbook-col-glide">
+        <col class="logbook-col-status">
+        <col class="logbook-col-open">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Flight</th>
+          <th>Mode</th>
+          <th>Date</th>
+          <th>Duration</th>
+          <th>Max alt</th>
+          <th>Glide</th>
+          <th>Status</th>
+          <th aria-label="Open flight"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% jumps.each do |jump| %>
+          <% status_state, status_label = logbook_status(jump) %>
+          <tr
+            class="logbook-row"
+            role="link"
+            tabindex="0"
+            aria-label="Open <%= flight_code(jump) %> replay workspace"
+            data-controller="row-link"
+            data-row-link-url-value="<%= jump_path(jump) %>"
+            data-action="click->row-link#open keydown->row-link#openWithKeyboard">
+            <td class="logbook-flight"><%= link_to flight_code(jump), jump %></td>
+            <td><span class="mode-badge is-gld">GLD</span></td>
+            <td class="logbook-muted logbook-mono"><%= logbook_date(jump) %></td>
+            <td class="logbook-mono"><%= duration(jump.duration_seconds) %></td>
+            <td class="logbook-mono"><%= logbook_max_altitude(jump) %></td>
+            <td class="logbook-mono"><%= glide(jump.avg_glide_ratio) %></td>
+            <td>
+              <span class="status-dot is-<%= status_state %>">
+                <span></span>
+                <%= status_label %>
+              </span>
+            </td>
+            <td class="logbook-open">
+              <%= link_to jump, aria: { label: "Open #{flight_code(jump)}" } do %>
+                <%= sillage_icon "chevron-right", size: 16 %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

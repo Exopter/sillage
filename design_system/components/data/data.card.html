@@ -1,0 +1,62 @@
+<!-- @dsCard group="Components" viewport="700x520" name="Data & instruments" subtitle="Card, MetricTile, ReadinessStrip, ChecklistRow" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body{margin:0;font-family:var(--font-ui);background:var(--surface-app);padding:24px;color:var(--text-body)}
+  .group{display:flex;flex-direction:column;gap:10px;margin-bottom:22px}
+  .gl{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)}
+  .row{display:flex;flex-wrap:wrap;gap:12px}
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+  <script src="../../_ds_bundle.js"></script>
+  <script type="text/babel" data-presets="react">
+    const { Card, MetricTile, ReadinessStrip, ChecklistRow } = window.ExopterDesignSystem_4c9fc9;
+    const I = (d) => <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{__html:d}} />;
+    const gauge = I('<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>');
+
+    function Demo(){
+      return (
+        <div>
+          <div className="group"><span className="gl">ReadinessStrip</span>
+            <ReadinessStrip mode="GLD" items={[
+              {label:'Pilot',value:'A. Renaud',state:'ready'},
+              {label:'Weather',value:'CAVOK · 6 kt',state:'ready'},
+              {label:'Battery',value:'74%',state:'caution'},
+              {label:'FDR',value:'Armed',state:'live'},
+              {label:'Parachute',value:'Pending',state:'pending'},
+            ]} />
+          </div>
+          <div className="group"><span className="gl">MetricTile</span>
+            <div className="row">
+              <MetricTile label="Airspeed" icon={gauge} value="214" unit="km/h" state="live" />
+              <MetricTile label="Altitude" value="1 480" unit="m" delta="120" trend="down" />
+              <MetricTile label="Glide" value="12.4" unit="L/D" delta="0.3" trend="up" state="ready" />
+              <MetricTile label="Battery" value="74" unit="%" state="caution" />
+              <MetricTile label="Pitot" value="—" unit="" state="fault" />
+            </div>
+          </div>
+          <div className="group"><span className="gl">Card + ChecklistRow</span>
+            <Card eyebrow="Flight prep" title="GLD readiness" flush>
+              <div style={{padding:'4px'}}>
+                <ChecklistRow state="done" title="Harness & hooks inspected" owner="PILOT" evidence="#" />
+                <ChecklistRow state="active" title="Parachute pack verified" owner="ENG-2" />
+                <ChecklistRow state="blocked" title="Airspeed cross-check" blocker="Pitot fault — replace probe" owner="ENG-1" />
+                <ChecklistRow state="pending" title="Weather window confirmed" owner="OPS" />
+              </div>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+  </script>
+</body>
+</html>
