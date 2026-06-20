@@ -56,6 +56,9 @@ export default class extends Controller {
     this.videoSyncLastRenderAt = 0
     this.syncingVideo = false
     this.colors = this.designColors()
+    const cesiumLoad = this.shouldLoadCesium()
+      ? this.loadCesium().catch((error) => error)
+      : null
 
     const chartModule = await import("https://cdn.jsdelivr.net/npm/chart.js@4.4.9/+esm")
 
@@ -65,7 +68,7 @@ export default class extends Controller {
     this.setupCharts()
     this.updatePlayButton()
     this.updateVideoExitLabel()
-    if (this.hasSceneTarget && this.points.length >= 2) this.setupScene()
+    if (this.hasSceneTarget && this.points.length >= 2) this.setupScene(cesiumLoad)
     this.updateScrubbedElapsed(this.defaultElapsed())
   }
 
@@ -409,9 +412,13 @@ export default class extends Controller {
     })
   }
 
-  async setupScene() {
+  shouldLoadCesium() {
+    return this.hasSceneTarget && this.points.length >= 2 && Boolean(this.cesiumTokenValue)
+  }
+
+  async setupScene(cesiumLoad = null) {
     if (this.cesiumTokenValue) {
-      await this.setupCesiumScene()
+      await this.setupCesiumScene(cesiumLoad)
       this.updateScrubbedElapsed(this.currentElapsed, { followCamera: false })
       return
     }
@@ -421,10 +428,15 @@ export default class extends Controller {
     this.updateScrubbedElapsed(this.currentElapsed, { followCamera: false })
   }
 
-  async setupCesiumScene() {
+  async setupCesiumScene(cesiumLoad = null) {
     try {
-      const Cesium = await this.loadCesium()
+      const cesiumStartedAt = performance.now()
+      const Cesium = await (cesiumLoad || this.loadCesium())
+      if (Cesium instanceof Error) throw Cesium
       Cesium.Ion.defaultAccessToken = this.cesiumTokenValue
+      this.configureCesiumRequestScheduler(Cesium)
+      this.startCesiumDiagnostics(Cesium, cesiumStartedAt)
+      this.recordCesiumDiagnostic("script_loaded")
 
       const viewer = new Cesium.Viewer(this.sceneTarget, {
         animation: false,
@@ -448,15 +460,22 @@ export default class extends Controller {
       viewer.scene.debugShowFramesPerSecond = false
       this.configureCesiumDaylight(Cesium, viewer)
       this.configureCesiumCameraController(viewer)
-
-      const tileset = await Cesium.createGooglePhotorealistic3DTileset()
-      tileset.enableCollision = true
-      viewer.scene.primitives.add(tileset)
-      this.cesiumVisualPoints = await this.pointsLiftedAboveCesiumSurface(Cesium, viewer, tileset)
+      this.cesiumVisualPoints = this.points.map((point) => ({ ...point, visualAlt: point.alt }))
       this.addCesiumTrajectory(Cesium, viewer)
       this.setupCesiumMouseControls(Cesium, viewer)
       this.flyCesiumCamera(Cesium, viewer)
       viewer.scene.requestRender()
+      this.recordCesiumDiagnostic("viewer_ready")
+
+      const tileset = await this.createCesiumPhotorealisticTileset(Cesium)
+      this.cesiumTileset = tileset
+      this.instrumentCesiumTileset(viewer, tileset)
+      viewer.scene.primitives.add(tileset)
+      viewer.scene.requestRender()
+      this.recordCesiumDiagnostic("tileset_added", this.cesiumTilesetSnapshot(tileset))
+      this.refineCesiumSurface(Cesium, viewer, tileset).catch((error) => {
+        console.warn(`Cesium surface refinement unavailable: ${error.message || error}`)
+      })
     } catch (error) {
       console.warn(`Cesium unavailable, using local 3D fallback: ${error.message || error}`)
       this.sceneTarget.replaceChildren()
@@ -580,6 +599,7 @@ export default class extends Controller {
       const script = document.createElement("script")
       script.src = "https://cdn.jsdelivr.net/npm/cesium@1.124.0/Build/Cesium/Cesium.js"
       script.async = true
+      script.crossOrigin = "anonymous"
       script.dataset.sillageCesium = "true"
       script.addEventListener("load", resolve, { once: true })
       script.addEventListener("error", reject, { once: true })
@@ -587,6 +607,144 @@ export default class extends Controller {
     })
 
     return window.Cesium
+  }
+
+  configureCesiumRequestScheduler(Cesium) {
+    const scheduler = Cesium.RequestScheduler
+    if (!scheduler?.requestsByServer) return
+
+    scheduler.requestsByServer["tile.googleapis.com:443"] = 18
+  }
+
+  startCesiumDiagnostics(Cesium, startedAt) {
+    this.cesiumDiagnostics = {
+      startedAt,
+      milestones: [],
+      loadProgress: [],
+      tileLoads: 0,
+      tileFailures: [],
+      requestScheduler: {
+        maximumRequests: Cesium.RequestScheduler?.maximumRequests,
+        maximumRequestsPerServer: Cesium.RequestScheduler?.maximumRequestsPerServer,
+        tileGoogleRequests: Cesium.RequestScheduler?.requestsByServer?.["tile.googleapis.com:443"]
+      },
+      tilesetOptions: this.cesiumTilesetOptions()
+    }
+    window.sillageCesiumDiagnostics = this.cesiumDiagnostics
+    this.publishCesiumDiagnostics()
+  }
+
+  recordCesiumDiagnostic(name, details = {}) {
+    if (!this.cesiumDiagnostics) return
+
+    this.cesiumDiagnostics.milestones.push({
+      name,
+      elapsedMs: Math.round(performance.now() - this.cesiumDiagnostics.startedAt),
+      ...details
+    })
+    this.publishCesiumDiagnostics()
+  }
+
+  publishCesiumDiagnostics() {
+    if (!this.cesiumDiagnostics || !this.hasSceneTarget) return
+
+    const progress = this.cesiumDiagnostics.loadProgress
+    this.sceneTarget.dataset.cesiumDiagnostics = JSON.stringify({
+      requestScheduler: this.cesiumDiagnostics.requestScheduler,
+      tilesetOptions: this.cesiumDiagnostics.tilesetOptions,
+      milestones: this.cesiumDiagnostics.milestones,
+      latestProgress: progress[progress.length - 1] || null,
+      progressSamples: progress.length,
+      tileLoads: this.cesiumDiagnostics.tileLoads,
+      tileFailures: this.cesiumDiagnostics.tileFailures.length,
+      lastFailure: this.cesiumDiagnostics.tileFailures[this.cesiumDiagnostics.tileFailures.length - 1] || null
+    })
+  }
+
+  createCesiumPhotorealisticTileset(Cesium) {
+    return Cesium.createGooglePhotorealistic3DTileset({
+      onlyUsingWithGoogleGeocoder: true
+    }, this.cesiumTilesetOptions())
+  }
+
+  cesiumTilesetOptions() {
+    return {
+      maximumScreenSpaceError: 48,
+      skipLevelOfDetail: true,
+      baseScreenSpaceError: 1024,
+      skipScreenSpaceErrorFactor: 16,
+      skipLevels: 1,
+      immediatelyLoadDesiredLevelOfDetail: false,
+      loadSiblings: false,
+      cullWithChildrenBounds: true,
+      dynamicScreenSpaceError: true,
+      dynamicScreenSpaceErrorDensity: 2.0e-4,
+      dynamicScreenSpaceErrorFactor: 24.0,
+      dynamicScreenSpaceErrorHeightFalloff: 0.25,
+      foveatedScreenSpaceError: true,
+      foveatedConeSize: 0.35,
+      foveatedTimeDelay: 0.4,
+      progressiveResolutionHeightFraction: 0.35,
+      preloadFlightDestinations: true,
+      showCreditsOnScreen: true,
+      enableCollision: false
+    }
+  }
+
+  instrumentCesiumTileset(viewer, tileset) {
+    if (!this.cesiumDiagnostics) return
+
+    tileset.initialTilesLoaded?.addEventListener(() => {
+      this.recordCesiumDiagnostic("initial_tiles_loaded", this.cesiumTilesetSnapshot(tileset))
+      this.refineCesiumTilesetQuality(viewer, tileset, 24)
+    })
+
+    tileset.allTilesLoaded?.addEventListener(() => {
+      this.recordCesiumDiagnostic("all_tiles_loaded", this.cesiumTilesetSnapshot(tileset))
+      window.setTimeout(() => this.refineCesiumTilesetQuality(viewer, tileset, 18), 750)
+    })
+
+    tileset.loadProgress?.addEventListener((numberOfPendingRequests, numberOfTilesProcessing) => {
+      this.cesiumDiagnostics.loadProgress.push({
+        elapsedMs: Math.round(performance.now() - this.cesiumDiagnostics.startedAt),
+        pendingRequests: numberOfPendingRequests,
+        tilesProcessing: numberOfTilesProcessing,
+        tileLoads: this.cesiumDiagnostics.tileLoads
+      })
+      if (this.cesiumDiagnostics.loadProgress.length > 120) this.cesiumDiagnostics.loadProgress.shift()
+      this.publishCesiumDiagnostics()
+    })
+
+    tileset.tileLoad?.addEventListener(() => {
+      this.cesiumDiagnostics.tileLoads += 1
+      if ((this.cesiumDiagnostics.tileLoads % 10) === 0) this.publishCesiumDiagnostics()
+    })
+
+    tileset.tileFailed?.addEventListener((error) => {
+      this.cesiumDiagnostics.tileFailures.push({
+        elapsedMs: Math.round(performance.now() - this.cesiumDiagnostics.startedAt),
+        url: error?.url,
+        message: error?.message
+      })
+      this.publishCesiumDiagnostics()
+    })
+  }
+
+  refineCesiumTilesetQuality(viewer, tileset, maximumScreenSpaceError) {
+    if (this.cesiumTileset !== tileset || viewer.isDestroyed()) return
+    if (tileset.maximumScreenSpaceError <= maximumScreenSpaceError) return
+
+    tileset.maximumScreenSpaceError = maximumScreenSpaceError
+    this.recordCesiumDiagnostic("quality_refined", this.cesiumTilesetSnapshot(tileset))
+    viewer.scene.requestRender()
+  }
+
+  cesiumTilesetSnapshot(tileset) {
+    return {
+      maximumScreenSpaceError: tileset.maximumScreenSpaceError,
+      totalMemoryMb: Math.round((tileset.totalMemoryUsageInBytes || 0) / 1024 / 1024),
+      tilesLoaded: tileset.tilesLoaded
+    }
   }
 
   addCesiumTrajectory(Cesium, viewer) {
@@ -676,6 +834,39 @@ export default class extends Controller {
     if (scene.skyAtmosphere) scene.skyAtmosphere.show = false
   }
 
+  async refineCesiumSurface(Cesium, viewer, tileset) {
+    const refinementId = Symbol("cesium-surface-refinement")
+    this.cesiumSurfaceRefinementId = refinementId
+
+    const visualPoints = await this.pointsLiftedAboveCesiumSurface(Cesium, viewer, tileset)
+    if (this.cesiumSurfaceRefinementId !== refinementId || this.cesiumViewer !== viewer || viewer.isDestroyed()) return
+
+    this.cesiumVisualPoints = visualPoints
+    this.refreshCesiumTrajectory(Cesium, viewer)
+    this.refreshCesiumOrbitTargets()
+    this.updateScrubbedElapsed(this.currentElapsed, { followCamera: false })
+    viewer.scene.requestRender()
+  }
+
+  refreshCesiumTrajectory(Cesium, viewer) {
+    viewer.entities.removeAll()
+    this.cesiumPath = null
+    this.cesiumMarker = null
+    this.addCesiumTrajectory(Cesium, viewer)
+  }
+
+  refreshCesiumOrbitTargets() {
+    if (this.cesiumOrbit?.targetPoint) {
+      const elapsed = this.number(this.cesiumOrbit.targetPoint.t) ?? this.currentElapsed
+      this.cesiumOrbit.targetPoint = this.samplePointAtElapsed(elapsed, this.cesiumPoints()) || this.cesiumOrbit.targetPoint
+    }
+
+    if (this.cesiumOrbitHome?.targetPoint) {
+      const elapsed = this.number(this.cesiumOrbitHome.targetPoint.t) ?? this.currentElapsed
+      this.cesiumOrbitHome.targetPoint = this.samplePointAtElapsed(elapsed, this.cesiumPoints()) || this.cesiumOrbitHome.targetPoint
+    }
+  }
+
   async pointsLiftedAboveCesiumSurface(Cesium, viewer, tileset) {
     const fallback = this.points.map((point) => ({ ...point, visualAlt: point.alt }))
 
@@ -686,15 +877,23 @@ export default class extends Controller {
     try {
       if (tileset.readyPromise) await tileset.readyPromise
 
-      const cartographics = this.points.map((point) =>
+      const samplePairs = this.cesiumSurfaceSamplePairs()
+      const cartographics = samplePairs.map(({ point }) =>
         Cesium.Cartographic.fromDegrees(point.lon, point.lat, point.alt)
       )
       const sampled = await viewer.scene.sampleHeightMostDetailed(cartographics, [], 2.0)
-      const sampledHeights = sampled.map((position) => this.number(position?.height))
-      const datumOffset = this.cesiumDatumOffsetFromSurface(sampledHeights)
+      const sampledHeightsByIndex = new Map()
+      sampled.forEach((position, sampleIndex) => {
+        sampledHeightsByIndex.set(samplePairs[sampleIndex].index, this.number(position?.height))
+      })
+      const sampledIndexes = Array.from(sampledHeightsByIndex.keys())
+        .filter((index) => Number.isFinite(sampledHeightsByIndex.get(index)))
+        .sort((a, b) => a - b)
+      const datumOffset = this.cesiumDatumOffsetFromSurface(sampledHeightsByIndex)
 
       return this.points.map((point, index) => {
-        const sampledHeight = sampledHeights[index]
+        const sampledHeight = sampledHeightsByIndex.get(index) ??
+          this.interpolateCesiumSampledHeight(index, sampledHeightsByIndex, sampledIndexes)
         const datumAltitude = point.alt + datumOffset
         const visualAlt = Number.isFinite(sampledHeight)
           ? Math.max(datumAltitude, sampledHeight + this.cesiumSurfaceClearance(index))
@@ -708,9 +907,67 @@ export default class extends Controller {
     }
   }
 
-  cesiumDatumOffsetFromSurface(sampledHeights) {
+  interpolateCesiumSampledHeight(index, sampledHeightsByIndex, sampledIndexes) {
+    if (!sampledIndexes.length) return null
+
+    let previousIndex = null
+    let nextIndex = null
+
+    for (const sampledIndex of sampledIndexes) {
+      if (sampledIndex <= index) previousIndex = sampledIndex
+      if (sampledIndex >= index) {
+        nextIndex = sampledIndex
+        break
+      }
+    }
+
+    previousIndex ??= sampledIndexes[0]
+    nextIndex ??= sampledIndexes[sampledIndexes.length - 1]
+
+    const previousHeight = sampledHeightsByIndex.get(previousIndex)
+    const nextHeight = sampledHeightsByIndex.get(nextIndex)
+    if (!Number.isFinite(previousHeight)) return nextHeight
+    if (!Number.isFinite(nextHeight)) return previousHeight
+    if (previousIndex === nextIndex) return previousHeight
+
+    return this.lerp(previousHeight, nextHeight, (index - previousIndex) / (nextIndex - previousIndex))
+  }
+
+  cesiumSurfaceSamplePairs(limit = 180) {
+    const requiredIndexes = new Set([
+      0,
+      this.points.length - 1,
+      this.indexAtElapsed(this.boundsValue.exit),
+      this.indexAtElapsed(this.boundsValue.opening),
+      this.indexAtElapsed(this.boundsValue.landing)
+    ].filter((index) => Number.isInteger(index) && index >= 0 && index < this.points.length))
+
+    const step = Math.max(Math.ceil(this.points.length / limit), 1)
+    this.points.forEach((_point, index) => {
+      if ((index % step) === 0) requiredIndexes.add(index)
+    })
+
+    return Array.from(requiredIndexes).sort((a, b) => a - b).map((index) => ({
+      index,
+      point: this.points[index]
+    }))
+  }
+
+  indexAtElapsed(elapsed) {
+    if (!Number.isFinite(Number(elapsed))) return null
+
+    return this.points.reduce((closestIndex, point, index) => {
+      if (closestIndex === null) return index
+
+      const closestDistance = Math.abs(this.number(this.points[closestIndex]?.t) - Number(elapsed))
+      const pointDistance = Math.abs(this.number(point.t) - Number(elapsed))
+      return pointDistance < closestDistance ? index : closestIndex
+    }, null)
+  }
+
+  cesiumDatumOffsetFromSurface(sampledHeightsByIndex) {
     const landingIndex = this.points.length - 1
-    const landingGroundHeight = sampledHeights[landingIndex]
+    const landingGroundHeight = sampledHeightsByIndex.get(landingIndex)
     if (!Number.isFinite(landingGroundHeight)) return 0
 
     const landingAltitude = this.number(this.points[landingIndex]?.alt)
@@ -801,9 +1058,8 @@ export default class extends Controller {
     const visualPoints = this.cesiumPoints()
     const start = visualPoints[0]
     const end = visualPoints[visualPoints.length - 1]
-    const routeDistance = this.routeDistanceMeters()
     const heading = this.flightHeadingRadians(start, end) + Math.PI
-    const range = this.clamp(routeDistance * 0.7, 420, 5_600)
+    const range = this.cesiumOverviewRange(visualPoints)
     const focus = this.pointAtElapsed(this.boundsValue.exit, visualPoints) || start
 
     this.cesiumOrbitHome = {
@@ -816,6 +1072,16 @@ export default class extends Controller {
     }
     this.cesiumOrbit = { ...this.cesiumOrbitHome }
     this.applyCesiumOrbit(Cesium, viewer)
+  }
+
+  cesiumOverviewRange(points) {
+    const altitudes = points
+      .map((point) => this.cesiumAltitude(point))
+      .filter((altitude) => Number.isFinite(altitude))
+    const altitudeSpan = altitudes.length ? Math.max(...altitudes) - Math.min(...altitudes) : 0
+    const routeDistance = this.routeDistanceMeters()
+
+    return this.clamp(Math.max(routeDistance * 1.45, altitudeSpan * 3.2), 900, 14_000)
   }
 
   applyCesiumOrbit(Cesium, viewer) {
