@@ -38,6 +38,35 @@ module Jumps
       assert_equal started_at, bounds[:exit_at]
     end
 
+    test "chooses the lowest opening-like slowdown after earlier flares" do
+      started_at = Time.zone.parse("2026-07-07 12:00:00 UTC")
+      points = [
+        point(started_at, 0.0, 3_200.0, 25.0, 0.0),
+        point(started_at, 5.0, 3_080.0, 28.0, 26.0),
+        point(started_at, 10.0, 2_930.0, 31.0, 31.0),
+        point(started_at, 15.0, 2_780.0, 34.0, 30.0),
+        point(started_at, 20.0, 2_640.0, 36.0, 28.0),
+        point(started_at, 21.0, 2_630.0, 32.0, 8.0),
+        point(started_at, 22.0, 2_622.0, 30.0, 7.0),
+        point(started_at, 23.0, 2_615.0, 29.0, 6.0),
+        point(started_at, 24.0, 2_609.0, 28.0, 6.0),
+        point(started_at, 30.0, 2_430.0, 37.0, 31.0),
+        point(started_at, 36.0, 2_240.0, 39.0, 32.0),
+        point(started_at, 42.0, 2_050.0, 39.0, 31.0),
+        point(started_at, 50.0, 1_790.0, 35.0, 29.0),
+        point(started_at, 51.0, 1_780.0, 18.0, 8.0),
+        point(started_at, 52.0, 1_773.0, 15.0, 6.5),
+        point(started_at, 53.0, 1_767.0, 14.0, 5.8),
+        point(started_at, 54.0, 1_762.0, 14.0, 5.3),
+        point(started_at, 70.0, 1_680.0, 12.0, 5.0),
+        point(started_at, 95.0, 1_560.0, 10.0, 4.8)
+      ]
+
+      bounds = DetectBounds.new(points).call
+
+      assert_equal started_at + 51.0, bounds[:opening_at]
+    end
+
     private
 
     def point(started_at, elapsed_seconds, altitude_m, horizontal_speed_mps, vertical_speed_mps)

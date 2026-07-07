@@ -52,6 +52,8 @@ en:
       empty: "No file selected"
       submit: "Import"
       uploading: "Uploading"
+      upload_failed: "Upload failed."
+      progress: "Upload progress"
     new:
       eyebrow: "FlySight"
       title: "Import a flight trace"
@@ -92,6 +94,9 @@ en:
       upload: "Add video"
       replace: "Replace video"
       process: "Optimize"
+      uploading: "Uploading"
+      upload_failed: "Upload failed."
+      upload_progress: "Video upload progress"
       no_file: "No file selected"
       empty: "No video linked to this jump."
       processing: "Web optimization is running. The video will be available as a 1080p MP4."

@@ -226,7 +226,7 @@
           <p><%= t("jumps.video.hint") %></p>
         </div>
 
-        <%= form_with model: @jump, html: { multipart: true, class: "video-upload-form", data: { controller: "upload" } } do |form| %>
+        <%= form_with model: @jump, html: { multipart: true, class: "video-upload-form", data: { controller: "upload", turbo: false, action: "submit->upload#start", upload_failed_label_value: t("jumps.video.upload_failed"), upload_processing_label_value: t("jumps.video.uploading") } } do |form| %>
           <label class="secondary-button video-upload-button">
             <%= sillage_icon "upload", size: 18 %>
             <span><%= t(@jump.video.attached? ? "jumps.video.replace" : "jumps.video.upload") %></span>
@@ -237,6 +237,12 @@
             <%= sillage_icon "settings", size: 18 %>
             <span><%= t("jumps.video.process") %></span>
           <% end %>
+          <div class="upload-progress" data-upload-target="progress" hidden>
+            <div class="upload-progress-track" role="progressbar" aria-label="<%= t("jumps.video.upload_progress") %>" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-upload-target="meter">
+              <span class="upload-progress-bar" data-upload-target="bar"></span>
+            </div>
+            <span class="upload-progress-percent" data-upload-target="percent">0%</span>
+          </div>
         <% end %>
       </div>
 

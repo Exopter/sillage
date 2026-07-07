@@ -69,6 +69,37 @@ module Jumps
       assert_operator analysis.bounds[:landing_at], :>, started_at
     end
 
+    test "uses the lowest sensor opening-like slowdown after an earlier flare" do
+      started_at = Time.zone.parse("2026-07-07 12:00:00 UTC")
+      sensor_samples = baro_profile(started_at, [
+        [ 0.0, 3_200.0 ],
+        [ 5.0, 3_080.0 ],
+        [ 10.0, 2_930.0 ],
+        [ 15.0, 2_780.0 ],
+        [ 20.0, 2_640.0 ],
+        [ 21.0, 2_632.0 ],
+        [ 25.0, 2_608.0 ],
+        [ 30.0, 2_578.0 ],
+        [ 35.0, 2_548.0 ],
+        [ 41.0, 2_512.0 ],
+        [ 45.0, 2_390.0 ],
+        [ 50.0, 2_240.0 ],
+        [ 55.0, 2_090.0 ],
+        [ 60.0, 1_940.0 ],
+        [ 65.0, 1_790.0 ],
+        [ 66.0, 1_782.0 ],
+        [ 70.0, 1_758.0 ],
+        [ 75.0, 1_728.0 ],
+        [ 80.0, 1_698.0 ],
+        [ 86.0, 1_662.0 ],
+        [ 100.0, 1_580.0 ]
+      ])
+
+      analysis = FlightAnalysis.new(track_points: [], sensor_samples:, origin_time: started_at).call
+
+      assert_equal started_at + 70.0, analysis.bounds[:opening_at]
+    end
+
     test "smooths isolated pressure spikes before deriving vertical speed" do
       started_at = Time.zone.parse("2026-07-01 15:18:00 UTC")
       points = [

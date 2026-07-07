@@ -923,20 +923,66 @@ export default class extends Controller {
         .sort((a, b) => a - b)
       const datumOffset = this.cesiumDatumOffsetFromSurface(sampledHeightsByIndex)
 
-      return this.points.map((point, index) => {
+      const liftedPoints = this.points.map((point, index) => {
         const sampledHeight = sampledHeightsByIndex.get(index) ??
           this.interpolateCesiumSampledHeight(index, sampledHeightsByIndex, sampledIndexes)
         const datumAltitude = point.alt + datumOffset
-        const visualAlt = Number.isFinite(sampledHeight)
+        const visualAlt = this.shouldClampCesiumPointToSurface(index, point, sampledHeight)
           ? Math.max(datumAltitude, sampledHeight + this.cesiumSurfaceClearance(index))
           : datumAltitude
 
         return { ...point, groundAlt: sampledHeight, visualAlt, datumOffset }
       })
+
+      return this.preserveCesiumDescentProfile(liftedPoints)
     } catch (error) {
       console.warn(`Cesium surface sampling unavailable: ${error.message || error}`)
       return fallback
     }
+  }
+
+  shouldClampCesiumPointToSurface(index, point, sampledHeight) {
+    if (!Number.isFinite(sampledHeight)) return false
+    if (index === 0 || index === this.points.length - 1) return true
+
+    const elapsed = this.number(point?.t)
+    const landing = this.number(this.boundsValue.landing)
+    if (Number.isFinite(elapsed) && Number.isFinite(landing) && Math.abs(elapsed - landing) < 2) return true
+
+    const height = this.heightFromGround(point)
+    return Number.isFinite(height) && height <= 60
+  }
+
+  preserveCesiumDescentProfile(points) {
+    return points.reduce((ordered, point, index) => {
+      const previous = ordered[index - 1]
+      if (!previous) {
+        ordered.push(point)
+        return ordered
+      }
+
+      const altitude = this.number(point.alt)
+      const previousAltitude = this.number(points[index - 1]?.alt)
+      const visualAltitude = this.number(point.visualAlt)
+      const previousVisualAltitude = this.number(previous.visualAlt)
+
+      if (
+        Number.isFinite(altitude) &&
+        Number.isFinite(previousAltitude) &&
+        Number.isFinite(visualAltitude) &&
+        Number.isFinite(previousVisualAltitude) &&
+        altitude < previousAltitude &&
+        visualAltitude > previousVisualAltitude
+      ) {
+        const altitudeLoss = previousAltitude - altitude
+        const cappedVisualAltitude = previousVisualAltitude - Math.min(altitudeLoss, 0.5)
+        ordered.push({ ...point, visualAlt: Math.max(cappedVisualAltitude, altitude + (this.number(point.datumOffset) || 0)) })
+        return ordered
+      }
+
+      ordered.push(point)
+      return ordered
+    }, [])
   }
 
   interpolateCesiumSampledHeight(index, sampledHeightsByIndex, sampledIndexes) {

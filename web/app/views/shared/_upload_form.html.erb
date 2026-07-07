@@ -1,4 +1,4 @@
-<%= form_with url: flight_imports_path, scope: :flight_import, html: { multipart: true, class: "upload-form", data: { controller: "upload", action: "submit->upload#start", upload_processing_label_value: t("imports.form.uploading") } } do |form| %>
+<%= form_with url: flight_imports_path, scope: :flight_import, html: { multipart: true, class: "upload-form", data: { controller: "upload", turbo: false, action: "submit->upload#start", upload_failed_label_value: t("imports.form.upload_failed"), upload_processing_label_value: t("imports.form.uploading") } } do |form| %>
   <label class="upload-drop">
     <span class="upload-title"><%= t("imports.form.title") %></span>
     <span class="upload-hint"><%= t("imports.form.hint") %></span>
@@ -14,5 +14,12 @@
       <%= sillage_icon "upload", size: 18 %>
       <span><%= t("imports.form.submit") %></span>
     <% end %>
+  </div>
+
+  <div class="upload-progress" data-upload-target="progress" hidden>
+    <div class="upload-progress-track" role="progressbar" aria-label="<%= t("imports.form.progress") %>" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-upload-target="meter">
+      <span class="upload-progress-bar" data-upload-target="bar"></span>
+    </div>
+    <span class="upload-progress-percent" data-upload-target="percent">0%</span>
   </div>
 <% end %>

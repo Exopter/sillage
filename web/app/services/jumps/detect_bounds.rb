@@ -7,6 +7,9 @@ module Jumps
     FREEFALL_MIN_ALTITUDE_LOSS_M = 20.0
     FREEFALL_MIN_AVG_DESCENT_MPS = 6.0
     AIRCRAFT_CLIMB_GAIN_M = 50.0
+    OPENING_FAST_DESCENT_MPS = 25.0
+    OPENING_SLOW_DESCENT_MPS = 10.0
+    OPENING_SLOW_POINTS = 4
 
     def initialize(points)
       @points = points.sort_by { |point| point[:elapsed_seconds] || 0 }
@@ -92,16 +95,26 @@ module Jumps
 
     def detect_opening(exit_point)
       after_exit = @points.drop_while { |point| point[:elapsed_seconds].to_f <= exit_point[:elapsed_seconds].to_f + 8.0 }
-      after_peak = false
+      candidates = []
+      candidate_active = false
 
-      after_exit.each_cons(4) do |window|
-        after_peak ||= window.any? { |point| point[:vertical_speed_mps].to_f >= 25.0 }
-        next unless after_peak
+      after_exit.each_with_index do |point, index|
+        slow_window = after_exit[index, OPENING_SLOW_POINTS].to_a
+        candidate = slow_window.size == OPENING_SLOW_POINTS &&
+          recent_fast_descent?(after_exit, index) &&
+          slow_window.all? { |window_point| vertical_speed_mps(window_point).to_f < OPENING_SLOW_DESCENT_MPS }
 
-        return window.first if window.all? { |point| point[:vertical_speed_mps].to_f < 10.0 }
+        candidates << point if candidate && !candidate_active
+        candidate_active = candidate
       end
 
-      nil
+      candidates.last
+    end
+
+    def recent_fast_descent?(points, index)
+      lookbehind = points[[ index - OPENING_SLOW_POINTS, 0 ].max...index].to_a
+
+      lookbehind.any? { |point| vertical_speed_mps(point).to_f >= OPENING_FAST_DESCENT_MPS }
     end
 
     def fallback_opening(exit_point)

@@ -42,7 +42,9 @@ module Jumps
     EXIT_MIN_ALTITUDE_LOSS_M = 45.0
     EXIT_MIN_AVG_DESCENT_MPS = 7.0
     OPENING_LOOKAHEAD_SECONDS = 20.0
+    OPENING_FAST_LOOKBEHIND_SECONDS = 12.0
     OPENING_MAX_AVG_DESCENT_MPS = 8.0
+    OPENING_FAST_DESCENT_MPS = 18.0
     LANDING_MAX_MOTION_MPS = 1.0
     PRESSURE_SPEED_WINDOW_SECONDS = 4.0
     PRESSURE_SPEED_MAX_MPS = 140.0
@@ -160,26 +162,48 @@ module Jumps
       after_exit = @pressure_points.drop_while do |point|
         point[:elapsed_seconds].to_f <= exit_point[:elapsed_seconds].to_f + 8.0
       end
-      seen_fast_descent = false
+      candidates = []
+      candidate_active = false
 
       after_exit.each_with_index do |point, offset|
-        seen_fast_descent ||= point[:vertical_speed_mps].to_f >= 18.0
-        next unless seen_fast_descent
-        next unless point[:altitude_m].to_f >= MIN_AIRCRAFT_OPENING_ALTITUDE_M
-
         index = @pressure_points.length - after_exit.length + offset
-        window = time_window(index, OPENING_LOOKAHEAD_SECONDS)
-        next if window.size < 2
+        candidate = point[:altitude_m].to_f >= MIN_AIRCRAFT_OPENING_ALTITUDE_M &&
+          recent_sensor_fast_descent?(index) &&
+          sensor_point_slowed?(point) &&
+          sensor_opening_slowdown?(index)
 
-        duration = window.last[:elapsed_seconds] - window.first[:elapsed_seconds]
-        next unless duration&.positive?
-
-        altitude_loss = window.first[:altitude_m].to_f - window.last[:altitude_m].to_f
-        avg_descent = altitude_loss / duration
-        return point if avg_descent <= OPENING_MAX_AVG_DESCENT_MPS
+        candidates << point if candidate && !candidate_active
+        candidate_active = candidate
       end
 
-      nil
+      candidates.last
+    end
+
+    def sensor_point_slowed?(point)
+      speed = point[:vertical_speed_mps]
+      return true if speed.nil?
+
+      speed.to_f <= OPENING_MAX_AVG_DESCENT_MPS
+    end
+
+    def recent_sensor_fast_descent?(index)
+      point = @pressure_points[index]
+      return false unless point
+
+      @pressure_points[0...index].to_a.reverse_each.take_while do |previous|
+        previous[:elapsed_seconds].to_f >= point[:elapsed_seconds].to_f - OPENING_FAST_LOOKBEHIND_SECONDS
+      end.any? { |previous| previous[:vertical_speed_mps].to_f >= OPENING_FAST_DESCENT_MPS }
+    end
+
+    def sensor_opening_slowdown?(index)
+      window = time_window(index, OPENING_LOOKAHEAD_SECONDS)
+      return false if window.size < 2
+
+      duration = window.last[:elapsed_seconds] - window.first[:elapsed_seconds]
+      return false unless duration&.positive?
+
+      altitude_loss = window.first[:altitude_m].to_f - window.last[:altitude_m].to_f
+      (altitude_loss / duration) <= OPENING_MAX_AVG_DESCENT_MPS
     end
 
     def fallback_opening(exit_point)

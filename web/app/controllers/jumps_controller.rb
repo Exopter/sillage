@@ -33,15 +33,15 @@ class JumpsController < ApplicationController
     video_upload = attributes.delete(:video_upload)
 
     if video_upload.present? && !video_upload?(video_upload)
-      redirect_to @jump, alert: t(".video_invalid")
+      respond_to_upload_failure(t(".video_invalid"))
       return
     end
 
     if @jump.update(attributes)
       enqueue_video_processing(video_upload) if video_upload.present?
-      redirect_to @jump, notice: t(".success")
+      respond_to_upload_success(jump_path(@jump), t(".success"))
     else
-      redirect_to @jump, alert: @jump.errors.full_messages.to_sentence
+      respond_to_upload_failure(@jump.errors.full_messages.to_sentence)
     end
   end
 
@@ -90,6 +90,23 @@ class JumpsController < ApplicationController
       video_duration_seconds: nil
     )
     JumpVideoProcessingJob.perform_later(@jump)
+  end
+
+  def respond_to_upload_success(redirect_url, notice)
+    if request.format.json?
+      flash[:notice] = notice
+      render json: { redirect_url: redirect_url }, status: :ok
+    else
+      redirect_to(redirect_url, notice: notice)
+    end
+  end
+
+  def respond_to_upload_failure(message)
+    if request.format.json?
+      render json: { error: message }, status: :unprocessable_entity
+    else
+      redirect_to(@jump, alert: message)
+    end
   end
 
   def downsample(records, limit:)

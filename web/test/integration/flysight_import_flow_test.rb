@@ -57,6 +57,28 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     clear_performed_jobs
   end
 
+  test "imports FlySight files with JSON upload response" do
+    assert_enqueued_jobs 1, only: FlySightImportJob do
+      post flight_imports_path,
+        params: {
+          flight_import: {
+            source_files: [
+              fixture_file_upload("flysight_v2/TRACK.CSV", "text/csv"),
+              fixture_file_upload("flysight_v2/SENSOR.CSV", "text/csv")
+            ]
+          }
+        },
+        headers: { "ACCEPT" => "application/json" }
+    end
+
+    flight_import = FlightImport.order(:created_at).last
+    assert_response :created
+    assert_equal flight_import_path(flight_import), JSON.parse(response.body).fetch("redirect_url")
+    assert_equal "pending", flight_import.status
+  ensure
+    clear_enqueued_jobs
+  end
+
   test "dashboard renders the Sillage logbook" do
     jump = Jump.recent.first
 
@@ -147,6 +169,26 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to jump_path(jump)
     assert_in_delta 12.345, jump.reload.video_exit_offset_seconds
+  ensure
+    clear_enqueued_jobs
+  end
+
+  test "uploads a video with JSON upload response" do
+    jump = jumps(:one)
+
+    assert_enqueued_jobs 1, only: JumpVideoProcessingJob do
+      patch jump_path(jump),
+        params: {
+          jump: {
+            video_upload: fixture_file_upload("sample.mp4", "video/mp4")
+          }
+        },
+        headers: { "ACCEPT" => "application/json" }
+    end
+
+    assert_response :success
+    assert_equal jump_path(jump), JSON.parse(response.body).fetch("redirect_url")
+    assert_equal "processing", jump.reload.video_processing_status
   ensure
     clear_enqueued_jobs
   end

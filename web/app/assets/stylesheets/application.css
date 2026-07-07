@@ -1148,6 +1148,41 @@ textarea {
   gap: 14px;
 }
 
+.upload-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 10px;
+  min-height: 18px;
+}
+
+.upload-progress[hidden] {
+  display: none;
+}
+
+.upload-progress-track {
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(16, 24, 26, 0.1);
+}
+
+.upload-progress-bar {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ds-aqua);
+  transition: width 120ms ease;
+}
+
+.upload-progress-percent {
+  color: var(--ds-muted);
+  font-family: var(--ex-font-mono);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
 .primary-button,
 .secondary-button,
 .danger-button {
@@ -2135,6 +2170,11 @@ textarea {
 .video-upload-form {
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.video-upload-form .upload-progress {
+  flex: 1 1 100%;
+  min-width: min(280px, 100%);
 }
 
 .video-upload-button {
