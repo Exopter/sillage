@@ -1,4 +1,4 @@
-<%= form_with url: flight_imports_path, scope: :flight_import, html: { multipart: true, class: "upload-form", data: { controller: "upload" } } do |form| %>
+<%= form_with url: flight_imports_path, scope: :flight_import, html: { multipart: true, class: "upload-form", data: { controller: "upload", action: "submit->upload#start", upload_processing_label_value: t("imports.form.uploading") } } do |form| %>
   <label class="upload-drop">
     <span class="upload-title"><%= t("imports.form.title") %></span>
     <span class="upload-hint"><%= t("imports.form.hint") %></span>

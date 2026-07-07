@@ -1,6 +1,16 @@
 require "test_helper"
 
 class LandingControllerTest < ActionDispatch::IntegrationTest
+  setup do
+    @auth_username = ENV["SILLAGE_LANDING_BASIC_AUTH_USERNAME"]
+    @auth_password = ENV["SILLAGE_LANDING_BASIC_AUTH_PASSWORD"]
+  end
+
+  teardown do
+    restore_env("SILLAGE_LANDING_BASIC_AUTH_USERNAME", @auth_username)
+    restore_env("SILLAGE_LANDING_BASIC_AUTH_PASSWORD", @auth_password)
+  end
+
   test "shows the landing page on the local landing host" do
     host! "landing.localhost:3000"
 
@@ -14,7 +24,7 @@ class LandingControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "shows the landing page on the production apex host" do
-    host! "sillage.wild.eu"
+    host! "exopter.com"
 
     get root_path
 
@@ -23,13 +33,41 @@ class LandingControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#airframe']", "Airframe"
   end
 
-  test "keeps the OS app root on the OS host" do
-    host! "os.sillage.wild.eu"
+  test "requires basic auth when landing credentials are configured" do
+    ENV["SILLAGE_LANDING_BASIC_AUTH_USERNAME"] = "exopter"
+    ENV["SILLAGE_LANDING_BASIC_AUTH_PASSWORD"] = "correct-password"
+    host! "exopter.com"
 
     get root_path
 
+    assert_response :unauthorized
+
+    get root_path, headers: {
+      "HTTP_AUTHORIZATION" => ActionController::HttpAuthentication::Basic.encode_credentials(
+        "exopter",
+        "correct-password"
+      )
+    }
+
     assert_response :success
-    assert_select "body.landing-page", count: 0
-    assert_select "title", "Logbook"
+    assert_select "body.landing-page"
+  end
+
+  test "keeps the OS app root on the OS host" do
+    host! "os.exopter.com"
+
+    get root_path
+
+    assert_redirected_to new_session_path
+  end
+
+  private
+
+  def restore_env(key, value)
+    if value.nil?
+      ENV.delete(key)
+    else
+      ENV[key] = value
+    end
   end
 end

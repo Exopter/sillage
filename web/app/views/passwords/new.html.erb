@@ -1,0 +1,17 @@
+<% content_for :title, "Reset password" %>
+
+<div class="authentication-header">
+  <span>Sillage OS</span>
+  <h1>Reset password</h1>
+</div>
+
+<%= form_with url: passwords_path, class: "authentication-form" do |form| %>
+  <label>
+    <span>Email</span>
+    <%= form.email_field :email_address, autocomplete: "username", required: true, autofocus: true %>
+  </label>
+
+  <%= form.submit "Send reset link", class: "button-primary" %>
+<% end %>
+
+<%= link_to "Back to sign in", new_session_path, class: "authentication-link" %>

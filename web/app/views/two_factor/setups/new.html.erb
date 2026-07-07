@@ -1,0 +1,20 @@
+<% content_for :title, "Set up two-factor authentication" %>
+
+<div class="authentication-header">
+  <span>Admin security</span>
+  <h1>Set up two-factor authentication</h1>
+  <p>Scan the QR code with an authenticator app, then enter the current six-digit code.</p>
+</div>
+
+<div class="totp-qr" aria-label="Authenticator QR code">
+  <%= raw @qr_svg %>
+</div>
+
+<%= form_with url: two_factor_setup_path, class: "authentication-form" do |form| %>
+  <label>
+    <span>Authentication code</span>
+    <%= form.text_field :otp_code, inputmode: "numeric", autocomplete: "one-time-code", required: true, autofocus: true %>
+  </label>
+
+  <%= form.submit "Enable 2FA", class: "button-primary" %>
+<% end %>

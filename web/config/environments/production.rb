@@ -24,6 +24,28 @@ Rails.application.configure do
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
 
+  os_host = ENV.fetch("SILLAGE_OS_HOSTS", "os.exopter.com")
+    .split(",")
+    .map(&:strip)
+    .reject(&:empty?)
+    .first || "os.exopter.com"
+  email_enabled = ActiveModel::Type::Boolean.new.cast(ENV.fetch("EMAIL_ENABLED", "false"))
+  mail_from = ENV.fetch("MAIL_FROM", "noreply@exopter.com")
+  mail_from_name = ENV["MAIL_FROM_NAME"].presence
+  mail_from_header = mail_from_name ? "#{mail_from_name} <#{mail_from}>" : mail_from
+
+  config.action_mailer.default_url_options = { host: os_host, protocol: "https" }
+  config.action_mailer.default_options = {
+    from: mail_from_header,
+    reply_to: ENV["MAIL_REPLY_TO"].presence
+  }.compact
+  config.action_mailer.perform_deliveries = email_enabled
+
+  if email_enabled
+    config.action_mailer.delivery_method = :postmark
+    config.action_mailer.postmark_settings = { api_token: ENV.fetch("POSTMARK_SERVER_TOKEN") }
+  end
+
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
   config.assume_ssl = true
 
@@ -65,8 +87,8 @@ Rails.application.configure do
 
   # Enable DNS rebinding protection and other `Host` header attacks.
   configured_hosts = [
-    ENV.fetch("SILLAGE_LANDING_HOSTS", "sillage.wild.eu"),
-    ENV.fetch("SILLAGE_OS_HOSTS", "os.sillage.wild.eu")
+    ENV.fetch("SILLAGE_LANDING_HOSTS", "exopter.com"),
+    ENV.fetch("SILLAGE_OS_HOSTS", "os.exopter.com")
   ].flat_map { |hosts| hosts.split(",").map { |host| host.strip } }.reject(&:empty?).uniq
   config.hosts = configured_hosts
   #

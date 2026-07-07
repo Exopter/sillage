@@ -83,6 +83,8 @@ DEMO_FLIGHTS = [
   }
 ].freeze
 
+DEFAULT_USER = User.default_admin
+
 def track_points_from_rows(rows, start_time, satellite_count:)
   rows.each_with_index.map do |(elapsed, lat, lon, altitude), index|
     previous = rows[[ index - 1, 0 ].max]
@@ -154,6 +156,7 @@ def seed_synthetic_flight(config)
   start_time = config.fetch(:start_time)
   flight_import = FlightImport.find_or_initialize_by(session_id: config.fetch(:session_id))
   flight_import.assign_attributes(
+    user: DEFAULT_USER,
     source_filename: config.fetch(:source_filename),
     status: "imported",
     device_id: "Sillage demo",

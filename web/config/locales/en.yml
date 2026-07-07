@@ -51,6 +51,7 @@ en:
       hint: "ZIP session folder, or TRACK.CSV and SENSOR.CSV together."
       empty: "No file selected"
       submit: "Import"
+      uploading: "Uploading"
     new:
       eyebrow: "FlySight"
       title: "Import a flight trace"
@@ -62,10 +63,10 @@ en:
       session: "Session"
       started_at: "Started at"
       jumps: "Created jumps"
+      processing: "FlySight data is being decoded. Replay will appear when processing completes."
+      open_replay: "Open replay"
     create:
-      success:
-        one: "1 jump imported."
-        other: "%{count} jumps imported."
+      queued: "Upload received. FlySight processing has started."
     status:
       pending: "Pending"
       processing: "Processing"

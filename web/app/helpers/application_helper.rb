@@ -61,7 +61,7 @@ module ApplicationHelper
 
   def sillage_current_room
     return action_name if controller_name == "dashboard" && %w[atlas hangar signal forge core].include?(action_name)
-    return "core" if controller_path.start_with?("devreference/")
+    return "core" if controller_path.start_with?("core/") || controller_path.start_with?("devreference/")
 
     "flight"
   end
@@ -86,6 +86,8 @@ module ApplicationHelper
   def sillage_current_tab_label
     if sillage_current_room == "flight"
       sillage_flight_tabs.find { |tab| tab[:id] == sillage_current_flight_tab }&.fetch(:label) || sillage_shell_title
+    elsif controller_path.start_with?("core/")
+      "Users"
     elsif controller_path == "devreference/design_system"
       "Design system"
     else
@@ -137,5 +139,13 @@ module ApplicationHelper
     classes = [ "app-shell" ]
     classes << "is-full-bleed" if sillage_current_flight_tab == "replay"
     classes.join(" ")
+  end
+
+  def sillage_user_initials(user)
+    return "--" unless user
+
+    parts = user.email_address.to_s.split("@").first.to_s.split(/[._-]/).reject(&:blank?)
+    initials = parts.first(2).map { |part| part[0] }.join
+    initials.presence&.upcase || user.email_address.to_s.first(2).upcase
   end
 end

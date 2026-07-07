@@ -3,20 +3,36 @@ require "test_helper"
 class FlysightImportFlowTest < ActionDispatch::IntegrationTest
   include ActiveJob::TestHelper
 
-  test "imports FlySight V2 files and renders the jump detail" do
-    post flight_imports_path, params: {
-      flight_import: {
-        source_files: [
-          fixture_file_upload("flysight_v2/TRACK.CSV", "text/csv"),
-          fixture_file_upload("flysight_v2/SENSOR.CSV", "text/csv")
-        ]
-      }
-    }
+  setup { sign_in_as users(:julien) }
 
-    jump = FlightImport.order(:created_at).last.jumps.first
-    assert_redirected_to jump_path(jump)
+  test "imports FlySight V2 files and renders the jump detail" do
+    assert_enqueued_jobs 1, only: FlySightImportJob do
+      post flight_imports_path, params: {
+        flight_import: {
+          source_files: [
+            fixture_file_upload("flysight_v2/TRACK.CSV", "text/csv"),
+            fixture_file_upload("flysight_v2/SENSOR.CSV", "text/csv")
+          ]
+        }
+      }
+    end
+
+    flight_import = FlightImport.order(:created_at).last
+    assert_redirected_to flight_import_path(flight_import)
+    assert_equal "pending", flight_import.status
+    assert flight_import.source_files.attached?
 
     follow_redirect!
+    assert_response :success
+    assert_select "h1", flight_import.source_filename
+    assert_select ".status.pending", text: "Pending"
+
+    perform_enqueued_jobs only: FlySightImportJob
+
+    jump = flight_import.reload.jumps.first
+    assert_equal "imported", flight_import.status
+
+    get jump_path(jump)
     assert_response :success
     assert_select "h1", jump.name
     assert_select ".replay-kit-screen"
@@ -36,6 +52,9 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_equal "gps", analysis["mode"]
     assert_equal "gps", analysis["altitude_source"]
     assert points.all? { |point| point["t"] >= analysis["replay_start"] && point["t"] <= analysis["replay_end"] }
+  ensure
+    clear_enqueued_jobs
+    clear_performed_jobs
   end
 
   test "dashboard renders the Sillage logbook" do
@@ -91,7 +110,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
   test "logout clears the local session" do
     delete logout_path
 
-    assert_redirected_to root_path
+    assert_redirected_to new_session_path
     follow_redirect!
     assert_response :success
     assert_select ".flash.notice", text: "Signed out."

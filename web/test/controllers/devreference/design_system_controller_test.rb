@@ -2,6 +2,8 @@ require "test_helper"
 
 module Devreference
   class DesignSystemControllerTest < ActionDispatch::IntegrationTest
+    setup { sign_in_as users(:julien) }
+
     test "shows the design system reference page" do
       get devreference_design_system_path
 

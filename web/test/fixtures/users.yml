@@ -1,0 +1,18 @@
+julien:
+  email_address: julien@exopter.com
+  password_digest: <%= BCrypt::Password.create("password123456", cost: BCrypt::Engine::MIN_COST) %>
+  role: admin
+  invitation_sent_at: <%= 2.days.ago.to_fs(:db) %>
+  invitation_accepted_at: <%= 2.days.ago.to_fs(:db) %>
+
+operator:
+  email_address: operator@exopter.com
+  password_digest: <%= BCrypt::Password.create("password123456", cost: BCrypt::Engine::MIN_COST) %>
+  role: user
+  invitation_sent_at: <%= 2.days.ago.to_fs(:db) %>
+  invitation_accepted_at: <%= 2.days.ago.to_fs(:db) %>
+
+invited:
+  email_address: invited@exopter.com
+  role: user
+  invitation_sent_at: <%= 1.hour.ago.to_fs(:db) %>

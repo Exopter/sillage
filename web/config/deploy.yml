@@ -15,6 +15,17 @@
       ENV[key.strip] ||= value
     end
   end
+
+  boolean = ->(value) { value.to_s.match?(/\A(?:1|true|yes|on)\z/i) }
+
+  if boolean.call(ENV.fetch("EMAIL_ENABLED", "false"))
+    required_mail = %w[MAIL_FROM POSTMARK_SERVER_TOKEN POSTMARK_MESSAGE_STREAM]
+    missing_mail = required_mail.select { |key| ENV[key].to_s.strip.empty? }
+
+    if missing_mail.any?
+      raise "EMAIL_ENABLED=true requires #{missing_mail.join(', ')}"
+    end
+  end
 %>
 
 # Name of your application. Used to uniquely configure containers.
@@ -29,14 +40,21 @@ servers:
   web:
     - sillage.wild.eu
 
+ssh:
+  user: root
+  keys_only: true
+  keys:
+    - "~/.ssh/kamal_deploy"
+
 # kamal-proxy terminates HTTPS and forwards traffic to Puma.
 proxy:
   ssl: true
   hosts:
-    - sillage.wild.eu
-    - os.sillage.wild.eu
+    - exopter.com
+    - os.exopter.com
   app_port: 3000
   forward_headers: true
+  response_timeout: 120
 
 # Use a private registry on the VPS itself. This avoids tunneling large image
 # layers through Net::SSH during deploys.
@@ -51,11 +69,19 @@ env:
   clear:
     SOLID_QUEUE_IN_PUMA: true
     RAILS_LOG_LEVEL: info
-    SILLAGE_LANDING_HOSTS: sillage.wild.eu
-    SILLAGE_OS_HOSTS: os.sillage.wild.eu
+    SILLAGE_LANDING_HOSTS: exopter.com
+    SILLAGE_OS_HOSTS: os.exopter.com
+    EMAIL_ENABLED: "<%= ENV.fetch("EMAIL_ENABLED", "false") %>"
+    MAIL_FROM: "<%= ENV.fetch("MAIL_FROM", "") %>"
+    MAIL_FROM_NAME: "<%= ENV.fetch("MAIL_FROM_NAME", "") %>"
+    MAIL_REPLY_TO: "<%= ENV.fetch("MAIL_REPLY_TO", "") %>"
+    POSTMARK_MESSAGE_STREAM: "<%= ENV.fetch("POSTMARK_MESSAGE_STREAM", "") %>"
   secret:
     - RAILS_MASTER_KEY
     - CESIUM_ION_TOKEN
+    - SILLAGE_LANDING_BASIC_AUTH_USERNAME
+    - SILLAGE_LANDING_BASIC_AUTH_PASSWORD
+    - POSTMARK_SERVER_TOKEN
 
 # Persist SQLite databases and local Active Storage uploads across deploys.
 volumes:

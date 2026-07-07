@@ -1,5 +1,11 @@
 <% content_for :title, t("imports.show.title") %>
 
+<% if @flight_import.pending? || @flight_import.processing? %>
+  <% content_for :head do %>
+    <meta http-equiv="refresh" content="3">
+  <% end %>
+<% end %>
+
 <section class="page-heading">
   <div>
     <p class="eyebrow"><%= t("imports.show.eyebrow") %></p>
@@ -33,6 +39,16 @@
 
   <% if @flight_import.failed? %>
     <p class="error-text"><%= @flight_import.error_message %></p>
+  <% end %>
+
+  <% if @flight_import.pending? || @flight_import.processing? %>
+    <p class="import-progress-text"><%= t("imports.show.processing") %></p>
+  <% end %>
+
+  <% if @flight_import.imported? && @jumps.one? %>
+    <div class="import-actions">
+      <%= link_to t("imports.show.open_replay"), @jumps.first, class: "primary-button" %>
+    </div>
   <% end %>
 </section>
 

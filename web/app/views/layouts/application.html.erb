@@ -71,11 +71,11 @@
 
           <details class="sillage-account-menu">
             <summary aria-label="Open account menu">
-              <span class="sillage-avatar" aria-hidden="true">AR</span>
+              <span class="sillage-avatar" aria-hidden="true"><%= sillage_user_initials(Current.user) %></span>
             </summary>
             <div class="sillage-account-popover" role="menu">
               <strong>Account</strong>
-              <span>Signed in</span>
+              <span><%= Current.user&.email_address %></span>
               <%= button_to logout_path, method: :delete, class: "sillage-account-action", form: { role: "none" } do %>
                 <%= sillage_icon "log-out", size: 15 %>
                 <span>Log out</span>

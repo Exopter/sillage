@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="<%= I18n.locale %>">
+  <head>
+    <title><%= content_for(:title) || "Sillage" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <link rel="icon" href="/icon.svg?v=exopter-e" type="image/svg+xml">
+    <%= stylesheet_link_tag "exopter_fonts", "exopter_design_system", "application", "data-turbo-track": "reload" %>
+  </head>
+  <body class="authentication-page">
+    <main class="authentication-shell">
+      <section class="authentication-panel">
+        <%= image_tag "app-icon.svg", alt: "Sillage", class: "authentication-logo" %>
+        <% flash.each do |type, message| %>
+          <div class="flash <%= type %>"><%= message %></div>
+        <% end %>
+        <%= yield %>
+      </section>
+    </main>
+  </body>
+</html>

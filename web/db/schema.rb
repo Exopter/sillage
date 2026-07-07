@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_22_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_06_140000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -50,9 +50,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_22_120000) do
     t.string "source_filename"
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
     t.index ["log_started_at"], name: "index_flight_imports_on_log_started_at"
     t.index ["session_id"], name: "index_flight_imports_on_session_id"
     t.index ["status"], name: "index_flight_imports_on_status"
+    t.index ["user_id"], name: "index_flight_imports_on_user_id"
   end
 
   create_table "jumps", force: :cascade do |t|
@@ -100,6 +102,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_22_120000) do
     t.index ["jump_id"], name: "index_sensor_samples_on_jump_id"
   end
 
+  create_table "sessions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "ip_address"
+    t.datetime "otp_verified_at"
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.integer "user_id", null: false
+    t.index ["user_id"], name: "index_sessions_on_user_id"
+  end
+
   create_table "track_points", force: :cascade do |t|
     t.float "altitude_m"
     t.float "course_accuracy_deg"
@@ -128,9 +140,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_22_120000) do
     t.index ["jump_id"], name: "index_track_points_on_jump_id"
   end
 
+  create_table "users", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "disabled_at"
+    t.string "email_address", null: false
+    t.datetime "invitation_accepted_at"
+    t.datetime "invitation_sent_at"
+    t.datetime "otp_enabled_at"
+    t.datetime "otp_last_verified_at"
+    t.text "otp_secret_ciphertext"
+    t.string "password_digest"
+    t.string "role", default: "user", null: false
+    t.datetime "updated_at", null: false
+    t.index ["disabled_at"], name: "index_users_on_disabled_at"
+    t.index ["email_address"], name: "index_users_on_email_address", unique: true
+    t.index ["role"], name: "index_users_on_role"
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "flight_imports", "users"
   add_foreign_key "jumps", "flight_imports"
   add_foreign_key "sensor_samples", "jumps"
+  add_foreign_key "sessions", "users"
   add_foreign_key "track_points", "jumps"
 end

@@ -7,6 +7,9 @@ remote="ssh://root@sillage.wild.eu"
 host="root@sillage.wild.eu"
 container="buildx_buildkit_${builder}0"
 
+ssh -o ConnectTimeout=5 "${host}" \
+  "docker start kamal-docker-registry >/dev/null 2>&1 || docker run --detach --restart unless-stopped -p 127.0.0.1:5555:5000 --name kamal-docker-registry registry:3 >/dev/null"
+
 if ! docker context inspect "${context}" >/dev/null 2>&1; then
   docker context create "${context}" \
     --description "${builder} host" \

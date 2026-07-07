@@ -1,0 +1,21 @@
+<% content_for :title, "Accept invitation" %>
+
+<div class="authentication-header">
+  <span>Sillage OS</span>
+  <h1>Accept invitation</h1>
+  <p><%= @user.email_address %></p>
+</div>
+
+<%= form_with url: invitation_path(params[:token]), method: :patch, class: "authentication-form" do |form| %>
+  <label>
+    <span>Password</span>
+    <%= form.password_field :password, autocomplete: "new-password", required: true, minlength: 8 %>
+  </label>
+
+  <label>
+    <span>Confirm password</span>
+    <%= form.password_field :password_confirmation, autocomplete: "new-password", required: true, minlength: 8 %>
+  </label>
+
+  <%= form.submit "Create account", class: "button-primary" %>
+<% end %>

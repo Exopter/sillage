@@ -1,0 +1,15 @@
+<% content_for :title, "Two-factor authentication" %>
+
+<div class="authentication-header">
+  <span>Admin security</span>
+  <h1>Two-factor authentication</h1>
+</div>
+
+<%= form_with url: two_factor_challenge_path, class: "authentication-form" do |form| %>
+  <label>
+    <span>Authentication code</span>
+    <%= form.text_field :otp_code, inputmode: "numeric", autocomplete: "one-time-code", required: true, autofocus: true %>
+  </label>
+
+  <%= form.submit "Verify", class: "button-primary" %>
+<% end %>

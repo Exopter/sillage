@@ -7,35 +7,72 @@ module FlySight
     FilePayload = Data.define(:path, :filename, :content, :content_type)
     SessionFile = Data.define(:format, :track, :sensor, :csv)
 
-    def initialize(uploaded_files)
-      @uploaded_files = Array(uploaded_files).compact_blank
+    class << self
+      def create!(uploaded_files, user: Current.user)
+        uploaded_files = Array(uploaded_files).compact_blank
+        raise Error, "Select a FlySight ZIP file or CSV files." if uploaded_files.empty?
+        raise Error, "Sign in before importing a FlySight session." unless user
+
+        flight_import = user.flight_imports.create!(
+          source_filename: uploaded_files.map { |uploaded| filename_for(uploaded) }.join(", "),
+          status: "pending"
+        )
+        attach_uploaded_files(flight_import, uploaded_files)
+        flight_import
+      rescue StandardError => exception
+        flight_import&.update(status: "failed", error_message: exception.message)
+        raise
+      end
+
+      private
+
+      def attach_uploaded_files(flight_import, uploaded_files)
+        uploaded_files.each do |uploaded|
+          uploaded.rewind if uploaded.respond_to?(:rewind)
+          flight_import.source_files.attach(
+            io: uploaded,
+            filename: filename_for(uploaded),
+            content_type: content_type_for(uploaded)
+          )
+          uploaded.rewind if uploaded.respond_to?(:rewind)
+        end
+      end
+
+      def filename_for(uploaded)
+        uploaded.respond_to?(:original_filename) ? uploaded.original_filename : File.basename(uploaded.path.to_s)
+      end
+
+      def content_type_for(uploaded)
+        uploaded.respond_to?(:content_type) ? uploaded.content_type : "application/octet-stream"
+      end
+    end
+
+    def initialize(flight_import)
+      @flight_import = flight_import
     end
 
     def call
-      raise Error, "Sélectionne un fichier ZIP FlySight ou des fichiers CSV." if @uploaded_files.empty?
+      return @flight_import if @flight_import.imported?
+      raise Error, "No source file is attached to this import." unless @flight_import.source_files.attached?
 
-      uploaded_payloads = read_uploaded_payloads
-      flight_import = FlightImport.create!(
-        source_filename: uploaded_payloads.map(&:filename).join(", "),
-        status: "pending"
-      )
-      attach_sources(flight_import, uploaded_payloads)
-
-      flight_import.update!(status: "processing")
-
+      @flight_import.update!(status: "processing", error_message: nil)
+      uploaded_payloads = read_attached_payloads
       sessions = detect_sessions(expand_archives(uploaded_payloads))
-      raise Error, "Aucune session FlySight exploitable trouvée." if sessions.empty?
+      raise Error, "No usable FlySight session was found." if sessions.empty?
 
       parsed_sessions = sessions.map { |session| parse_session(session) }
 
       FlightImport.transaction do
+        @flight_import.jumps.destroy_all
+
         parsed_sessions.each.with_index(1) do |parsed_session, index|
-          create_jump!(flight_import, parsed_session, index)
+          create_jump!(@flight_import, parsed_session, index)
         end
 
         first = parsed_sessions.first
-        flight_import.update!(
+        @flight_import.update!(
           status: "imported",
+          error_message: nil,
           device_id: metadata_value(first, "DEVICE_ID"),
           firmware_version: metadata_value(first, "FIRMWARE_VER"),
           session_id: metadata_value(first, "SESSION_ID"),
@@ -48,35 +85,22 @@ module FlySight
         )
       end
 
-      flight_import
+      @flight_import
     rescue StandardError => exception
-      flight_import&.update(status: "failed", error_message: exception.message)
+      @flight_import&.update(status: "failed", error_message: exception.message)
       raise
     end
 
     private
 
-    def read_uploaded_payloads
-      @uploaded_files.map do |uploaded|
-        uploaded.rewind if uploaded.respond_to?(:rewind)
-        content = uploaded.read
-        uploaded.rewind if uploaded.respond_to?(:rewind)
-
+    def read_attached_payloads
+      @flight_import.source_files.attachments.includes(:blob).map do |attachment|
+        blob = attachment.blob
         FilePayload.new(
-          path: uploaded.original_filename,
-          filename: uploaded.original_filename,
-          content: content,
-          content_type: uploaded.respond_to?(:content_type) ? uploaded.content_type : "application/octet-stream"
-        )
-      end
-    end
-
-    def attach_sources(flight_import, payloads)
-      payloads.each do |payload|
-        flight_import.source_files.attach(
-          io: StringIO.new(payload.content),
-          filename: payload.filename,
-          content_type: payload.content_type.presence || "application/octet-stream"
+          path: blob.filename.to_s,
+          filename: blob.filename.to_s,
+          content: blob.download,
+          content_type: blob.content_type.presence || "application/octet-stream"
         )
       end
     end
@@ -116,7 +140,7 @@ module FlySight
 
       files
     rescue Zip::Error
-      raise Error, "#{payload.filename} n'est pas une archive ZIP lisible."
+      raise Error, "#{payload.filename} is not a readable ZIP archive."
     end
 
     def detect_sessions(files)
@@ -128,7 +152,7 @@ module FlySight
         next unless track
 
         sensor = group.find { |file| basename(file) == "SENSOR.CSV" }
-        raise Error, "#{track.path} détecté sans SENSOR.CSV dans le même dossier." unless sensor
+        raise Error, "#{track.path} was found without SENSOR.CSV in the same folder." unless sensor
 
         sessions << SessionFile.new(format: :v2, track: track, sensor: sensor, csv: nil)
         used_paths << track.path << sensor.path

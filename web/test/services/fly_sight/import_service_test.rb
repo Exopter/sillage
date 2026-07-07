@@ -4,29 +4,44 @@ require "zip"
 
 module FlySight
   class ImportServiceTest < ActiveSupport::TestCase
-    UploadedFile = Data.define(:path, :original_filename, :content_type) do
-      def read
-        File.binread(path)
+    UploadedFile = Struct.new(:path, :original_filename, :content_type, keyword_init: true) do
+      def read(*args)
+        file.read(*args)
       end
 
       def rewind
+        file.rewind
+      end
+
+      private
+
+      def file
+        @file ||= File.open(path, "rb")
       end
     end
 
+    setup do
+      @user = users(:julien)
+    end
+
     test "imports paired FlySight V2 files" do
-      import = ImportService.new([
+      import = ImportService.create!([
         upload("flysight_v2/TRACK.CSV"),
         upload("flysight_v2/SENSOR.CSV")
-      ]).call
+      ], user: @user)
 
+      assert_equal "pending", import.status
+      assert import.source_files.attached?
+
+      ImportService.new(import).call
       jump = import.jumps.first
       assert_equal "imported", import.status
+      assert_equal @user, import.user
       assert_equal "fixture-device", import.device_id
       assert_equal 1, import.jumps.count
       assert_equal 8, jump.track_points.count
       assert_equal 8, jump.sensor_samples.count
       assert_equal 8, jump.sample_count
-      assert import.source_files.attached?
       assert jump.exit_at
       assert jump.opening_at
       assert jump.landing_at
@@ -41,9 +56,11 @@ module FlySight
         zip.add("TEMP/0000/SENSOR.CSV", file_fixture("flysight_v2/SENSOR.CSV"))
       end
 
-      import = ImportService.new([
+      import = ImportService.create!([
         UploadedFile.new(path: archive.path, original_filename: "session.zip", content_type: "application/zip")
-      ]).call
+      ], user: @user)
+
+      ImportService.new(import).call
 
       assert_equal "imported", import.status
       assert_equal 1, import.jumps.count
@@ -53,11 +70,13 @@ module FlySight
     end
 
     test "rejects FlySight V2 track without matching sensor file" do
+      import = ImportService.create!([ upload("flysight_v2/TRACK.CSV") ], user: @user)
+
       assert_raises(FlySight::Error) do
-        ImportService.new([ upload("flysight_v2/TRACK.CSV") ]).call
+        ImportService.new(import).call
       end
 
-      assert_equal "failed", FlightImport.order(:created_at).last.status
+      assert_equal "failed", import.reload.status
     end
 
     private

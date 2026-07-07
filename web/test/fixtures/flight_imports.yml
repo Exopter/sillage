@@ -1,6 +1,7 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
+  user: julien
   source_filename: MyString
   status: imported
   device_id: MyString
@@ -11,6 +12,7 @@ one:
   details: 
 
 two:
+  user: julien
   source_filename: MyString
   status: imported
   device_id: MyString

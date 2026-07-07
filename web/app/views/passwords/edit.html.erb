@@ -1,0 +1,20 @@
+<% content_for :title, "Choose a new password" %>
+
+<div class="authentication-header">
+  <span>Sillage OS</span>
+  <h1>Choose a new password</h1>
+</div>
+
+<%= form_with url: password_path(params[:token]), method: :patch, class: "authentication-form" do |form| %>
+  <label>
+    <span>New password</span>
+    <%= form.password_field :password, autocomplete: "new-password", required: true, minlength: 8 %>
+  </label>
+
+  <label>
+    <span>Confirm password</span>
+    <%= form.password_field :password_confirmation, autocomplete: "new-password", required: true, minlength: 8 %>
+  </label>
+
+  <%= form.submit "Update password", class: "button-primary" %>
+<% end %>

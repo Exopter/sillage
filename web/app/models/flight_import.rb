@@ -1,6 +1,7 @@
 class FlightImport < ApplicationRecord
   STATUSES = %w[pending processing imported failed].freeze
 
+  belongs_to :user
   has_many :jumps, dependent: :destroy
   has_many_attached :source_files
 
@@ -10,6 +11,14 @@ class FlightImport < ApplicationRecord
 
   def imported?
     status == "imported"
+  end
+
+  def pending?
+    status == "pending"
+  end
+
+  def processing?
+    status == "processing"
   end
 
   def failed?

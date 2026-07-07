@@ -3,16 +3,16 @@ class FlightImportsController < ApplicationController
   end
 
   def create
-    flight_import = FlySight::ImportService.new(source_files).call
-    jump = flight_import.jumps.recent.first
+    flight_import = FlySight::ImportService.create!(source_files, user: Current.user)
+    FlySightImportJob.perform_later(flight_import)
 
-    redirect_to(jump || flight_import, notice: t(".success", count: flight_import.jumps.count))
-  rescue FlySight::Error, Zip::Error, ActiveRecord::RecordInvalid => error
+    redirect_to(flight_import, notice: t(".queued"))
+  rescue FlySight::Error, Zip::Error, ActiveRecord::RecordInvalid, ActiveStorage::Error => error
     redirect_back fallback_location: root_path, alert: error.message
   end
 
   def show
-    @flight_import = FlightImport.find(params[:id])
+    @flight_import = Current.user.flight_imports.find(params[:id])
     @jumps = @flight_import.jumps.recent
   end
 
