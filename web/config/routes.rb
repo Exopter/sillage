@@ -1,9 +1,10 @@
 Rails.application.routes.draw do
   host_list = ->(key, fallback) do
-    ENV.fetch(key, fallback).split(",").map { |host| host.strip }.reject(&:empty?)
+    value = ENV[key].presence || fallback
+    value.split(",").map { |host| host.strip }.reject(&:empty?)
   end
 
-  landing_hosts = host_list.call("SILLAGE_LANDING_HOSTS", "landing.localhost,exopter.com")
+  landing_hosts = host_list.call("EXOPTER_OS_LANDING_HOSTS", "landing.localhost,exopter.com")
 
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 

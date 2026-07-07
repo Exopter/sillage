@@ -1,6 +1,6 @@
-# Sillage · Flight — UI kit
+# Exopter OS · Flight — UI kit
 
-The **operations workbench** interpretation of Sillage Flight: a left-rail shell
+The **operations workbench** interpretation of OS Flight: a left-rail shell
 (Flight / Atlas / Hangar / Signal / Forge / Core) with a Flight room that holds
 **Logbook**, **Flight prep**, **Replay**, and **HUD** sub-tabs. Built entirely on
 the Exopter design-system components and tokens.

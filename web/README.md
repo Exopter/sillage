@@ -1,4 +1,4 @@
-# Sillage
+# Exopter OS
 
 Rails/Hotwire logbook for FlySight sessions.
 
@@ -12,7 +12,7 @@ Rails/Hotwire logbook for FlySight sessions.
 
 ## Identity
 
-The app uses the dedicated Sillage design system: a compact avionics-inspired identity for FlySight trajectory analysis. See `docs/design-system.md`.
+The app uses the dedicated Exopter OS design system: a compact avionics-inspired identity for FlySight trajectory analysis. See `docs/design-system.md`.
 
 ## Run
 

@@ -1,5 +1,5 @@
 module ApplicationHelper
-  SILLAGE_ICON_PATHS = {
+  OS_ICON_PATHS = {
     "gauge" => '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
     "activity" => '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
     "plane" => '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>',
@@ -39,7 +39,7 @@ module ApplicationHelper
   }.freeze
 
   def sillage_icon(name, size: 18, class_name: "sillage-icon", stroke_width: 2)
-    path = SILLAGE_ICON_PATHS[name.to_s]
+    path = OS_ICON_PATHS[name.to_s]
     return "".html_safe unless path
 
     content_tag(

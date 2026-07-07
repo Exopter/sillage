@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":3,"namespace":"ExopterDesignSystem_4c9fc9","components":[{"name":"Card","sourcePath":"components/data/Card.jsx"},{"name":"ChecklistRow","sourcePath":"components/data/ChecklistRow.jsx"},{"name":"MetricTile","sourcePath":"components/data/MetricTile.jsx"},{"name":"ReadinessStrip","sourcePath":"components/data/ReadinessStrip.jsx"},{"name":"Badge","sourcePath":"components/feedback/Badge.jsx"},{"name":"StatusDot","sourcePath":"components/feedback/StatusDot.jsx"},{"name":"Toast","sourcePath":"components/feedback/Toast.jsx"},{"name":"Button","sourcePath":"components/forms/Button.jsx"},{"name":"IconButton","sourcePath":"components/forms/IconButton.jsx"},{"name":"Input","sourcePath":"components/forms/Input.jsx"},{"name":"SegmentedControl","sourcePath":"components/forms/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/forms/Select.jsx"},{"name":"Switch","sourcePath":"components/forms/Switch.jsx"}],"sourceHashes":{"components/data/Card.jsx":"21112a3b822e","components/data/ChecklistRow.jsx":"a65f225302a3","components/data/MetricTile.jsx":"16d8ec01dca3","components/data/ReadinessStrip.jsx":"a74b1a2d7c7a","components/feedback/Badge.jsx":"ed3d5fa3967f","components/feedback/StatusDot.jsx":"65531de7b02b","components/feedback/Toast.jsx":"c15cef79286f","components/forms/Button.jsx":"98a334076f79","components/forms/IconButton.jsx":"5ef77b4a398a","components/forms/Input.jsx":"feb96d51dc84","components/forms/SegmentedControl.jsx":"8d90ceffa950","components/forms/Select.jsx":"d8c19ae147bb","components/forms/Switch.jsx":"f37c4dcbd4cd","ui_kits/exopter-brand/Brand.jsx":"ad90dfd93dab","ui_kits/sillage-flight/FlightPrep.jsx":"a7eb66c5962f","ui_kits/sillage-flight/Hud.jsx":"f201690faeeb","ui_kits/sillage-flight/Logbook.jsx":"c50e48996a19","ui_kits/sillage-flight/Replay.jsx":"8c4a94939953","ui_kits/sillage-flight/Shell.jsx":"07d0b111e08f","ui_kits/sillage-flight/icons.jsx":"dfd5280e7f1c"},"inlinedExternals":[],"unexposedExports":[]} */
+/* @ds-bundle: {"format":3,"namespace":"ExopterDesignSystem_4c9fc9","components":[{"name":"Card","sourcePath":"components/data/Card.jsx"},{"name":"ChecklistRow","sourcePath":"components/data/ChecklistRow.jsx"},{"name":"MetricTile","sourcePath":"components/data/MetricTile.jsx"},{"name":"ReadinessStrip","sourcePath":"components/data/ReadinessStrip.jsx"},{"name":"Badge","sourcePath":"components/feedback/Badge.jsx"},{"name":"StatusDot","sourcePath":"components/feedback/StatusDot.jsx"},{"name":"Toast","sourcePath":"components/feedback/Toast.jsx"},{"name":"Button","sourcePath":"components/forms/Button.jsx"},{"name":"IconButton","sourcePath":"components/forms/IconButton.jsx"},{"name":"Input","sourcePath":"components/forms/Input.jsx"},{"name":"SegmentedControl","sourcePath":"components/forms/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/forms/Select.jsx"},{"name":"Switch","sourcePath":"components/forms/Switch.jsx"}],"sourceHashes":{"components/data/Card.jsx":"21112a3b822e","components/data/ChecklistRow.jsx":"a65f225302a3","components/data/MetricTile.jsx":"16d8ec01dca3","components/data/ReadinessStrip.jsx":"a74b1a2d7c7a","components/feedback/Badge.jsx":"ed3d5fa3967f","components/feedback/StatusDot.jsx":"65531de7b02b","components/feedback/Toast.jsx":"c15cef79286f","components/forms/Button.jsx":"98a334076f79","components/forms/IconButton.jsx":"5ef77b4a398a","components/forms/Input.jsx":"feb96d51dc84","components/forms/SegmentedControl.jsx":"8d90ceffa950","components/forms/Select.jsx":"d8c19ae147bb","components/forms/Switch.jsx":"f37c4dcbd4cd","ui_kits/exopter-brand/Brand.jsx":"ad90dfd93dab","ui_kits/os-flight/FlightPrep.jsx":"a7eb66c5962f","ui_kits/os-flight/Hud.jsx":"f201690faeeb","ui_kits/os-flight/Logbook.jsx":"c50e48996a19","ui_kits/os-flight/Replay.jsx":"8c4a94939953","ui_kits/os-flight/Shell.jsx":"07d0b111e08f","ui_kits/os-flight/icons.jsx":"dfd5280e7f1c"},"inlinedExternals":[],"unexposedExports":[]} */
 
 (() => {
 
@@ -903,9 +903,9 @@ try { (() => {
         gap: 26,
         marginLeft: 28
       }
-    }, ['Program', 'Evidence', 'Sillage', 'Roadmap'].map(l => /*#__PURE__*/React.createElement("a", {
+    }, ['Program', 'Evidence', 'Exopter OS', 'Roadmap'].map(l => /*#__PURE__*/React.createElement("a", {
       key: l,
-      href: '#' + l.toLowerCase(),
+      href: l === 'Exopter OS' ? '#os' : '#' + l.toLowerCase(),
       style: {
         fontFamily: 'var(--font-mono)',
         fontSize: 12,
@@ -981,7 +981,7 @@ try { (() => {
         maxWidth: 560,
         color: 'var(--ex-vapor-100)'
       }
-    }, "A rigid carbon wing from GLD glider validation to EPW electric power \u2014 built around flight-test evidence, pilot assistance, and the Sillage operating suite."), /*#__PURE__*/React.createElement("div", {
+    }, "A rigid carbon wing from GLD glider validation to EPW electric power \u2014 built around flight-test evidence, pilot assistance, and the Exopter OS operating suite."), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         gap: 12,
@@ -1167,10 +1167,10 @@ try { (() => {
       }
     }, m.d)))));
   }
-  function Sillage() {
+  function OperatingSuite() {
     const rooms = [['Flight', 'Prep, replay, logbook, maintenance'], ['Atlas', 'Maps, terrain, route comparison'], ['Hangar', 'Fleet, hardware, spare parts'], ['Signal', 'Telemetry, live feeds, comms'], ['Forge', 'Agent workflows, documentation'], ['Core', 'Auth, audit, storage, ops']];
     return /*#__PURE__*/React.createElement("section", {
-      id: "sillage",
+      id: "os",
       style: {
         background: 'var(--ex-vapor-50)',
         padding: '80px 40px'
@@ -1184,7 +1184,7 @@ try { (() => {
         color: 'var(--ex-carbon-950)',
         maxWidth: 720
       }
-    }, "Sillage \u2014 one workbench for the full flight lifecycle."), /*#__PURE__*/React.createElement("p", {
+    }, "Exopter OS \u2014 one workbench for the full flight lifecycle."), /*#__PURE__*/React.createElement("p", {
       style: {
         margin: '16px 0 36px',
         fontSize: 16,
@@ -1213,20 +1213,20 @@ try { (() => {
         fontWeight: 600,
         color: 'var(--ex-carbon-950)'
       }
-    }, "Sillage ", k), /*#__PURE__*/React.createElement("div", {
+    }, "Exopter OS ", k), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 13,
         color: 'var(--ex-graphite-600)',
         marginTop: 4
       }
     }, d)))), /*#__PURE__*/React.createElement("a", {
-      href: "../sillage-flight/index.html",
+      href: "../os-flight/index.html",
       style: {
         textDecoration: 'none'
       }
     }, /*#__PURE__*/React.createElement(Button, {
       variant: "primary"
-    }, "Open Sillage Flight \u2192")));
+    }, "Open OS Flight \u2192")));
   }
   function Roadmap() {
     const stages = [{
@@ -1374,7 +1374,7 @@ try { (() => {
       style: {
         background: 'var(--ex-carbon-950)'
       }
-    }, /*#__PURE__*/React.createElement(Nav, null), /*#__PURE__*/React.createElement(Hero, null), /*#__PURE__*/React.createElement(SpecBand, null), /*#__PURE__*/React.createElement(Evidence, null), /*#__PURE__*/React.createElement(Sillage, null), /*#__PURE__*/React.createElement(Roadmap, null), /*#__PURE__*/React.createElement(Footer, null));
+    }, /*#__PURE__*/React.createElement(Nav, null), /*#__PURE__*/React.createElement(Hero, null), /*#__PURE__*/React.createElement(SpecBand, null), /*#__PURE__*/React.createElement(Evidence, null), /*#__PURE__*/React.createElement(OperatingSuite, null), /*#__PURE__*/React.createElement(Roadmap, null), /*#__PURE__*/React.createElement(Footer, null));
   }
   window.ExopterBrand = {
     Page
@@ -1382,13 +1382,13 @@ try { (() => {
 })();
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/exopter-brand/Brand.jsx", error: String((e && e.message) || e) }); }
 
-// ui_kits/sillage-flight/FlightPrep.jsx
+// ui_kits/os-flight/FlightPrep.jsx
 try { (() => {
-/* Sillage Flight — Flight prep / readiness screen. window.SillageFlightPrep. */
+/* OS Flight — Flight prep / readiness screen. window.OSFlightPrep. */
 (function () {
   const {
     Icon
-  } = window.SillageIcons;
+  } = window.OSIcons;
   const DS = window.ExopterDesignSystem_4c9fc9;
   const {
     Card,
@@ -1653,19 +1653,19 @@ try { (() => {
       }
     }, v))))))));
   }
-  window.SillageFlightPrep = {
+  window.OSFlightPrep = {
     FlightPrep
   };
 })();
-})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/sillage-flight/FlightPrep.jsx", error: String((e && e.message) || e) }); }
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/os-flight/FlightPrep.jsx", error: String((e && e.message) || e) }); }
 
-// ui_kits/sillage-flight/Hud.jsx
+// ui_kits/os-flight/Hud.jsx
 try { (() => {
-/* Sillage Flight — HUD preview (pilot display concept). window.SillageHud. */
+/* OS Flight — HUD preview (pilot display concept). window.OSHud. */
 (function () {
   const {
     Icon
-  } = window.SillageIcons;
+  } = window.OSIcons;
   const DS = window.ExopterDesignSystem_4c9fc9;
   const {
     SegmentedControl,
@@ -2064,19 +2064,19 @@ try { (() => {
       }
     }), " ", k))));
   }
-  window.SillageHud = {
+  window.OSHud = {
     Hud
   };
 })();
-})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/sillage-flight/Hud.jsx", error: String((e && e.message) || e) }); }
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/os-flight/Hud.jsx", error: String((e && e.message) || e) }); }
 
-// ui_kits/sillage-flight/Logbook.jsx
+// ui_kits/os-flight/Logbook.jsx
 try { (() => {
-/* Sillage Flight — Logbook screen. window.SillageLogbook. */
+/* OS Flight — Logbook screen. window.OSLogbook. */
 (function () {
   const {
     Icon
-  } = window.SillageIcons;
+  } = window.OSIcons;
   const DS = window.ExopterDesignSystem_4c9fc9;
   const {
     Button,
@@ -2329,19 +2329,19 @@ try { (() => {
       size: 16
     }))))))));
   }
-  window.SillageLogbook = {
+  window.OSLogbook = {
     Logbook
   };
 })();
-})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/sillage-flight/Logbook.jsx", error: String((e && e.message) || e) }); }
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/os-flight/Logbook.jsx", error: String((e && e.message) || e) }); }
 
-// ui_kits/sillage-flight/Replay.jsx
+// ui_kits/os-flight/Replay.jsx
 try { (() => {
-/* Sillage Flight — Replay screen (dark instrument band). window.SillageReplay. */
+/* OS Flight — Replay screen (dark instrument band). window.OSReplay. */
 (function () {
   const {
     Icon
-  } = window.SillageIcons;
+  } = window.OSIcons;
   const DS = window.ExopterDesignSystem_4c9fc9;
   const {
     IconButton,
@@ -2812,19 +2812,19 @@ try { (() => {
       }
     }, fmtT(T_TOTAL))));
   }
-  window.SillageReplay = {
+  window.OSReplay = {
     Replay
   };
 })();
-})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/sillage-flight/Replay.jsx", error: String((e && e.message) || e) }); }
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/os-flight/Replay.jsx", error: String((e && e.message) || e) }); }
 
-// ui_kits/sillage-flight/Shell.jsx
+// ui_kits/os-flight/Shell.jsx
 try { (() => {
-/* Sillage Flight — application shell: left rail + top header. Exposes window.SillageShell. */
+/* OS Flight — application shell: left rail + top header. Exposes window.OSShell. */
 (function () {
   const {
     Icon
-  } = window.SillageIcons;
+  } = window.OSIcons;
   const DS = window.ExopterDesignSystem_4c9fc9;
   const {
     SegmentedControl,
@@ -2967,7 +2967,7 @@ try { (() => {
         textTransform: 'uppercase',
         color: 'var(--ex-graphite-400)'
       }
-    }, "Sillage Flight \xB7 ", crumb), /*#__PURE__*/React.createElement("span", {
+    }, "OS Flight \xB7 ", crumb), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 15,
         fontWeight: 600
@@ -3060,18 +3060,18 @@ try { (() => {
       }
     }, children)));
   }
-  window.SillageShell = {
+  window.OSShell = {
     Shell,
     ROOMS
   };
 })();
-})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/sillage-flight/Shell.jsx", error: String((e && e.message) || e) }); }
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/os-flight/Shell.jsx", error: String((e && e.message) || e) }); }
 
-// ui_kits/sillage-flight/icons.jsx
+// ui_kits/os-flight/icons.jsx
 try { (() => {
-/* Lucide-derived icon set for the Sillage Flight UI kit.
+/* Lucide-derived icon set for the OS Flight UI kit.
    24×24 grid, 2px stroke, round caps/joins — matches the documented Lucide system.
-   window.SillageIcons.Icon renders <Icon name="gauge" size={18} />. */
+   window.OSIcons.Icon renders <Icon name="gauge" size={18} />. */
 (function () {
   const P = {
     gauge: '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
@@ -3133,12 +3133,12 @@ try { (() => {
       }
     });
   }
-  window.SillageIcons = {
+  window.OSIcons = {
     Icon,
     paths: P
   };
 })();
-})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/sillage-flight/icons.jsx", error: String((e && e.message) || e) }); }
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/os-flight/icons.jsx", error: String((e && e.message) || e) }); }
 
 __ds_ns.Card = __ds_scope.Card;
 

@@ -6,7 +6,7 @@ class LandingController < ApplicationController
   before_action :authenticate_landing_access
 
   def show
-    @sillage_os_url = sillage_os_url
+    @os_url = os_url
   end
 
   private
@@ -15,14 +15,13 @@ class LandingController < ApplicationController
     return unless landing_basic_auth_enabled?
 
     authenticate_or_request_with_http_basic("Exopter") do |username, password|
-      secure_digest_compare(username, ENV.fetch("SILLAGE_LANDING_BASIC_AUTH_USERNAME")) &
-        secure_digest_compare(password, ENV.fetch("SILLAGE_LANDING_BASIC_AUTH_PASSWORD"))
+      secure_digest_compare(username, landing_basic_auth_username) &
+        secure_digest_compare(password, landing_basic_auth_password)
     end
   end
 
   def landing_basic_auth_enabled?
-    ENV["SILLAGE_LANDING_BASIC_AUTH_USERNAME"].present? &&
-      ENV["SILLAGE_LANDING_BASIC_AUTH_PASSWORD"].present?
+    landing_basic_auth_username.present? && landing_basic_auth_password.present?
   end
 
   def secure_digest_compare(value, expected)
@@ -32,13 +31,21 @@ class LandingController < ApplicationController
     )
   end
 
-  def sillage_os_url
+  def landing_basic_auth_username
+    ENV["EXOPTER_OS_LANDING_BASIC_AUTH_USERNAME"]
+  end
+
+  def landing_basic_auth_password
+    ENV["EXOPTER_OS_LANDING_BASIC_AUTH_PASSWORD"]
+  end
+
+  def os_url
     if local_landing_host?
       port = [ 80, 443 ].include?(request.port) ? "" : ":#{request.port}"
       return "#{request.protocol}localhost#{port}"
     end
 
-    host = ENV.fetch("SILLAGE_OS_HOSTS", "os.exopter.com")
+    host = ENV.fetch("EXOPTER_OS_HOSTS", "os.exopter.com")
       .split(",")
       .map(&:strip)
       .reject(&:empty?)

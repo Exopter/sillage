@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-builder="kamal-remote-ssh---root-sillage-wild-eu"
+builder="kamal-remote-ssh---root-exopter-com"
 context="${builder}-context"
-remote="ssh://root@sillage.wild.eu"
-host="root@sillage.wild.eu"
+remote="ssh://root@exopter.com"
+host="root@exopter.com"
 container="buildx_buildkit_${builder}0"
 
 ssh -o ConnectTimeout=5 "${host}" \

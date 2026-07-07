@@ -13,8 +13,8 @@ deployment, and production operations.
 
 ## Current Design Decisions
 
-- The workflow is hosted inside the existing Sillage Rails application.
-- OpenProject sends work-package webhooks to Sillage.
+- The workflow is hosted inside the existing Exopter OS Rails application.
+- OpenProject sends work-package webhooks to Exopter OS.
 - A task is ignored by default unless it is explicitly marked agent-eligible.
 - Agent execution uses a dedicated Codex runner, not the web process.
 - The default autonomy level is `Plan + draft PR`.
@@ -26,7 +26,7 @@ deployment, and production operations.
 
 ## OpenProject Configuration
 
-Create a dedicated service account such as `sillage-agent` with the smallest
+Create a dedicated service account such as `exopter-os-agent` with the smallest
 useful permission set on the Exopter project.
 
 Recommended custom fields:
@@ -36,7 +36,7 @@ Recommended custom fields:
 | `Agent Mode` | Explicit opt-in. Suggested values: `Off`, `Plan`, `Checklist`, `Dev`, `QA`, `Full triage`. |
 | `Agent Autonomy` | Controls how far agents may go. Default: `Plan + draft PR`. |
 | `Agent Status` | Tracks orchestration state such as `Queued`, `Running`, `Blocked`, `Draft PR`, `Needs review`, `Done`. |
-| `Agent Run ID` | Stores the current Sillage-side run identifier. |
+| `Agent Run ID` | Stores the current Exopter OS-side run identifier. |
 | `Roadmap Lane` | Routes work to the right project context. Suggested values: `GLD`, `EPW`, `JPW`, `HUD/FDR`, `Flight Lab`, `Operations/Certification`, `Training/Procurement`. |
 | `Safety Criticality` | Flags work that needs stricter human review. Suggested values: `Non-safety`, `Safety-adjacent`, `Flight-critical`. |
 
@@ -46,14 +46,14 @@ Recommended webhook events:
 - Work package updated.
 - Work package comment created.
 
-The webhook should be scoped to the Exopter project only. Sillage must verify
+The webhook should be scoped to the Exopter project only. Exopter OS must verify
 the webhook signature before storing or acting on any event.
 
 ## High-Level Architecture
 
 ```mermaid
 flowchart LR
-  OP["OpenProject work package"] --> WH["Sillage webhook endpoint"]
+  OP["OpenProject work package"] --> WH["Exopter OS webhook endpoint"]
   WH --> EV["Agent event log"]
   EV --> Q["Solid Queue agent jobs"]
   Q --> IN["Intake agent"]
@@ -65,21 +65,21 @@ flowchart LR
   PR --> OP
 ```
 
-Sillage is the orchestrator and audit surface. The Codex runner performs the
+Exopter OS is the orchestrator and audit surface. The Codex runner performs the
 actual agent work in isolated execution contexts. OpenProject remains the
 planning source of truth, and GitHub remains the code review surface.
 
 ## Work Package Lifecycle
 
 1. A human creates or updates an OpenProject work package.
-2. OpenProject sends a signed webhook to Sillage.
-3. Sillage stores the raw event and deduplicates it.
-4. Sillage checks whether `Agent Mode` is enabled.
+2. OpenProject sends a signed webhook to Exopter OS.
+3. Exopter OS stores the raw event and deduplicates it.
+4. Exopter OS checks whether `Agent Mode` is enabled.
 5. The intake agent snapshots the work package and classifies it by lane,
    work type, and safety criticality.
 6. If required context is missing, the agent posts a concise blocking comment
    in OpenProject and stops.
-7. If the task is ready, Sillage starts the requested agent lane.
+7. If the task is ready, Exopter OS starts the requested agent lane.
 8. Agents post plans, checklists, child-task proposals, or draft PR links back
    to OpenProject.
 9. A human reviews the result and decides whether to continue, merge, deploy,
@@ -88,10 +88,10 @@ planning source of truth, and GitHub remains the code review surface.
 Agent comments should include a hidden marker such as:
 
 ```html
-<!-- sillage-agent run=<uuid> -->
+<!-- exopter-os-agent run=<uuid> -->
 ```
 
-This marker lets Sillage ignore its own comments and avoid webhook loops.
+This marker lets Exopter OS ignore its own comments and avoid webhook loops.
 
 ## Agent Lanes
 
@@ -135,7 +135,7 @@ Responsibilities:
 
 ### Dev Agent
 
-Use this lane for scoped software work in the Sillage repository.
+Use this lane for scoped software work in the Exopter OS repository.
 
 Responsibilities:
 
@@ -186,7 +186,7 @@ Safety-sensitive examples:
 For these tasks, agents may draft analysis, tests, checklists, simulations, and
 review notes, but the final decision stays human-owned.
 
-## Sillage Data Model Proposal
+## Exopter OS Data Model Proposal
 
 This is a design note, not an implementation requirement yet.
 
@@ -197,7 +197,7 @@ Recommended records:
 - `AgentRun`: one orchestration attempt for one work package.
 - `AgentArtifact`: generated plan, checklist, branch, PR link, test output
   summary, or uploaded file reference.
-- `AgentComment`: OpenProject comments posted by Sillage, with hidden marker
+- `AgentComment`: OpenProject comments posted by Exopter OS, with hidden marker
   and run id.
 
 Recommended environment variables:

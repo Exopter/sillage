@@ -31,7 +31,7 @@ the available wing photo and the project documents in `docs/`.
 - `docs/ORG_MNG_roadmap short_V0.1_20260526_CTS.xlsx`:
   practical roadmap from GLD to EPW/EDF, Bicopter, and JPW/P1000 work.
 - `docs/openproject-agent-workflow/README.md`:
-  Sillage orchestration, roadmap lanes, safety criticality, and agent-assisted
+  Exopter OS orchestration, roadmap lanes, safety criticality, and agent-assisted
   work governance.
 - `docs/Updated COC_20 Jan 2026 - cleaned commentaires MPO.docx`:
   contract-grade expectations around confidentiality, safety, integration,
@@ -45,7 +45,7 @@ Use these names deliberately.
 | --- | --- | --- |
 | Exopter | Master brand, company, vehicle program, and public-facing identity. | Physical, iconic, confident, minimal. |
 | Exowing | Wing-system name used in several source documents. | Use for aircraft/system references, especially GLD, EPW, JPW, prototypes, and contract material. |
-| Sillage | Exopter operating software suite. | Avionics workbench for preparation, replay, analysis, maintenance, agents, and operations. |
+| Exopter OS | Exopter operating software suite. | Avionics workbench for preparation, replay, analysis, maintenance, agents, and operations. |
 | GLD | Glider Wing System, unpowered rigid-wing validation stage. | Baseline flight-test mode: aerodynamic, lightweight, sensor-led. |
 | EPW / EDF | Electric-Powered Wings System and electric ducted fan mode. | Adds power, autonomy, batteries, temperature, engine control, and ground station concerns. |
 | JPW / JET | Jet-powered extension in the roadmap and HUD mode. | Future high-energy mode; use carefully until requirements mature. |
@@ -171,7 +171,7 @@ Usage rules:
 - Never rely on color alone. Pair signal color with label, icon, pattern, or
   position.
 
-### Current Sillage Token Bridge
+### Current OS Token Bridge
 
 The Rails app currently uses `--ds-*` tokens in
 `web/app/assets/stylesheets/application.css`. Keep those tokens for the current
@@ -194,7 +194,7 @@ fake cockpit lettering everywhere.
 | Layer | Direction | Usage |
 | --- | --- | --- |
 | Brand wordmark | Custom geometric uppercase. | Exopter logo only. |
-| Product UI | Inter, Aptos, or equivalent modern sans. | Sillage app, docs, dashboards, forms. |
+| Product UI | Inter, Aptos, or equivalent modern sans. | Exopter OS app, docs, dashboards, forms. |
 | Instrument data | Tabular sans or mono. | Airspeed, altitude, glide, distance, telemetry. |
 | Code/agent/log text | Geist Mono, IBM Plex Mono, or system mono. | Logs, event IDs, sensor rows, checks. |
 
@@ -235,7 +235,7 @@ Good image directions:
 - sky and field as context, not as empty wallpaper;
 - close-ups of hooks, seats, FDR, pressure probes, batteries, and hardware when
   discussing systems;
-- 3D paths, charts, terrain, and sensor traces when discussing Sillage.
+- 3D paths, charts, terrain, and sensor traces when discussing Exopter OS.
 
 Avoid:
 
@@ -348,27 +348,27 @@ HUD visual rules:
 | Hardware location card | Wing, seat, helmet sensor and communication placement. | Use simple diagrams or real photos when possible. |
 | Safety gate | Human approval, safety criticality, no-agent action. | High contrast, deliberate action, audit trail. |
 
-## Sillage Product Family
+## Exopter OS Product Family
 
-Sillage is the Exopter operating software suite. It should inherit the Exopter
+Exopter OS is the Exopter operating software suite. It should inherit the Exopter
 brand but stay more utilitarian than public brand pages.
 
 Current and planned surfaces:
 
-- **Sillage Flight**: flight preparation, import, replay, logbook, maintenance,
+- **OS Flight**: flight preparation, import, replay, logbook, maintenance,
   HUD/FDR support, and flight analysis.
-- **Sillage Forge**: agent workflows, OpenProject orchestration, engineering
+- **OS Forge**: agent workflows, OpenProject orchestration, engineering
   tasks, and documentation support.
-- **Sillage Core**: authentication, authorization, audit trails, storage,
+- **OS Core**: authentication, authorization, audit trails, storage,
   deployment, and shared operations.
-- **Sillage Atlas**: maps, terrain, replay, route comparison, airspace context,
+- **OS Atlas**: maps, terrain, replay, route comparison, airspace context,
   and waypoint planning.
-- **Sillage Hangar**: fleet, wing hardware, equipment, maintenance, spare parts,
+- **OS Hangar**: fleet, wing hardware, equipment, maintenance, spare parts,
   and configuration.
-- **Sillage Signal**: telemetry, live feeds, sensor streams, communications,
+- **OS Signal**: telemetry, live feeds, sensor streams, communications,
   and ground station operations.
 
-Sillage pages should feel like one house with several rooms. The user should
+Exopter OS pages should feel like one house with several rooms. The user should
 never feel they moved from a flight lab to an unrelated back office.
 
 ## Documentation And Contract Surfaces
@@ -392,19 +392,19 @@ Rules:
 Item 1 remains intentionally open: produce vector Exopter and EXO marks from the
 original artwork, not the photo.
 
-Items 2 through 6 are now implemented in the Sillage Flight Lab migration.
+Items 2 through 6 are now implemented in the OS Flight Lab migration.
 
 | Item | Status | Implementation |
 | --- | --- | --- |
 | 2. Token package | Done | `web/app/assets/stylesheets/exopter_design_system.css` defines Exopter color, type, spacing, radius, shadow, and state tokens. |
-| 3. Sillage token bridge | Done | `web/app/assets/stylesheets/application.css` maps legacy `--ds-*` variables onto Exopter roles so current screens migrate without a hard break. |
+| 3. OS token bridge | Done | `web/app/assets/stylesheets/application.css` maps legacy `--ds-*` variables onto Exopter roles so current screens migrate without a hard break. |
 | 4. First component set | Done | Header, readiness strip, metric tile, telemetry chart panel, checklist panel, requirement row, and trajectory surface are represented in the app and reference page. |
 | 5. Visual reference page | Done | `/devreference/design-system` shows tokens, states, components, HUD examples, photo usage, and migration status. |
 | 6. Public brand-page direction | Done | See the direction below. Public pages should only be built after the operating UI language is stable enough to avoid generic aviation marketing. |
 
 ## Public Brand Page Direction
 
-When Exopter needs a public page, it should inherit the Sillage Flight Lab
+When Exopter needs a public page, it should inherit the OS Flight Lab
 language but become more object-led and cinematic.
 
 First viewport:
@@ -421,7 +421,7 @@ Content order:
 1. physical wing and program identity;
 2. concise program promise grounded in GLD, EPW, HUD/FDR, training, and tests;
 3. evidence modules: wing, FDR, HUD, parachute/jettison, telemetry, test path;
-4. Sillage software surface for preparation, replay, analysis, and maintenance;
+4. Exopter OS software surface for preparation, replay, analysis, and maintenance;
 5. roadmap from GLD to EPW and later JPW, with maturity stated honestly.
 
 Visual rules:

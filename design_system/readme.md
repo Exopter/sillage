@@ -1,6 +1,6 @@
 # Exopter Design System
 
-> Exopter develops advanced personal **rigid-wing flight systems** — aerospace engineering, embedded sensing, pilot assistance, and flight-data intelligence. The **Sillage** operating suite supports the full flight lifecycle: preparation, live in-flight guidance, recording, replay, analysis, maintenance, and continuous improvement.
+> Exopter develops advanced personal **rigid-wing flight systems** — aerospace engineering, embedded sensing, pilot assistance, and flight-data intelligence. The **Exopter OS** operating suite supports the full flight lifecycle: preparation, live in-flight guidance, recording, replay, analysis, maintenance, and continuous improvement.
 
 This design system should feel like **a piece of flight-test equipment**: matte, precise, physical, safety-aware, and quietly ambitious. Not a generic aviation app, not a drone brand, not futuristic decoration.
 
@@ -12,8 +12,8 @@ This system was built from materials provided by the team. Not all are present i
 
 - **`uploads/design-system.md`** — the authoritative Exopter design brief (color, type, components, HUD rules, voice, product architecture). The single source of truth for everything below. *(Present in `uploads/`.)*
 - **Wing reference photo** — matte-black rigid wing on a grass field, white `EXOPTER` wordmark. Saved at `assets/exopter-wing-reference.jpeg`. *(Present.)*
-- **Rails app** (`sillage/web/`, **attached**) — the real Sillage Flight Lab. `app/assets/stylesheets/exopter_design_system.css` is the canonical token file (mirrored verbatim into `tokens/exopter-tokens.css`); `application.css` holds the component classes + `--ds-*` bridge (copied into `ui_kits/sillage-flight/sillage.css`); `/devreference/design-system` is the app's own reference page; views under `app/views/` (dashboard, jumps, flight_imports); copy in `config/locales/en.yml`.
-- **`docs/` program files** (`sillage/docs/`, **attached**) — EPW/GLD specs, HUD & FDR requirements, Singapore pricing quotes, roadmap, OpenProject agent-workflow README, COC contract. *(Not yet mined into the system — see caveats.)*
+- **Rails app** (`web/`, **attached**) — the real OS Flight Lab. `app/assets/stylesheets/exopter_design_system.css` is the canonical token file (mirrored verbatim into `tokens/exopter-tokens.css`); `application.css` holds the component classes + `--ds-*` bridge (copied into `ui_kits/os-flight/os.css`); `/devreference/design-system` is the app's own reference page; views under `app/views/` (dashboard, jumps, flight_imports); copy in `config/locales/en.yml`.
+- **`docs/` program files** (`docs/`, **attached**) — EPW/GLD specs, HUD & FDR requirements, Singapore pricing quotes, roadmap, OpenProject agent-workflow README, COC contract. *(Not yet mined into the system — see caveats.)*
 
 ### Deep-tech brand references (supplied by the user)
 
@@ -27,12 +27,12 @@ For the **public/brand** surface, the team pointed to deep-tech industrial sites
 | --- | --- |
 | **Exopter** | Master brand, company, vehicle program, public identity. |
 | **Exowing** | Wing-system name (GLD, EPW, JPW, prototypes, contracts). |
-| **Sillage** | The operating software suite — an avionics workbench. |
+| **Exopter OS** | The operating software suite — an avionics workbench. |
 | **GLD** | Glider Wing System — unpowered rigid-wing validation stage (the first validated stage). |
 | **EPW / EDF** | Electric-Powered Wings / electric ducted fan mode. Adds power, battery, autonomy, ground station. |
 | **JPW / JET** | Jet-powered roadmap extension. Use sparingly until requirements mature. |
 
-**What actually ships today: Sillage Flight Lab.** The real app is a **FlySight jump-trace workshop** — import a flight trace, replay the 3D trajectory, sync a video, and analyse height/speed, ground track, performance, IMU dynamics, and power. Its surfaces: Dashboard ("Trajectory workshop"), Jumps (logbook), Jump (3D replay + charts), Import. The broader **Sillage room family** is *planned* per the brief, not yet built: **Atlas** (maps, terrain, route), **Hangar** (fleet, hardware, spares), **Signal** (telemetry, comms, ground station), **Forge** (agent workflows, OpenProject, docs), **Core** (auth, audit, storage). Treat Flight Lab as the source of truth; the rest as roadmap.
+**What actually ships today: OS Flight Lab.** The real app is a **FlySight jump-trace workshop** — import a flight trace, replay the 3D trajectory, sync a video, and analyse height/speed, ground track, performance, IMU dynamics, and power. Its surfaces: Dashboard ("Trajectory workshop"), Jumps (logbook), Jump (3D replay + charts), Import. The broader **Exopter OS room family** is *planned* per the brief, not yet built: **Atlas** (maps, terrain, route), **Hangar** (fleet, hardware, spares), **Signal** (telemetry, comms, ground station), **Forge** (agent workflows, OpenProject, docs), **Core** (auth, audit, storage). Treat Flight Lab as the source of truth; the rest as roadmap.
 
 ---
 
@@ -45,7 +45,7 @@ How Exopter writes.
 - **Preferred verbs:** load, prepare, verify, arm, disarm, record, replay, compare, inspect, approve, export, sync, train, certify. Reach for these before generic ones ("see", "manage", "get started").
 - **Specific, never vague.** Name the mode, hardware, pilot, sensor, test status. "Replay T0 exit and compare glide ratio" beats "view your flight data".
 - **Honest about risk and maturity.** Never hide a safety gate or uncertainty. "Sensor fault: do not rely on airspeed." State what is unknown as "Unknown" / "No data" — don't fill blanks with optimism.
-- **Casing.** Sentence case for prose and most UI. **UPPERCASE** (with `--ls-label` tracking, mono) reserved for compact technical tokens: `GLD`, `EDF`, `JET`, `READY`, `FAULT`, `ARMED`, `T0+6`. Title Case for proper product names (Sillage Flight, Sillage Atlas).
+- **Casing.** Sentence case for prose and most UI. **UPPERCASE** (with `--ls-label` tracking, mono) reserved for compact technical tokens: `GLD`, `EDF`, `JET`, `READY`, `FAULT`, `ARMED`, `T0+6`. Title Case for proper product names (OS Flight, OS Atlas).
 - **Numerals are data.** Tabular figures for speed, altitude, glide, distance, durations, dates, prices. Short unit labels: `km/h`, `m`, `°C`, `kW`.
 - **No emoji.** No hype adjectives. **Banned:** "revolutionary", "superhuman", "ultimate freedom", "fly like a hero", "unlock the future of personal flight", vague AI/productivity claims.
 - **Contract/authority surfaces stay plain.** No marketing language in specs, checklists, pricing, or acceptance docs. Always carry source, owner, state, date.
@@ -84,7 +84,7 @@ How Exopter writes.
 
 ## ICONOGRAPHY
 
-The real Sillage app ships **no icon library** — its few controls are **pure-CSS glyphs** (the play/pause triangle `.play-toggle-icon`, the camera-reset `.camera-reset-icon`, and the CSS-constructed `.brand-mark`), and the brand wordmark uses the three speed-bars (≡). For broader product work (slides, mocks, new screens) this system standardizes on **[Lucide](https://lucide.dev)** — an open, MIT-licensed line-icon set with a consistent **1.5–2px stroke**, `24×24` grid, rounded caps — whose precise, utilitarian stroke matches the flight-test-equipment feel. **Substitution flag:** Lucide is *additive* (the app itself doesn't use it); keep the app's CSS glyphs when recreating real screens, and reach for Lucide only for new surfaces. No emoji, no Unicode pictographs.
+The real Exopter OS app ships **no icon library** — its few controls are **pure-CSS glyphs** (the play/pause triangle `.play-toggle-icon`, the camera-reset `.camera-reset-icon`, and the CSS-constructed `.brand-mark`), and the brand wordmark uses the three speed-bars (≡). For broader product work (slides, mocks, new screens) this system standardizes on **[Lucide](https://lucide.dev)** — an open, MIT-licensed line-icon set with a consistent **1.5–2px stroke**, `24×24` grid, rounded caps — whose precise, utilitarian stroke matches the flight-test-equipment feel. **Substitution flag:** Lucide is *additive* (the app itself doesn't use it); keep the app's CSS glyphs when recreating real screens, and reach for Lucide only for new surfaces. No emoji, no Unicode pictographs.
 
 - **Format:** inline SVG (stroke icons), loaded from the Lucide CDN in cards and UI kits (`https://unpkg.com/lucide@latest`). Single-color via `currentColor` so icons inherit text/state color.
 - **Sizing:** 16px (compact/inline), 18–20px (default controls), 24px (nav, headers). Keep stroke weight visually consistent — don't mix fill and stroke styles in one view.
@@ -131,17 +131,17 @@ Root files:
 
 `ui_kits/` — full-screen product recreations:
 
-- `sillage-flight/` — the Sillage Flight workbench (logbook, replay, prep, HUD).
+- `os-flight/` — the OS Flight workbench (logbook, replay, prep, HUD).
 - `exopter-brand/` — the public/brand page (deep-tech, object-led).
 
 `assets/` — wing photo, placeholder logo marks, aerofoil mark.
 
-> **Caveat:** the Rails codebase (`sillage/web/`) is now attached, so tokens
-> (`tokens/exopter-tokens.css`) and the Sillage Flight Lab UI kit
-> (`ui_kits/sillage-flight/`, using the app's own `application.css`) are faithful
+> **Caveat:** the Rails codebase (`web/`) is now attached, so tokens
+> (`tokens/exopter-tokens.css`) and the OS Flight Lab UI kit
+> (`ui_kits/os-flight/`, using the app's own `application.css`) are faithful
 > recreations from source. Still substitutions: **Aptos** (brand sans) falls back
 > to **Inter** via Google Fonts until the licensed file is supplied; **Lucide** is
 > an additive icon set for new surfaces (the app itself uses CSS glyphs); the
 > trajectory/charts are SVG stand-ins for the app's Cesium/Chart.js canvases.
-> Logo marks remain non-final placeholders. The `sillage/docs/` program files are
+> Logo marks remain non-final placeholders. The `docs/` program files are
 > attached but **not yet mined** into specimen content. See CAVEATS at handoff.

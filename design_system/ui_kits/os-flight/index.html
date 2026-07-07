@@ -1,10 +1,10 @@
-<!-- @dsCard group="Sillage Flight" viewport="1280x820" name="Sillage · Flight Lab" subtitle="Operations workbench — Logbook, Flight prep, Replay, HUD across Flight / Atlas / Hangar / Signal / Forge / Core" -->
+<!-- @dsCard group="OS Flight" viewport="1280x820" name="OS · Flight Lab" subtitle="Operations workbench — Logbook, Flight prep, Replay, HUD across Flight / Atlas / Hangar / Signal / Forge / Core" -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sillage Flight</title>
+<title>OS Flight</title>
 <link rel="stylesheet" href="../../styles.css">
 <link rel="icon" href="../../assets/app-icon.svg">
 <style>
@@ -33,12 +33,12 @@
 <script type="text/babel" src="Hud.jsx" data-presets="react"></script>
 
 <script type="text/babel" data-presets="react">
-  const { Shell } = window.SillageShell;
-  const { Logbook } = window.SillageLogbook;
-  const { Replay } = window.SillageReplay;
-  const { FlightPrep } = window.SillageFlightPrep;
-  const { Hud } = window.SillageHud;
-  const { Icon } = window.SillageIcons;
+  const { Shell } = window.OSShell;
+  const { Logbook } = window.OSLogbook;
+  const { Replay } = window.OSReplay;
+  const { FlightPrep } = window.OSFlightPrep;
+  const { Hud } = window.OSHud;
+  const { Icon } = window.OSIcons;
 
   const SUBTABS = [
     { id: 'logbook', label: 'Logbook' },
@@ -48,7 +48,7 @@
   ];
 
   function Placeholder({ room }) {
-    const names = { atlas: 'Sillage Atlas', hangar: 'Sillage Hangar', signal: 'Sillage Signal', forge: 'Sillage Forge', core: 'Sillage Core' };
+    const names = { atlas: 'OS Atlas', hangar: 'OS Hangar', signal: 'OS Signal', forge: 'OS Forge', core: 'OS Core' };
     const desc = {
       atlas: 'Maps, terrain, route comparison, airspace context, and waypoint planning.',
       hangar: 'Fleet, wing hardware, equipment, maintenance, and spare parts.',

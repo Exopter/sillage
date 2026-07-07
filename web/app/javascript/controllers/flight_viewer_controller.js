@@ -71,8 +71,8 @@ export default class extends Controller {
     const chartModule = await import("https://cdn.jsdelivr.net/npm/chart.js@4.4.9/+esm")
 
     this.Chart = chartModule.Chart
-    this.tooltipPosition = this.installTooltipPositioner(chartModule.Tooltip) ? "sillageAwayFromPoint" : "average"
-    this.Chart.register(...chartModule.registerables, SILLAGE_BOUNDS_PLUGIN, SILLAGE_PLAYBACK_PLUGIN)
+    this.tooltipPosition = this.installTooltipPositioner(chartModule.Tooltip) ? "osAwayFromPoint" : "average"
+    this.Chart.register(...chartModule.registerables, OS_BOUNDS_PLUGIN, OS_PLAYBACK_PLUGIN)
 
     this.setupCharts()
     this.updatePlayButton()
@@ -1221,8 +1221,8 @@ export default class extends Controller {
             title: (items) => this.formatTimer(this.chartItemElapsed(items[0]))
           }
         },
-        sillageBounds: showBounds ? { bounds: this.boundsValue, labels: this.labelsValue } : false,
-        sillagePlayback: {
+        osBounds: showBounds ? { bounds: this.boundsValue, labels: this.labelsValue } : false,
+        osPlayback: {
           elapsed: this.currentElapsed,
           mode: cursorMode,
           color: this.colors.amber,
@@ -1315,7 +1315,7 @@ export default class extends Controller {
   }
 
   chartCursorMode(chart) {
-    return chart.options?.plugins?.sillagePlayback?.mode || "time"
+    return chart.options?.plugins?.osPlayback?.mode || "time"
   }
 
   chartItemElapsed(item) {
@@ -1643,7 +1643,7 @@ export default class extends Controller {
 
   updateChartsPlaybackCursor(elapsed) {
     this.charts.forEach((chart) => {
-      const playback = chart.options?.plugins?.sillagePlayback
+      const playback = chart.options?.plugins?.osPlayback
       if (!playback) return
 
       playback.elapsed = elapsed
@@ -1717,9 +1717,9 @@ export default class extends Controller {
 
   installTooltipPositioner(Tooltip) {
     if (!Tooltip?.positioners) return false
-    if (Tooltip.positioners.sillageAwayFromPoint) return true
+    if (Tooltip.positioners.osAwayFromPoint) return true
 
-    Tooltip.positioners.sillageAwayFromPoint = function(elements, eventPosition) {
+    Tooltip.positioners.osAwayFromPoint = function(elements, eventPosition) {
       const element = elements.find((item) => item?.element)?.element
       const point = element?.tooltipPosition ? element.tooltipPosition() : eventPosition
       const area = this.chart?.chartArea
@@ -2175,8 +2175,8 @@ function tooltipVerticalAlign(pointY, height, room) {
   return "center"
 }
 
-const SILLAGE_BOUNDS_PLUGIN = {
-  id: "sillageBounds",
+const OS_BOUNDS_PLUGIN = {
+  id: "osBounds",
   afterDatasetsDraw(chart, _args, options) {
     if (!options?.bounds) return
 
@@ -2213,8 +2213,8 @@ const SILLAGE_BOUNDS_PLUGIN = {
   }
 }
 
-const SILLAGE_PLAYBACK_PLUGIN = {
-  id: "sillagePlayback",
+const OS_PLAYBACK_PLUGIN = {
+  id: "osPlayback",
   afterDatasetsDraw(chart, _args, options) {
     const elapsed = Number(options?.elapsed)
     if (!Number.isFinite(elapsed)) return

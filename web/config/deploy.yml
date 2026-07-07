@@ -29,16 +29,16 @@
 %>
 
 # Name of your application. Used to uniquely configure containers.
-service: sillage
+service: exopter-os
 
 # Name of the container image. With the private registry below, Kamal resolves
-# this as 127.0.0.1:5555/sillage on the VPS.
-image: sillage
+# this as 127.0.0.1:5555/exopter-os on the VPS.
+image: exopter-os
 
 # Deploy to the host serving the public domain.
 servers:
   web:
-    - sillage.wild.eu
+    - exopter.com
 
 ssh:
   user: root
@@ -69,8 +69,8 @@ env:
   clear:
     SOLID_QUEUE_IN_PUMA: true
     RAILS_LOG_LEVEL: info
-    SILLAGE_LANDING_HOSTS: exopter.com
-    SILLAGE_OS_HOSTS: os.exopter.com
+    EXOPTER_OS_LANDING_HOSTS: exopter.com
+    EXOPTER_OS_HOSTS: os.exopter.com
     EMAIL_ENABLED: "<%= ENV.fetch("EMAIL_ENABLED", "false") %>"
     MAIL_FROM: "<%= ENV.fetch("MAIL_FROM", "") %>"
     MAIL_FROM_NAME: "<%= ENV.fetch("MAIL_FROM_NAME", "") %>"
@@ -79,13 +79,13 @@ env:
   secret:
     - RAILS_MASTER_KEY
     - CESIUM_ION_TOKEN
-    - SILLAGE_LANDING_BASIC_AUTH_USERNAME
-    - SILLAGE_LANDING_BASIC_AUTH_PASSWORD
+    - EXOPTER_OS_LANDING_BASIC_AUTH_USERNAME
+    - EXOPTER_OS_LANDING_BASIC_AUTH_PASSWORD
     - POSTMARK_SERVER_TOKEN
 
 # Persist SQLite databases and local Active Storage uploads across deploys.
 volumes:
-  - "sillage_storage:/rails/storage"
+  - "exopter_os_storage:/rails/storage"
 
 # Bridge fingerprinted assets between versions during deploys.
 asset_path: /rails/public/assets
@@ -93,7 +93,7 @@ asset_path: /rails/public/assets
 # Build on the VPS so the image is pushed directly to its local registry.
 builder:
   arch: amd64
-  remote: ssh://root@sillage.wild.eu
+  remote: ssh://root@exopter.com
   local: false
 
 aliases:

@@ -1,6 +1,6 @@
-/* Sillage Flight — Logbook screen. window.SillageLogbook. */
+/* OS Flight — Logbook screen. window.OSLogbook. */
 (function () {
-  const { Icon } = window.SillageIcons;
+  const { Icon } = window.OSIcons;
   const DS = window.ExopterDesignSystem_4c9fc9;
   const { Button, Input, Badge, StatusDot } = DS;
 
@@ -66,5 +66,5 @@
       </div>
     );
   }
-  window.SillageLogbook = { Logbook };
+  window.OSLogbook = { Logbook };
 })();

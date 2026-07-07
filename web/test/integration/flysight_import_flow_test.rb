@@ -79,7 +79,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     clear_enqueued_jobs
   end
 
-  test "dashboard renders the Sillage logbook" do
+  test "dashboard renders the Exopter OS logbook" do
     jump = Jump.recent.first
 
     get root_path
@@ -102,7 +102,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     get forge_path
 
     assert_response :success
-    assert_select "h1", "Sillage Forge"
+    assert_select "h1", "OS Forge"
     assert_sillage_breadcrumb room: "Forge", tab: "Overview"
     assert_select ".room-placeholder-card"
     assert_select ".room-placeholder-card span", text: "Not built in this UI kit"
@@ -222,7 +222,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
   def assert_sillage_breadcrumb(room:, tab:)
     assert_select ".sillage-breadcrumb[aria-label='Breadcrumb']"
     assert_select ".sillage-breadcrumb ol li", 3
-    assert_select ".sillage-breadcrumb ol li:nth-child(1) a[href='#{root_path}']", text: "Sillage"
+    assert_select ".sillage-breadcrumb ol li:nth-child(1) a[href='#{root_path}']", text: "Exopter OS"
     assert_select ".sillage-breadcrumb ol li:nth-child(2) a", text: room
     assert_select ".sillage-breadcrumb ol li:nth-child(3) [aria-current='page']", text: tab
   end

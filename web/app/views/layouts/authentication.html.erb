@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="<%= I18n.locale %>">
   <head>
-    <title><%= content_for(:title) || "Sillage" %></title>
+    <title><%= content_for(:title) || "Exopter OS" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
@@ -11,7 +11,7 @@
   <body class="authentication-page">
     <main class="authentication-shell">
       <section class="authentication-panel">
-        <%= image_tag "app-icon.svg", alt: "Sillage", class: "authentication-logo" %>
+        <%= image_tag "app-icon.svg", alt: "Exopter OS", class: "authentication-logo" %>
         <% flash.each do |type, message| %>
           <div class="flash <%= type %>"><%= message %></div>
         <% end %>

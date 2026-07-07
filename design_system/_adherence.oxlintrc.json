@@ -20,7 +20,7 @@
               "components/feedback/**",
               "components/forms/**",
               "ui_kits/exopter-brand/**",
-              "ui_kits/sillage-flight/**"
+              "ui_kits/os-flight/**"
             ],
             "message": "Import design-system components from 'index.js', not component internals."
           }

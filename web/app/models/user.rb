@@ -93,13 +93,13 @@ class User < ApplicationRecord
   end
 
   def provisioning_uri(secret = totp_secret)
-    ROTP::TOTP.new(secret, issuer: "Sillage").provisioning_uri(email_address)
+    ROTP::TOTP.new(secret, issuer: "Exopter OS").provisioning_uri(email_address)
   end
 
   def verify_totp(code, secret: totp_secret)
     return false if code.blank? || secret.blank?
 
-    ROTP::TOTP.new(secret, issuer: "Sillage").verify(code.to_s.delete(" "), drift_behind: 30, drift_ahead: 30).present?
+    ROTP::TOTP.new(secret, issuer: "Exopter OS").verify(code.to_s.delete(" "), drift_behind: 30, drift_ahead: 30).present?
   end
 
   def enable_totp!(secret)

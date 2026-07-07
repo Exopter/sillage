@@ -1,6 +1,6 @@
-/* Sillage Flight — application shell: left rail + top header. Exposes window.SillageShell. */
+/* OS Flight — application shell: left rail + top header. Exposes window.OSShell. */
 (function () {
-  const { Icon } = window.SillageIcons;
+  const { Icon } = window.OSIcons;
   const DS = window.ExopterDesignSystem_4c9fc9;
   const { SegmentedControl, IconButton, Badge } = DS;
 
@@ -52,7 +52,7 @@
         <img src="../../assets/logo-wordmark.svg" alt="EXOPTER" style={{ height: 16, opacity: .95 }} />
         <span style={{ width: 1, height: 22, background: 'var(--ex-carbon-700)' }} />
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--ex-graphite-400)' }}>Sillage Flight · {crumb}</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--ex-graphite-400)' }}>OS Flight · {crumb}</span>
           <span style={{ fontSize: 15, fontWeight: 600 }}>{title}</span>
         </div>
         <div style={{ flex: 1 }} />
@@ -80,5 +80,5 @@
     );
   }
 
-  window.SillageShell = { Shell, ROOMS };
+  window.OSShell = { Shell, ROOMS };
 })();
