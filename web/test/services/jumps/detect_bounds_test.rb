@@ -67,6 +67,35 @@ module Jumps
       assert_equal started_at + 51.0, bounds[:opening_at]
     end
 
+    test "keeps production-like lower opening when the final fast descent is moderate" do
+      started_at = Time.zone.parse("2026-07-07 12:57:14 UTC")
+      points = [
+        point(started_at, 356.2, 5_569.951, 42.071, 6.73),
+        point(started_at, 388.2, 4_294.276, 50.384, 48.49),
+        point(started_at, 390.6, 4_189.749, 51.89, 37.87),
+        point(started_at, 391.8, 4_148.028, 50.887, 30.43),
+        point(started_at, 392.4, 4_131.652, 50.097, 23.87),
+        point(started_at, 394.8, 4_095.501, 43.549, 8.91),
+        point(started_at, 395.4, 4_090.491, 41.345, 6.67),
+        point(started_at, 396.0, 4_087.066, 38.64, 4.21),
+        point(started_at, 396.6, 4_084.84, 35.87, 2.27),
+        point(started_at, 650.4, 417.652, 17.37, 9.63),
+        point(started_at, 655.2, 383.835, 9.901, 14.51),
+        point(started_at, 661.8, 319.341, 11.7, 18.02),
+        point(started_at, 662.4, 308.955, 16.978, 16.24),
+        point(started_at, 663.0, 300.456, 20.965, 12.1),
+        point(started_at, 663.6, 294.517, 22.163, 8.31),
+        point(started_at, 664.2, 290.491, 21.624, 5.61),
+        point(started_at, 664.8, 287.645, 20.665, 4.26),
+        point(started_at, 665.4, 285.136, 19.495, 4.16),
+        point(started_at, 1_201.0, 9.75, 1.0, 0.0)
+      ]
+
+      bounds = DetectBounds.new(points).call
+
+      assert_equal started_at + 663.6, bounds[:opening_at]
+    end
+
     private
 
     def point(started_at, elapsed_seconds, altitude_m, horizontal_speed_mps, vertical_speed_mps)

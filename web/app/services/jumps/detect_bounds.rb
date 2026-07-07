@@ -7,7 +7,8 @@ module Jumps
     FREEFALL_MIN_ALTITUDE_LOSS_M = 20.0
     FREEFALL_MIN_AVG_DESCENT_MPS = 6.0
     AIRCRAFT_CLIMB_GAIN_M = 50.0
-    OPENING_FAST_DESCENT_MPS = 25.0
+    OPENING_FAST_DESCENT_MPS = 18.0
+    OPENING_FAST_LOOKBEHIND_SECONDS = 8.0
     OPENING_SLOW_DESCENT_MPS = 10.0
     OPENING_SLOW_POINTS = 4
 
@@ -112,7 +113,12 @@ module Jumps
     end
 
     def recent_fast_descent?(points, index)
-      lookbehind = points[[ index - OPENING_SLOW_POINTS, 0 ].max...index].to_a
+      point = points[index]
+      return false unless point
+
+      lookbehind = points[0...index].to_a.reverse_each.take_while do |previous|
+        elapsed_seconds(previous).to_f >= elapsed_seconds(point).to_f - OPENING_FAST_LOOKBEHIND_SECONDS
+      end
 
       lookbehind.any? { |point| vertical_speed_mps(point).to_f >= OPENING_FAST_DESCENT_MPS }
     end
