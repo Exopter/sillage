@@ -7,10 +7,12 @@ module Jumps
     FREEFALL_MIN_ALTITUDE_LOSS_M = 20.0
     FREEFALL_MIN_AVG_DESCENT_MPS = 6.0
     AIRCRAFT_CLIMB_GAIN_M = 50.0
-    OPENING_FAST_DESCENT_MPS = 18.0
+    OPENING_FAST_DESCENT_MPS = 12.0
     OPENING_FAST_LOOKBEHIND_SECONDS = 8.0
     OPENING_SLOW_DESCENT_MPS = 10.0
     OPENING_SLOW_POINTS = 4
+    OPENING_TYPICAL_MIN_HEIGHT_M = 600.0
+    OPENING_TYPICAL_MAX_HEIGHT_M = 1_500.0
 
     def initialize(points)
       @points = points.sort_by { |point| point[:elapsed_seconds] || 0 }
@@ -109,7 +111,7 @@ module Jumps
         candidate_active = candidate
       end
 
-      candidates.last
+      select_opening_candidate(candidates)
     end
 
     def recent_fast_descent?(points, index)
@@ -121,6 +123,33 @@ module Jumps
       end
 
       lookbehind.any? { |point| vertical_speed_mps(point).to_f >= OPENING_FAST_DESCENT_MPS }
+    end
+
+    def select_opening_candidate(candidates)
+      candidates.compact.min_by.with_index do |candidate, index|
+        height = height_m(candidate)
+        next [ 2, index ] unless height
+
+        if height.between?(OPENING_TYPICAL_MIN_HEIGHT_M, OPENING_TYPICAL_MAX_HEIGHT_M)
+          [ 0, height ]
+        elsif height > OPENING_TYPICAL_MAX_HEIGHT_M
+          [ 1, height - OPENING_TYPICAL_MAX_HEIGHT_M ]
+        else
+          [ 1, OPENING_TYPICAL_MIN_HEIGHT_M - height ]
+        end
+      end
+    end
+
+    def height_m(point)
+      altitude = altitude_m(point)
+      floor = altitude_floor_m
+      return nil unless altitude && floor
+
+      altitude - floor
+    end
+
+    def altitude_floor_m
+      @altitude_floor_m ||= @points.filter_map { |point| altitude_m(point) }.min
     end
 
     def fallback_opening(exit_point)

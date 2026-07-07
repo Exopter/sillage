@@ -59,7 +59,8 @@ module Jumps
         point(started_at, 53.0, 1_767.0, 14.0, 5.8),
         point(started_at, 54.0, 1_762.0, 14.0, 5.3),
         point(started_at, 70.0, 1_680.0, 12.0, 5.0),
-        point(started_at, 95.0, 1_560.0, 10.0, 4.8)
+        point(started_at, 95.0, 1_560.0, 10.0, 4.8),
+        point(started_at, 120.0, 900.0, 3.0, 1.0)
       ]
 
       bounds = DetectBounds.new(points).call
@@ -79,6 +80,12 @@ module Jumps
         point(started_at, 395.4, 4_090.491, 41.345, 6.67),
         point(started_at, 396.0, 4_087.066, 38.64, 4.21),
         point(started_at, 396.6, 4_084.84, 35.87, 2.27),
+        point(started_at, 568.0, 980.0, 16.0, 13.0),
+        point(started_at, 572.8, 946.0, 15.0, 12.5),
+        point(started_at, 573.4, 940.369, 14.73, 8.97),
+        point(started_at, 574.0, 935.0, 14.0, 7.0),
+        point(started_at, 574.6, 931.0, 13.5, 6.0),
+        point(started_at, 575.2, 928.0, 13.0, 5.5),
         point(started_at, 650.4, 417.652, 17.37, 9.63),
         point(started_at, 655.2, 383.835, 9.901, 14.51),
         point(started_at, 661.8, 319.341, 11.7, 18.02),
@@ -93,7 +100,7 @@ module Jumps
 
       bounds = DetectBounds.new(points).call
 
-      assert_equal started_at + 663.6, bounds[:opening_at]
+      assert_equal started_at + 573.4, bounds[:opening_at]
     end
 
     private
