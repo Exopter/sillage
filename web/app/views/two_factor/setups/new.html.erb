@@ -10,6 +10,11 @@
   <%= raw @qr_svg %>
 </div>
 
+<div class="totp-secret">
+  <span>Manual setup key</span>
+  <code><%= @totp_secret %></code>
+</div>
+
 <%= form_with url: two_factor_setup_path, class: "authentication-form" do |form| %>
   <label>
     <span>Authentication code</span>
