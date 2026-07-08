@@ -1513,9 +1513,11 @@ textarea {
 .totp-qr {
   display: grid;
   box-sizing: border-box;
-  width: min(100%, 280px);
+  justify-self: center;
+  width: min(100%, 320px);
   max-width: 100%;
-  padding: 12px;
+  aspect-ratio: 1;
+  padding: 24px;
   place-items: center;
   border: 1px solid var(--border-rule);
   border-radius: 8px;
@@ -1524,8 +1526,9 @@ textarea {
 
 .totp-qr svg {
   display: block;
-  width: 100%;
+  width: min(100%, 248px);
   height: auto;
+  margin: auto;
 }
 
 .totp-secret {
