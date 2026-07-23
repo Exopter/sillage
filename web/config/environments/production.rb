@@ -24,7 +24,7 @@ Rails.application.configure do
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
 
-  sillage_host = ENV.fetch("EXOPTER_OS_HOSTS", "sillage.exopter.com")
+  sillage_host = ENV.fetch("SILLAGE_HOSTS", "sillage.exopter.com")
     .split(",")
     .map(&:strip)
     .reject(&:empty?)
@@ -87,9 +87,9 @@ Rails.application.configure do
 
   # Enable DNS rebinding protection and other `Host` header attacks.
   configured_hosts = [
-    ENV["EXOPTER_OS_LANDING_HOSTS"].presence || "exopter.com",
-    ENV["EXOPTER_OS_HOSTS"].presence || "sillage.exopter.com",
-    ENV["EXOPTER_OS_LEGACY_HOSTS"].presence || "os.exopter.com"
+    ENV["SILLAGE_LANDING_HOSTS"].presence || "exopter.com",
+    ENV["SILLAGE_HOSTS"].presence || "sillage.exopter.com",
+    ENV["SILLAGE_LEGACY_HOSTS"].presence || "os.exopter.com"
   ].flat_map { |hosts| hosts.split(",").map { |host| host.strip } }.reject(&:empty?).uniq
   config.hosts = configured_hosts
   #

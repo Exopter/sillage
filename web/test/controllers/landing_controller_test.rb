@@ -2,13 +2,13 @@ require "test_helper"
 
 class LandingControllerTest < ActionDispatch::IntegrationTest
   setup do
-    @auth_username = ENV["EXOPTER_OS_LANDING_BASIC_AUTH_USERNAME"]
-    @auth_password = ENV["EXOPTER_OS_LANDING_BASIC_AUTH_PASSWORD"]
+    @auth_username = ENV["SILLAGE_LANDING_BASIC_AUTH_USERNAME"]
+    @auth_password = ENV["SILLAGE_LANDING_BASIC_AUTH_PASSWORD"]
   end
 
   teardown do
-    restore_env("EXOPTER_OS_LANDING_BASIC_AUTH_USERNAME", @auth_username)
-    restore_env("EXOPTER_OS_LANDING_BASIC_AUTH_PASSWORD", @auth_password)
+    restore_env("SILLAGE_LANDING_BASIC_AUTH_USERNAME", @auth_username)
+    restore_env("SILLAGE_LANDING_BASIC_AUTH_PASSWORD", @auth_password)
   end
 
   test "shows the landing page on the local landing host" do
@@ -34,8 +34,8 @@ class LandingControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "requires basic auth when landing credentials are configured" do
-    ENV["EXOPTER_OS_LANDING_BASIC_AUTH_USERNAME"] = "exopter"
-    ENV["EXOPTER_OS_LANDING_BASIC_AUTH_PASSWORD"] = "correct-password"
+    ENV["SILLAGE_LANDING_BASIC_AUTH_USERNAME"] = "exopter"
+    ENV["SILLAGE_LANDING_BASIC_AUTH_PASSWORD"] = "correct-password"
     host! "exopter.com"
 
     get root_path

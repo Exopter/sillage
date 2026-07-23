@@ -152,8 +152,8 @@ La configuration concrete est deja en place :
 Exemple pour un VPS unique :
 
 ```yaml
-service: exopter-os
-image: exopter-os
+service: sillage
+image: sillage
 
 servers:
   web:
@@ -178,15 +178,15 @@ env:
   clear:
     SOLID_QUEUE_IN_PUMA: true
     RAILS_LOG_LEVEL: info
-    EXOPTER_OS_LANDING_HOSTS: exopter.com
-    EXOPTER_OS_HOSTS: sillage.exopter.com
-    EXOPTER_OS_LEGACY_HOSTS: os.exopter.com
+    SILLAGE_LANDING_HOSTS: exopter.com
+    SILLAGE_HOSTS: sillage.exopter.com
+    SILLAGE_LEGACY_HOSTS: os.exopter.com
   secret:
     - RAILS_MASTER_KEY
     - CESIUM_ION_TOKEN
 
 volumes:
-  - "exopter_os_storage:/rails/storage"
+  - "sillage_storage:/rails/storage"
 
 asset_path: /rails/public/assets
 
@@ -320,16 +320,16 @@ La liste des versions apparait dans `kamal details`.
 ## 10. Backups SQLite et Active Storage
 
 Cette app stocke la base SQLite et les uploads Active Storage dans
-`/rails/storage`, monte via le volume Docker `exopter_os_storage`.
+`/rails/storage`, monte via le volume Docker `sillage_storage`.
 
 Ce volume doit etre sauvegarde. Exemple manuel sur le serveur :
 
 ```sh
 docker run --rm \
-  -v exopter_os_storage:/data \
+  -v sillage_storage:/data \
   -v "$PWD:/backup" \
   alpine \
-  tar czf /backup/exopter-os-storage-$(date +%Y%m%d-%H%M%S).tgz -C /data .
+  tar czf /backup/sillage-storage-$(date +%Y%m%d-%H%M%S).tgz -C /data .
 ```
 
 Pour restaurer, stoppe l'app avant de remplacer le contenu du volume.

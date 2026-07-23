@@ -4,9 +4,9 @@ Rails.application.routes.draw do
     value.split(",").map { |host| host.strip }.reject(&:empty?)
   end
 
-  landing_hosts = host_list.call("EXOPTER_OS_LANDING_HOSTS", "landing.localhost,exopter.com")
-  canonical_app_host = host_list.call("EXOPTER_OS_HOSTS", "sillage.exopter.com").first
-  legacy_app_hosts = host_list.call("EXOPTER_OS_LEGACY_HOSTS", "os.exopter.com")
+  landing_hosts = host_list.call("SILLAGE_LANDING_HOSTS", "landing.localhost,exopter.com")
+  canonical_app_host = host_list.call("SILLAGE_HOSTS", "sillage.exopter.com").first
+  legacy_app_hosts = host_list.call("SILLAGE_LEGACY_HOSTS", "os.exopter.com")
 
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 

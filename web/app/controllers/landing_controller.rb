@@ -32,11 +32,11 @@ class LandingController < ApplicationController
   end
 
   def landing_basic_auth_username
-    ENV["EXOPTER_OS_LANDING_BASIC_AUTH_USERNAME"]
+    ENV["SILLAGE_LANDING_BASIC_AUTH_USERNAME"]
   end
 
   def landing_basic_auth_password
-    ENV["EXOPTER_OS_LANDING_BASIC_AUTH_PASSWORD"]
+    ENV["SILLAGE_LANDING_BASIC_AUTH_PASSWORD"]
   end
 
   def sillage_url
@@ -45,7 +45,7 @@ class LandingController < ApplicationController
       return "#{request.protocol}localhost#{port}"
     end
 
-    host = ENV.fetch("EXOPTER_OS_HOSTS", "sillage.exopter.com")
+    host = ENV.fetch("SILLAGE_HOSTS", "sillage.exopter.com")
       .split(",")
       .map(&:strip)
       .reject(&:empty?)
