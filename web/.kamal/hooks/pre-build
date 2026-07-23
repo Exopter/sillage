@@ -6,8 +6,15 @@ context="${builder}-context"
 remote="ssh://root@exopter.com"
 host="root@exopter.com"
 container="buildx_buildkit_${builder}0"
+ssh_key="${KAMAL_SSH_KEY:-${HOME}/.ssh/kamal_deploy}"
 
-ssh -o ConnectTimeout=5 "${host}" \
+# Docker's SSH context does not inherit Kamal's SSH key configuration. Use an
+# isolated agent so both the registry bootstrap and Buildx select the deploy key.
+eval "$(ssh-agent -s)" >/dev/null
+trap 'ssh-agent -k >/dev/null' EXIT
+ssh-add "${ssh_key}" >/dev/null
+
+ssh -i "${ssh_key}" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=5 "${host}" \
   "docker start kamal-docker-registry >/dev/null 2>&1 || docker run --detach --restart unless-stopped -p 127.0.0.1:5555:5000 --name kamal-docker-registry registry:3 >/dev/null"
 
 if ! docker context inspect "${context}" >/dev/null 2>&1; then
@@ -17,7 +24,7 @@ if ! docker context inspect "${context}" >/dev/null 2>&1; then
 fi
 
 if docker buildx inspect "${builder}" >/dev/null 2>&1; then
-  network_mode="$(ssh -o ConnectTimeout=5 "${host}" "docker inspect -f '{{.HostConfig.NetworkMode}}' ${container} 2>/dev/null" || true)"
+  network_mode="$(ssh -i "${ssh_key}" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=5 "${host}" "docker inspect -f '{{.HostConfig.NetworkMode}}' ${container} 2>/dev/null" || true)"
   if [ "${network_mode}" = "host" ]; then
     exit 0
   fi
