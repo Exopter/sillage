@@ -1,0 +1,4 @@
+<nav class="workspace-tabs" aria-label="Forge sections">
+  <%= link_to "Builds", forge_builds_path, class: [ "workspace-tab", ("is-active" if controller_name == "builds") ] %>
+  <%= link_to "Test runs", forge_test_runs_path, class: [ "workspace-tab", ("is-active" if controller_name == "test_runs") ] %>
+</nav>

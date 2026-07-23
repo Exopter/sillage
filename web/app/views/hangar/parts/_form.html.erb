@@ -1,0 +1,44 @@
+<%= form_with model: [ :hangar, part ], class: "workspace-form" do |form| %>
+  <% if part.errors.any? %>
+    <div class="workspace-errors"><%= part.errors.full_messages.to_sentence %></div>
+  <% end %>
+
+  <div class="workspace-form-grid">
+    <label>
+      <span>Internal number</span>
+      <%= form.text_field :internal_number, required: true %>
+    </label>
+    <label>
+      <span>Function</span>
+      <%= form.collection_select :function_id, @functions, :id, :name, { prompt: "Select a function" }, required: true %>
+    </label>
+    <label>
+      <span>Manufacturer</span>
+      <%= form.text_field :manufacturer %>
+    </label>
+    <label>
+      <span>Model</span>
+      <%= form.text_field :model, required: true %>
+    </label>
+    <label>
+      <span>Serial number</span>
+      <%= form.text_field :serial_number %>
+    </label>
+    <% if Current.user.admin? %>
+      <label>
+        <span>State</span>
+        <%= form.select :state, Part::STATES.map { |state| [ state.titleize, state ] }, {}, disabled: part.state == "installed" %>
+      </label>
+    <% end %>
+  </div>
+
+  <label>
+    <span>Notes</span>
+    <%= form.text_area :notes, rows: 4 %>
+  </label>
+
+  <div class="workspace-actions">
+    <%= form.submit class: "button-primary" %>
+    <%= link_to "Cancel", part.persisted? ? hangar_part_path(part) : hangar_parts_path, class: "button-secondary" %>
+  </div>
+<% end %>

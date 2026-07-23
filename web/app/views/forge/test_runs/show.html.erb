@@ -1,0 +1,42 @@
+<% content_for :title, @test_run.recipe_id %><%= render "forge/tabs" %>
+<header class="workspace-header">
+  <div><span class="section-eyebrow"><%= @test_run.build.code %></span><h1><%= @test_run.recipe_id %></h1><p>Recipe v<%= @test_run.recipe_version %> · <%= l @test_run.ran_at, format: :long %></p></div>
+  <div class="workspace-actions"><%= link_to "Open build", forge_build_path(@test_run.build), class: "button-secondary" %><span class="workspace-status is-<%= @test_run.outcome %>"><%= @test_run.outcome.titleize %></span></div>
+</header>
+
+<div class="workspace-grid">
+  <section class="workspace-panel">
+    <h2>Execution</h2>
+    <dl class="workspace-details">
+      <div><dt>UUID</dt><dd class="workspace-mono"><%= @test_run.uuid %></dd></div>
+      <div><dt>Operator</dt><dd><%= @test_run.operator.email_address %></dd></div>
+      <div><dt>Target</dt><dd><%= @test_run.part ? @test_run.part.internal_number : @test_run.build.assembly_snapshot["code"] %></dd></div>
+      <div><dt>Recipe SHA-256</dt><dd class="workspace-mono"><%= @test_run.recipe_sha256 %></dd></div>
+      <div><dt>Ingestion SHA-256</dt><dd class="workspace-mono"><%= @test_run.ingestion_sha256 %></dd></div>
+    </dl>
+  </section>
+
+  <section class="workspace-panel">
+    <h2>Validation</h2>
+    <% if @test_run.validated? %>
+      <span class="workspace-status is-validated">Validated</span>
+      <p>By <%= @test_run.validated_by.email_address %> on <%= l @test_run.validated_at, format: :long %>.</p>
+      <% if @test_run.validation_note.present? %><p class="workspace-notes"><%= @test_run.validation_note %></p><% end %>
+    <% elsif @test_run.outcome == "passed" && Current.user.admin? %>
+      <%= form_with url: validate_forge_test_run_path(@test_run), method: :patch, class: "workspace-form" do |form| %><label><span>Validation note</span><%= form.text_area :validation_note, rows: 3 %></label><%= form.submit "Validate test", class: "button-primary" %><% end %>
+    <% else %><div class="workspace-empty"><%= @test_run.outcome == "passed" ? "Admin validation pending." : "Only a passed test can be validated." %></div><% end %>
+  </section>
+</div>
+
+<section class="workspace-panel">
+  <h2>Measurements</h2>
+  <% if @test_run.measurements.any? %><div class="measurement-grid"><% @test_run.measurements.each do |name, value| %><div><span><%= name.to_s.humanize %></span><strong><%= value.is_a?(Hash) || value.is_a?(Array) ? JSON.pretty_generate(value) : value %></strong></div><% end %></div><% else %><div class="workspace-empty">No structured measurement.</div><% end %>
+</section>
+
+<section class="workspace-panel">
+  <h2>Artifacts</h2>
+  <% if @test_run.artifacts.attached? %><div class="workspace-list"><% @test_run.artifacts.each do |artifact| %><%= link_to rails_blob_path(artifact, disposition: "attachment"), class: "workspace-list-row" do %><span><strong><%= artifact.filename %></strong><small><%= number_to_human_size artifact.byte_size %></small></span><span>Download</span><% end %><% end %></div><% end %>
+  <% if @test_run.artifact_manifest.any? %><div class="artifact-manifest"><% @test_run.artifact_manifest.each do |artifact| %><div><code><%= artifact["path"] || artifact["name"] %></code><span><%= number_to_human_size artifact["size"].to_i %> · <%= artifact["sha256"] %></span></div><% end %></div><% elsif !@test_run.artifacts.attached? %><div class="workspace-empty">No artifact recorded.</div><% end %>
+</section>
+
+<% if @test_run.notes.present? %><section class="workspace-panel"><h2>Notes</h2><%= simple_format @test_run.notes %></section><% end %>

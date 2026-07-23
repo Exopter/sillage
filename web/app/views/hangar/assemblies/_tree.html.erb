@@ -1,0 +1,16 @@
+<article class="assembly-tree-node">
+  <header>
+    <%= link_to assembly.code, hangar_assembly_path(assembly) %>
+    <span><%= assembly.name %></span>
+  </header>
+  <% if assembly.parts.any? %>
+    <ul>
+      <% assembly.parts.includes(:function).ordered.each do |part| %>
+        <li><span class="assembly-function"><%= part.function.name %></span><%= link_to part.internal_number, hangar_part_path(part) %><small><%= part.display_name %></small></li>
+      <% end %>
+    </ul>
+  <% end %>
+  <% assembly.children.ordered.each do |child| %>
+    <div class="assembly-tree-child"><%= render "hangar/assemblies/tree", assembly: child %></div>
+  <% end %>
+</article>

@@ -1,0 +1,13 @@
+<%= form_with model: [ :hangar, assembly ], class: "workspace-form" do |form| %>
+  <% if assembly.errors.any? %><div class="workspace-errors"><%= assembly.errors.full_messages.to_sentence %></div><% end %>
+  <div class="workspace-form-grid">
+    <label><span>Code</span><%= form.text_field :code, required: true, placeholder: "FDR-001" %></label>
+    <label><span>Name</span><%= form.text_field :name, required: true, placeholder: "Integrated FDR" %></label>
+    <label><span>Parent assembly</span><%= form.collection_select :parent_id, @parent_options, :id, :code, { include_blank: "No parent" } %></label>
+  </div>
+  <label><span>Notes</span><%= form.text_area :notes, rows: 4 %></label>
+  <div class="workspace-actions">
+    <%= form.submit class: "button-primary" %>
+    <%= link_to "Cancel", assembly.persisted? ? hangar_assembly_path(assembly) : hangar_assemblies_path, class: "button-secondary" %>
+  </div>
+<% end %>

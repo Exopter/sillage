@@ -1,0 +1,3 @@
+<% content_for :title, "Functions" %>
+<header class="workspace-header"><div><span class="section-eyebrow">OS Core</span><h1>Functions</h1><p>Technical roles fulfilled by serialized parts.</p></div><div class="workspace-actions"><%= link_to "Users", core_users_path, class: "button-secondary" %><%= link_to "Add function", new_core_function_path, class: "button-primary" %></div></header>
+<section class="workspace-panel"><div class="workspace-list"><% @functions.each do |function| %><%= link_to core_function_path(function), class: "workspace-list-row" do %><span><strong><%= function.name %></strong><small><%= function.code %> · <%= function.description %></small></span><span><%= pluralize function.parts.size, "part" %></span><% end %><% end %></div></section>

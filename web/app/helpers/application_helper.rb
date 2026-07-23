@@ -1,4 +1,11 @@
 module ApplicationHelper
+  def build_configuration_value(value)
+    return "Yes" if value == true
+    return "No" if value == false
+
+    value.presence || "Not recorded"
+  end
+
   OS_ICON_PATHS = {
     "gauge" => '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
     "activity" => '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
@@ -61,6 +68,8 @@ module ApplicationHelper
 
   def sillage_current_room
     return action_name if controller_name == "dashboard" && %w[atlas hangar signal forge core].include?(action_name)
+    return "hangar" if controller_path.start_with?("hangar/")
+    return "forge" if controller_path.start_with?("forge/")
     return "core" if controller_path.start_with?("core/") || controller_path.start_with?("devreference/")
 
     "flight"
@@ -87,7 +96,11 @@ module ApplicationHelper
     if sillage_current_room == "flight"
       sillage_flight_tabs.find { |tab| tab[:id] == sillage_current_flight_tab }&.fetch(:label) || sillage_shell_title
     elsif controller_path.start_with?("core/")
-      "Users"
+      controller_name == "functions" ? "Functions" : "Users"
+    elsif controller_path.start_with?("hangar/")
+      controller_name.titleize
+    elsif controller_path.start_with?("forge/")
+      controller_name.titleize
     elsif controller_path == "devreference/design_system"
       "Design system"
     else

@@ -1,0 +1,55 @@
+<% content_for :title, @build.code %>
+<%= render "forge/tabs" %>
+<header class="workspace-header">
+  <div><span class="section-eyebrow"><%= @build.locked? ? "Frozen build" : "Draft build" %></span><h1><%= @build.code %></h1><p><%= @build.assembly.code %> · Arduino Core <%= @build.arduino_core_version %></p></div>
+  <div class="workspace-actions">
+    <%= button_to "Clone as next build", clone_forge_build_path(@build), method: :post, class: "button-primary" %>
+    <% unless @build.locked? %><%= link_to "Edit", edit_forge_build_path(@build), class: "button-secondary" %><%= button_to "Refresh snapshot", refresh_snapshot_forge_build_path(@build), method: :patch, class: "button-secondary" %><% end %>
+  </div>
+</header>
+
+<div class="workspace-grid">
+  <section class="workspace-panel">
+    <h2>Provenance</h2>
+    <dl class="workspace-details">
+      <div><dt>Git revision</dt><dd class="workspace-mono"><%= @build.source_revision.presence || "Not recorded" %></dd></div>
+      <div><dt>Working tree</dt><dd><span class="workspace-status <%= @build.source_dirty? ? "is-blocked" : "is-passed" %>"><%= @build.source_dirty? ? "Modified" : "Clean" %></span></dd></div>
+      <div><dt>Source diff SHA-256</dt><dd class="workspace-mono"><%= @build.source_diff_sha256.presence || "Not applicable" %></dd></div>
+      <div><dt>Firmware SHA-256</dt><dd class="workspace-mono"><%= @build.firmware_sha256.presence || "Not recorded" %></dd></div>
+      <div><dt>Created by</dt><dd><%= @build.created_by.email_address %></dd></div>
+      <div><dt>Created</dt><dd><%= l @build.created_at, format: :short %></dd></div>
+    </dl>
+    <% if @build.notion_references.any? %><div class="workspace-reference-list"><strong>Notion references</strong><% @build.notion_references.each do |reference| %><code><%= reference %></code><% end %></div><% end %>
+  </section>
+
+  <section class="workspace-panel">
+    <h2>Changes from previous build</h2>
+    <% if @build.previous_build %>
+      <p>Compared with <%= link_to @build.previous_build.code, forge_build_path(@build.previous_build) %>.</p>
+      <dl class="workspace-details"><div><dt>Added parts</dt><dd><%= @part_changes[:added].presence&.join(", ") || "None" %></dd></div><div><dt>Removed parts</dt><dd><%= @part_changes[:removed].presence&.join(", ") || "None" %></dd></div></dl>
+      <% if @configuration_changes.any? %>
+        <dl class="workspace-details configuration-diff">
+          <% @configuration_changes.each do |change| %>
+            <div><dt><%= change[:label] %></dt><dd><span><%= build_configuration_value(change[:previous]) %></span><strong aria-label="changed to">→</strong><span><%= build_configuration_value(change[:current]) %></span></dd></div>
+          <% end %>
+        </dl>
+      <% end %>
+    <% else %><div class="workspace-empty">This is the first build in its line.</div><% end %>
+  </section>
+</div>
+
+<section class="workspace-panel">
+  <div class="workspace-panel-header"><h2>Captured hardware</h2><span>Immutable after the first test</span></div>
+  <%= render "snapshot", node: @build.assembly_snapshot %>
+</section>
+
+<section class="workspace-panel">
+  <div class="workspace-panel-header"><h2>Test runs</h2><span>Run locally with <code>python3 bench/run.py RECIPE --build <%= @build.code %></code></span></div>
+  <% if @test_runs.any? %>
+    <div class="workspace-list">
+      <% @test_runs.each do |run| %>
+        <%= link_to forge_test_run_path(run), class: "workspace-list-row" do %><span><strong><%= run.recipe_id %></strong><small><%= l run.ran_at, format: :short %> · <%= run.operator.email_address %></small></span><span><span class="workspace-status is-<%= run.outcome %>"><%= run.outcome.titleize %></span> <span class="workspace-status <%= run.validated? ? "is-validated" : "is-draft" %>"><%= run.validated? ? "Validated" : "Review pending" %></span></span><% end %>
+      <% end %>
+    </div>
+  <% else %><div class="workspace-empty">No test synchronized for this build.</div><% end %>
+</section>

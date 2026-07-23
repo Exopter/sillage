@@ -33,10 +33,37 @@ Rails.application.routes.draw do
 
   root "dashboard#index"
   get "atlas" => "dashboard#atlas", as: :atlas
-  get "hangar" => "dashboard#hangar", as: :hangar
+  get "hangar" => "hangar/parts#index", as: :hangar
   get "signal" => "dashboard#signal", as: :signal
-  get "forge" => "dashboard#forge", as: :forge
+  get "forge" => "forge/builds#index", as: :forge
   get "core" => "core/users#index", as: :core
+
+  scope module: :hangar, path: "hangar", as: "hangar" do
+    resources :parts
+    resources :assemblies do
+      member do
+        post :install_part
+        delete "parts/:part_id", action: :remove_part, as: :remove_part
+        patch "parts/:part_id/replace", action: :replace_part, as: :replace_part
+        post :attach_assembly
+        delete "assemblies/:child_id", action: :detach_assembly, as: :detach_assembly
+      end
+    end
+  end
+
+  scope module: :forge, path: "forge", as: "forge" do
+    resources :builds do
+      member do
+        post :clone
+        patch :refresh_snapshot
+      end
+    end
+    resources :test_runs, only: %i[index show] do
+      member { patch :validate }
+    end
+    resource :bench_token, only: %i[create destroy]
+  end
+
   namespace :core do
     resources :users, only: %i[index create edit update] do
       member do
@@ -44,6 +71,15 @@ Rails.application.routes.draw do
         patch :disable
         patch :enable
         patch :reset_two_factor
+      end
+    end
+    resources :functions
+  end
+
+  namespace :api do
+    namespace :v1 do
+      namespace :bench do
+        resources :test_runs, only: :create, param: :uuid, path: "test-runs"
       end
     end
   end

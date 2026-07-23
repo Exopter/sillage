@@ -1,0 +1,7 @@
+<nav class="workspace-tabs" aria-label="Hangar sections">
+  <%= link_to "Parts", hangar_parts_path, class: [ "workspace-tab", ("is-active" if controller_name == "parts") ] %>
+  <%= link_to "Assemblies", hangar_assemblies_path, class: [ "workspace-tab", ("is-active" if controller_name == "assemblies") ] %>
+  <% if Current.user.admin? %>
+    <%= link_to "Functions", core_functions_path, class: "workspace-tab" %>
+  <% end %>
+</nav>

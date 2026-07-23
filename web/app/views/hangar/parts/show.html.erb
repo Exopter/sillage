@@ -1,0 +1,47 @@
+<% content_for :title, @part.internal_number %>
+<%= render "hangar/tabs" %>
+
+<header class="workspace-header">
+  <div>
+    <span class="section-eyebrow"><%= @part.function.name %></span>
+    <h1><%= @part.internal_number %></h1>
+    <p><%= @part.display_name %></p>
+  </div>
+  <div class="workspace-actions">
+    <%= link_to "Edit", edit_hangar_part_path(@part), class: "button-secondary" %>
+    <% if @part.assembly.nil? && @part.test_runs.none? %>
+      <%= button_to "Delete", hangar_part_path(@part), method: :delete, class: "button-secondary", form: { data: { turbo_confirm: "Delete this part?" } } %>
+    <% end %>
+  </div>
+</header>
+
+<div class="workspace-grid">
+  <section class="workspace-panel">
+    <h2>Identity</h2>
+    <dl class="workspace-details">
+      <div><dt>Function</dt><dd><%= @part.function.name %></dd></div>
+      <div><dt>Manufacturer</dt><dd><%= @part.manufacturer.presence || "—" %></dd></div>
+      <div><dt>Model</dt><dd><%= @part.model %></dd></div>
+      <div><dt>Serial number</dt><dd><%= @part.serial_number.presence || "—" %></dd></div>
+      <div><dt>State</dt><dd><span class="workspace-status is-<%= @part.state %>"><%= @part.state.titleize %></span></dd></div>
+      <div><dt>Assembly</dt><dd><%= @part.assembly ? link_to(@part.assembly.code, hangar_assembly_path(@part.assembly)) : "Not installed" %></dd></div>
+    </dl>
+    <% if @part.notes.present? %><p class="workspace-notes"><%= simple_format @part.notes %></p><% end %>
+  </section>
+
+  <section class="workspace-panel">
+    <h2>Test evidence</h2>
+    <% if @test_runs.any? %>
+      <div class="workspace-list">
+        <% @test_runs.each do |run| %>
+          <%= link_to forge_test_run_path(run), class: "workspace-list-row" do %>
+            <span><strong><%= run.recipe_id %></strong><small><%= run.build.code %> · <%= l run.ran_at, format: :short %></small></span>
+            <span class="workspace-status is-<%= run.outcome %>"><%= run.outcome.titleize %></span>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="workspace-empty">No standalone test targets this part.</div>
+    <% end %>
+  </section>
+</div>

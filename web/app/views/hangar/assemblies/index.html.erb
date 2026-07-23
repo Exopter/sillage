@@ -1,0 +1,18 @@
+<% content_for :title, "Hangar · Assemblies" %>
+<%= render "hangar/tabs" %>
+<header class="workspace-header">
+  <div><span class="section-eyebrow">OS Hangar</span><h1>Assemblies</h1><p>Physical FDR configurations and nested modules.</p></div>
+  <%= link_to "Add assembly", new_hangar_assembly_path, class: "button-primary" %>
+</header>
+<section class="workspace-panel">
+  <% if @assemblies.any? %>
+    <div class="workspace-list">
+      <% @assemblies.each do |assembly| %>
+        <%= link_to hangar_assembly_path(assembly), class: "workspace-list-row" do %>
+          <span><strong><%= assembly.code %></strong><small><%= assembly.name %></small></span>
+          <span><%= pluralize assembly.parts.size, "part" %> · <%= pluralize assembly.children.size, "subassembly" %></span>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %><div class="workspace-empty">No assemblies registered yet.</div><% end %>
+</section>

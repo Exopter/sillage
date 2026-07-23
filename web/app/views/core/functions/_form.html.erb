@@ -1,0 +1,6 @@
+<%= form_with model: [ :core, function ], class: "workspace-form" do |form| %>
+  <% if function.errors.any? %><div class="workspace-errors"><%= function.errors.full_messages.to_sentence %></div><% end %>
+  <div class="workspace-form-grid"><label><span>Code</span><%= form.text_field :code, required: true %></label><label><span>Name</span><%= form.text_field :name, required: true %></label></div>
+  <label><span>Description</span><%= form.text_area :description, rows: 4 %></label>
+  <div class="workspace-actions"><%= form.submit class: "button-primary" %><%= link_to "Cancel", core_functions_path, class: "button-secondary" %></div>
+<% end %>

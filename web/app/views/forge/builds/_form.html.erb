@@ -1,0 +1,16 @@
+<%= form_with model: [ :forge, build ], class: "workspace-form" do |form| %>
+  <% if build.errors.any? %><div class="workspace-errors"><%= build.errors.full_messages.to_sentence %></div><% end %>
+  <div class="workspace-form-grid">
+    <label><span>Build code</span><%= form.text_field :code, required: true %></label>
+    <label><span>Assembly</span><%= form.collection_select :assembly_id, @assemblies, :id, :code, { prompt: "Select an assembly" }, required: true %></label>
+    <label><span>Git revision</span><%= form.text_field :source_revision, placeholder: "Commit SHA" %></label>
+    <label><span>Source diff SHA-256</span><%= form.text_field :source_diff_sha256 %></label>
+    <label><span>Arduino Core</span><%= form.text_field :arduino_core_version, required: true %></label>
+    <label><span>Firmware SHA-256</span><%= form.text_field :firmware_sha256 %></label>
+    <label class="workspace-checkbox"><%= form.check_box :source_dirty %><span>Source tree contains local changes</span></label>
+  </div>
+  <label><span>Source diff</span><%= form.text_area :source_diff, rows: 6, class: "workspace-mono" %></label>
+  <label><span>Notion references — one per line</span><%= text_area_tag "build[notion_references_text]", Array(build.notion_references).join("\n"), rows: 4 %></label>
+  <label><span>Notes</span><%= form.text_area :notes, rows: 4 %></label>
+  <div class="workspace-actions"><%= form.submit class: "button-primary" %><%= link_to "Cancel", build.persisted? ? forge_build_path(build) : forge_builds_path, class: "button-secondary" %></div>
+<% end %>

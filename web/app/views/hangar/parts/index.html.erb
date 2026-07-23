@@ -1,0 +1,36 @@
+<% content_for :title, "Hangar · Parts" %>
+
+<%= render "hangar/tabs" %>
+
+<header class="workspace-header">
+  <div>
+    <span class="section-eyebrow">OS Hangar</span>
+    <h1>Parts</h1>
+    <p>Serialized hardware available for FDR assemblies.</p>
+  </div>
+  <%= link_to "Add part", new_hangar_part_path, class: "button-primary" %>
+</header>
+
+<section class="workspace-panel">
+  <% if @parts.any? %>
+    <div class="workspace-table-wrap">
+      <table class="workspace-table">
+        <thead><tr><th>Part</th><th>Function</th><th>Hardware</th><th>Serial</th><th>State</th><th>Assembly</th></tr></thead>
+        <tbody>
+          <% @parts.each do |part| %>
+            <tr>
+              <td><%= link_to part.internal_number, hangar_part_path(part), class: "workspace-strong-link" %></td>
+              <td><%= part.function.name %></td>
+              <td><%= part.display_name %></td>
+              <td><%= part.serial_number.presence || "—" %></td>
+              <td><span class="workspace-status is-<%= part.state %>"><%= part.state.titleize %></span></td>
+              <td><%= part.assembly ? link_to(part.assembly.code, hangar_assembly_path(part.assembly)) : "—" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="workspace-empty">No parts registered yet.</div>
+  <% end %>
+</section>

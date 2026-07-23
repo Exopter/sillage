@@ -1,0 +1,33 @@
+<% content_for :title, "Forge · Builds" %>
+<%= render "forge/tabs" %>
+<header class="workspace-header">
+  <div><span class="section-eyebrow">OS Forge</span><h1>Builds</h1><p>Frozen hardware and firmware iterations used for bench evidence.</p></div>
+  <%= link_to "Create build", new_forge_build_path, class: "button-primary" %>
+</header>
+
+<div class="workspace-grid is-build-index">
+  <section class="workspace-panel is-wide">
+    <% if @builds.any? %>
+      <div class="workspace-list">
+        <% @builds.each do |build| %>
+          <%= link_to forge_build_path(build), class: "workspace-list-row" do %>
+            <span><strong><%= build.code %></strong><small><%= build.assembly.code %><%= " · from #{build.previous_build.code}" if build.previous_build %></small></span>
+            <span><%= pluralize build.test_runs.size, "test" %> · <span class="workspace-status <%= build.locked? ? "is-locked" : "is-draft" %>"><%= build.locked? ? "Frozen" : "Draft" %></span></span>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %><div class="workspace-empty">No development build yet.</div><% end %>
+  </section>
+
+  <section class="workspace-panel bench-access">
+    <h2>Bench access</h2>
+    <% if Current.user.bench_token_digest.present? %>
+      <p>A token is active since <%= l Current.user.bench_token_created_at, format: :short %>.</p>
+      <p class="workspace-muted">Rotate it to display a new value. The current value cannot be recovered.</p>
+      <div class="workspace-actions"><%= button_to "Rotate token", forge_bench_token_path, method: :post, class: "button-secondary" %><%= button_to "Revoke", forge_bench_token_path, method: :delete, class: "button-secondary" %></div>
+    <% else %>
+      <p>Create a personal token for <code>bench/sync.py</code>.</p>
+      <%= button_to "Generate token", forge_bench_token_path, method: :post, class: "button-primary" %>
+    <% end %>
+  </section>
+</div>

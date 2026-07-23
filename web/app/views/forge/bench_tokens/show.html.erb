@@ -1,0 +1,4 @@
+<% content_for :title, "Bench token" %><%= render "forge/tabs" %>
+<header class="workspace-header"><div><span class="section-eyebrow">OS Forge</span><h1>Bench token</h1><p>This value is displayed once. Store it in the bench environment, never in Git.</p></div></header>
+<section class="workspace-panel token-reveal"><code><%= @bench_token %></code><button type="button" class="button-secondary" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent)">Copy</button></section>
+<p><%= link_to "Return to Forge", forge_path, class: "button-primary" %></p>

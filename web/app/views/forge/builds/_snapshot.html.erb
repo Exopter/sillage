@@ -1,0 +1,11 @@
+<article class="build-snapshot-node">
+  <header><strong><%= node["code"] %></strong><span><%= node["name"] %></span></header>
+  <% if Array(node["parts"]).any? %>
+    <ul>
+      <% Array(node["parts"]).each do |part| %>
+        <li><span class="assembly-function"><%= part["function"] %></span><strong><%= part["internal_number"] %></strong><small><%= [ part["manufacturer"], part["model"], part["serial_number"] ].compact_blank.join(" · ") %></small></li>
+      <% end %>
+    </ul>
+  <% end %>
+  <% Array(node["assemblies"]).each do |child| %><div class="assembly-tree-child"><%= render "snapshot", node: child %></div><% end %>
+</article>

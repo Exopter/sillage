@@ -102,10 +102,10 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     get forge_path
 
     assert_response :success
-    assert_select "h1", "OS Forge"
-    assert_sillage_breadcrumb room: "Forge", tab: "Overview"
-    assert_select ".room-placeholder-card"
-    assert_select ".room-placeholder-card span", text: "Not built in this UI kit"
+    assert_select "h1", "Builds"
+    assert_sillage_breadcrumb room: "Forge", tab: "Builds"
+    assert_select ".workspace-panel"
+    assert_select ".room-placeholder-card", count: 0
     assert_select ".reference-layout", count: 0
   end
 

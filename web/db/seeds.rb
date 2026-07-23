@@ -85,6 +85,67 @@ DEMO_FLIGHTS = [
 
 DEFAULT_USER = User.default_admin
 
+FDR_FUNCTIONS = {
+  "GPS" => [ "GPS", "GNSS position and time source" ],
+  "IMU" => [ "IMU", "Inertial measurement and attitude sensing" ],
+  "CONTROLLER" => [ "Controller", "FDR processing and coordination" ],
+  "AIRSPEED" => [ "Airspeed", "Differential pressure and airspeed acquisition" ],
+  "STORAGE" => [ "Storage", "Authoritative local black-box storage" ],
+  "POWER_SUPPLY" => [ "Power Supply", "Power regulation, distribution and charging" ],
+  "RADIO" => [ "Radio", "Telemetry radio link" ]
+}.freeze
+
+FDR_FUNCTIONS.each do |code, (name, description)|
+  Function.find_or_create_by!(code: code) do |function|
+    function.name = name
+    function.description = description
+  end
+end
+
+FDR_DEVELOPMENT_PARTS = [
+  [ "PART-000001", "GPS", "Holybro", "M9N", "DEV-GPS-001" ],
+  [ "PART-000002", "IMU", "Adafruit", "BNO085", "DEV-IMU-001" ],
+  [ "PART-000003", "CONTROLLER", "Seeed Studio", "XIAO ESP32-S3", "DEV-CTRL-001" ],
+  [ "PART-000004", "AIRSPEED", "Matek", "ASPD-AUAV", "DEV-ASPD-001" ],
+  [ "PART-000005", "STORAGE", "SparkFun", "DEV-13743 + microSD", "DEV-STORAGE-001" ],
+  [ "PART-000006", "POWER_SUPPLY", nil, "Development power module", "DEV-PWR-001" ],
+  [ "PART-000007", "RADIO", "Holybro", "SiK Telemetry Radio V3", "DEV-RADIO-001" ]
+].freeze
+
+def seed_fdr_development_hardware
+  assembly = Assembly.find_or_initialize_by(code: "FDR-001")
+  assembly.assign_attributes(name: "Development Flight Data Recorder")
+  assembly.save!
+
+  FDR_DEVELOPMENT_PARTS.each do |internal_number, function_code, manufacturer, model, serial_number|
+    part = Part.find_or_initialize_by(internal_number: internal_number)
+    part.assign_attributes(
+      function: Function.find_by!(code: function_code),
+      assembly: assembly,
+      manufacturer: manufacturer,
+      model: model,
+      serial_number: serial_number,
+      notes: "Development seed hardware."
+    )
+    part.save!
+  end
+
+  build = Build.find_or_initialize_by(code: "FDR-DEV-001")
+  if build.new_record?
+    build.assign_attributes(
+      assembly: assembly,
+      created_by: DEFAULT_USER,
+      arduino_core_version: "3.3.10",
+      notes: "Development seed build. ASPD remains blocked until MSP2_SENSOR_AIRSPEED 0x1F06 is observed."
+    )
+    build.save!
+  elsif build.assembly == assembly && !build.locked?
+    build.refresh_snapshot!
+  end
+
+  puts "Seeded #{assembly.code} and #{build.code}"
+end
+
 def track_points_from_rows(rows, start_time, satellite_count:)
   rows.each_with_index.map do |(elapsed, lat, lon, altitude), index|
     previous = rows[[ index - 1, 0 ].max]
@@ -219,6 +280,8 @@ def seed_synthetic_flight(config)
 end
 
 if Rails.env.development? || ENV["LOAD_DEMO_DATA"].present?
+  seed_fdr_development_hardware
+
   DEMO_FLIGHTS.each do |config|
     jump = seed_synthetic_flight(config)
     puts "Seeded #{jump.name}"

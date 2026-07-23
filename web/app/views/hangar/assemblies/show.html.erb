@@ -1,0 +1,72 @@
+<% content_for :title, @assembly.code %>
+<%= render "hangar/tabs" %>
+<header class="workspace-header">
+  <div><span class="section-eyebrow">Assembly</span><h1><%= @assembly.code %></h1><p><%= @assembly.name %></p></div>
+  <div class="workspace-actions">
+    <%= link_to "Create build", new_forge_build_path(build: { assembly_id: @assembly.id }), class: "button-primary" %>
+    <%= link_to "Edit", edit_hangar_assembly_path(@assembly), class: "button-secondary" %>
+  </div>
+</header>
+
+<div class="workspace-grid is-assembly">
+  <section class="workspace-panel is-wide">
+    <div class="workspace-panel-header"><h2>Composition</h2><span><%= pluralize @assembly.snapshot_part_numbers.size, "serialized part" %></span></div>
+    <%= render "tree", assembly: @assembly %>
+  </section>
+
+  <div class="workspace-stack">
+    <section class="workspace-panel">
+      <h2>Install part</h2>
+      <% if @available_parts.any? %>
+        <%= form_with url: install_part_hangar_assembly_path(@assembly), class: "workspace-inline-form" do |form| %>
+          <%= form.collection_select :part_id, @available_parts, :id, ->(part) { "#{part.internal_number} · #{part.function.name} · #{part.display_name}" } %>
+          <%= form.submit "Install", class: "button-primary" %>
+        <% end %>
+      <% else %><p class="workspace-muted">No available part.</p><% end %>
+    </section>
+
+    <section class="workspace-panel">
+      <h2>Attach subassembly</h2>
+      <% if @available_assemblies.any? %>
+        <%= form_with url: attach_assembly_hangar_assembly_path(@assembly), class: "workspace-inline-form" do |form| %>
+          <%= form.collection_select :child_id, @available_assemblies, :id, :code %>
+          <%= form.submit "Attach", class: "button-primary" %>
+        <% end %>
+      <% else %><p class="workspace-muted">No root assembly available.</p><% end %>
+    </section>
+  </div>
+</div>
+
+<section class="workspace-panel">
+  <h2>Direct parts</h2>
+  <% if @assembly.parts.any? %>
+    <div class="workspace-list">
+      <% @assembly.parts.includes(:function).ordered.each do |part| %>
+        <div class="workspace-list-row is-static">
+          <span><strong><%= part.internal_number %> · <%= part.function.name %></strong><small><%= part.display_name %></small></span>
+          <div class="workspace-actions">
+            <% replacements = @available_parts.select { |candidate| candidate.function_id == part.function_id } %>
+            <% if replacements.any? %>
+              <%= form_with url: replace_part_hangar_assembly_path(@assembly, part_id: part.id), method: :patch, class: "workspace-compact-form" do |form| %>
+                <%= form.collection_select :replacement_part_id, replacements, :id, :internal_number %>
+                <%= form.submit "Replace", class: "button-secondary" %>
+              <% end %>
+            <% end %>
+            <%= button_to "Remove", remove_part_hangar_assembly_path(@assembly, part_id: part.id), method: :delete, class: "button-secondary" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %><div class="workspace-empty">No part installed directly in this assembly.</div><% end %>
+</section>
+
+<% if @assembly.children.any? %>
+  <section class="workspace-panel">
+    <h2>Direct subassemblies</h2>
+    <div class="workspace-list">
+      <% @assembly.children.ordered.each do |child| %>
+        <div class="workspace-list-row is-static"><span><strong><%= child.code %></strong><small><%= child.name %></small></span><%= button_to "Detach", detach_assembly_hangar_assembly_path(@assembly, child_id: child.id), method: :delete, class: "button-secondary" %></div>
+      <% end %>
+    </div>
+  </section>
+<% end %>
