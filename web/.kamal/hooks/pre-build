@@ -8,10 +8,13 @@ host="root@exopter.com"
 container="buildx_buildkit_${builder}0"
 ssh_key="${KAMAL_SSH_KEY:-${HOME}/.ssh/kamal_deploy}"
 
-# Docker's SSH context does not inherit Kamal's SSH key configuration. Use an
-# isolated agent so both the registry bootstrap and Buildx select the deploy key.
-eval "$(ssh-agent -s)" >/dev/null
-trap 'ssh-agent -k >/dev/null' EXIT
+# Docker's SSH context does not inherit Kamal's SSH key configuration. Load the
+# deploy key into the parent agent so it remains available after this hook while
+# Buildx connects to the remote Docker daemon.
+if [ -z "${SSH_AUTH_SOCK:-}" ] || [ ! -S "${SSH_AUTH_SOCK}" ]; then
+  echo "Kamal remote builds require an active SSH agent" >&2
+  exit 1
+fi
 ssh-add "${ssh_key}" >/dev/null
 
 ssh -i "${ssh_key}" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=5 "${host}" \
