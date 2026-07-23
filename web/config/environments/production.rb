@@ -88,7 +88,8 @@ Rails.application.configure do
   # Enable DNS rebinding protection and other `Host` header attacks.
   configured_hosts = [
     ENV["EXOPTER_OS_LANDING_HOSTS"].presence || "exopter.com",
-    ENV["EXOPTER_OS_HOSTS"].presence || "sillage.exopter.com"
+    ENV["EXOPTER_OS_HOSTS"].presence || "sillage.exopter.com",
+    ENV["EXOPTER_OS_LEGACY_HOSTS"].presence || "os.exopter.com"
   ].flat_map { |hosts| hosts.split(",").map { |host| host.strip } }.reject(&:empty?).uniq
   config.hosts = configured_hosts
   #
