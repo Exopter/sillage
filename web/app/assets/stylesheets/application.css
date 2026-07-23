@@ -1533,7 +1533,7 @@ textarea {
   background: var(--ex-white);
 }
 
-.totp-qr svg {
+.totp-qr img {
   display: block;
   width: min(100%, 248px);
   height: auto;

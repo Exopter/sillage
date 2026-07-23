@@ -56,11 +56,11 @@ module Authentication
   end
 
   def store_authentication_return_path
-    session[:return_to_after_authenticating] = request.fullpath if request.get?
+    session[:return_to_after_authenticating] = request.fullpath if request.get? || request.head?
   end
 
   def store_two_factor_return_path
-    session[:return_to_after_two_factor] = request.fullpath if request.get?
+    session[:return_to_after_two_factor] = request.fullpath if request.get? || request.head?
   end
 
   def after_authentication_url

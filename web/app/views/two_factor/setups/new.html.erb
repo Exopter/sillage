@@ -7,7 +7,7 @@
 </div>
 
 <div class="totp-qr" aria-label="Authenticator QR code">
-  <%= raw @qr_svg %>
+  <%= image_tag @qr_svg_data_uri, alt: "" %>
 </div>
 
 <div class="totp-secret">

@@ -24,7 +24,7 @@ class TwoFactorControllerTest < ActionDispatch::IntegrationTest
     get new_two_factor_setup_path
 
     assert_response :success
-    assert_select ".totp-qr svg"
+    assert_select ".totp-qr img[src^='data:image/svg+xml;base64,']"
     assert_select ".totp-secret span", text: "Manual setup key"
     assert_select ".totp-secret code", text: /[A-Z2-7]{16,}/
   end

@@ -1,4 +1,5 @@
 require "rqrcode"
+require "base64"
 
 module TwoFactor
   class SetupsController < ApplicationController
@@ -9,13 +10,14 @@ module TwoFactor
 
     def new
       @totp_secret = pending_totp_secret
-      @qr_svg = RQRCode::QRCode.new(Current.user.provisioning_uri(@totp_secret)).as_svg(
+      qr_svg = RQRCode::QRCode.new(Current.user.provisioning_uri(@totp_secret)).as_svg(
         color: "000",
         shape_rendering: "crispEdges",
         module_size: 4,
         standalone: true,
         use_path: true
       )
+      @qr_svg_data_uri = "data:image/svg+xml;base64,#{Base64.strict_encode64(qr_svg)}"
     end
 
     def create

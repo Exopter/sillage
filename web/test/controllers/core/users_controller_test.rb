@@ -55,6 +55,15 @@ class Core::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_not user.reload.totp_configured?
   end
 
+  test "rejects an unsupported role" do
+    sign_in_as users(:julien)
+
+    patch core_user_path(users(:operator)), params: { user: { role: "owner" } }
+
+    assert_response :unprocessable_entity
+    assert_equal "user", users(:operator).reload.role
+  end
+
   test "does not disable the current user" do
     admin = users(:julien)
     sign_in_as admin
