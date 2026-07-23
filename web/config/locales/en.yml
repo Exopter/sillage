@@ -49,7 +49,7 @@ en:
   imports:
     form:
       title: "Load a flight trace"
-      hint: "ZIP session folder, or TRACK.CSV and SENSOR.CSV together."
+      hint: "Drop a FlySight ZIP, bulk ZIP, or TRACK.CSV and SENSOR.CSV together."
       empty: "No file selected"
       submit: "Import"
       uploading: "Uploading"

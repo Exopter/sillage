@@ -1117,6 +1117,15 @@ textarea {
     #fbfefd;
 }
 
+.upload-drop.is-dragging {
+  border-color: var(--ds-aqua);
+  background:
+    linear-gradient(135deg, rgba(47, 214, 198, 0.22), transparent 45%),
+    linear-gradient(315deg, rgba(242, 162, 58, 0.14), transparent 42%),
+    #f7fffd;
+  box-shadow: 0 0 0 3px rgba(47, 214, 198, 0.16);
+}
+
 .upload-drop input {
   width: 1px;
   height: 1px;

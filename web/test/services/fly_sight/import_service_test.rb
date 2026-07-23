@@ -69,6 +69,32 @@ module FlySight
       archive&.close!
     end
 
+    test "imports a bulk FlySight ZIP with date and time folders" do
+      archive = Tempfile.new([ "flysight-bulk", ".zip" ])
+      archive.binmode
+
+      Zip::File.open(archive.path, create: true) do |zip|
+        %w[07-33-43 08-50-55].each do |session_folder|
+          zip.add("26-07-08/#{session_folder}/TRACK.CSV", file_fixture("flysight_v2/TRACK.CSV"))
+          zip.add("26-07-08/#{session_folder}/SENSOR.CSV", file_fixture("flysight_v2/SENSOR.CSV"))
+          zip.get_output_stream("26-07-08/#{session_folder}/RAW.UBX") { |stream| stream.write("raw ubx payload") }
+        end
+      end
+
+      import = ImportService.create!([
+        UploadedFile.new(path: archive.path, original_filename: "bulk.zip", content_type: "application/zip")
+      ], user: @user)
+
+      ImportService.new(import).call
+
+      assert_equal "imported", import.status
+      assert_equal 2, import.jumps.count
+      assert_equal 2, import.details.fetch("sessions_count")
+      assert_equal [ 8, 8 ], import.jumps.order(:id).map { |jump| jump.track_points.count }
+    ensure
+      archive&.close!
+    end
+
     test "rejects FlySight V2 track without matching sensor file" do
       import = ImportService.create!([ upload("flysight_v2/TRACK.CSV") ], user: @user)
 

@@ -1,10 +1,11 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["input", "summary", "submit", "progress", "meter", "bar", "percent"]
+  static targets = ["input", "summary", "submit", "progress", "meter", "bar", "percent", "dropzone"]
   static values = { failedLabel: String, processingLabel: String }
 
   connect() {
+    this.dragDepth = 0
     this.emptyLabel = this.summaryTarget.textContent
     this.submitLabel = this.submitTarget.textContent.trim()
     this.submitTarget.disabled = true
@@ -19,6 +20,41 @@ export default class extends Controller {
       : `${files.map((file) => file.name).join(", ")} · ${this.formatBytes(this.totalBytes(files))}`
     this.setSubmitLabel(this.submitLabel)
     this.updateProgress(0)
+  }
+
+  dragEnter(event) {
+    event.preventDefault()
+    this.dragDepth += 1
+    this.setDragging(true)
+  }
+
+  dragOver(event) {
+    event.preventDefault()
+
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "copy"
+    }
+  }
+
+  dragLeave(event) {
+    event.preventDefault()
+    this.dragDepth = Math.max(this.dragDepth - 1, 0)
+
+    if (this.dragDepth === 0) {
+      this.setDragging(false)
+    }
+  }
+
+  drop(event) {
+    event.preventDefault()
+    this.dragDepth = 0
+    this.setDragging(false)
+
+    const files = this.filesFromDrop(event.dataTransfer)
+    if (files.length === 0) return
+
+    this.assignFiles(files)
+    this.showFiles()
   }
 
   start(event) {
@@ -62,6 +98,16 @@ export default class extends Controller {
     } else {
       this.fail(response.error)
     }
+  }
+
+  filesFromDrop(dataTransfer) {
+    return Array.from(dataTransfer?.files || [])
+  }
+
+  assignFiles(files) {
+    const dataTransfer = new DataTransfer()
+    files.forEach((file) => dataTransfer.items.add(file))
+    this.inputTarget.files = dataTransfer.files
   }
 
   totalBytes(files) {
@@ -120,6 +166,12 @@ export default class extends Controller {
     this.submitTarget.disabled = Array.from(this.inputTarget.files).length === 0
     this.summaryTarget.textContent = error || this.failedLabelValue
     this.setSubmitLabel(this.submitLabel)
+  }
+
+  setDragging(isDragging) {
+    if (this.hasDropzoneTarget) {
+      this.dropzoneTarget.classList.toggle("is-dragging", isDragging)
+    }
   }
 
   visit(url) {

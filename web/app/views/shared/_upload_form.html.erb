@@ -1,10 +1,10 @@
 <%= form_with url: flight_imports_path, scope: :flight_import, html: { multipart: true, class: "upload-form", data: { controller: "upload", turbo: false, action: "submit->upload#start", upload_failed_label_value: t("imports.form.upload_failed"), upload_processing_label_value: t("imports.form.uploading") } } do |form| %>
-  <label class="upload-drop">
+  <label class="upload-drop" data-upload-target="dropzone" data-action="dragenter->upload#dragEnter dragover->upload#dragOver dragleave->upload#dragLeave drop->upload#drop">
     <span class="upload-title"><%= t("imports.form.title") %></span>
     <span class="upload-hint"><%= t("imports.form.hint") %></span>
     <%= form.file_field :source_files,
       multiple: true,
-      accept: ".zip,.csv,text/csv,application/zip",
+      accept: ".zip,.csv,.ubx,text/csv,application/zip",
       data: { upload_target: "input", action: "change->upload#showFiles" } %>
   </label>
 
