@@ -61,15 +61,6 @@ class LandingControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_path
   end
 
-  test "redirects the legacy app host to Sillage while preserving the request" do
-    host! "os.exopter.com"
-
-    get "/session/new?from=legacy"
-
-    assert_response :moved_permanently
-    assert_redirected_to "https://sillage.exopter.com/session/new?from=legacy"
-  end
-
   private
 
   def restore_env(key, value)

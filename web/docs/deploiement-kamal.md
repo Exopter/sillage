@@ -4,8 +4,7 @@ Ce guide part de l'etat actuel de l'application : Rails 8, Ruby 4.0.3,
 SQLite en production, Active Storage local, Solid Queue et Kamal 2.
 
 L'objectif est un deploiement simple sur un VPS unique expose via `exopter.com`
-et `sillage.exopter.com`, avec `os.exopter.com` conserve comme redirection
-permanente, Docker, HTTPS via kamal-proxy, donnees persistantes
+et `sillage.exopter.com`, avec Docker, HTTPS via kamal-proxy, donnees persistantes
 dans `/rails/storage`, et jobs Solid Queue executes dans Puma.
 
 ## 1. Preparer le serveur
@@ -13,7 +12,7 @@ dans `/rails/storage`, et jobs Solid Queue executes dans Puma.
 Il faut un VPS Linux avec :
 
 - Ubuntu/Debian recent.
-- Les noms de domaine `exopter.com`, `sillage.exopter.com` et `os.exopter.com` qui pointent vers l'IP
+- Les noms de domaine `exopter.com` et `sillage.exopter.com` qui pointent vers l'IP
   du serveur.
 - Les ports `22`, `80` et `443` ouverts.
 - Un acces SSH fonctionnel, idealement avec une cle :
@@ -164,7 +163,6 @@ proxy:
   hosts:
     - exopter.com
     - sillage.exopter.com
-    - os.exopter.com
   app_port: 3000
   forward_headers: true
 
@@ -180,7 +178,6 @@ env:
     RAILS_LOG_LEVEL: info
     SILLAGE_LANDING_HOSTS: exopter.com
     SILLAGE_HOSTS: sillage.exopter.com
-    SILLAGE_LEGACY_HOSTS: os.exopter.com
   secret:
     - RAILS_MASTER_KEY
     - CESIUM_ION_TOKEN
@@ -242,8 +239,7 @@ Dans `config/environments/production.rb`, ajoute ton domaine a `config.hosts` :
 ```ruby
 config.hosts = [
   "exopter.com",
-  "sillage.exopter.com",
-  "os.exopter.com"
+  "sillage.exopter.com"
 ]
 ```
 

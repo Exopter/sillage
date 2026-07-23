@@ -5,16 +5,8 @@ Rails.application.routes.draw do
   end
 
   landing_hosts = host_list.call("SILLAGE_LANDING_HOSTS", "landing.localhost,exopter.com")
-  canonical_app_host = host_list.call("SILLAGE_HOSTS", "sillage.exopter.com").first
-  legacy_app_hosts = host_list.call("SILLAGE_LEGACY_HOSTS", "os.exopter.com")
 
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
-
-  constraints ->(request) { legacy_app_hosts.include?(request.host) } do
-    match "(*path)", to: redirect(status: 301) { |_params, request|
-      "https://#{canonical_app_host}#{request.fullpath}"
-    }, via: :all
-  end
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.
