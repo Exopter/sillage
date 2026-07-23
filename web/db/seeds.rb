@@ -220,7 +220,7 @@ def seed_synthetic_flight(config)
     user: DEFAULT_USER,
     source_filename: config.fetch(:source_filename),
     status: "imported",
-    device_id: "Exopter OS demo",
+    device_id: "Sillage demo",
     firmware_version: "demo",
     log_started_at: start_time,
     details: config.fetch(:details)

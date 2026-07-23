@@ -1,4 +1,4 @@
-/* OS Flight — Logbook screen. window.OSLogbook. */
+/* Sillage Flight — Logbook screen. window.OSLogbook. */
 (function () {
   const { Icon } = window.OSIcons;
   const DS = window.ExopterDesignSystem_4c9fc9;

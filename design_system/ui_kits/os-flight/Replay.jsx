@@ -1,4 +1,4 @@
-/* OS Flight — Replay screen (dark instrument band). window.OSReplay. */
+/* Sillage Flight — Replay screen (dark instrument band). window.OSReplay. */
 (function () {
   const { Icon } = window.OSIcons;
   const DS = window.ExopterDesignSystem_4c9fc9;

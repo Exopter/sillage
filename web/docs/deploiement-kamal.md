@@ -1,10 +1,10 @@
-# Deployer Exopter OS avec Kamal
+# Deployer Sillage avec Kamal
 
 Ce guide part de l'etat actuel de l'application : Rails 8, Ruby 4.0.3,
 SQLite en production, Active Storage local, Solid Queue et Kamal 2.
 
 L'objectif est un deploiement simple sur un VPS unique expose via `exopter.com`
-et `os.exopter.com`, avec Docker, HTTPS via kamal-proxy, donnees persistantes
+et `sillage.exopter.com`, avec Docker, HTTPS via kamal-proxy, donnees persistantes
 dans `/rails/storage`, et jobs Solid Queue executes dans Puma.
 
 ## 1. Preparer le serveur
@@ -12,7 +12,7 @@ dans `/rails/storage`, et jobs Solid Queue executes dans Puma.
 Il faut un VPS Linux avec :
 
 - Ubuntu/Debian recent.
-- Les noms de domaine `exopter.com` et `os.exopter.com` qui pointent vers l'IP
+- Les noms de domaine `exopter.com` et `sillage.exopter.com` qui pointent vers l'IP
   du serveur.
 - Les ports `22`, `80` et `443` ouverts.
 - Un acces SSH fonctionnel, idealement avec une cle :
@@ -162,7 +162,7 @@ proxy:
   ssl: true
   hosts:
     - exopter.com
-    - os.exopter.com
+    - sillage.exopter.com
   app_port: 3000
   forward_headers: true
 
@@ -177,7 +177,7 @@ env:
     SOLID_QUEUE_IN_PUMA: true
     RAILS_LOG_LEVEL: info
     EXOPTER_OS_LANDING_HOSTS: exopter.com
-    EXOPTER_OS_HOSTS: os.exopter.com
+    EXOPTER_OS_HOSTS: sillage.exopter.com
   secret:
     - RAILS_MASTER_KEY
     - CESIUM_ION_TOKEN
@@ -239,7 +239,7 @@ Dans `config/environments/production.rb`, ajoute ton domaine a `config.hosts` :
 ```ruby
 config.hosts = [
   "exopter.com",
-  "os.exopter.com"
+  "sillage.exopter.com"
 ]
 ```
 
@@ -333,7 +333,7 @@ Pour restaurer, stoppe l'app avant de remplacer le contenu du volume.
 ## 11. Pieges classiques
 
 - DNS pas encore propage : Let's Encrypt echouera si `exopter.com` ou
-  `os.exopter.com` ne pointent pas vers le serveur.
+  `sillage.exopter.com` ne pointent pas vers le serveur.
 - Port 80 ou 443 ferme : kamal-proxy ne pourra pas servir HTTP/HTTPS.
 - Registry local Kamal inaccessible : verifie que le serveur accepte SSH et que
   Docker peut etre installe/lance.

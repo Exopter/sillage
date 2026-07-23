@@ -51,7 +51,7 @@ proxy:
   ssl: true
   hosts:
     - exopter.com
-    - os.exopter.com
+    - sillage.exopter.com
   app_port: 3000
   forward_headers: true
   response_timeout: 120
@@ -70,7 +70,7 @@ env:
     SOLID_QUEUE_IN_PUMA: true
     RAILS_LOG_LEVEL: info
     EXOPTER_OS_LANDING_HOSTS: exopter.com
-    EXOPTER_OS_HOSTS: os.exopter.com
+    EXOPTER_OS_HOSTS: sillage.exopter.com
     EMAIL_ENABLED: "<%= ENV.fetch("EMAIL_ENABLED", "false") %>"
     MAIL_FROM: "<%= ENV.fetch("MAIL_FROM", "") %>"
     MAIL_FROM_NAME: "<%= ENV.fetch("MAIL_FROM_NAME", "") %>"

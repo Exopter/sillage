@@ -903,9 +903,9 @@ try { (() => {
         gap: 26,
         marginLeft: 28
       }
-    }, ['Program', 'Evidence', 'Exopter OS', 'Roadmap'].map(l => /*#__PURE__*/React.createElement("a", {
+    }, ['Program', 'Evidence', 'Sillage', 'Roadmap'].map(l => /*#__PURE__*/React.createElement("a", {
       key: l,
-      href: l === 'Exopter OS' ? '#os' : '#' + l.toLowerCase(),
+      href: l === 'Sillage' ? '#sillage' : '#' + l.toLowerCase(),
       style: {
         fontFamily: 'var(--font-mono)',
         fontSize: 12,
@@ -981,7 +981,7 @@ try { (() => {
         maxWidth: 560,
         color: 'var(--ex-vapor-100)'
       }
-    }, "A rigid carbon wing from GLD glider validation to EPW electric power \u2014 built around flight-test evidence, pilot assistance, and the Exopter OS operating suite."), /*#__PURE__*/React.createElement("div", {
+    }, "A rigid carbon wing from GLD glider validation to EPW electric power \u2014 built around flight-test evidence, pilot assistance, and the Sillage operating suite."), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         gap: 12,
@@ -1184,7 +1184,7 @@ try { (() => {
         color: 'var(--ex-carbon-950)',
         maxWidth: 720
       }
-    }, "Exopter OS \u2014 one workbench for the full flight lifecycle."), /*#__PURE__*/React.createElement("p", {
+    }, "Sillage \u2014 one workbench for the full flight lifecycle."), /*#__PURE__*/React.createElement("p", {
       style: {
         margin: '16px 0 36px',
         fontSize: 16,
@@ -1213,7 +1213,7 @@ try { (() => {
         fontWeight: 600,
         color: 'var(--ex-carbon-950)'
       }
-    }, "Exopter OS ", k), /*#__PURE__*/React.createElement("div", {
+    }, "Sillage ", k), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 13,
         color: 'var(--ex-graphite-600)',
@@ -1226,7 +1226,7 @@ try { (() => {
       }
     }, /*#__PURE__*/React.createElement(Button, {
       variant: "primary"
-    }, "Open OS Flight \u2192")));
+    }, "Open Sillage Flight \u2192")));
   }
   function Roadmap() {
     const stages = [{
@@ -1384,7 +1384,7 @@ try { (() => {
 
 // ui_kits/os-flight/FlightPrep.jsx
 try { (() => {
-/* OS Flight — Flight prep / readiness screen. window.OSFlightPrep. */
+/* Sillage Flight — Flight prep / readiness screen. window.OSFlightPrep. */
 (function () {
   const {
     Icon
@@ -1661,7 +1661,7 @@ try { (() => {
 
 // ui_kits/os-flight/Hud.jsx
 try { (() => {
-/* OS Flight — HUD preview (pilot display concept). window.OSHud. */
+/* Sillage Flight — HUD preview (pilot display concept). window.OSHud. */
 (function () {
   const {
     Icon
@@ -2072,7 +2072,7 @@ try { (() => {
 
 // ui_kits/os-flight/Logbook.jsx
 try { (() => {
-/* OS Flight — Logbook screen. window.OSLogbook. */
+/* Sillage Flight — Logbook screen. window.OSLogbook. */
 (function () {
   const {
     Icon
@@ -2337,7 +2337,7 @@ try { (() => {
 
 // ui_kits/os-flight/Replay.jsx
 try { (() => {
-/* OS Flight — Replay screen (dark instrument band). window.OSReplay. */
+/* Sillage Flight — Replay screen (dark instrument band). window.OSReplay. */
 (function () {
   const {
     Icon
@@ -2820,7 +2820,7 @@ try { (() => {
 
 // ui_kits/os-flight/Shell.jsx
 try { (() => {
-/* OS Flight — application shell: left rail + top header. Exposes window.OSShell. */
+/* Sillage Flight — application shell: left rail + top header. Exposes window.OSShell. */
 (function () {
   const {
     Icon
@@ -2967,7 +2967,7 @@ try { (() => {
         textTransform: 'uppercase',
         color: 'var(--ex-graphite-400)'
       }
-    }, "OS Flight \xB7 ", crumb), /*#__PURE__*/React.createElement("span", {
+    }, "Sillage Flight \xB7 ", crumb), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 15,
         fontWeight: 600
@@ -3069,7 +3069,7 @@ try { (() => {
 
 // ui_kits/os-flight/icons.jsx
 try { (() => {
-/* Lucide-derived icon set for the OS Flight UI kit.
+/* Lucide-derived icon set for the Sillage Flight UI kit.
    24×24 grid, 2px stroke, round caps/joins — matches the documented Lucide system.
    window.OSIcons.Icon renders <Icon name="gauge" size={18} />. */
 (function () {

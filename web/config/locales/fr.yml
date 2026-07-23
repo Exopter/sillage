@@ -1,8 +1,8 @@
 fr:
   app:
-    name: "Exopter OS"
-    short_name: "OS"
-    tagline: "OS Flight Lab"
+    name: "Sillage"
+    short_name: "Sillage"
+    tagline: "Sillage Flight Lab"
   nav:
     primary: "Navigation principale"
     dashboard: "Tableau de bord"

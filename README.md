@@ -1,8 +1,8 @@
-# Exopter OS
+# Sillage
 
-Exopter OS is the software workspace for the Exowing project: a complete flight
+Sillage is the software workspace for the Exowing project: a complete flight
 system for a personal rigid wing, covering flight preparation, live in-flight
-support, replay, analysis, and maintenance. The short product name is **OS**.
+support, replay, analysis, and maintenance.
 
 The repository currently contains a Rails application in `web/` and a `docs/`
 folder with project, contract, pricing, roadmap, and HUD/FDR requirements
@@ -32,28 +32,28 @@ The functional ambition covers:
 
 ## Product Naming and Architecture
 
-The software suite is named **Exopter OS**, not "Exopter Server". Exopter names
-the company, vehicle, and program; Exopter OS names the operating software suite
+The software suite is named **Sillage**, not "Exopter Server". Exopter names
+the company, vehicle, and program; Sillage names the operating software suite
 that prepares, supports, records, analyzes, and improves the Exopter flight
-program. The short name is **OS**.
+program.
 
-Exopter OS should be treated as one coherent product family rather than a generic
+Sillage should be treated as one coherent product family rather than a generic
 cloud back office. The suite can expose distinct surfaces as the program grows:
 
-- **OS Flights**: pre-flight preparation, flight support, post-flight
+- **Sillage Flight**: pre-flight preparation, flight support, post-flight
   analysis, replay, logbook, HUD/FDR support, and maintenance workflows.
-- **OS Forge**: AI tooling, agent workflows, OpenProject integration,
+- **Sillage Forge**: AI tooling, agent workflows, OpenProject integration,
   engineering support, documentation, and backlog execution.
-- **OS Core**: authentication, authorization, audit trails, storage,
+- **Sillage Core**: authentication, authorization, audit trails, storage,
   integrations, administration, deployment, and shared operational services.
 
 Future surfaces can use the same short, evocative naming system:
 
-- **OS Atlas**: maps, terrain, replay, route comparison, airspace context,
+- **Sillage Atlas**: maps, terrain, replay, route comparison, airspace context,
   and geospatial analysis.
-- **OS Hangar**: fleet, wing hardware, equipment, maintenance, spare parts,
+- **Sillage Hangar**: fleet, wing hardware, equipment, maintenance, spare parts,
   cycles, anomalies, and readiness state.
-- **OS Signal**: telemetry, live feeds, sensor streams, communications,
+- **Sillage Signal**: telemetry, live feeds, sensor streams, communications,
   alerts, and operational monitoring.
 
 The preferred technical shape is a modular monolith first: one deployable
@@ -63,7 +63,7 @@ constraint justifies it, such as different deployment cadence, safety or
 security isolation, regulatory pressure, scaling needs, or separate operational
 ownership.
 
-Exopter OS should be one house with several rooms: not a shapeless mega-app, not
+Sillage should be one house with several rooms: not a shapeless mega-app, not
 a premature city of services. It should become the inspiring place where the
 Exopter program is operated.
 
@@ -157,7 +157,7 @@ Planned placement:
 ## Ground and Cloud Application
 
 The `web/` application is the current software state. It currently acts as the
-OS Flights Lab base for importing and analyzing FlySight sessions.
+Sillage Flight Lab base for importing and analyzing FlySight sessions.
 
 Current stack:
 
@@ -229,7 +229,7 @@ Planned variables:
 - `BACKUPS_ENABLED`
 - `MONITORING_ENABLED`
 
-The documented target is currently `exopter.com` and `os.exopter.com` on a
+The documented target is currently `exopter.com` and `sillage.exopter.com` on a
 single VPS with Docker, HTTPS through `kamal-proxy`, a local private registry,
 and persistent storage in `/rails/storage`.
 

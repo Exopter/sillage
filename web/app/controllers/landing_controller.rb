@@ -6,7 +6,7 @@ class LandingController < ApplicationController
   before_action :authenticate_landing_access
 
   def show
-    @os_url = os_url
+    @sillage_url = sillage_url
   end
 
   private
@@ -39,17 +39,17 @@ class LandingController < ApplicationController
     ENV["EXOPTER_OS_LANDING_BASIC_AUTH_PASSWORD"]
   end
 
-  def os_url
+  def sillage_url
     if local_landing_host?
       port = [ 80, 443 ].include?(request.port) ? "" : ":#{request.port}"
       return "#{request.protocol}localhost#{port}"
     end
 
-    host = ENV.fetch("EXOPTER_OS_HOSTS", "os.exopter.com")
+    host = ENV.fetch("EXOPTER_OS_HOSTS", "sillage.exopter.com")
       .split(",")
       .map(&:strip)
       .reject(&:empty?)
-      .first || "os.exopter.com"
+      .first || "sillage.exopter.com"
     protocol = Rails.env.production? ? "https://" : request.protocol
 
     "#{protocol}#{host}"

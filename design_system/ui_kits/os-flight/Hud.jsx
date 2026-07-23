@@ -1,4 +1,4 @@
-/* OS Flight — HUD preview (pilot display concept). window.OSHud. */
+/* Sillage Flight — HUD preview (pilot display concept). window.OSHud. */
 (function () {
   const { Icon } = window.OSIcons;
   const DS = window.ExopterDesignSystem_4c9fc9;

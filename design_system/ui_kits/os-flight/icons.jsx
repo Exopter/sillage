@@ -1,4 +1,4 @@
-/* Lucide-derived icon set for the OS Flight UI kit.
+/* Lucide-derived icon set for the Sillage Flight UI kit.
    24×24 grid, 2px stroke, round caps/joins — matches the documented Lucide system.
    window.OSIcons.Icon renders <Icon name="gauge" size={18} />. */
 (function () {

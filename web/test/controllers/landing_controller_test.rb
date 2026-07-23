@@ -19,7 +19,7 @@ class LandingControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "body.landing-page"
     assert_select "h1", "Human flight, next generation."
-    assert_select "a[href='http://localhost:3000']", "Open OS"
+    assert_select "a[href='http://localhost:3000']", "Open Sillage"
     assert_select ".sillage-workbench", count: 0
   end
 
@@ -53,8 +53,8 @@ class LandingControllerTest < ActionDispatch::IntegrationTest
     assert_select "body.landing-page"
   end
 
-  test "keeps the OS app root on the OS host" do
-    host! "os.exopter.com"
+  test "keeps the Sillage app root on the Sillage host" do
+    host! "sillage.exopter.com"
 
     get root_path
 

@@ -6,7 +6,7 @@ user-invocable: true
 
 Read the `readme.md` file within this skill, and explore the other available files.
 
-Exopter builds personal **rigid-wing flight systems**; **Exopter OS** is its operating
+Exopter builds personal **rigid-wing flight systems**; **Sillage** is its operating
 software suite. The design language should feel like flight-test equipment: matte,
 precise, physical, safety-aware. Carbon + vapor base, signal colors that annotate
 (never decorate), tabular numerals for all data, factual operational copy, no hype,
@@ -17,7 +17,7 @@ Key files:
 - `styles.css` → `tokens/*` — the token CSS (colors, type, spacing, fonts). Link `styles.css`.
 - `guidelines/*.card.html` — foundation specimens (colors, type, spacing, brand).
 - `components/<group>/*.jsx` — React primitives (Button, IconButton, Input, Select, Switch, SegmentedControl, Badge, StatusDot, Toast, Card, MetricTile, ReadinessStrip, ChecklistRow). Each has a `.prompt.md` with usage.
-- `ui_kits/os-flight/` — the OS Flight workbench recreation.
+- `ui_kits/os-flight/` — the Sillage Flight workbench recreation.
 - `ui_kits/exopter-brand/` — the deep-tech public brand page.
 - `assets/` — wing photo + NON-FINAL placeholder logo marks.
 

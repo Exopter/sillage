@@ -1,27 +1,27 @@
 class DashboardController < ApplicationController
   ROOM_PLACEHOLDERS = {
     "atlas" => {
-      title: "OS Atlas",
+      title: "Atlas",
       description: "Maps, terrain, route comparison, airspace context, and waypoint planning.",
       icon: "layers"
     },
     "hangar" => {
-      title: "OS Hangar",
+      title: "Hangar",
       description: "Fleet, wing hardware, equipment, maintenance, and spare parts.",
       icon: "wrench"
     },
     "signal" => {
-      title: "OS Signal",
+      title: "Signal",
       description: "Telemetry, live feeds, sensor streams, communications, and ground station.",
       icon: "signal"
     },
     "forge" => {
-      title: "OS Forge",
+      title: "Forge",
       description: "Build tools, automation, release workflows, and engineering operations.",
       icon: "layers"
     },
     "core" => {
-      title: "OS Core",
+      title: "Core",
       description: "Authentication, authorization, audit trails, storage, and operations.",
       icon: "shield"
     }

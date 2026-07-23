@@ -11,7 +11,7 @@ class TwoFactorControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to new_two_factor_challenge_path
 
-    post two_factor_challenge_path, params: { otp_code: ROTP::TOTP.new(secret, issuer: "Exopter OS").now }
+    post two_factor_challenge_path, params: { otp_code: ROTP::TOTP.new(secret, issuer: "Sillage").now }
 
     assert_redirected_to root_path
   end

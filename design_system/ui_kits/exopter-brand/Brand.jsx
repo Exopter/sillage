@@ -22,7 +22,7 @@
           {[
             ['Program', '#program'],
             ['Evidence', '#evidence'],
-            ['Exopter OS', '#os'],
+            ['Sillage', '#sillage'],
             ['Roadmap', '#roadmap'],
           ].map(([label, href]) => (
             <a key={label} href={href} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--ex-graphite-400)', textDecoration: 'none' }}>{label}</a>
@@ -48,7 +48,7 @@
           </h1>
           <p style={{ margin: '24px 0 0', fontSize: 19, lineHeight: 1.5, maxWidth: 560, color: 'var(--ex-vapor-100)' }}>
             A rigid carbon wing from GLD glider validation to EPW electric power — built around
-            flight-test evidence, pilot assistance, and the Exopter OS operating suite.
+            flight-test evidence, pilot assistance, and the Sillage operating suite.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 30 }}>
             <Button variant="primary">View the program</Button>
@@ -130,7 +130,7 @@
       <section id="os" style={{ background: 'var(--ex-vapor-50)', padding: '80px 40px' }}>
         <Reveal><Eyebrow>Operating suite</Eyebrow>
           <h2 style={{ margin: '14px 0 0', fontSize: 'clamp(30px,4vw,46px)', fontWeight: 700, letterSpacing: '-.01em', color: 'var(--ex-carbon-950)', maxWidth: 720 }}>
-            Exopter OS — one workbench for the full flight lifecycle.
+            Sillage — one workbench for the full flight lifecycle.
           </h2>
           <p style={{ margin: '16px 0 36px', fontSize: 16, color: 'var(--ex-graphite-600)', maxWidth: 640 }}>
             Prepare, verify, record, replay, compare, inspect, train, certify. One house with
@@ -140,13 +140,13 @@
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14, marginBottom: 28 }}>
           {rooms.map(([k, d]) => (
             <div key={k} style={{ background: '#fff', border: '1px solid var(--ex-vapor-200)', borderRadius: 8, padding: '18px 18px', boxShadow: 'var(--shadow-sm)' }}>
-              <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--ex-carbon-950)' }}>Exopter OS {k}</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--ex-carbon-950)' }}>Sillage {k}</div>
               <div style={{ fontSize: 13, color: 'var(--ex-graphite-600)', marginTop: 4 }}>{d}</div>
             </div>
           ))}
         </div>
         <a href="../os-flight/index.html" style={{ textDecoration: 'none' }}>
-          <Button variant="primary">Open OS Flight →</Button>
+          <Button variant="primary">Open Sillage Flight →</Button>
         </a>
       </section>
     );

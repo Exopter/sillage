@@ -1,4 +1,4 @@
-/* OS Flight — Flight prep / readiness screen. window.OSFlightPrep. */
+/* Sillage Flight — Flight prep / readiness screen. window.OSFlightPrep. */
 (function () {
   const { Icon } = window.OSIcons;
   const DS = window.ExopterDesignSystem_4c9fc9;

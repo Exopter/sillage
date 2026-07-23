@@ -54,7 +54,7 @@ class UserTest < ActiveSupport::TestCase
     user = users(:julien)
     secret = ROTP::Base32.random_base32
     user.enable_totp!(secret)
-    code = ROTP::TOTP.new(secret, issuer: "Exopter OS").now
+    code = ROTP::TOTP.new(secret, issuer: "Sillage").now
 
     assert_not_equal secret, user.otp_secret_ciphertext
     assert user.verify_totp(code)
