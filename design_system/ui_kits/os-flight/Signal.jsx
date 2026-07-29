@@ -186,10 +186,11 @@
       window.addEventListener('pointermove',move);window.addEventListener('pointerup',stop,{once:true});
     };
     const panelStyle=(id)=>({...rects[id],transform:`translate(${offsets[id].x}px, ${offsets[id].y}px)`,zIndex:active===id?8:panelModes[id]==='enlarged'?1:4});
+    const layoutKey=`${Math.round(size.width)}-${Math.round(size.height)}`;
     return <main ref={boardRef} className="signal-dashboard" aria-label="Movable live Signal widgets">
-      <WorkspacePanel id="map" title="Live map" subtitle="Flight path, heading and landing zone" icon="map" mode={panelModes.map} style={panelStyle('map')} active={active==='map'} onMode={changeMode} onDragStart={startDrag}><UnifiedMap key={`map-${panelModes.map}`} flight={flight} events={events} onNavigate={onNavigate}/></WorkspacePanel>
-      <WorkspacePanel id="instruments" title="Instruments" subtitle="Ground-reconstructed flight state" icon="gauge" mode={panelModes.instruments} style={panelStyle('instruments')} active={active==='instruments'} onMode={changeMode} onDragStart={startDrag}><UnifiedInstruments key={`instruments-${panelModes.instruments}`}/></WorkspacePanel>
-      <WorkspacePanel id="charts" title="Charts" subtitle="Aligned telemetry and stream validity" icon="activity" mode={panelModes.charts} style={panelStyle('charts')} active={active==='charts'} onMode={changeMode} onDragStart={startDrag}><UnifiedCharts key={`charts-${panelModes.charts}`} cloudLive={cloudLive} enlarged={panelModes.charts==='enlarged'}/></WorkspacePanel>
+      <WorkspacePanel id="map" title="Live map" subtitle="Flight path, heading and landing zone" icon="map" mode={panelModes.map} style={panelStyle('map')} active={active==='map'} onMode={changeMode} onDragStart={startDrag}><UnifiedMap key={`map-${panelModes.map}-${layoutKey}`} flight={flight} events={events} onNavigate={onNavigate}/></WorkspacePanel>
+      <WorkspacePanel id="instruments" title="Instruments" subtitle="Ground-reconstructed flight state" icon="gauge" mode={panelModes.instruments} style={panelStyle('instruments')} active={active==='instruments'} onMode={changeMode} onDragStart={startDrag}><UnifiedInstruments key={`instruments-${panelModes.instruments}-${layoutKey}`}/></WorkspacePanel>
+      <WorkspacePanel id="charts" title="Charts" subtitle="Aligned telemetry and stream validity" icon="activity" mode={panelModes.charts} style={panelStyle('charts')} active={active==='charts'} onMode={changeMode} onDragStart={startDrag}><UnifiedCharts key={`charts-${panelModes.charts}-${layoutKey}`} cloudLive={cloudLive} enlarged={panelModes.charts==='enlarged'}/></WorkspacePanel>
     </main>;
   }
 
