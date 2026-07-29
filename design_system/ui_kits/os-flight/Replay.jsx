@@ -28,7 +28,7 @@
   }
 
   function Replay({ flight, onBack }) {
-    const f = flight || { id: 'GLD-2026-018', mode: 'GLD' };
+    const f = flight || { id: 'FLT-2026-018' };
     const [idx, setIdx] = React.useState(Math.floor(N * 0.46));
     const [playing, setPlaying] = React.useState(false);
     const raf = React.useRef(null);
@@ -78,7 +78,6 @@
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', borderBottom: '1px solid var(--ex-carbon-700)' }}>
           <IconButton icon={<Icon name="chevron-right" size={18} style={{ transform: 'rotate(180deg)' }} />} variant="ghost" label="Back to logbook" onClick={onBack} />
           <span style={{ fontFamily: 'var(--font-data)', fontVariantNumeric: 'tabular-nums', fontSize: 17, fontWeight: 600 }}>{f.id}</span>
-          <Badge tone={f.mode === 'EDF' ? 'info' : 'solid'}>{f.mode}</Badge>
           <Badge tone="neutral">Replay</Badge>
           <div style={{ flex: 1 }} />
           <Button variant="secondary" iconLeft={<Icon name="activity" size={18} />}>Compare</Button>

@@ -2,7 +2,7 @@
 (function () {
   const { Icon } = window.OSIcons;
   const DS = window.ExopterDesignSystem_4c9fc9;
-  const { SegmentedControl, Switch, Badge, Button } = DS;
+  const { Switch } = DS;
 
   const G = '#8CFF4D', AMBER = '#F2A23A', GREY = '#5F6C6B';
 
@@ -27,7 +27,6 @@
   }
 
   function Hud() {
-    const [mode, setMode] = React.useState('gld');
     const [failsafe, setFailsafe] = React.useState(false);
     return (
       <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
@@ -36,8 +35,6 @@
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: '-.01em', color: 'var(--text-strong)' }}>HUD preview</h1>
             <p style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--text-muted)' }}>Pilot display concept · readable in sun, fail-safe to black, never full white.</p>
           </div>
-          <SegmentedControl ariaLabel="HUD mode" value={mode} onChange={setMode}
-            options={[{ value: 'gld', label: 'GLD' }, { value: 'edf', label: 'EDF' }, { value: 'jet', label: 'JET', disabled: true }]} />
           <Switch label="Fail-safe" checked={failsafe} onChange={(e) => setFailsafe(e.target.checked)} />
         </div>
 
@@ -63,10 +60,9 @@
               <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', color: G }}>
                 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke={G} strokeWidth="2"><circle cx="24" cy="24" r="7" /><line x1="31" y1="24" x2="42" y2="24" /><line x1="17" y1="24" x2="6" y2="24" /><line x1="24" y1="17" x2="24" y2="9" /></svg>
               </div>
-              {/* waypoint cylinder hint */}
               <div style={{ position: 'absolute', top: '34%', left: '63%', color: AMBER, textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
-                <svg width="26" height="34" viewBox="0 0 26 34" fill="none" stroke={AMBER} strokeWidth="1.5"><ellipse cx="13" cy="6" rx="11" ry="4" /><ellipse cx="13" cy="28" rx="11" ry="4" /><line x1="2" y1="6" x2="2" y2="28" /><line x1="24" y1="6" x2="24" y2="28" /></svg>
-                <div style={{ marginTop: 2 }}>WPT 2 · 3.1 km</div>
+                <Icon name="crosshair" size={24} />
+                <div style={{ marginTop: 2 }}>LANDING ZONE · 8.6 km</div>
               </div>
               <Ladder value={214} label="AIRSPEED" unit="km/h" x="left" />
               <Ladder value={1480} label="ALTITUDE" unit="m" x="right" />
@@ -80,8 +76,6 @@
               <div style={{ position: 'absolute', top: 12, right: 16, display: 'flex', alignItems: 'center', gap: 6, color: AMBER, fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600, letterSpacing: '.08em' }}>
                 <Icon name="triangle-alert" size={13} /> BATT 74%
               </div>
-              {/* mode tag */}
-              <div style={{ position: 'absolute', bottom: 14, left: 16, fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '.12em', color: G }}>{mode.toUpperCase()}</div>
             </React.Fragment>
           )}
         </div>

@@ -38,11 +38,11 @@
     return (
       <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ marginBottom: 18 }}>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: '-.01em', color: 'var(--text-strong)' }}>Flight prep · GLD-2026-019</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--text-muted)' }}>Verify GLD flight readiness before arming the system.</p>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: '-.01em', color: 'var(--text-strong)' }}>Flight prep · FLT-2026-019</h1>
+          <p style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--text-muted)' }}>Verify flight readiness before arming the system.</p>
         </div>
 
-        <div style={{ marginBottom: 18 }}><ReadinessStrip mode="GLD" items={items} /></div>
+        <div style={{ marginBottom: 18 }}><ReadinessStrip items={items} /></div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, alignItems: 'start' }}>
           <Card eyebrow="Pre-flight" title="Readiness checklist" flush
@@ -52,7 +52,7 @@
               <ChecklistRow state="done" title="Wing surface & control check" owner="ENG-2" evidence="#" />
               <ChecklistRow state="done" title="Pitot / pressure probe clear" owner="ENG-2" evidence="#" />
               <ChecklistRow state="active" title="Parachute pack & jettison verified" owner="ENG-1" />
-              <ChecklistRow state="blocked" title="Battery above 80%" blocker="At 74% — charge before EDF leg" owner="OPS" />
+              <ChecklistRow state="blocked" title="Battery above 80%" blocker="At 74% — charge before flight" owner="OPS" />
               <ChecklistRow state="pending" title="Audible altimeter test" owner="PILOT" />
               <ChecklistRow state="pending" title="Weather window confirmed" owner="OPS" />
             </div>

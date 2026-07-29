@@ -12,7 +12,12 @@ Rails/Hotwire logbook for FlySight sessions.
 
 ## Identity
 
-The app uses the dedicated Sillage design system: a compact avionics-inspired identity for FlySight trajectory analysis. See `docs/design-system.md`.
+The app uses the dedicated Sillage design system: a compact, avionics-inspired
+identity for flight operations and analysis. Design decisions live in the
+[Exopter Design System in Notion](https://app.notion.com/p/3abe497e504f81c8a557e1f1a26e09ae).
+The repository implementation lives in `../design_system/`, with the Rails
+visual reference at `/devreference/design-system`. `docs/design-system.md` is
+kept only as a stable pointer.
 
 ## Run
 

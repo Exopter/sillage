@@ -25,68 +25,80 @@
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
 <script src="../../_ds_bundle.js"></script>
-<script type="text/babel" src="icons.jsx" data-presets="react"></script>
-<script type="text/babel" src="Shell.jsx" data-presets="react"></script>
-<script type="text/babel" src="Logbook.jsx" data-presets="react"></script>
-<script type="text/babel" src="Replay.jsx" data-presets="react"></script>
-<script type="text/babel" src="FlightPrep.jsx" data-presets="react"></script>
-<script type="text/babel" src="Hud.jsx" data-presets="react"></script>
+<script type="text/babel" src="icons.jsx?v=2" data-presets="react"></script>
+<script type="text/babel" src="Shell.jsx?v=4" data-presets="react"></script>
+<script type="text/babel" src="Logbook.jsx?v=6" data-presets="react"></script>
+<script type="text/babel" src="Replay.jsx?v=2" data-presets="react"></script>
+<script type="text/babel" src="FlightPrep.jsx?v=2" data-presets="react"></script>
+<script type="text/babel" src="Hud.jsx?v=2" data-presets="react"></script>
+<script type="text/babel" src="Atlas.jsx?v=3" data-presets="react"></script>
+<script type="text/babel" src="Hangar.jsx?v=5" data-presets="react"></script>
+<script type="text/babel" src="Signal.jsx?v=8" data-presets="react"></script>
 
 <script type="text/babel" data-presets="react">
   const { Shell } = window.OSShell;
-  const { Logbook } = window.OSLogbook;
+  const { Logbook, INITIAL_FLIGHTS } = window.OSLogbook;
   const { Replay } = window.OSReplay;
   const { FlightPrep } = window.OSFlightPrep;
   const { Hud } = window.OSHud;
+  const { Atlas } = window.OSAtlas;
+  const { Hangar } = window.OSHangar;
+  const { Signal } = window.OSSignal;
   const { Icon } = window.OSIcons;
 
   const SUBTABS = [
-    { id: 'logbook', label: 'Logbook' },
+    { id: 'logbook', label: 'Flights' },
     { id: 'prep', label: 'Flight prep' },
-    { id: 'replay', label: 'Replay' },
     { id: 'hud', label: 'HUD' },
   ];
-
-  function Placeholder({ room }) {
-    const names = { atlas: 'Sillage Atlas', hangar: 'Sillage Hangar', signal: 'Sillage Signal', forge: 'Sillage Forge', core: 'Sillage Core' };
-    const desc = {
-      atlas: 'Maps, terrain, route comparison, airspace context, and waypoint planning.',
-      hangar: 'Fleet, wing hardware, equipment, maintenance, and spare parts.',
-      signal: 'Telemetry, live feeds, sensor streams, communications, and ground station.',
-      forge: 'Agent workflows, OpenProject orchestration, and documentation support.',
-      core: 'Authentication, authorization, audit trails, storage, and operations.',
-    };
-    return (
-      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center', maxWidth: 420, padding: 24 }}>
-          <div style={{ color: 'var(--text-muted)', display: 'flex', justifyContent: 'center', marginBottom: 14 }}><Icon name="layers" size={28} /></div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: 'var(--text-strong)' }}>{names[room]}</h2>
-          <p style={{ margin: '8px 0 0', fontSize: 14, color: 'var(--text-muted)' }}>{desc[room]}</p>
-          <p style={{ margin: '14px 0 0', fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--ex-graphite-400)' }}>Not built in this UI kit</p>
-        </div>
-      </div>
-    );
-  }
 
   function App() {
     const [room, setRoom] = React.useState('flight');
     const [sub, setSub] = React.useState('logbook');
     const [flight, setFlight] = React.useState(null);
-    const [mode, setMode] = React.useState('gld');
+    const [flights, setFlights] = React.useState(INITIAL_FLIGHTS);
+    const [signalFlight, setSignalFlight] = React.useState(null);
 
     const openFlight = (f) => { setFlight(f); setSub('replay'); };
+    const openSignalForFlight = (f) => {
+      const live = { ...f, source: 'Live session', status: 'live', state: 'live', label: 'Live' };
+      setFlights((rows) => rows.map((row) => row.id === f.id ? live : row));
+      setSignalFlight(live);
+      setRoom('signal');
+    };
+    const startSignalSession = ({ mode, flightId, aircraft, zone }) => {
+      if (mode === 'existing') {
+        const prepared = flights.find((f) => f.id === flightId);
+        if (prepared) openSignalForFlight(prepared);
+        return;
+      }
+      const max = flights.reduce((n,f) => Math.max(n, Number(f.id.split('-').pop()) || 0), 0);
+      const created = { id:`FLT-2026-${String(max + 1).padStart(3,'0')}`, aircraft:aircraft || 'To complete', zone:zone || 'To complete', date:'28 Jul · now', duration:'Live', source:'Live session', status:'live', state:'live', label:'Live' };
+      setFlights((rows) => [created, ...rows]);
+      setSignalFlight(created);
+    };
+    const endSignalSession = () => {
+      if (signalFlight) setFlights((rows) => rows.map((f) => f.id === signalFlight.id ? { ...f, duration:'00:06:32', status:'processing', state:'live', label:'Processing' } : f));
+      setSignalFlight(null);
+    };
 
-    let title = 'Logbook', crumb = 'Operations';
+    let title = 'Flights', crumb = 'Operations';
     if (room === 'flight') {
-      if (sub === 'logbook') { title = 'Logbook'; crumb = 'Operations'; }
+      if (sub === 'logbook') { title = 'Flights'; crumb = 'Operations'; }
       if (sub === 'prep') { title = 'Flight prep'; crumb = 'Pre-flight'; }
       if (sub === 'replay') { title = flight ? flight.id : 'Replay'; crumb = 'Replay & analysis'; }
       if (sub === 'hud') { title = 'HUD preview'; crumb = 'Pilot display'; }
-    } else { title = ''; crumb = ''; }
+    } else if (room === 'atlas') { title = 'Landing zones'; crumb = 'Atlas'; }
+    else if (room === 'hangar') { title = 'Fleet configuration'; crumb = 'Hangar'; }
+    else if (room === 'signal') { title = signalFlight ? signalFlight.id : 'Signal sessions'; crumb = 'Signal'; }
 
     let body;
-    if (room !== 'flight') {
-      body = <Placeholder room={room} />;
+    if (room === 'atlas') {
+      body = <Atlas onOpenSignal={() => setRoom('signal')} />;
+    } else if (room === 'hangar') {
+      body = <Hangar onOpenSignal={() => setRoom('signal')} />;
+    } else if (room === 'signal') {
+      body = <Signal onNavigate={setRoom} activeFlight={signalFlight} preparationFlights={flights.filter((f)=>f.status==='preparation')} onStartSession={startSignalSession} onEndSession={endSignalSession} />;
     } else if (sub === 'replay') {
       body = <Replay flight={flight} onBack={() => setSub('logbook')} />;
     } else {
@@ -97,7 +109,7 @@
               <button key={t.id} className="subtab" data-active={sub === t.id} onClick={() => setSub(t.id)}>{t.label}</button>
             ))}
           </div>
-          {sub === 'logbook' && <Logbook onOpen={openFlight} />}
+          {sub === 'logbook' && <Logbook flights={flights} onFlightsChange={setFlights} onOpen={openFlight} onOpenSignal={openSignalForFlight} />}
           {sub === 'prep' && <FlightPrep />}
           {sub === 'hud' && <Hud />}
         </div>
@@ -106,7 +118,7 @@
 
     return (
       <Shell room={room} onRoom={(r) => { setRoom(r); if (r === 'flight') setSub('logbook'); }}
-        mode={mode} onMode={setMode} title={title} crumb={crumb}>
+        title={title} crumb={crumb}>
         {body}
       </Shell>
     );

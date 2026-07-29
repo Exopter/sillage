@@ -6,6 +6,11 @@ user-invocable: true
 
 Read the `readme.md` file within this skill, and explore the other available files.
 
+The authoritative design decisions live in the [Exopter Design System in
+Notion](https://app.notion.com/p/3abe497e504f81c8a557e1f1a26e09ae).
+This package contains the implementation and visual specimens. Keep one shared
+responsive application layout; do not introduce layout management.
+
 Exopter builds personal **rigid-wing flight systems**; **Sillage** is its operating
 software suite. The design language should feel like flight-test equipment: matte,
 precise, physical, safety-aware. Carbon + vapor base, signal colors that annotate
@@ -13,6 +18,7 @@ precise, physical, safety-aware. Carbon + vapor base, signal colors that annotat
 no emoji.
 
 Key files:
+- `index.html` — browsable visual catalogue for foundations, components, and the Sillage UI kit.
 - `readme.md` — full design guide (content fundamentals, visual foundations, iconography, manifest).
 - `styles.css` → `tokens/*` — the token CSS (colors, type, spacing, fonts). Link `styles.css`.
 - `guidelines/*.card.html` — foundation specimens (colors, type, spacing, brand).

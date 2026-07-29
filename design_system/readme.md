@@ -6,14 +6,29 @@ This design system should feel like **a piece of flight-test equipment**: matte,
 
 ---
 
-## Sources
+## Source of truth and implementation
 
-This system was built from materials provided by the team. Not all are present in this project — listed here so a reader with access can trace decisions.
+Design decisions, principles, scope, and governance live in the
+[Exopter Design System in Notion](https://app.notion.com/p/3abe497e504f81c8a557e1f1a26e09ae).
+The repository is the implementation source of truth.
 
-- **`uploads/design-system.md`** — the authoritative Exopter design brief (color, type, components, HUD rules, voice, product architecture). The single source of truth for everything below. *(Present in `uploads/`.)*
+- **`uploads/design-system.md`** — stable pointer to the Notion source; it does not duplicate the design document.
 - **Wing reference photo** — matte-black rigid wing on a grass field, white `EXOPTER` wordmark. Saved at `assets/exopter-wing-reference.jpeg`. *(Present.)*
 - **Rails app** (`web/`, **attached**) — the real Sillage Flight Lab. `app/assets/stylesheets/exopter_design_system.css` is the canonical token file (mirrored verbatim into `tokens/exopter-tokens.css`); `application.css` holds the component classes + `--ds-*` bridge (copied into `ui_kits/os-flight/os.css`); `/devreference/design-system` is the app's own reference page; views under `app/views/` (dashboard, jumps, flight_imports); copy in `config/locales/en.yml`.
 - **`docs/` program files** (`docs/`, **attached**) — EPW/GLD specs, HUD & FDR requirements, Singapore pricing quotes, roadmap, OpenProject agent-workflow README, COC contract. *(Not yet mined into the system — see caveats.)*
+
+### Implementation surfaces
+
+- **Visual catalogue:** `index.html`, the browsable foundation, component, and product-kit reference.
+- **Visual reference:** `web/app/views/devreference/design_system/show.html.erb`, served at `/devreference/design-system` in the Rails app.
+- **Product UI kit:** `ui_kits/os-flight/index.html`, with one shared shell in `ui_kits/os-flight/Shell.jsx`.
+- **Component kit:** reusable React primitives under `components/`, with visual specimen cards for forms, feedback, and data.
+- **Foundations:** visual cards under `guidelines/` and tokens under `tokens/`.
+- **Production Rails tokens:** `web/app/assets/stylesheets/exopter_design_system.css`; shared application styles and the legacy bridge remain in `web/app/assets/stylesheets/application.css`.
+
+The UI kit demonstrates one shared responsive application layout. It does not
+contain saved layouts, role layouts, a layout editor, a dashboard builder, or
+any layout-management model.
 
 ### Deep-tech brand references (supplied by the user)
 
@@ -113,6 +128,8 @@ The physical reference is the white `EXOPTER` wordmark on matte carbon: uppercas
 
 Root files:
 
+- **`index.html`** — browsable visual catalogue for foundations, components, and the interactive Sillage UI kit.
+- **`catalog.css`** — catalogue-only layout; it is documentation UI, not an application layout system.
 - **`styles.css`** — global entry point (consumers link this one). `@import` list only.
 - **`readme.md`** — this guide.
 - **`SKILL.md`** — Agent-Skills-compatible entry for downloadable use.

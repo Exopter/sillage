@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Exopter Design System</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="catalog.css">
+</head>
+<body>
+  <header class="catalog-topbar">
+    <a class="catalog-brand" href="#overview" aria-label="Exopter Design System home">
+      <img src="assets/logo-wordmark.svg" alt="Exopter">
+      <span>Design system</span>
+    </a>
+    <nav class="catalog-top-actions" aria-label="Reference links">
+      <span class="catalog-status">Prototype</span>
+      <a href="https://app.notion.com/p/3abe497e504f81c8a557e1f1a26e09ae" target="_blank" rel="noreferrer">Notion source</a>
+      <a class="catalog-action" href="ui_kits/os-flight/index.html">Open Sillage UI kit</a>
+    </nav>
+  </header>
+
+  <div class="catalog-shell">
+    <aside class="catalog-nav">
+      <p class="catalog-nav-label">Reference</p>
+      <nav aria-label="Design system sections">
+        <a href="#overview">Overview</a>
+        <a href="#foundations">Foundations</a>
+        <a href="#components">Components</a>
+        <a href="#product-kit">Product UI kit</a>
+        <a href="#implementation">Implementation</a>
+      </nav>
+      <div class="catalog-nav-note">
+        <strong>One shared layout</strong>
+        <p>Responsive reflow only. No layout editor, presets, saved dashboards, or layout-management model.</p>
+      </div>
+    </aside>
+
+    <main class="catalog-main">
+      <section id="overview" class="catalog-hero">
+        <div class="catalog-hero-copy">
+          <p class="catalog-eyebrow">Exopter / Sillage</p>
+          <h1>Flight-test equipment,<br>expressed as software.</h1>
+          <p class="catalog-lead">
+            The visual implementation of Exopter tokens, operational states,
+            reusable components, and the shared Sillage workbench.
+            Design decisions and governance remain in Notion.
+          </p>
+          <div class="catalog-actions">
+            <a class="catalog-action" href="ui_kits/os-flight/index.html">Explore the product UI kit</a>
+            <a class="catalog-secondary-action" href="#components">Inspect components</a>
+          </div>
+        </div>
+        <figure class="catalog-hero-media">
+          <img src="assets/exopter-wing-reference.jpeg" alt="Matte black Exopter rigid wing on a grass test field">
+          <figcaption>Physical reference / matte carbon, white marking, field context</figcaption>
+        </figure>
+      </section>
+
+      <section class="catalog-principles" aria-label="Implementation principles">
+        <article>
+          <span>01</span>
+          <strong>Quiet nominal state</strong>
+          <p>Signal colours annotate live, caution, fault, and readiness states.</p>
+        </article>
+        <article>
+          <span>02</span>
+          <strong>Operational density</strong>
+          <p>Stable placement, tabular data, explicit units, and visible provenance.</p>
+        </article>
+        <article>
+          <span>03</span>
+          <strong>Prototype discipline</strong>
+          <p>Only current components and one shared responsive shell.</p>
+        </article>
+      </section>
+
+      <section id="foundations" class="catalog-section">
+        <header class="catalog-section-header">
+          <div>
+            <p class="catalog-eyebrow">Foundations</p>
+            <h2>Tokens made visible</h2>
+          </div>
+          <p>Carbon and vapor carry the interface. Signal colours communicate state; they do not decorate.</p>
+        </header>
+        <div class="catalog-specimen-grid">
+          <article class="catalog-specimen catalog-specimen-wide">
+            <div><strong>Signal colours</strong><span>Live, HUD, ground, caution, fault</span></div>
+            <iframe title="Signal colour tokens" src="guidelines/colors-signal.card.html" loading="lazy"></iframe>
+          </article>
+          <article class="catalog-specimen">
+            <div><strong>Carbon scale</strong><span>Chrome and instrument surfaces</span></div>
+            <iframe title="Carbon colour tokens" src="guidelines/colors-carbon.card.html" loading="lazy"></iframe>
+          </article>
+          <article class="catalog-specimen">
+            <div><strong>Vapor scale</strong><span>Workbench and divider surfaces</span></div>
+            <iframe title="Vapor colour tokens" src="guidelines/colors-vapor.card.html" loading="lazy"></iframe>
+          </article>
+          <article class="catalog-specimen">
+            <div><strong>Operational type</strong><span>Compact headings and data hierarchy</span></div>
+            <iframe title="Display typography" src="guidelines/type-display.card.html" loading="lazy"></iframe>
+          </article>
+          <article class="catalog-specimen">
+            <div><strong>State language</strong><span>Label plus colour, never colour alone</span></div>
+            <iframe title="Operational state tokens" src="guidelines/colors-states.card.html" loading="lazy"></iframe>
+          </article>
+          <article class="catalog-specimen">
+            <div><strong>Spacing scale</strong><span>Four-pixel base grid</span></div>
+            <iframe title="Spacing tokens" src="guidelines/spacing-scale.card.html" loading="lazy"></iframe>
+          </article>
+          <article class="catalog-specimen">
+            <div><strong>Geometry</strong><span>Eight-pixel surfaces, four-pixel instruments</span></div>
+            <iframe title="Radius and elevation tokens" src="guidelines/spacing-radius.card.html" loading="lazy"></iframe>
+          </article>
+        </div>
+      </section>
+
+      <section id="components" class="catalog-section catalog-section-dark">
+        <header class="catalog-section-header">
+          <div>
+            <p class="catalog-eyebrow">Components</p>
+            <h2>Small, reusable, operational</h2>
+          </div>
+          <p>Forms, feedback, and data components for the screens that exist now. No generic page builder.</p>
+        </header>
+        <div class="catalog-component-stack">
+          <article class="catalog-component-frame">
+            <div><strong>Forms and controls</strong><span>Button, input, select, switch, segmented control</span></div>
+            <iframe title="Forms and controls" src="components/forms/forms.card.html" loading="lazy"></iframe>
+          </article>
+          <div class="catalog-component-row">
+            <article class="catalog-component-frame">
+              <div><strong>Feedback and status</strong><span>Badge, status dot, toast</span></div>
+              <iframe title="Feedback and status components" src="components/feedback/feedback.card.html" loading="lazy"></iframe>
+            </article>
+            <article class="catalog-component-frame">
+              <div><strong>Data and instruments</strong><span>Card, metric, readiness, checklist</span></div>
+              <iframe title="Data and instrument components" src="components/data/data.card.html" loading="lazy"></iframe>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="product-kit" class="catalog-section">
+        <header class="catalog-section-header">
+          <div>
+            <p class="catalog-eyebrow">Sillage UI kit</p>
+            <h2>One workbench, several rooms</h2>
+          </div>
+          <p>Flights, Hangar, Atlas, and Signal share the same shell, hierarchy, spacing, and operational state language.</p>
+        </header>
+        <div class="catalog-preview">
+          <div class="catalog-preview-toolbar">
+            <span>Interactive prototype</span>
+            <a href="ui_kits/os-flight/index.html">Open full screen</a>
+          </div>
+          <iframe title="Interactive Sillage UI kit" src="ui_kits/os-flight/index.html" loading="lazy"></iframe>
+        </div>
+      </section>
+
+      <section id="implementation" class="catalog-section">
+        <header class="catalog-section-header">
+          <div>
+            <p class="catalog-eyebrow">Implementation</p>
+            <h2>Where the system lives</h2>
+          </div>
+          <p>Notion owns design decisions. These repository paths own executable implementation.</p>
+        </header>
+        <div class="catalog-paths">
+          <a href="tokens/exopter-tokens.css"><span>Tokens</span><code>design_system/tokens/</code></a>
+          <a href="components/"><span>Components</span><code>design_system/components/</code></a>
+          <a href="guidelines/"><span>Visual specimens</span><code>design_system/guidelines/</code></a>
+          <a href="ui_kits/os-flight/index.html"><span>Product UI kit</span><code>design_system/ui_kits/os-flight/</code></a>
+          <a href="../web/app/assets/stylesheets/exopter_design_system.css"><span>Rails tokens</span><code>web/app/assets/stylesheets/exopter_design_system.css</code></a>
+          <a href="../web/app/views/devreference/design_system/show.html.erb"><span>Rails reference</span><code>web/app/views/devreference/design_system/show.html.erb</code></a>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
