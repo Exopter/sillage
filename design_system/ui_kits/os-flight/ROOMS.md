@@ -33,7 +33,9 @@ This prototype keeps four rooms in the primary operator rail, ordered Flights, H
 
 - The product is glider-only for the current horizon. No propulsion mode selector is shown.
 - Atlas and Signal model a landing zone only. Waypoints, routes, target zones, and mission corridors are deferred.
-- Signal exposes Live map, Instruments, and Charts in one coordinated dashboard. Any panel can be enlarged while the other two remain as picture-in-picture previews or reduced rails, and a presentation mode uses the entire display.
+- Signal exposes Live map, Instruments, and Charts as movable widgets on one coordinated canvas. Each widget has three explicit states: Enlarged, Mini, and Hidden; Hidden retains only the draggable header. There are no permanent view tabs.
+- The live-session header combines flight context, Radio, Recorder, Cloud, presentation, event, and session controls in one compact row.
+- Heading, airspeed, altitude, vertical speed, glide, and landing-zone distance live in one shared telemetry strip instead of being repeated inside Map and Instruments.
 - Flight lifecycle is `Preparation → Live or SD import → Processing → Analysed or Review`.
 - The Live map shows the aircraft, heading, and continuously extending flight path. It does not model waypoints or target zones.
 - Hangar models `Fleet → Aircraft → Installation → Assembly → Subassembly → Part`. A serialized assembly can move between aircraft while preserving dated installation history. Standalone equipment, such as a FlySight installed in a wingsuit, uses the same installation history.

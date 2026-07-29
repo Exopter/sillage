@@ -19,16 +19,9 @@
     .signal-v{font:600 13px/1.2 var(--font-data);color:var(--ex-vapor-50);font-variant-numeric:tabular-nums;white-space:nowrap}
     .signal-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ex-field-500);margin-right:7px}
     .signal-dot.live{background:var(--ex-aqua-500)}.signal-dot.caution{background:var(--ex-amber-500)}
-    .signal-toolbar{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--ex-carbon-700);background:var(--ex-carbon-950)}
-    .signal-toolbar .exds-segmented{background:var(--ex-carbon-900);border-color:var(--ex-carbon-700)}
-    .signal-toolbar .exds-segmented__option{color:var(--ex-graphite-400)}
-    .signal-toolbar .exds-segmented__option[aria-selected=true]{background:var(--ex-aqua-500);color:var(--ex-carbon-950)}
     .signal-panel{background:var(--ex-carbon-900);border:1px solid var(--ex-carbon-700);border-radius:8px;overflow:hidden}
     .signal-panel-head{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:1px solid var(--ex-carbon-700)}
     .signal-title{font:600 10px/1.2 var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ex-graphite-400)}
-    .signal-map-grid{display:grid;grid-template-columns:minmax(0,1fr) 250px;min-height:465px}
-    .signal-map{position:relative;min-height:465px;background:url(../../assets/landing-zone-terrain-v1.png) center/cover no-repeat}
-    .signal-map:after{content:"";position:absolute;inset:0;background:rgba(7,11,13,.36)}
     .signal-lz{position:absolute;z-index:2;left:70%;top:52%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;color:var(--ex-hud-green)}
     .signal-lz-mark{width:56px;height:56px;border-radius:50%;border:2px solid currentColor;display:grid;place-items:center;background:rgba(7,11,13,.8);box-shadow:0 0 0 10px rgba(140,255,77,.08)}
     .signal-lz-label{margin-top:10px;padding:6px 9px;border-radius:4px;background:rgba(7,11,13,.88);font:600 11px/1.2 var(--font-mono);letter-spacing:.06em;white-space:nowrap}
@@ -39,23 +32,8 @@
     .signal-vehicle-label{position:absolute;left:48px;top:-38px;min-width:190px;padding:6px 8px;border-radius:4px;background:rgba(7,11,13,.88);color:var(--ex-vapor-50);font:600 11px/1.35 var(--font-mono);letter-spacing:.03em;white-space:nowrap}
     .signal-vehicle-label strong{color:var(--ex-hud-green);font-weight:600}
     .signal-heading-line{position:absolute;left:50%;bottom:35px;height:72px;border-left:1px dashed rgba(140,255,77,.8);transform-origin:bottom center;pointer-events:none}
-    .signal-side{border-left:1px solid var(--ex-carbon-700);padding:15px;display:flex;flex-direction:column;gap:14px}
-    .signal-metric{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:1px solid var(--ex-carbon-700);padding-bottom:10px}
-    .signal-metric strong{font:600 24px/1 var(--font-data);font-variant-numeric:tabular-nums;color:var(--ex-hud-green)}
-    .signal-metric small{font:500 11px/1 var(--font-mono);color:var(--ex-graphite-400)}
-    .signal-events{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
-    .signal-event-row{display:grid;grid-template-columns:58px 12px 1fr;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--ex-carbon-700);font-size:12px}
-    .signal-event-row time{font-family:var(--font-data);color:var(--ex-graphite-400)}
-    .signal-instruments{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:14px;padding:14px}
     .signal-canvas{width:100%;height:430px;display:block;background:#0a1113}
-    .signal-charts{background:var(--ex-carbon-950);color:var(--ex-vapor-50);padding:14px;display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:14px}
-    .signal-chart-panel{background:var(--ex-carbon-900);border:1px solid var(--ex-carbon-700);border-radius:8px;overflow:hidden;box-shadow:var(--ex-shadow-panel)}
-    .signal-chart-panel .signal-panel-head{border-color:var(--ex-carbon-700)}
-    .signal-chart-panel .signal-title{color:var(--ex-graphite-400)}
     .signal-charts-canvas{width:100%;height:440px;display:block;background:#0a1113}
-    .signal-health{padding:14px}.signal-health h3{margin:4px 0 12px;font-size:18px;color:var(--ex-vapor-50)}
-    .signal-health-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--ex-carbon-700);color:var(--ex-vapor-50);font:600 11px/1.2 var(--font-mono);letter-spacing:.04em;text-transform:uppercase}
-    .signal-offline{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(242,162,58,.13);border:1px solid var(--ex-amber-500);border-radius:4px;color:#ffd18e;font:600 11px/1.2 var(--font-mono)}
     .signal-live-shell{height:100%;min-height:640px;display:flex;flex-direction:column;overflow:hidden}
     .signal-tool-button{height:32px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 10px;border:1px solid var(--ex-carbon-700);border-radius:5px;background:var(--ex-carbon-900);color:var(--ex-vapor-50);font:600 10px/1 var(--font-mono);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
     .signal-tool-button:hover,.signal-tool-button[aria-pressed=true]{border-color:var(--ex-aqua-500);color:var(--ex-aqua-500);background:rgba(47,214,198,.08)}
@@ -105,7 +83,7 @@
     .signal-form-field{display:grid;gap:6px}.signal-form-field label{font:600 10px/1 var(--font-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted)}.signal-form-field select{width:100%;box-sizing:border-box;border:1px solid var(--border-rule);border-radius:6px;background:var(--surface-card);color:var(--text-body);padding:10px 11px;font:500 13px var(--font-sans)}
     .signal-detect{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;border:1px solid var(--ex-field-500);border-radius:7px;background:var(--ex-state-ready-bg)}.signal-detect strong{display:block;margin-top:5px;font:600 13px var(--font-data);color:var(--text-strong)}.signal-help{padding:11px 12px;border-radius:6px;background:var(--surface-panel);font-size:12px;line-height:1.5;color:var(--text-muted)}.signal-close{width:34px;height:34px;border:1px solid var(--border-rule);border-radius:6px;background:var(--surface-card);color:var(--text-muted);display:grid;place-items:center;cursor:pointer}
     @media(max-width:1100px){.signal-status{grid-template-columns:minmax(130px,1fr) minmax(120px,.9fr) 76px minmax(145px,.9fr) auto}.signal-status-cell,.signal-link-stack{padding-left:8px;padding-right:8px}.signal-session-actions{gap:5px;padding-left:7px;padding-right:7px}.signal-session-actions .signal-action-label--optional{display:none}.signal-tool-button{padding:0 8px}.signal-telemetry-item{padding-left:8px;padding-right:8px}}
-    @media(max-width:900px){.signal-map-grid,.signal-instruments,.signal-charts,.signal-launch-grid{grid-template-columns:1fr}.signal-side{border-left:0;border-top:1px solid var(--ex-carbon-700)}.signal-vehicle-label{min-width:150px;font-size:10px}.signal-choice,.signal-detect{grid-template-columns:1fr}.signal-live-shell{min-height:700px}.signal-workspace-head-actions .exds-badge{display:none}.signal-widget-mode{padding:0 5px}.signal-telemetry-strip{grid-template-columns:repeat(5,minmax(70px,.72fr)) minmax(140px,1.2fr)}}
+    @media(max-width:900px){.signal-launch-grid{grid-template-columns:1fr}.signal-vehicle-label{min-width:150px;font-size:10px}.signal-choice,.signal-detect{grid-template-columns:1fr}.signal-live-shell{min-height:700px}.signal-workspace-head-actions .exds-badge{display:none}.signal-widget-mode{padding:0 5px}.signal-telemetry-strip{grid-template-columns:repeat(5,minmax(70px,.72fr)) minmax(140px,1.2fr)}}
   `;
   if (!document.getElementById('signal-screen-css')) { const s = document.createElement('style'); s.id = 'signal-screen-css'; s.textContent = CSS; document.head.appendChild(s); }
 
@@ -239,26 +217,6 @@
 
   function ChartHealth({label,value,caution}) { return <div className="signal-chart-summary-row"><span>{label}</span><b className={caution?'caution':''}>{value}</b></div>; }
 
-  function MapView({ events, onNavigate, cloudLive, flight }) {
-    return <div style={{ padding: 14 }}>
-      <div className="signal-panel signal-map-grid">
-        <div className="signal-map">
-          <LiveFlightTrack flight={flight} />
-          <button className="signal-lz" onClick={() => onNavigate('atlas')} style={{ border: 0, background: 'none', cursor: 'pointer' }}><span className="signal-lz-mark"><Icon name="crosshair" size={25} /></span><span className="signal-lz-label">LANDING ZONE · {flight.zone.toUpperCase()} · 8.6 km</span></button>
-          <div style={{ position: 'absolute', zIndex: 2, left: 14, top: 14 }}><Badge tone="neutral">Terrain cached · 09:08 UTC</Badge></div>
-        </div>
-        <div className="signal-side">
-          <Metric label="Airspeed" value="214" unit="km/h" /><Metric label="Altitude" value="1 480" unit="m AMSL" /><Metric label="Vertical speed" value="−4.6" unit="m/s" /><Metric label="Glide" value="12.4" unit="L/D" />
-          <div><span className="signal-title">Stream validity</span><div style={{ display: 'grid', gap: 8, marginTop: 10 }}><StatusDot state="ready" label="GNSS · valid" /><StatusDot state="ready" label="IMU · valid" /><StatusDot state="caution" label="Pitot · monitor" /></div></div>
-        </div>
-      </div>
-      <div className="signal-events">
-        <div className="signal-panel"><div className="signal-panel-head"><span className="signal-title">Event log</span><Badge tone="live">Live</Badge></div><div style={{ padding: '0 13px' }}>{events.slice(-4).map((e, i) => <Event key={i} {...e} />)}</div></div>
-        <div className="signal-panel"><div className="signal-panel-head"><span className="signal-title">Operational context</span></div><div style={{ padding: 13, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}><Mini label="Landing zone" value={flight.zone} /><Mini label="Aircraft" value={flight.aircraft} /><Mini label="Radio latency" value="84 ms" /><Mini label="Cloud sync" value={cloudLive ? 'Up to date' : '18 s behind'} /></div></div>
-      </div>
-    </div>;
-  }
-
   function LiveFlightTrack({ flight }) {
     const [step, setStep] = React.useState(0);
     React.useEffect(() => { const timer = window.setInterval(() => setStep((s) => (s + 1) % 5), 900); return () => window.clearInterval(timer); }, []);
@@ -288,10 +246,6 @@
     return <canvas ref={ref} className="signal-track" aria-label="Live flight path and heading" />;
   }
 
-  function InstrumentsView({ events }) {
-    return <div className="signal-instruments"><div className="signal-panel"><div className="signal-panel-head"><span className="signal-title">Flight instruments · ground reconstruction</span><Badge tone="live">Live</Badge></div><AttitudeCanvas /><div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', borderTop: '1px solid var(--ex-carbon-700)' }}>{[['GNSS','Valid'],['IMU','Valid'],['Pitot','Monitor'],['SD card','Recording'],['Radio','Linked'],['Cloud','Live']].map(([k,v])=><div key={k} style={{ padding: '10px 12px', borderRight: '1px solid var(--ex-carbon-700)' }}><span className="signal-k">{k}</span><span className="signal-v" style={{ fontSize: 11, color: v==='Monitor'?'var(--ex-amber-500)':'var(--ex-field-500)' }}>{v}</span></div>)}</div></div><div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}><div className="signal-panel" style={{ padding: 14 }}><span className="signal-title">Primary values</span><div style={{ display: 'grid', gap: 13, marginTop: 14 }}><Metric label="Heading" value="036" unit="deg" /><Metric label="Airspeed" value="214" unit="km/h" /><Metric label="Altitude" value="1 480" unit="m" /><Metric label="Glide" value="12.4" unit="L/D" /></div></div><div className="signal-panel"><div className="signal-panel-head"><span className="signal-title">Recent events</span></div><div style={{ padding: '0 12px' }}>{events.slice(-3).map((e,i)=><Event key={i} {...e} />)}</div></div></div></div>;
-  }
-
   function AttitudeCanvas() {
     const ref = React.useRef(null);
     React.useEffect(() => {
@@ -308,10 +262,6 @@
     return <canvas ref={ref} className="signal-canvas" aria-label="Ground reconstructed attitude instrument" />;
   }
 
-  function ChartsView({ cloudLive, onHangar }) {
-    return <div className="signal-charts"><div className="signal-chart-panel"><div className="signal-panel-head"><span className="signal-title">Aligned telemetry · last 10 minutes</span><Badge tone={cloudLive ? 'ready' : 'caution'}>{cloudLive ? 'Healthy' : 'Local capture'}</Badge></div><ChartsCanvas cloudLive={cloudLive} /></div><aside style={{ display: 'flex', flexDirection: 'column', gap: 12 }}><div className="signal-chart-panel signal-health"><span className="signal-title">Current state</span><h3>{cloudLive ? 'Streams healthy' : 'Cloud reconnecting'}</h3>{[['GNSS','Valid'],['IMU','Valid'],['Pitot','Monitor'],['Radio','Nominal'],['Local recorder','Recording'],['Cloud',cloudLive?'Live':'18 s behind']].map(([a,b])=><div key={a} className="signal-health-row"><span>{a}</span><span style={{ color: b==='Monitor'||b.includes('behind')?'var(--ex-amber-500)':'var(--ex-field-500)' }}>{b}</span></div>)}<div style={{ marginTop: 14 }}><Button size="sm" variant="secondary" onClick={onHangar}>Open pitot in Hangar</Button></div></div><div className="signal-chart-panel signal-health"><span className="signal-title">Data authority</span><p style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--ex-graphite-400)', lineHeight: 1.5 }}>The local FDR recording remains authoritative. Signal shows a reduced live stream and the cloud receives a resumable copy.</p></div></aside></div>;
-  }
-
   function ChartsCanvas({ cloudLive, compact=false }) {
     const ref = React.useRef(null);
     React.useEffect(() => { const c=ref.current,ctx=c.getContext('2d'),d=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=w*d;c.height=h*d;ctx.scale(d,d);ctx.fillStyle='#0a1113';ctx.fillRect(0,0,w,h);
@@ -320,8 +270,5 @@
     return <canvas ref={ref} className="signal-charts-canvas" aria-label="Aligned live telemetry charts" />;
   }
 
-  function Metric({ label, value, unit }) { return <div className="signal-metric"><span><span className="signal-k">{label}</span><small>{unit}</small></span><strong>{value}</strong></div>; }
-  function Event({ t, label, state }) { return <div className="signal-event-row"><time>{t}</time><i className={`signal-dot ${state==='live'?'live':''} ${state==='caution'?'caution':''}`} /><span>{label}</span></div>; }
-  function Mini({ label, value }) { return <div><span className="signal-k">{label}</span><span className="signal-v">{value}</span></div>; }
   window.OSSignal = { Signal };
 })();

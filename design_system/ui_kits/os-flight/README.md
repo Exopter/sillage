@@ -24,10 +24,12 @@ Component files are siblings: `Shell.jsx`, `Logbook.jsx`, `Replay.jsx`,
 | **HUD** | Pilot display preview. |
 
 Atlas, Hangar, and Signal are interactive rooms in this kit. Signal combines
-Live map, Instruments, and Charts in one live workspace; any panel can become
-the primary view while the other two remain available as picture-in-picture
-previews or reduced rails. A presentation mode fills the whole display for a
-large monitor or projector. Hangar exposes the fleet and installed
+Live map, Instruments, and Charts as movable widgets on one live canvas. Every
+widget can be Enlarged, Mini, or Hidden down to its draggable header; no view
+tabs remain. A single compact session row holds acquisition and session actions,
+while one shared telemetry strip replaces the repeated Map and Instruments
+values. A presentation mode fills the whole display for a large monitor or
+projector. Hangar exposes the fleet and installed
 configuration hierarchy plus Assemblies, Parts, Functions, Builds, and Test
 Runs; Atlas is the landing-zone directory. The operator rail is ordered Flights,
 Hangar, Atlas, then separated Signal. Signal can attach to a prepared Flight or
