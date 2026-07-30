@@ -1,0 +1,6 @@
+<% content_for :title, "New function" %>
+<%= render "hangar/tabs" %>
+<div class="workspace-form-page">
+  <header class="workspace-header"><div><span class="section-eyebrow">Functions</span><h2>New function</h2><p>Define the operational role used to classify parts.</p></div></header>
+  <section class="workspace-panel workspace-form-panel"><%= render "form", function: @function %></section>
+</div>

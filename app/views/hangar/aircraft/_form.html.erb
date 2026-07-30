@@ -1,0 +1,11 @@
+<%= form_with model: [ :hangar, aircraft ], class: "workspace-form" do |form| %>
+  <% if aircraft.errors.any? %><div class="workspace-errors"><%= aircraft.errors.full_messages.to_sentence %></div><% end %>
+  <div class="workspace-form-grid">
+    <label><span>Registration / ID</span><%= form.text_field :registration, required: true, placeholder: "F-GOCC" %></label>
+    <label><span>Name</span><%= form.text_field :name, required: true, placeholder: "Pilatus test aircraft" %></label>
+    <label class="is-wide"><span>Telemetry system ID</span><%= form.text_field :telemetry_system_id, placeholder: "EXOFDR-014" %></label>
+    <label class="workspace-checkbox"><%= form.check_box :active %><span>Available for flight preparation</span></label>
+  </div>
+  <label><span>Notes</span><%= form.text_area :notes, rows: 5 %></label>
+  <div class="workspace-actions"><%= link_to "Cancel", hangar_aircraft_index_path, class: "button-secondary" %><%= form.submit class: "button-primary" %></div>
+<% end %>

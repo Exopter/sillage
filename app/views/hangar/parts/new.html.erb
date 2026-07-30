@@ -1,0 +1,6 @@
+<% content_for :title, "New part" %>
+<%= render "hangar/tabs" %>
+<div class="workspace-form-page">
+  <header class="workspace-header"><div><span class="section-eyebrow">Parts</span><h2>New part</h2><p>Register a serialized item and assign its functional role.</p></div></header>
+  <section class="workspace-panel workspace-form-panel"><%= render "form", part: @part %></section>
+</div>

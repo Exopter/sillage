@@ -1,0 +1,55 @@
+<% content_for :title, @aircraft.registration %><%= render "hangar/tabs" %>
+<header class="workspace-header">
+  <div><span class="section-eyebrow">Aircraft</span><h2><%= @aircraft.registration %></h2><p><%= @aircraft.name %></p></div>
+  <%= link_to "Edit aircraft", edit_hangar_aircraft_path(@aircraft), class: "button-secondary" %>
+</header>
+
+<div class="workspace-grid is-assembly">
+  <section class="workspace-panel is-wide">
+    <div class="workspace-panel-header"><h3>Current configuration</h3><span><%= pluralize @installations.active.count, "installation" %></span></div>
+    <% if @installations.active.any? %>
+      <div class="workspace-list">
+        <% @installations.active.each do |installation| %>
+          <div class="workspace-list-row is-static">
+            <span><strong><%= installation.installable.respond_to?(:code) ? installation.installable.code : installation.installable.internal_number %> · <%= installation.installable.respond_to?(:name) ? installation.installable.name : installation.installable.display_name %></strong><small><%= installation.installable_type %> · installed <%= l installation.installed_at, format: :short %></small></span>
+            <%= button_to "Remove", hangar_installation_path(installation), method: :delete, class: "button-secondary", form: { data: { turbo_confirm: "Close this installation now?" } } %>
+          </div>
+        <% end %>
+      </div>
+    <% else %><div class="workspace-empty">No equipment currently installed.</div><% end %>
+  </section>
+
+  <aside class="workspace-stack">
+    <section class="workspace-panel">
+      <h3>Install assembly</h3>
+      <% if @available_assemblies.any? %>
+        <%= form_with url: hangar_aircraft_installations_path(@aircraft), scope: :installation, class: "workspace-inline-form" do |form| %>
+          <%= form.hidden_field :installable_type, value: "Assembly" %>
+          <%= form.collection_select :installable_id, @available_assemblies, :id, ->(assembly) { "#{assembly.code} · #{assembly.name}" } %>
+          <%= form.datetime_local_field :installed_at, value: Time.current.strftime("%Y-%m-%dT%H:%M") %>
+          <%= form.submit "Install", class: "button-primary" %>
+        <% end %>
+      <% else %><p class="workspace-muted">No root assembly available.</p><% end %>
+    </section>
+    <section class="workspace-panel">
+      <h3>Install standalone part</h3>
+      <% if @available_parts.any? %>
+        <%= form_with url: hangar_aircraft_installations_path(@aircraft), scope: :installation, class: "workspace-inline-form" do |form| %>
+          <%= form.hidden_field :installable_type, value: "Part" %>
+          <%= form.collection_select :installable_id, @available_parts, :id, ->(part) { "#{part.internal_number} · #{part.display_name}" } %>
+          <%= form.datetime_local_field :installed_at, value: Time.current.strftime("%Y-%m-%dT%H:%M") %>
+          <%= form.submit "Install", class: "button-primary" %>
+        <% end %>
+      <% else %><p class="workspace-muted">No standalone part available.</p><% end %>
+    </section>
+  </aside>
+</div>
+
+<section class="workspace-panel">
+  <h3>Installation history</h3>
+  <div class="workspace-list">
+    <% @installations.each do |installation| %>
+      <div class="workspace-list-row is-static"><span><strong><%= installation.installable_type %> · <%= installation.installable_id %></strong><small><%= l installation.installed_at, format: :short %> → <%= installation.removed_at ? l(installation.removed_at, format: :short) : "Active" %></small></span></div>
+    <% end %>
+  </div>
+</section>

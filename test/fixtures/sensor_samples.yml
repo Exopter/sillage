@@ -1,0 +1,15 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  flight: one
+  sensor_type: MyString
+  recorded_at: 2026-05-15 20:02:00
+  elapsed_seconds: 1.5
+  readings:
+
+two:
+  flight: two
+  sensor_type: MyString
+  recorded_at: 2026-05-15 20:02:00
+  elapsed_seconds: 1.5
+  readings:

@@ -1,0 +1,6 @@
+<% content_for :title, "Register aircraft" %>
+<%= render "hangar/tabs" %>
+<div class="workspace-form-page">
+  <header class="workspace-header"><div><span class="section-eyebrow">Fleet</span><h2>Register aircraft</h2><p>Create the durable identity used by Flights and installations.</p></div></header>
+  <section class="workspace-panel workspace-form-panel"><%= render "form", aircraft: @aircraft %></section>
+</div>

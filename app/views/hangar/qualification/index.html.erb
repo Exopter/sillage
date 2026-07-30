@@ -1,0 +1,20 @@
+<% content_for :title, "Fleet configuration" %><%= render "hangar/tabs" %>
+<header class="hangar-section-head"><div><h2>Qualification</h2><p>Frozen Builds and Test Runs provide evidence for a specific configuration.</p></div><div class="workspace-actions"><%= link_to "Test runs", forge_test_runs_path, class: "button-secondary" %><%= link_to new_forge_build_path, class: "button-primary" do %><%= sillage_icon "plus", size: 17 %><span>New build</span><% end %></div></header>
+
+<div class="hangar-qualification-layout">
+  <section class="hangar-panel">
+    <header class="hangar-panel-head"><span class="section-eyebrow">Builds</span><span class="hangar-count"><%= @builds.size %></span></header>
+    <div class="hangar-table-wrap">
+      <table class="hangar-table hangar-build-table">
+        <thead><tr><th>Build</th><th>Assembly</th><th>Firmware</th><th>Locked</th><th>State</th></tr></thead>
+        <tbody><% @builds.each do |build| %><% tone, label = hangar_build_status build %><tr><td><%= link_to forge_build_path(build), class: "hangar-table-primary" do %><strong><%= build.code %></strong><small><%= build.previous_build ? "after #{build.previous_build.code}" : "First recorded build" %></small><% end %></td><td><%= build.assembly.code %></td><td><%= build.source_revision.presence || "—" %></td><td><%= build.locked? ? "Yes" : "No" %></td><td><span class="status-dot is-<%= tone %>"><span></span><%= label %></span></td></tr><% end %></tbody>
+      </table>
+    </div>
+    <footer class="hangar-detail-note">The first recorded Test Run locks its Build. Changes require cloning the Build as a new iteration.</footer>
+  </section>
+
+  <section class="hangar-panel">
+    <header class="hangar-panel-head"><span class="section-eyebrow">Recent test runs</span></header>
+    <% if @test_runs.any? %><div><% @test_runs.each do |test_run| %><%= link_to forge_test_run_path(test_run), class: "hangar-test-row" do %><header><strong>TR-<%= test_run.uuid.first(4).upcase %> · <%= test_run.build.code %></strong><span class="status-dot is-<%= test_run.outcome == "passed" ? "ready" : "caution" %>"><span></span><%= test_run.outcome.titleize %></span></header><dl><div><dt>Target</dt><dd><%= test_run.part&.internal_number || "Whole build" %></dd></div><div><dt>Recipe</dt><dd><%= test_run.recipe_id %>/v<%= test_run.recipe_version %></dd></div><div><dt>Ran at</dt><dd><%= test_run.ran_at.strftime("%d %b · %H:%M") %></dd></div></dl><% end %><% end %></div><% else %><div class="workspace-empty is-quiet">No test run recorded yet.</div><% end %>
+  </section>
+</div>

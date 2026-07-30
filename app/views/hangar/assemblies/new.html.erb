@@ -1,0 +1,6 @@
+<% content_for :title, "New assembly" %>
+<%= render "hangar/tabs" %>
+<div class="workspace-form-page">
+  <header class="workspace-header"><div><span class="section-eyebrow">Assemblies</span><h2>New assembly</h2><p>Create a reusable configuration that can contain parts or other assemblies.</p></div></header>
+  <section class="workspace-panel workspace-form-panel"><%= render "form", assembly: @assembly %></section>
+</div>

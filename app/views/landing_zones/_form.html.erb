@@ -1,0 +1,20 @@
+<%= form_with model: landing_zone, class: "operations-form" do |form| %>
+  <% if landing_zone.errors.any? %>
+    <div class="form-errors"><strong><%= pluralize(landing_zone.errors.count, "error") %> prevented saving:</strong><%= landing_zone.errors.full_messages.to_sentence %></div>
+  <% end %>
+
+  <div class="operations-form-grid">
+    <label><span>Code</span><%= form.text_field :code, required: true, placeholder: "LZ-TOURNON" %></label>
+    <label><span>Name</span><%= form.text_field :name, required: true, placeholder: "Tournon Valley" %></label>
+    <label><span>Latitude</span><%= form.number_field :latitude, required: true, step: :any %></label>
+    <label><span>Longitude</span><%= form.number_field :longitude, required: true, step: :any %></label>
+    <label><span>Elevation (m AMSL)</span><%= form.number_field :elevation_m, step: :any %></label>
+    <label><span>Automatic detection radius (km)</span><%= form.number_field :detection_radius_km, required: true, min: 0.1, step: 0.1 %></label>
+    <label class="is-wide"><span>Practical information</span><%= form.text_area :practical_information, rows: 4, placeholder: "Access, surface and local constraints" %></label>
+    <label class="is-wide"><span>Field notes</span><%= form.text_area :notes, rows: 5 %></label>
+  </div>
+  <div class="operations-form-actions">
+    <%= link_to "Cancel", atlas_path, class: "button-secondary" %>
+    <%= form.submit class: "button-primary" %>
+  </div>
+<% end %>

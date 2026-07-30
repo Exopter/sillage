@@ -1,0 +1,39 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+ROOT = File.expand_path("..", __dir__)
+
+FORBIDDEN_EXACT_PATHS = %w[
+  design-qa.md
+  design-system-audit.md
+  docs
+].freeze
+
+business_document_extensions = %w[.doc .docx .odt .pdf .ppt .pptx .xls .xlsx]
+
+violations = []
+
+FORBIDDEN_EXACT_PATHS.each do |relative_path|
+  violations << relative_path if File.exist?(File.join(ROOT, relative_path))
+end
+
+Dir[File.join(ROOT, "**/*")].each do |path|
+  next unless File.file?(path)
+  next unless business_document_extensions.include?(File.extname(path).downcase)
+  next if path.include?("/.git/") || path.include?("/tmp/")
+
+  violations << path.delete_prefix("#{ROOT}/")
+end
+
+violations.uniq!
+violations.sort!
+
+if violations.empty?
+  puts "Documentation boundary passed: business documentation remains in Notion."
+  exit 0
+end
+
+warn "Business documentation and the docs directory must live outside the repository:"
+violations.each { |path| warn "  #{path}" }
+warn "Keep concise technical documentation in READMEs, implementation contracts, and code-coupled runbooks."
+exit 1

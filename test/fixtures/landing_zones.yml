@@ -1,0 +1,19 @@
+tournon:
+  code: LZ-TOURNON
+  name: Tournon Valley
+  latitude: 44.1994
+  longitude: 5.7168
+  elevation_m: 642
+  detection_radius_km: 25
+  practical_information: Track access from the D20.
+  notes: Open grass axis in the valley.
+
+laragne:
+  code: LZ-LARAGNE
+  name: Laragne East
+  latitude: 44.3095
+  longitude: 5.8332
+  elevation_m: 573
+  detection_radius_km: 12
+  practical_information: Farm road access.
+  notes: Short mixed surface with a slight upslope.

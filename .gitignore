@@ -1,52 +1,33 @@
-# OS and editor files
-.DS_Store
-Thumbs.db
-*.swp
-*.swo
-*~
-.idea/
-.vscode/
-
-# Local environment and secrets
-.env
-.env.*
+# Local environment
+.env*
 !.env.example
-!.env.*.example
-**/.kamal/secrets
-**/.kamal/secrets.*
-!**/.kamal/secrets.example
-**/.kamal/deploy.env
-**/config/master.key
+!.env.deploy.local.example
 
-# Logs and runtime state
-log/*
-tmp/*
-storage/*
-!log/.keep
-!tmp/.keep
-!tmp/pids/
-tmp/pids/*
-!tmp/pids/.keep
-!storage/.keep
+# Kamal local deployment environment
+/.kamal/secrets
+/.kamal/secrets.*
+!/.kamal/secrets.example
+/.kamal/deploy.env
 
-# Ruby and Rails artifacts
-.bundle/
-**/vendor/bundle/
-*.sqlite3
-*.sqlite3-*
-**/public/assets/
-**/public/packs/
-**/public/packs-test/
-coverage/
+# Rails credentials key
+/config/master.key
 
-# JavaScript dependencies and build caches
-node_modules/
-.npm/
-.yarn/
-.parcel-cache/
-.vite/
-dist/
-build/
+# Databases and local runtime state
+/storage/*
+!/storage/.keep
+/tmp/*
+!/tmp/.keep
+!/tmp/pids/
+/tmp/pids/*
+!/tmp/pids/.keep
+/log/*
+!/log/.keep
 
-# Local integration drops
-integration_files/*
+# Dependencies and generated assets
+/node_modules/
+/vendor/bundle/
+/public/assets/
+
+# OS/editor noise
+.DS_Store
+*.swp

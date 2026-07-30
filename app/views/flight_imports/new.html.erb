@@ -1,0 +1,25 @@
+<% content_for :title, "Import flight data" %>
+
+<section class="operations-page is-narrow">
+  <header class="operations-heading">
+    <div>
+      <span class="section-eyebrow">SD card import</span>
+      <h1>Import flight data</h1>
+      <p>Import FlySight or ExoFDR files from removable media.</p>
+    </div>
+  </header>
+
+  <% if @target_flight %>
+    <section class="operations-panel import-target-card">
+      <span class="section-eyebrow">Attach to prepared flight</span>
+      <dl class="preparation-grid">
+        <div><dt>Flight</dt><dd><%= @target_flight.code %></dd></div>
+        <div><dt>Aircraft</dt><dd><%= @target_flight.display_aircraft %></dd></div>
+        <div><dt>Landing zone</dt><dd><%= @target_flight.display_landing_zone %></dd></div>
+        <div><dt>Next status</dt><dd>Processing</dd></div>
+      </dl>
+    </section>
+  <% end %>
+
+  <section class="operations-panel operations-form-panel"><%= render "shared/upload_form", target_flight: @target_flight %></section>
+</section>

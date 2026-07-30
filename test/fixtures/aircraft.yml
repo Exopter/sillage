@@ -1,0 +1,11 @@
+pilatus:
+  registration: F-GOCC
+  name: Pilatus PC-6 test aircraft
+  telemetry_system_id: "1"
+  active: true
+
+exowing:
+  registration: EXO-001
+  name: Exowing prototype
+  telemetry_system_id: "42"
+  active: true

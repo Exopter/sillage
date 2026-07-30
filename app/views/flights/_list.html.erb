@@ -1,0 +1,18 @@
+<% if flights.any? %>
+  <div class="flight-list">
+    <% flights.each do |flight| %>
+      <%= link_to flight, class: "flight-card" do %>
+        <span class="flight-card-icon"><%= sillage_icon "route", size: 18 %></span>
+        <span class="flight-card-body">
+          <span class="flight-date"><%= l(flight.display_started_at, format: :short) %></span>
+          <strong><%= flight.name %></strong>
+          <span><%= [flight.location.presence, duration(flight.duration_seconds), meters(flight.distance_m)].compact.join(" / ") %></span>
+        </span>
+        <span class="status imported"><%= flight.status.titleize %></span>
+        <span class="row-chevron"><%= sillage_icon "chevron-right", size: 16 %></span>
+      <% end %>
+    <% end %>
+  </div>
+<% else %>
+  <p class="empty-state"><%= t("flights.empty") %></p>
+<% end %>

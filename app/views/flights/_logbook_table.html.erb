@@ -1,0 +1,64 @@
+<section class="flights-screen">
+  <header class="flights-heading">
+    <div>
+      <h1>Flights</h1>
+      <p>Prepare a flight, acquire it live, or import data from the field.</p>
+    </div>
+    <%= form_with url: flights_path, method: :get, class: "flights-search" do |form| %>
+      <label class="search-control">
+        <%= sillage_icon "search", size: 16 %>
+        <%= form.search_field :q, value: local_assigns[:query], placeholder: "Search flight, aircraft, zone", autocomplete: "off" %>
+      </label>
+    <% end %>
+    <%= link_to new_flight_import_path, class: "button-secondary" do %>
+      <%= sillage_icon "upload", size: 17 %><span>Import data</span>
+    <% end %>
+    <%= link_to new_flight_path, class: "button-primary" do %>
+      <%= sillage_icon "plus", size: 17 %><span>New flight</span>
+    <% end %>
+  </header>
+
+  <div class="flights-table-wrap">
+    <table class="flights-table">
+      <thead>
+        <tr>
+          <th>Flight</th>
+          <th>Aircraft</th>
+          <th>Landing zone</th>
+          <th>Date</th>
+          <th>Duration</th>
+          <th>Source</th>
+          <th>Status</th>
+          <th aria-label="Open flight"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% flights.each do |flight| %>
+          <% status_state, status_label = logbook_status(flight) %>
+          <tr
+            class="flights-row <%= "is-preparation" if flight.preparation? %>"
+            role="link"
+            tabindex="0"
+            data-controller="row-link"
+            data-row-link-url-value="<%= flight_path(flight) %>"
+            data-action="click->row-link#open keydown->row-link#openWithKeyboard">
+            <td><%= link_to flight.code, flight, class: "flights-code" %></td>
+            <td><strong class="flights-data"><%= flight.aircraft&.registration || "To complete" %></strong></td>
+            <td><%= flight.display_landing_zone %></td>
+            <td class="flights-muted flights-data"><%= logbook_date(flight) %></td>
+            <td class="flights-data"><%= duration(flight.duration_seconds) %></td>
+            <td>
+              <span class="flights-source">
+                <%= sillage_icon(flight.flight_import&.import_type == "flysight" ? "activity" : flight.flight_import ? "file-text" : flight.live? ? "radio" : "clock", size: 14) %>
+                <%= flight.flight_import&.import_type&.then { |type| type == "exofdr" ? "ExoFDR" : "FlySight" } || (flight.live? ? "Live session" : "No data yet") %>
+              </span>
+            </td>
+            <td><span class="status-dot is-<%= status_state %>"><span></span><%= status_label %></span></td>
+            <td class="flights-open"><%= link_to sillage_icon("chevron-right", size: 16), flight, aria: { label: "Open #{flight.code}" } %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+    <% if flights.empty? %><div class="workspace-empty">No flight yet.</div><% end %>
+  </div>
+</section>

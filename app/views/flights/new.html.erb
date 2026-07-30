@@ -1,0 +1,12 @@
+<% content_for :title, "Flight prep" %>
+
+<section class="operations-page is-narrow">
+  <header class="operations-heading">
+    <div>
+      <span class="section-eyebrow">Flight planning</span>
+      <h1>Create flight</h1>
+      <p>Associate an aircraft and landing zone before acquisition.</p>
+    </div>
+  </header>
+  <section class="operations-panel operations-form-panel"><%= render "form", flight: @flight %></section>
+</section>

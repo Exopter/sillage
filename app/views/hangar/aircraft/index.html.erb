@@ -1,0 +1,65 @@
+<% content_for :title, "Fleet configuration" %>
+<%= render "hangar/tabs" %>
+
+<header class="hangar-section-head">
+  <div>
+    <h2>Fleet</h2>
+    <p>Aircraft are durable identities; installations record which equipment flew, and when.</p>
+  </div>
+  <%= link_to new_hangar_aircraft_path, class: "button-secondary" do %>
+    <%= sillage_icon "plus", size: 17 %><span>Register aircraft</span>
+  <% end %>
+</header>
+
+<section class="hangar-summary" aria-label="Fleet summary">
+  <article class="hangar-summary-card"><span class="section-eyebrow">Aircraft</span><strong><%= @aircraft.size %> registered</strong></article>
+  <article class="hangar-summary-card"><span class="section-eyebrow">Installed configurations</span><strong><%= @active_installation_count %> active</strong></article>
+  <article class="hangar-summary-card is-attention"><span class="section-eyebrow">Attention</span><strong><%= pluralize @attention_count, "review item" %></strong></article>
+</section>
+
+<% if @selected_aircraft %>
+  <% aircraft_tone, aircraft_label = hangar_aircraft_status(@selected_aircraft) %>
+  <div class="hangar-fleet-layout">
+    <aside class="hangar-panel" aria-label="Fleet aircraft">
+      <header class="hangar-panel-head"><span class="section-eyebrow">Fleet aircraft</span><span class="hangar-count"><%= @aircraft.size %></span></header>
+      <% @aircraft.each do |aircraft| %>
+        <% tone, label = hangar_aircraft_status(aircraft) %>
+        <%= link_to hangar_aircraft_index_path(aircraft_id: aircraft.id), class: [ "hangar-fleet-item", ("is-active" if aircraft == @selected_aircraft) ], aria: { current: ("true" if aircraft == @selected_aircraft) } do %>
+          <span class="hangar-fleet-name"><strong><%= aircraft.registration %></strong><%= sillage_icon "chevron-right", size: 15 %></span>
+          <span class="hangar-fleet-meta"><%= aircraft.name %><small><%= aircraft.notes.presence || "Operational vehicle" %></small></span>
+          <span class="hangar-fleet-foot"><span class="status-dot is-<%= tone %>"><span></span><%= label %></span><span><%= hangar_aircraft_summary aircraft %></span></span>
+        <% end %>
+      <% end %>
+    </aside>
+
+    <section class="hangar-panel" aria-label="Selected aircraft configuration">
+      <header class="hangar-asset-head">
+        <span class="hangar-tree-icon is-aircraft"><%= sillage_icon "plane", size: 20 %></span>
+        <div class="hangar-asset-title"><span class="section-eyebrow">Aircraft</span><h2><%= @selected_aircraft.registration %> · <%= @selected_aircraft.name %></h2><p><%= @selected_aircraft.notes.presence || "Operational vehicle" %></p></div>
+        <%= link_to "Change configuration", hangar_aircraft_path(@selected_aircraft), class: "button-secondary is-compact" %>
+        <span class="workspace-status is-<%= aircraft_tone %>"><%= aircraft_label %></span>
+      </header>
+
+      <div class="hangar-asset-meta">
+        <div><span class="section-eyebrow">Current configuration</span><strong><%= @active_installations.any? ? "Configuration since #{l @active_installations.map(&:installed_at).min.to_date, format: :long}" : "No active configuration" %></strong></div>
+        <div><span class="section-eyebrow">Usage</span><strong><%= pluralize @selected_aircraft.flights.size, "test flight" %></strong></div>
+        <div><span class="section-eyebrow">Installed content</span><strong><%= hangar_aircraft_summary @selected_aircraft %></strong></div>
+      </div>
+
+      <div class="hangar-config-head"><span class="section-eyebrow">Installed configuration</span><span>Installation → assembly / equipment → part</span></div>
+      <div>
+        <% @active_installations.each do |installation| %>
+          <%= render "hangar/aircraft/configuration_asset", asset: installation.installable, level: 0 %>
+        <% end %>
+        <% if @active_installations.empty? %><div class="workspace-empty">No equipment currently installed.</div><% end %>
+      </div>
+
+      <footer class="hangar-detail-foot">
+        <div><span class="section-eyebrow">Telemetry identity</span><strong><%= @selected_aircraft.telemetry_system_id.presence || "To complete" %></strong></div>
+        <div><span class="section-eyebrow">Configuration history</span><%= link_to "Review installations", hangar_aircraft_path(@selected_aircraft) %></div>
+      </footer>
+    </section>
+  </div>
+<% else %>
+  <div class="workspace-empty">No aircraft registered yet.</div>
+<% end %>

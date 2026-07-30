@@ -1,0 +1,6 @@
+<% content_for :title, "Edit #{@part.internal_number}" %>
+<%= render "hangar/tabs" %>
+<div class="workspace-form-page">
+  <header class="workspace-header"><div><span class="section-eyebrow">Parts</span><h2>Edit <%= @part.internal_number %></h2><p>Update identification, function, and serviceability state.</p></div></header>
+  <section class="workspace-panel workspace-form-panel"><%= render "form", part: @part %></section>
+</div>

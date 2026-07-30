@@ -1,0 +1,6 @@
+<% content_for :title, "Edit #{@aircraft.registration}" %>
+<%= render "hangar/tabs" %>
+<div class="workspace-form-page">
+  <header class="workspace-header"><div><span class="section-eyebrow">Fleet</span><h2>Edit <%= @aircraft.registration %></h2><p>Update operational identity and telemetry matching.</p></div></header>
+  <section class="workspace-panel workspace-form-panel"><%= render "form", aircraft: @aircraft %></section>
+</div>

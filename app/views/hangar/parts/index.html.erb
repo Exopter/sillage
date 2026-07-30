@@ -1,0 +1,49 @@
+<% content_for :title, "Fleet configuration" %>
+
+<%= render "hangar/tabs" %>
+
+<header class="workspace-header">
+  <div>
+    <h2>Parts</h2>
+    <p>Serialized physical inventory with installation state and functional role.</p>
+  </div>
+  <%= link_to new_hangar_part_path, class: "button-primary" do %><%= sillage_icon "plus", size: 17 %><span>Register part</span><% end %>
+</header>
+
+<%= form_with url: hangar_parts_path, method: :get, class: "workspace-filterbar", data: { controller: "auto-submit" } do |form| %>
+  <label class="search-control">
+    <span class="sr-only">Search parts</span>
+    <%= sillage_icon "search", size: 16 %>
+    <%= form.search_field :q, value: @query, placeholder: "Search part, serial, function…", autocomplete: "off" %>
+  </label>
+  <label class="workspace-state-filter">
+    <span class="sr-only">Filter by state</span>
+    <%= form.select :state, options_for_select([["All states", ""], *Part::STATES.map { |state| [state.titleize, state] }], @state), {}, data: { action: "change->auto-submit#submit" } %>
+  </label>
+  <% if @query.present? || @state.present? %><%= link_to "Clear", hangar_parts_path, class: "button-secondary" %><% end %>
+  <span class="workspace-result-count"><%= pluralize @parts.size, "part" %></span>
+<% end %>
+
+<section class="workspace-panel is-flush">
+  <% if @parts.any? %>
+    <div class="workspace-table-wrap">
+      <table class="workspace-table">
+        <thead><tr><th>Part</th><th>Function</th><th>Manufacturer / model</th><th>Serial</th><th>Assembly</th><th>State</th></tr></thead>
+        <tbody>
+          <% @parts.each do |part| %>
+            <tr>
+              <td><%= link_to part.internal_number, hangar_part_path(part), class: "workspace-strong-link" %></td>
+              <td><%= part.function.name %></td>
+              <td><%= part.display_name %></td>
+              <td><%= part.serial_number.presence || "—" %></td>
+              <td><%= part.assembly ? link_to(part.assembly.code, hangar_assembly_path(part.assembly)) : "—" %></td>
+              <td><span class="status-dot is-<%= part.state == "quarantined" ? "caution" : part.state == "retired" ? "fault" : part.state == "available" ? "unknown" : "ready" %>"><span></span><%= part.state == "quarantined" ? "Review flag" : part.state.titleize %></span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="workspace-empty">No parts registered yet.</div>
+  <% end %>
+</section>

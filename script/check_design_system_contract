@@ -1,0 +1,112 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "set"
+
+ROOT = File.expand_path("..", __dir__)
+VIEW_GLOB = File.join(ROOT, "app/views/**/*.erb")
+RUBY_GLOBS = [ File.join(ROOT, "app/helpers/**/*.rb") ].freeze
+JAVASCRIPT_GLOB = File.join(ROOT, "app/javascript/**/*.js")
+STYLESHEET_GLOB = File.join(ROOT, "app/assets/stylesheets/**/*.css")
+
+def class_tokens(value)
+  value
+    .gsub(/<%.*?%>/m, " ")
+    .gsub(/#\{.*?\}/m, " ")
+    .scan(/[A-Za-z_][A-Za-z0-9_-]*/)
+    .select { |token| token.include?("-") }
+    .reject { |token| token.end_with?("-") }
+end
+
+stylesheets = Dir[STYLESHEET_GLOB].sort
+views = Dir[VIEW_GLOB].sort
+ruby_sources = RUBY_GLOBS.flat_map { |glob| Dir[glob] }.sort
+javascript_sources = Dir[JAVASCRIPT_GLOB].sort
+css = stylesheets.to_h { |path| [ path, File.read(path) ] }
+
+defined_classes = css.values.join("\n").scan(/\.([A-Za-z_][A-Za-z0-9_-]*)/).flatten.to_set
+used_classes = Hash.new { |hash, key| hash[key] = Set.new }
+
+views.each do |path|
+  source = File.read(path)
+
+  source.scan(/class\s*=\s*["'](.*?)["']/m).each do |match|
+    class_tokens(match.first).each { |name| used_classes[name] << path }
+  end
+
+  source.scan(/class:\s*(\[[^\]]*\]|["'][^"']*["'])/m).each do |match|
+    match.first.scan(/["']([^"']*)["']/m).each do |literal|
+      class_tokens(literal.first).each { |name| used_classes[name] << path }
+    end
+  end
+end
+
+ruby_sources.each do |path|
+  source = File.read(path)
+  source.scan(/class:\s*(\[[^\]]*\]|["'][^"']*["'])/m).each do |match|
+    match.first.scan(/["']([^"']*)["']/m).each do |literal|
+      class_tokens(literal.first).each { |name| used_classes[name] << path }
+    end
+  end
+end
+
+javascript_sources.each do |path|
+  source = File.read(path)
+  source.scan(/classList\.(?:add|remove|toggle|contains)\(([^)]*)\)/m).each do |match|
+    match.first.scan(/["']([^"']*)["']/m).each do |literal|
+      class_tokens(literal.first).each { |name| used_classes[name] << path }
+    end
+  end
+end
+
+undefined_classes = used_classes.keys.reject { |name| defined_classes.include?(name) }.sort
+
+invalid_inline_styles = views.filter_map do |path|
+  next if path.end_with?("/layouts/mailer.html.erb")
+
+  source = File.read(path)
+  next unless source.scan(/style\s*=\s*["'](.*?)["']/m).any? { |match| !match.first.lstrip.start_with?("--") }
+
+  path
+end
+
+all_sources = css.merge(views.to_h { |path| [ path, File.read(path) ] })
+defined_properties = all_sources.values.join("\n").scan(/(--[A-Za-z0-9_-]+)\s*:/).flatten.to_set
+used_properties = Hash.new { |hash, key| hash[key] = Set.new }
+
+all_sources.each do |path, source|
+  source.scan(/var\(\s*(--[A-Za-z0-9_-]+)/).flatten.each do |name|
+    used_properties[name] << path
+  end
+end
+
+undefined_properties = used_properties.keys.reject { |name| defined_properties.include?(name) }.sort
+
+if undefined_classes.empty? && undefined_properties.empty? && invalid_inline_styles.empty?
+  puts "Design system contract passed: #{used_classes.size} literal classes and #{used_properties.size} custom properties are declared."
+  exit 0
+end
+
+unless undefined_classes.empty?
+  warn "Literal classes without a stylesheet contract:"
+  undefined_classes.each do |name|
+    locations = used_classes.fetch(name).map { |path| path.delete_prefix("#{ROOT}/") }.join(", ")
+    warn "  .#{name}: #{locations}"
+  end
+end
+
+unless undefined_properties.empty?
+  warn "CSS custom properties used without a declaration:"
+  undefined_properties.each do |name|
+    locations = used_properties.fetch(name).map { |path| path.delete_prefix("#{ROOT}/") }.join(", ")
+    warn "  #{name}: #{locations}"
+  end
+end
+
+unless invalid_inline_styles.empty?
+  warn "Product views with inline visual declarations instead of dynamic custom properties:"
+  invalid_inline_styles.each { |path| warn "  #{path.delete_prefix("#{ROOT}/")}" }
+end
+
+warn "Add or evolve the shared design-system contract before using a new visual primitive."
+exit 1

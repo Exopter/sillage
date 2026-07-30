@@ -1,0 +1,55 @@
+<%= form_with url: flight_imports_path, scope: :flight_import, html: { multipart: true, class: "operations-form", data: { controller: "upload", turbo: false, action: "submit->upload#start", upload_failed_label_value: t("imports.form.upload_failed"), upload_processing_label_value: t("imports.form.uploading") } } do |form| %>
+  <%= form.hidden_field :target_flight_id, value: local_assigns[:target_flight]&.id %>
+
+  <fieldset class="import-source-picker">
+    <legend>Data source</legend>
+    <label class="import-source-card">
+      <%= form.radio_button :import_type, "exofdr", checked: true %>
+      <%= sillage_icon "file-text", size: 21 %>
+      <strong>ExoFDR</strong>
+      <span>Binary recorder file copied from the FDR microSD card.</span>
+    </label>
+    <label class="import-source-card">
+      <%= form.radio_button :import_type, "flysight" %>
+      <%= sillage_icon "activity", size: 21 %>
+      <strong>FlySight</strong>
+      <span>TRACK.CSV and SENSOR.CSV, a V1 CSV, or a ZIP archive.</span>
+    </label>
+  </fieldset>
+
+  <% unless local_assigns[:target_flight] %>
+    <div class="operations-form-grid">
+      <label>
+        <span>Aircraft</span>
+        <%= form.collection_select :aircraft_id, @aircraft, :id, :display_name, { prompt: "Select aircraft" }, required: true %>
+      </label>
+      <label>
+        <span>Landing zone</span>
+        <%= form.collection_select :landing_zone_id, @landing_zones, :id, :name, { prompt: "Select landing zone" }, required: true %>
+      </label>
+    </div>
+  <% end %>
+
+  <label class="upload-drop" data-upload-target="dropzone" data-action="dragenter->upload#dragEnter dragover->upload#dragOver dragleave->upload#dragLeave drop->upload#drop">
+    <%= sillage_icon "upload", size: 22 %>
+    <span class="upload-title">Drop files from removable media</span>
+    <span class="upload-hint">ExoFDR BIN/FDR, FlySight CSV, or ZIP</span>
+    <%= form.file_field :source_files,
+      multiple: true,
+      required: true,
+      accept: ".bin,.fdr,.zip,.csv,.ubx,text/csv,application/zip,application/octet-stream",
+      data: { upload_target: "input", action: "change->upload#showFiles" } %>
+  </label>
+
+  <div class="operations-form-actions upload-actions">
+    <span class="file-summary" data-upload-target="summary"><%= t("imports.form.empty") %></span>
+    <%= form.button class: "button-primary", data: { upload_target: "submit" } do %>
+      <%= sillage_icon "upload", size: 18 %><span>Start import</span>
+    <% end %>
+  </div>
+
+  <div class="upload-progress" data-upload-target="progress" hidden>
+    <div class="upload-progress-track" role="progressbar" aria-label="Upload progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-upload-target="meter"><span class="upload-progress-bar" data-upload-target="bar"></span></div>
+    <span class="upload-progress-percent" data-upload-target="percent">0%</span>
+  </div>
+<% end %>
