@@ -10,6 +10,10 @@ class FlightImport < ApplicationRecord
 
   validates :status, inclusion: { in: STATUSES }
   validates :import_type, inclusion: { in: %w[flysight exofdr] }
+  validates :source_sha256,
+    format: { with: /\A[0-9a-f]{64}\z/ },
+    uniqueness: { scope: :user_id },
+    allow_nil: true
 
   scope :recent, -> { order(created_at: :desc) }
 

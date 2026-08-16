@@ -10,7 +10,7 @@
     <dl class="workspace-details">
       <div><dt>UUID</dt><dd class="workspace-mono"><%= @test_run.uuid %></dd></div>
       <div><dt>Operator</dt><dd><%= @test_run.operator.email_address %></dd></div>
-      <div><dt>Target</dt><dd><%= @test_run.part ? @test_run.part.internal_number : @test_run.build.assembly_snapshot["code"] %></dd></div>
+      <div><dt>Target</dt><dd><%= @test_run.part ? @test_run.part.internal_number : @test_run.build.assembly_snapshot["internal_number"] %></dd></div>
       <div><dt>Recipe SHA-256</dt><dd class="workspace-mono"><%= @test_run.recipe_sha256 %></dd></div>
       <div><dt>Ingestion SHA-256</dt><dd class="workspace-mono"><%= @test_run.ingestion_sha256 %></dd></div>
     </dl>

@@ -65,8 +65,23 @@
 
           <div class="sillage-topbar-spacer"></div>
 
-          <%= link_to signal_path, class: "station-connection-pill", data: { turbo: false, station_state: "disconnected" } do %>
-            <span>Station <strong data-station-label>not connected</strong></span>
+          <%= link_to signal_path,
+            id: "aircraft-connection-indicator",
+            class: "aircraft-connection-pill",
+            aria: { label: "No aircraft connected" },
+            data: {
+              turbo_permanent: true,
+              controller: "aircraft-connection-indicator",
+              action: "sillage:aircraft-connection@window->aircraft-connection-indicator#update",
+              aircraft_connection_state: "disconnected"
+            } do %>
+            <span class="aircraft-connection-icons" aria-hidden="true">
+              <span class="aircraft-connection-icon" data-aircraft-connection-indicator-target="icon" data-aircraft-connection-transport="usb-c" hidden><%= sillage_icon "usb-c", size: 15, stroke_width: 2.4 %></span>
+              <span class="aircraft-connection-icon" data-aircraft-connection-indicator-target="icon" data-aircraft-connection-transport="ble" hidden><%= sillage_icon "bluetooth", size: 15 %></span>
+              <span class="aircraft-connection-icon" data-aircraft-connection-indicator-target="icon" data-aircraft-connection-transport="wifi" hidden><%= sillage_icon "wifi", size: 15 %></span>
+              <span class="aircraft-connection-icon" data-aircraft-connection-indicator-target="icon" data-aircraft-connection-transport="ground-radio" hidden><%= sillage_icon "radio", size: 15 %></span>
+            </span>
+            <strong data-aircraft-connection-indicator-target="label">No aircraft connected</strong>
           <% end %>
 
           <details class="sillage-account-menu">
@@ -108,6 +123,12 @@
             <% end %>
 
             <%= yield %>
+
+            <% unless sillage_fdr_connectivity_visible? || sillage_fdr_connectivity_managed_by_page? %>
+              <div class="sillage-persistent-fdr-connectivity" hidden aria-hidden="true">
+                <%= render "signal/fdr_connectivity" %>
+              </div>
+            <% end %>
           </div>
         </main>
       </div>

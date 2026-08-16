@@ -232,7 +232,7 @@
 
 .hangar-asset-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   padding: 14px 16px;
   border-bottom: 1px solid var(--border-rule, #d4dfdc);
@@ -241,6 +241,21 @@
 .hangar-asset-title {
   min-width: 0;
   flex: 1;
+}
+
+.hangar-asset-kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hangar-asset-kicker .status-dot {
+  font-size: 9px;
+}
+
+.hangar-asset-kicker .status-dot span {
+  width: 7px;
+  height: 7px;
 }
 
 .hangar-asset-title h2 {
@@ -252,7 +267,8 @@
   white-space: nowrap;
 }
 
-.button-secondary.is-compact {
+.button-secondary.is-compact,
+.button-danger.is-compact {
   min-height: 34px;
   padding: 7px 11px;
   font-size: 12px;
@@ -311,8 +327,7 @@
   border-right: 0;
 }
 
-.hangar-asset-meta strong,
-.hangar-detail-foot strong {
+.hangar-asset-meta strong {
   display: block;
   margin-top: 4px;
   overflow: hidden;
@@ -323,20 +338,9 @@
 }
 
 .hangar-config-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
   padding: 12px 14px;
   border-bottom: 1px solid var(--border-rule, #d4dfdc);
   background: var(--surface-panel, #eef3f1);
-}
-
-.hangar-config-head > span:last-child {
-  color: var(--text-muted, #5f6c6b);
-  font: 600 9px/1 var(--ex-font-mono, ui-monospace, monospace);
-  letter-spacing: .04em;
-  text-transform: uppercase;
 }
 
 .hangar-tree-row {
@@ -390,26 +394,6 @@
 
 .hangar-tree-row > .status-dot {
   justify-self: start;
-}
-
-.hangar-detail-foot {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
-
-.hangar-detail-foot > div {
-  padding: 13px 14px;
-}
-
-.hangar-detail-foot > div + div {
-  border-left: 1px solid var(--border-rule, #d4dfdc);
-}
-
-.hangar-detail-foot a {
-  display: block;
-  margin-top: 4px;
-  color: var(--ex-state-live-text, #00615b);
-  font: 600 12px/1.3 var(--ex-font-mono, ui-monospace, monospace);
 }
 
 .hangar-assemblies-layout {
@@ -636,6 +620,560 @@
   border-style: solid;
 }
 
+.hangar-tree-primary[href] {
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.hangar-tree-primary[href]:hover .hangar-tree-copy strong {
+  color: var(--ex-state-live-text, #00615b);
+}
+
+.fdr-connectivity {
+  max-width: 1380px;
+  margin: 0 auto;
+}
+
+.fdr-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: -3px 0 15px;
+  color: var(--text-muted, #5f6c6b);
+  font: 600 10px/1 var(--ex-font-mono, ui-monospace, monospace);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.fdr-breadcrumb a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.fdr-breadcrumb a:hover {
+  color: var(--ex-state-live-text, #00615b);
+}
+
+.fdr-connectivity-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.fdr-connectivity-heading h2 {
+  margin: 5px 0 5px;
+  color: var(--text-strong, #10181a);
+  font-size: clamp(25px, 2.7vw, 35px);
+  line-height: 1.05;
+}
+
+.fdr-connectivity-heading p {
+  margin: 0;
+  color: var(--text-muted, #5f6c6b);
+  font: 500 13px/1.4 var(--ex-font-mono, ui-monospace, monospace);
+}
+
+.fdr-connectivity-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.fdr-connectivity-heading .button-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fdr-connection-strip {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr .7fr .85fr auto;
+  min-height: 62px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border-rule, #d4dfdc);
+  border-radius: 8px;
+  background: var(--surface-card, #fff);
+  box-shadow: var(--shadow-sm, 0 7px 20px rgba(16, 24, 26, .07));
+}
+
+.fdr-connection-strip > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 15px;
+  border-right: 1px solid var(--border-rule, #d4dfdc);
+  color: var(--text-muted, #5f6c6b);
+  font-size: 11px;
+}
+
+.fdr-connection-strip > div svg {
+  flex: 0 0 auto;
+  color: var(--text-strong, #10181a);
+}
+
+.fdr-connection-strip strong,
+.fdr-connection-strip [data-state="connected"] {
+  color: var(--text-strong, #10181a);
+  font-weight: 600;
+}
+
+.fdr-connection-strip [data-state="connected"]::before {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--ex-field-500, #4f7b4e);
+  content: "";
+}
+
+.fdr-device-id {
+  align-self: center;
+  padding: 0 14px;
+  color: var(--text-muted, #5f6c6b);
+  font: 600 9px/1 var(--ex-font-mono, ui-monospace, monospace);
+  letter-spacing: .04em;
+}
+
+.fdr-recorder-tabs {
+  display: flex;
+  width: max-content;
+  max-width: 100%;
+  gap: 3px;
+  margin-bottom: 26px;
+  padding: 3px;
+  border: 1px solid var(--border-rule, #d4dfdc);
+  border-radius: 7px;
+  background: var(--surface-panel, #eef3f1);
+}
+
+.fdr-recorder-tabs a,
+.fdr-recorder-tabs span {
+  padding: 8px 17px;
+  border-radius: 5px;
+  color: var(--text-muted, #5f6c6b);
+  font: 600 10px/1 var(--ex-font-mono, ui-monospace, monospace);
+  letter-spacing: .07em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.fdr-recorder-tabs .is-active {
+  background: var(--surface-card, #fff);
+  color: var(--text-strong, #10181a);
+  box-shadow: var(--shadow-sm, 0 7px 20px rgba(16, 24, 26, .07));
+}
+
+.fdr-wifi-layout {
+  display: grid;
+  grid-template-columns: minmax(620px, 1.55fr) minmax(340px, .95fr);
+  gap: 22px;
+}
+
+.fdr-wifi-saved {
+  min-width: 0;
+}
+
+.fdr-wifi-scan {
+  padding-left: 22px;
+  border-left: 1px solid var(--border-rule, #d4dfdc);
+}
+
+.fdr-wifi-section-head {
+  display: flex;
+  min-height: 50px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-rule, #d4dfdc);
+}
+
+.fdr-wifi-section-head h3 {
+  margin: 0;
+  color: var(--text-strong, #10181a);
+  font-size: 19px;
+}
+
+.fdr-wifi-section-head p {
+  margin: 4px 0 0;
+  color: var(--text-muted, #5f6c6b);
+  font-size: 11px;
+}
+
+.fdr-wifi-section-head > span {
+  color: var(--text-muted, #5f6c6b);
+  font: 600 10px/1 var(--ex-font-mono, ui-monospace, monospace);
+}
+
+.fdr-wifi-section-head .button-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.fdr-wifi-profile-table {
+  overflow: hidden;
+  border: 1px solid var(--border-rule, #d4dfdc);
+  border-top: 0;
+  border-radius: 0 0 7px 7px;
+  background: var(--surface-card, #fff);
+}
+
+.fdr-wifi-profile-header,
+.fdr-wifi-profile-row {
+  display: grid;
+  grid-template-columns: 55px minmax(150px, 1.35fr) 92px 105px 57px 62px 30px;
+  align-items: center;
+  gap: 9px;
+}
+
+.fdr-wifi-profile-header {
+  padding: 10px 12px 8px;
+  color: var(--text-muted, #5f6c6b);
+  font: 600 8px/1 var(--ex-font-mono, ui-monospace, monospace);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.fdr-wifi-profile-row {
+  min-height: 68px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-rule, #d4dfdc);
+}
+
+.fdr-wifi-profile-row > form {
+  display: flex;
+  justify-content: center;
+}
+
+.fdr-wifi-priority {
+  display: grid;
+  width: 29px;
+  height: 29px;
+  place-items: center;
+  border: 1px solid var(--border-rule, #d4dfdc);
+  border-radius: 5px;
+  background: var(--surface-panel, #eef3f1);
+  color: var(--text-strong, #10181a);
+  font: 700 13px/1 var(--ex-font-mono, ui-monospace, monospace);
+}
+
+.fdr-wifi-network strong,
+.fdr-wifi-network small,
+.fdr-wifi-scan-row strong,
+.fdr-wifi-scan-row small {
+  display: block;
+}
+
+.fdr-wifi-network strong,
+.fdr-wifi-scan-row strong {
+  overflow: hidden;
+  color: var(--text-strong, #10181a);
+  font: 700 11px/1.25 var(--ex-font-mono, ui-monospace, monospace);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fdr-wifi-network small,
+.fdr-wifi-scan-row small {
+  margin-top: 4px;
+  color: var(--ex-state-ready-text, #27744f);
+  font-size: 10px;
+}
+
+.fdr-wifi-network small.is-pending {
+  color: var(--ex-amber-500, #c47d08);
+}
+
+.fdr-wifi-cell-muted {
+  color: var(--text-muted, #5f6c6b);
+  font-size: 10px;
+}
+
+.fdr-wifi-toggle {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border-rule, #d4dfdc);
+  border-radius: 999px;
+  background: var(--surface-panel, #eef3f1);
+  cursor: pointer;
+}
+
+.fdr-wifi-toggle span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted, #5f6c6b);
+  transition: transform 120ms ease;
+}
+
+.fdr-wifi-toggle.is-enabled {
+  border-color: var(--ex-aqua-500, #2fd6c6);
+  background: var(--ex-aqua-500, #2fd6c6);
+}
+
+.fdr-wifi-toggle.is-enabled span {
+  background: #fff;
+  transform: translateX(14px);
+}
+
+.fdr-wifi-order-actions {
+  display: flex;
+  gap: 3px;
+}
+
+.fdr-wifi-order-actions form {
+  display: flex;
+}
+
+.fdr-wifi-icon-button {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--border-rule, #d4dfdc);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted, #5f6c6b);
+  cursor: pointer;
+}
+
+.fdr-wifi-icon-button:hover:not(:disabled) {
+  border-color: var(--ex-aqua-500, #2fd6c6);
+  color: var(--text-strong, #10181a);
+}
+
+.fdr-wifi-icon-button:disabled {
+  opacity: .28;
+  cursor: default;
+}
+
+.fdr-wifi-icon-button.is-danger:hover {
+  border-color: var(--ex-red-600, #e63b35);
+  color: var(--ex-red-600, #e63b35);
+}
+
+.fdr-wifi-text-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 14px 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ex-state-live-text, #00615b);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fdr-wifi-security-note {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px;
+  border: 1px solid var(--border-rule, #d4dfdc);
+  border-radius: 7px;
+  color: var(--text-muted, #5f6c6b);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.fdr-wifi-security-note svg {
+  flex: 0 0 auto;
+  color: var(--ex-state-live-text, #00615b);
+}
+
+.fdr-wifi-scan-header,
+.fdr-wifi-scan-row {
+  display: grid;
+  grid-template-columns: minmax(145px, 1fr) 92px 96px;
+  align-items: center;
+  gap: 11px;
+}
+
+.fdr-wifi-scan-header {
+  padding: 11px 12px 8px;
+  color: var(--text-muted, #5f6c6b);
+  font: 600 8px/1 var(--ex-font-mono, ui-monospace, monospace);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.fdr-wifi-scan-results {
+  overflow: hidden;
+  border-top: 1px solid var(--border-rule, #d4dfdc);
+}
+
+.fdr-wifi-scan-row {
+  min-height: 59px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-rule, #d4dfdc);
+  background: var(--surface-card, #fff);
+}
+
+.fdr-wifi-scan-row .button-secondary {
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: 10px;
+}
+
+.fdr-wifi-empty {
+  padding: 25px 14px;
+  color: var(--text-muted, #5f6c6b);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.fdr-wifi-apply-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  margin-top: 29px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-rule, #d4dfdc);
+}
+
+.fdr-wifi-apply-bar > span {
+  color: var(--text-muted, #5f6c6b);
+  font-size: 11px;
+}
+
+.fdr-wifi-apply-bar > span[data-state="success"] {
+  color: var(--ex-state-ready-text, #27744f);
+}
+
+.fdr-wifi-apply-bar > span[data-state="error"] {
+  color: var(--ex-state-fault-text, #9e3535);
+}
+
+.fdr-wifi-apply-bar .button-primary {
+  min-width: 160px;
+  border-color: var(--ex-state-live-text, #00615b);
+  background: var(--ex-state-live-text, #00615b);
+}
+
+.fdr-wifi-dialog {
+  width: min(620px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--border-rule, #d4dfdc);
+  border-radius: 9px;
+  background: var(--surface-card, #fff);
+  color: var(--text-strong, #10181a);
+  box-shadow: 0 24px 80px rgba(9, 20, 22, .24);
+}
+
+.fdr-wifi-dialog::backdrop {
+  background: rgba(4, 15, 18, .55);
+}
+
+.fdr-wifi-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px;
+  border-bottom: 1px solid var(--border-rule, #d4dfdc);
+}
+
+.fdr-wifi-dialog-head h3 {
+  margin: 4px 0 0;
+  font-size: 22px;
+}
+
+.fdr-wifi-dialog-section {
+  padding: 18px 20px 20px;
+}
+
+.fdr-wifi-dialog-section + .fdr-wifi-dialog-section {
+  border-top: 1px solid var(--border-rule, #d4dfdc);
+}
+
+.fdr-wifi-dialog-section h4 {
+  margin: 0 0 13px;
+  font-size: 14px;
+}
+
+@media (max-width: 1180px) {
+  .fdr-connection-strip {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .fdr-connection-strip > div:nth-of-type(3) {
+    border-right: 0;
+  }
+
+  .fdr-device-id {
+    display: none;
+  }
+
+  .fdr-wifi-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .fdr-wifi-scan {
+    padding: 22px 0 0;
+    border-top: 1px solid var(--border-rule, #d4dfdc);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .fdr-connectivity-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .fdr-connectivity-actions {
+    width: 100%;
+  }
+
+  .fdr-connectivity-actions .button-secondary {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .fdr-connection-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .fdr-connection-strip > div {
+    border-right: 0;
+    border-bottom: 1px solid var(--border-rule, #d4dfdc);
+  }
+
+  .fdr-wifi-profile-table {
+    overflow-x: auto;
+  }
+
+  .fdr-wifi-profile-header,
+  .fdr-wifi-profile-row {
+    min-width: 720px;
+  }
+
+  .fdr-wifi-apply-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 @media (max-width: 900px) {
   .hangar-fleet-layout,
   .hangar-assemblies-layout,
@@ -822,7 +1360,8 @@
   gap: 20px;
 }
 
-.workspace-panel h2 {
+.workspace-panel h2,
+.workspace-panel h3 {
   margin: 0 0 16px;
   font-size: 18px;
 }
@@ -832,7 +1371,8 @@
   margin-bottom: 16px;
 }
 
-.workspace-panel-header h2 {
+.workspace-panel-header h2,
+.workspace-panel-header h3 {
   margin: 0;
 }
 
@@ -840,6 +1380,11 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
+  margin-bottom: 20px;
+}
+
+.workspace-grid > .workspace-panel {
+  margin-bottom: 0;
 }
 
 .workspace-grid.is-assembly {
@@ -922,6 +1467,16 @@
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.workspace-table .workspace-table-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.workspace-table-actions .workspace-actions {
+  justify-content: flex-end;
+  flex-wrap: nowrap;
 }
 
 .workspace-strong-link,
@@ -1342,23 +1897,13 @@
 
   .hangar-summary,
   .hangar-asset-meta,
-  .hangar-detail-foot,
   .hangar-function-grid {
     grid-template-columns: 1fr;
   }
 
-  .hangar-asset-meta > div,
-  .hangar-detail-foot > div {
+  .hangar-asset-meta > div {
     border-right: 0;
     border-bottom: 1px solid var(--border-rule, #d4dfdc);
-  }
-
-  .hangar-detail-foot > div + div {
-    border-left: 0;
-  }
-
-  .hangar-config-head > span:last-child {
-    display: none;
   }
 
   .assembly-tree-node li,

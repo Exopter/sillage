@@ -2,7 +2,7 @@
   <% if build.errors.any? %><div class="workspace-errors"><%= build.errors.full_messages.to_sentence %></div><% end %>
   <div class="workspace-form-grid">
     <label><span>Build code</span><%= form.text_field :code, required: true %></label>
-    <label><span>Assembly</span><%= form.collection_select :assembly_id, @assemblies, :id, :code, { prompt: "Select an assembly" }, required: true %></label>
+    <label><span>Assembly</span><%= form.collection_select :assembly_id, @assemblies, :id, ->(assembly) { "#{assembly.internal_number} · #{assembly.name}" }, { prompt: "Select an assembly" }, required: true %></label>
     <label><span>Git revision</span><%= form.text_field :source_revision, placeholder: "Commit SHA" %></label>
     <label><span>Source diff SHA-256</span><%= form.text_field :source_diff_sha256 %></label>
     <label><span>Arduino Core</span><%= form.text_field :arduino_core_version, required: true %></label>

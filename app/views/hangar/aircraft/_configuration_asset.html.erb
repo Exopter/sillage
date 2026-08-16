@@ -1,9 +1,17 @@
 <% tone, label = hangar_asset_status(asset) %>
 <div class="hangar-tree-row is-level-<%= [level, 3].min %>">
-  <div class="hangar-tree-primary">
-    <span class="hangar-tree-icon"><%= sillage_icon asset.is_a?(Assembly) ? "layers" : "settings", size: 15 %></span>
-    <span class="hangar-tree-copy"><strong><%= hangar_asset_code asset %> · <%= hangar_asset_name asset %></strong><small><%= asset.is_a?(Part) ? "SN #{asset.serial_number.presence || "not recorded"}" : "#{pluralize asset.parts.size, "direct part"}" %></small></span>
-  </div>
+  <% recorder_link = asset.is_a?(Assembly) && asset.flight_data_recorder? ? connectivity_hangar_assembly_path(asset) : nil %>
+  <% if recorder_link %>
+    <%= link_to recorder_link, class: "hangar-tree-primary" do %>
+      <span class="hangar-tree-icon"><%= sillage_icon "layers", size: 15 %></span>
+      <span class="hangar-tree-copy"><strong><%= hangar_asset_code asset %> · <%= hangar_asset_name asset %></strong><small><%= pluralize asset.parts.size, "direct part" %></small></span>
+    <% end %>
+  <% else %>
+    <div class="hangar-tree-primary">
+      <span class="hangar-tree-icon"><%= sillage_icon asset.is_a?(Assembly) ? "layers" : "settings", size: 15 %></span>
+      <span class="hangar-tree-copy"><strong><%= hangar_asset_code asset %> · <%= hangar_asset_name asset %></strong><small><%= asset.is_a?(Part) ? "SN #{asset.serial_number.presence || "not recorded"}" : "#{pluralize asset.parts.size, "direct part"}" %></small></span>
+    </div>
+  <% end %>
   <span class="hangar-kind"><%= hangar_asset_kind asset %></span>
   <span class="status-dot is-<%= tone %>"><span></span><%= label %></span>
 </div>

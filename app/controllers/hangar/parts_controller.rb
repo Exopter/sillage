@@ -21,7 +21,7 @@ module Hangar
     end
 
     def new
-      @part = Part.new(internal_number: Part.next_internal_number, state: "available")
+      @part = Part.new(state: "available")
       load_form_options
     end
 
@@ -49,6 +49,10 @@ module Hangar
     end
 
     def destroy
+      if @part.deletion_blockers.any?
+        return redirect_to hangar_part_path(@part), alert: deletion_blocked_message
+      end
+
       if @part.destroy
         redirect_to hangar_parts_path, notice: "Part deleted."
       else
@@ -67,9 +71,14 @@ module Hangar
     end
 
     def part_params
-      allowed = %i[internal_number function_id manufacturer model serial_number notes]
+      allowed = %i[function_id manufacturer model serial_number notes]
       allowed << :state if Current.user.admin?
       params.require(:part).permit(*allowed)
+    end
+
+    def deletion_blocked_message
+      "Cannot delete #{@part.internal_number} because it has #{@part.deletion_blockers.to_sentence}. " \
+        "Remove current references first; historical records must be retained."
     end
   end
 end

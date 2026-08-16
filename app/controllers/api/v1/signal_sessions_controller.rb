@@ -55,29 +55,46 @@ module Api
           Current.user.flights.create!(
             name: "Live flight",
             status: "live",
-            aircraft: Aircraft.find_by(telemetry_system_id: create_params[:telemetry_system_id]),
             landing_zone: detected_landing_zone,
             started_at: parse_time(create_params[:started_at]) || Time.current
           )
         end
         flight.update!(status: "live", started_at: flight.started_at || Time.current)
         flight.capture_configuration!
-        Current.user.signal_sessions.create!(
+        signal_session = Current.user.signal_sessions.create!(
           uuid: create_params[:uuid],
           flight:,
           started_at: parse_time(create_params[:started_at]) || Time.current,
           station_metadata: create_params[:station_metadata] || {}
         )
+        Signal::IdentifySource.new(
+          signal_session:,
+          system_id: create_params[:mavlink_system_id] || create_params[:telemetry_system_id],
+          component_id: create_params[:mavlink_component_id]
+        ).call
+        signal_session
       end
 
       def create_params
-        params.permit(:uuid, :flight_id, :telemetry_system_id, :latitude, :longitude, :started_at, station_metadata: {})
+        params.permit(
+          :uuid,
+          :flight_id,
+          :mavlink_system_id,
+          :mavlink_component_id,
+          :telemetry_system_id,
+          :latitude,
+          :longitude,
+          :started_at,
+          station_metadata: {}
+        )
       end
 
       def batch_params
         params.permit(
           :first_received_at,
           :last_received_at,
+          :mavlink_system_id,
+          :mavlink_component_id,
           :telemetry_system_id,
           position: %i[latitude longitude],
           samples: [
@@ -127,6 +144,8 @@ module Api
           flight_id: signal_session.flight_id,
           flight_code: signal_session.flight.code,
           status: signal_session.status,
+          mavlink_system_id: signal_session.mavlink_system_id,
+          mavlink_component_id: signal_session.mavlink_component_id,
           acknowledged_sequence: signal_session.last_acknowledged_sequence
         }
       end

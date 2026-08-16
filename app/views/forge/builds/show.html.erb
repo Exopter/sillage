@@ -1,7 +1,7 @@
 <% content_for :title, @build.code %>
 <%= render "forge/tabs" %>
 <header class="workspace-header">
-  <div><span class="section-eyebrow"><%= @build.locked? ? "Frozen build" : "Draft build" %></span><h1><%= @build.code %></h1><p><%= @build.assembly.code %> · Arduino Core <%= @build.arduino_core_version %></p></div>
+  <div><span class="section-eyebrow"><%= @build.locked? ? "Frozen build" : "Draft build" %></span><h1><%= @build.code %></h1><p><%= @build.assembly.internal_number %> · Arduino Core <%= @build.arduino_core_version %></p></div>
   <div class="workspace-actions">
     <%= button_to "Clone as next build", clone_forge_build_path(@build), method: :post, class: "button-primary" %>
     <% unless @build.locked? %><%= link_to "Edit", edit_forge_build_path(@build), class: "button-secondary" %><%= button_to "Refresh snapshot", refresh_snapshot_forge_build_path(@build), method: :patch, class: "button-secondary" %><% end %>

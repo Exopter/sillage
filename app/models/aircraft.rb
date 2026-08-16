@@ -4,11 +4,9 @@ class Aircraft < ApplicationRecord
   has_many :flight_imports, dependent: :nullify
 
   normalizes :registration, with: ->(value) { value.to_s.strip.upcase }
-  normalizes :telemetry_system_id, with: ->(value) { value.to_s.strip.presence }
 
   validates :registration, :name, presence: true
   validates :registration, uniqueness: true
-  validates :telemetry_system_id, uniqueness: true, allow_blank: true
 
   scope :active, -> { where(active: true) }
   scope :ordered, -> { order(:registration) }
@@ -38,5 +36,12 @@ class Aircraft < ApplicationRecord
         }
       end
     }
+  end
+
+  def deletion_blockers
+    [].tap do |blockers|
+      blockers << "flight history" if flights.exists?
+      blockers << "installation history" if installations.exists?
+    end
   end
 end

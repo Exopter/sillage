@@ -39,4 +39,41 @@ class OperationsFormLayoutTest < ActionDispatch::IntegrationTest
       assert_select ".workspace-form > .workspace-actions", count: 1
     end
   end
+
+  test "aircraft installation controls use the shared form components" do
+    function = Function.create!(name: "Installation form function")
+    Part.create!(function:, model: "FlySight 2")
+    Assembly.create!(name: "Flight data recorder")
+
+    get hangar_aircraft_path(aircraft(:exowing))
+
+    assert_response :success
+    assert_select "aside form.workspace-form", count: 2
+    assert_select "aside form.workspace-inline-form", count: 0
+    assert_select "label", text: /Assembly/
+    assert_select "label", text: /Part/
+    assert_select "label", text: /Installed at/, count: 2
+    assert_select "input[type='datetime-local']", count: 2
+    assert_select ".workspace-form > .workspace-actions", count: 2
+  end
+
+  test "aircraft installation history identifies assets without exposing database ids" do
+    function = Function.create!(name: "Installation history function")
+    part = Part.create!(function:, manufacturer: "Bionic Avionics", model: "FlySight 2")
+    Installation.create!(
+      aircraft: aircraft(:exowing),
+      installable: part,
+      installed_at: 1.hour.ago,
+      removed_at: 30.minutes.ago
+    )
+
+    get hangar_aircraft_path(aircraft(:exowing))
+
+    assert_response :success
+    assert_select ".workspace-panel", text: /Installation history/ do
+      assert_select "strong", text: "#{part.internal_number} · #{part.display_name}", count: 1
+      assert_select "small", text: /Part ·/, count: 1
+      assert_select "strong", text: "Part · #{part.id}", count: 0
+    end
+  end
 end

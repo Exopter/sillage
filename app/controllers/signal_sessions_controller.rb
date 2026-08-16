@@ -6,7 +6,6 @@ class SignalSessionsController < ApplicationController
       Current.user.flights.create!(
         name: "Live flight",
         status: "live",
-        aircraft: detected_aircraft,
         landing_zone: detected_landing_zone,
         started_at: Time.current
       )
@@ -27,10 +26,6 @@ class SignalSessionsController < ApplicationController
   end
 
   private
-
-  def detected_aircraft
-    Aircraft.find_by(telemetry_system_id: params[:telemetry_system_id].presence)
-  end
 
   def detected_landing_zone
     return if params[:latitude].blank? || params[:longitude].blank?

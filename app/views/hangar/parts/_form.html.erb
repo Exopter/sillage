@@ -5,8 +5,8 @@
 
   <div class="workspace-form-grid">
     <label>
-      <span>Internal number</span>
-      <%= form.text_field :internal_number, required: true %>
+      <span>Exopter Asset ID</span>
+      <%= text_field_tag nil, part.internal_number || "Assigned automatically", disabled: true %>
     </label>
     <label>
       <span>Function</span>
@@ -27,7 +27,11 @@
     <% if Current.user.admin? %>
       <label>
         <span>State</span>
-        <%= form.select :state, Part::STATES.map { |state| [ state.titleize, state ] }, {}, disabled: part.state == "installed" %>
+        <% if part.state == "installed" %>
+          <%= text_field_tag nil, "Installed", disabled: true %>
+        <% else %>
+          <%= form.select :state, Part::EDITABLE_STATES.map { |state| [ state.titleize, state ] } %>
+        <% end %>
       </label>
     <% end %>
   </div>

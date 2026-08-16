@@ -1,6 +1,6 @@
 <article class="assembly-tree-node">
   <header>
-    <%= link_to assembly.code, hangar_assembly_path(assembly) %>
+    <%= link_to assembly.internal_number, hangar_assembly_path(assembly) %>
     <span><%= assembly.name %></span>
   </header>
   <% if assembly.parts.any? %>

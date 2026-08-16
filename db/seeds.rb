@@ -1,5 +1,5 @@
-# This file should ensure the existence of records required to run the application in every environment.
-# Development gets readable synthetic flights for validating terrain, charts, and event markers.
+# Default seeds contain only reference data required in every environment.
+# Set LOAD_DEMO_DATA=true explicitly to add development hardware and synthetic flights.
 
 BRENTO_POINT_ROWS = [
   [ 0, 45.99385, 10.90442, 1475.0 ],
@@ -87,12 +87,10 @@ DEMO_FLIGHTS = [
   }
 ].freeze
 
-DEFAULT_USER = User.default_admin
-
 OPERATIONAL_AIRCRAFT = [
-  [ "F-GOCC", "Pilatus PC-6 test aircraft", "1" ],
-  [ "WS-001", "Development wingsuit", nil ],
-  [ "EXO-001", "Exowing prototype", "42" ]
+  [ "F-GOCC", "Pilatus PC-6 test aircraft" ],
+  [ "WS-001", "Development wingsuit" ],
+  [ "EXO-001", "Exowing prototype" ]
 ].freeze
 
 OPERATIONAL_LANDING_ZONES = [
@@ -101,19 +99,7 @@ OPERATIONAL_LANDING_ZONES = [
   [ "LZ-TALLARD", "Gap Tallard", 44.455, 6.0378, 596, "Airfield access procedures apply.", "Synthetic development site used by the bundled replay." ]
 ].freeze
 
-OPERATIONAL_AIRCRAFT.each do |registration, name, telemetry_system_id|
-  aircraft = Aircraft.find_or_initialize_by(registration:)
-  aircraft.assign_attributes(name:, telemetry_system_id:, active: true)
-  aircraft.save!
-end
-
-OPERATIONAL_LANDING_ZONES.each do |code, name, latitude, longitude, elevation_m, practical_information, notes|
-  zone = LandingZone.find_or_initialize_by(code:)
-  zone.assign_attributes(name:, latitude:, longitude:, elevation_m:, detection_radius_km: 25, practical_information:, notes:)
-  zone.save!
-end
-
-FDR_FUNCTIONS = {
+DEFAULT_FUNCTIONS = {
   "GPS" => [ "GPS", "GNSS position and time source" ],
   "IMU" => [ "IMU", "Inertial measurement and attitude sensing" ],
   "CONTROLLER" => [ "Controller", "FDR processing and coordination" ],
@@ -123,75 +109,28 @@ FDR_FUNCTIONS = {
   "RADIO" => [ "Radio", "Telemetry radio link" ]
 }.freeze
 
-FDR_FUNCTIONS.each do |code, (name, description)|
-  Function.find_or_create_by!(code: code) do |function|
-    function.name = name
-    function.description = description
+def seed_default_functions
+  DEFAULT_FUNCTIONS.each do |code, (name, description)|
+    function = Function.find_or_initialize_by(code:)
+    function.assign_attributes(name:, description:)
+    function.save!
   end
+
+  puts "Seeded #{DEFAULT_FUNCTIONS.size} default functions"
 end
 
-FDR_DEVELOPMENT_PARTS = [
-  [ "PART-000001", "GPS", "Holybro", "M9N", "DEV-GPS-001" ],
-  [ "PART-000002", "IMU", "Adafruit", "BNO085", "DEV-IMU-001" ],
-  [ "PART-000003", "CONTROLLER", "Seeed Studio", "XIAO ESP32-S3", "DEV-CTRL-001" ],
-  [ "PART-000004", "AIRSPEED", "Matek", "ASPD-AUAV", "DEV-ASPD-001" ],
-  [ "PART-000005", "STORAGE", "SparkFun", "DEV-13743 + microSD", "DEV-STORAGE-001" ],
-  [ "PART-000006", "POWER_SUPPLY", nil, "Development power module", "DEV-PWR-001" ],
-  [ "PART-000007", "RADIO", "Holybro", "SiK Telemetry Radio V3", "DEV-RADIO-001" ]
-].freeze
-
-def seed_fdr_development_hardware
-  assembly = Assembly.find_or_initialize_by(code: "FDR-001")
-  assembly.assign_attributes(name: "Development Flight Data Recorder")
-  assembly.save!
-
-  FDR_DEVELOPMENT_PARTS.each do |internal_number, function_code, manufacturer, model, serial_number|
-    part = Part.find_or_initialize_by(internal_number: internal_number)
-    part.assign_attributes(
-      function: Function.find_by!(code: function_code),
-      assembly: assembly,
-      manufacturer: manufacturer,
-      model: model,
-      serial_number: serial_number,
-      notes: "Development seed hardware."
-    )
-    part.save!
+def seed_demo_operational_context
+  OPERATIONAL_AIRCRAFT.each do |registration, name|
+    aircraft = Aircraft.find_or_initialize_by(registration:)
+    aircraft.assign_attributes(name:, active: true)
+    aircraft.save!
   end
 
-  build = Build.find_or_initialize_by(code: "FDR-DEV-001")
-  if build.new_record?
-    build.assign_attributes(
-      assembly: assembly,
-      created_by: DEFAULT_USER,
-      arduino_core_version: "3.3.10",
-      notes: "Development seed build. ASPD remains blocked until MSP2_SENSOR_AIRSPEED 0x1F06 is observed."
-    )
-    build.save!
-  elsif build.assembly == assembly && !build.locked?
-    build.refresh_snapshot!
+  OPERATIONAL_LANDING_ZONES.each do |code, name, latitude, longitude, elevation_m, practical_information, notes|
+    zone = LandingZone.find_or_initialize_by(code:)
+    zone.assign_attributes(name:, latitude:, longitude:, elevation_m:, detection_radius_km: 25, practical_information:, notes:)
+    zone.save!
   end
-
-  pilatus = Aircraft.find_by!(registration: "F-GOCC")
-  Installation.find_or_create_by!(aircraft: pilatus, installable: assembly, removed_at: nil) do |installation|
-    installation.installed_at = Time.current
-    installation.notes = "Development FDR installation."
-  end
-
-  qualification_run = TestRun.find_or_create_by!(uuid: "6ab64a5b-59ba-4f34-9b89-5ac1226d0001") do |test_run|
-    test_run.assign_attributes(
-      build: build,
-      operator: DEFAULT_USER,
-      recipe_id: "bench-smoke",
-      recipe_version: "5",
-      recipe_sha256: "a" * 64,
-      ingestion_sha256: "b" * 64,
-      outcome: "passed",
-      ran_at: Time.zone.parse("2026-07-27 17:08:00")
-    )
-  end
-  qualification_run.validate_by!(DEFAULT_USER, note: "Seeded qualification evidence.") unless qualification_run.validated?
-
-  puts "Seeded #{assembly.code} and #{build.code}"
 end
 
 def track_points_from_rows(rows, start_time, satellite_count:)
@@ -261,11 +200,11 @@ def sensor_samples_from_rows(rows, start_time, opening_elapsed:, vbat_drop_per_s
   end
 end
 
-def seed_synthetic_flight(config)
+def seed_synthetic_flight(config, default_user:)
   start_time = config.fetch(:start_time)
   flight_import = FlightImport.find_or_initialize_by(session_id: config.fetch(:session_id))
   flight_import.assign_attributes(
-    user: DEFAULT_USER,
+    user: default_user,
     aircraft: Aircraft.find_by!(registration: config.fetch(:aircraft_registration)),
     landing_zone: LandingZone.find_by!(code: config.fetch(:landing_zone_code)),
     source_filename: config.fetch(:source_filename),
@@ -299,7 +238,7 @@ def seed_synthetic_flight(config)
   flight_import.flights.where.not(id: flight.id).destroy_all if flight.persisted?
   flight.assign_attributes(
     {
-      user: DEFAULT_USER,
+      user: default_user,
       aircraft: flight_import.aircraft,
       landing_zone: flight_import.landing_zone,
       status: "analysed",
@@ -333,11 +272,14 @@ def seed_synthetic_flight(config)
   flight
 end
 
-if Rails.env.development? || ENV["LOAD_DEMO_DATA"].present?
-  seed_fdr_development_hardware
+seed_default_functions
+
+if ActiveModel::Type::Boolean.new.cast(ENV["LOAD_DEMO_DATA"])
+  default_user = User.default_admin
+  seed_demo_operational_context
 
   DEMO_FLIGHTS.each do |config|
-    flight = seed_synthetic_flight(config)
+    flight = seed_synthetic_flight(config, default_user:)
     puts "Seeded #{flight.name}"
   end
 end

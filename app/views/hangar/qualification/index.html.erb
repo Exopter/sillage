@@ -7,7 +7,7 @@
     <div class="hangar-table-wrap">
       <table class="hangar-table hangar-build-table">
         <thead><tr><th>Build</th><th>Assembly</th><th>Firmware</th><th>Locked</th><th>State</th></tr></thead>
-        <tbody><% @builds.each do |build| %><% tone, label = hangar_build_status build %><tr><td><%= link_to forge_build_path(build), class: "hangar-table-primary" do %><strong><%= build.code %></strong><small><%= build.previous_build ? "after #{build.previous_build.code}" : "First recorded build" %></small><% end %></td><td><%= build.assembly.code %></td><td><%= build.source_revision.presence || "—" %></td><td><%= build.locked? ? "Yes" : "No" %></td><td><span class="status-dot is-<%= tone %>"><span></span><%= label %></span></td></tr><% end %></tbody>
+        <tbody><% @builds.each do |build| %><% tone, label = hangar_build_status build %><tr><td><%= link_to forge_build_path(build), class: "hangar-table-primary" do %><strong><%= build.code %></strong><small><%= build.previous_build ? "after #{build.previous_build.code}" : "First recorded build" %></small><% end %></td><td><%= build.assembly.internal_number %></td><td><%= build.source_revision.presence || "—" %></td><td><%= build.locked? ? "Yes" : "No" %></td><td><span class="status-dot is-<%= tone %>"><span></span><%= label %></span></td></tr><% end %></tbody>
       </table>
     </div>
     <footer class="hangar-detail-note">The first recorded Test Run locks its Build. Changes require cloning the Build as a new iteration.</footer>

@@ -1,6 +1,6 @@
-<% content_for :title, "Edit #{@function.code}" %>
+<% content_for :title, "Edit #{@function.name}" %>
 <%= render "hangar/tabs" %>
 <div class="workspace-form-page">
-  <header class="workspace-header"><div><span class="section-eyebrow">Functions</span><h2>Edit <%= @function.code %></h2><p>Update the code, name, and functional definition.</p></div></header>
+  <header class="workspace-header"><div><span class="section-eyebrow">Functions</span><h2>Edit <%= @function.name %></h2><p>Update the name and functional definition.</p></div></header>
   <section class="workspace-panel workspace-form-panel"><%= render "form", function: @function %></section>
 </div>

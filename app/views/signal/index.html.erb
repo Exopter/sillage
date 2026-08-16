@@ -19,12 +19,12 @@
           <small><%= flight.display_aircraft %> · <%= flight.display_landing_zone %></small>
         </div>
         <div class="signal-link-stack" aria-label="Signal link status">
-          <div><span>Radio</span><strong data-signal-workspace-target="radioStatus">Waiting for station</strong></div>
+          <div><span>Radio</span><strong data-signal-workspace-target="radioStatus">Waiting for ground radio</strong></div>
           <div><span>Recorder</span><strong data-signal-workspace-target="recorderStatus">Preparing local capture</strong></div>
           <div><span>Cloud</span><strong data-signal-workspace-target="cloudStatus">Live</strong></div>
         </div>
         <div class="signal-command-actions">
-          <button type="button" class="signal-tool-button is-primary" aria-label="Connect station" data-action="signal-workspace#connectStation" data-signal-workspace-target="connectButton"><%= sillage_icon "radio", size: 14 %><span>Connect station</span></button>
+          <button type="button" class="signal-tool-button is-primary" aria-label="Connect ground radio" data-action="signal-workspace#connectStation" data-signal-workspace-target="connectButton"><%= sillage_icon "radio", size: 14 %><span>Connect ground radio</span></button>
           <button type="button" class="signal-tool-button" aria-label="Full screen" data-action="signal-workspace#toggleFullscreen"><%= sillage_icon "arrow-up-right", size: 14 %><span>Full screen</span></button>
           <button type="button" class="signal-tool-button" aria-label="Reset layout" data-action="signal-workspace#resetLayout"><%= sillage_icon "rotate-ccw", size: 14 %><span>Reset layout</span></button>
           <button type="button" class="signal-tool-button" aria-label="Mark event" data-action="signal-workspace#markEvent"><%= sillage_icon "plus", size: 14 %><span>Mark event</span></button>
@@ -88,6 +88,7 @@
       <header class="signal-home-head">
         <div><span class="signal-k">Sillage Signal</span><h1>Start live acquisition</h1><p>Connect the ground radio, display telemetry and record a durable local capture while the cloud stays synchronized.</p></div>
       </header>
+      <%= render "signal/fdr_connectivity" %>
       <div class="signal-launch-grid">
         <section class="signal-launch-card">
           <div class="signal-launch-body"><span class="signal-k">Prepared flights</span><h2>Attach to an existing flight</h2><p>The aircraft, landing zone and Hangar configuration are inherited automatically.</p></div>

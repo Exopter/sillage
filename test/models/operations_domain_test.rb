@@ -1,8 +1,19 @@
 require "test_helper"
 
 class OperationsDomainTest < ActiveSupport::TestCase
+  test "MAVLink identity belongs to a physical assembly" do
+    assembly = Assembly.new(name: "MAVLink FDR", mavlink_system_id: 1, mavlink_component_id: 191)
+
+    assert assembly.valid?
+    assert_equal "System 1 · component 191", assembly.mavlink_identity_label
+
+    assembly.mavlink_system_id = 256
+    assert_not assembly.valid?
+    assert_includes assembly.errors[:mavlink_system_id], "is not included in the list"
+  end
+
   test "an asset cannot have two active aircraft installations" do
-    assembly = Assembly.create!(code: "FDR-INSTALL-001", name: "Installable FDR")
+    assembly = Assembly.create!(name: "Installable FDR")
     first = Installation.create!(aircraft: aircraft(:pilatus), installable: assembly, installed_at: 1.hour.ago)
     duplicate = Installation.new(aircraft: aircraft(:exowing), installable: assembly, installed_at: Time.current)
 
@@ -15,8 +26,8 @@ class OperationsDomainTest < ActiveSupport::TestCase
 
   test "a nested asset cannot also be installed directly on an aircraft" do
     function = Function.create!(code: "NAV-DIRECT", name: "Navigation direct")
-    assembly = Assembly.create!(code: "FDR-NESTED-001", name: "Nested FDR")
-    part = Part.create!(internal_number: "PART-991001", function:, model: "M9N", assembly:)
+    assembly = Assembly.create!(name: "Nested FDR")
+    part = Part.create!(function:, model: "M9N", assembly:)
 
     installation = Installation.new(aircraft: aircraft(:pilatus), installable: part, installed_at: Time.current)
 
@@ -26,8 +37,8 @@ class OperationsDomainTest < ActiveSupport::TestCase
 
   test "a directly installed part cannot also be attached to an assembly" do
     function = Function.create!(code: "NAV-DIRECT-REVERSE", name: "Navigation direct reverse")
-    assembly = Assembly.create!(code: "FDR-NESTED-REVERSE-001", name: "Nested FDR reverse")
-    part = Part.create!(internal_number: "PART-991003", function:, model: "M9N")
+    assembly = Assembly.create!(name: "Nested FDR reverse")
+    part = Part.create!(function:, model: "M9N")
     Installation.create!(aircraft: aircraft(:pilatus), installable: part, installed_at: Time.current)
 
     assert_not part.update(assembly:)
@@ -36,8 +47,8 @@ class OperationsDomainTest < ActiveSupport::TestCase
 
   test "validated test runs are immutable" do
     function = Function.create!(code: "QUAL-IMMUTABLE", name: "Qualification")
-    assembly = Assembly.create!(code: "FDR-QUAL-001", name: "Qualification assembly")
-    Part.create!(internal_number: "PART-991002", function:, model: "Sensor", assembly:)
+    assembly = Assembly.create!(name: "Qualification assembly")
+    Part.create!(function:, model: "Sensor", assembly:)
     build = Build.create!(code: "FDR-DEV-991", assembly:, created_by: users(:julien), arduino_core_version: "3.3")
     run = TestRun.create!(uuid: SecureRandom.uuid, build:, operator: users(:julien), recipe_id: "QUAL", recipe_version: "1", recipe_sha256: "a" * 64, ingestion_sha256: "b" * 64, outcome: "passed", ran_at: Time.current)
     run.validate_by!(users(:julien), note: "Reviewed")

@@ -11,7 +11,7 @@
       <div class="workspace-list">
         <% @builds.each do |build| %>
           <%= link_to forge_build_path(build), class: "workspace-list-row" do %>
-            <span><strong><%= build.code %></strong><small><%= build.assembly.code %><%= " · from #{build.previous_build.code}" if build.previous_build %></small></span>
+            <span><strong><%= build.code %></strong><small><%= build.assembly.internal_number %><%= " · from #{build.previous_build.code}" if build.previous_build %></small></span>
             <span><%= pluralize build.test_runs.size, "test" %> · <span class="workspace-status <%= build.locked? ? "is-locked" : "is-draft" %>"><%= build.locked? ? "Frozen" : "Draft" %></span></span>
           <% end %>
         <% end %>

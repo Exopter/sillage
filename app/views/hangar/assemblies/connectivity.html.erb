@@ -1,0 +1,171 @@
+<% content_for :title, "#{@assembly.internal_number} connectivity" %>
+<%= render "hangar/tabs" %>
+
+<div
+  class="fdr-connectivity"
+  data-controller="fdr-wifi-configuration"
+  data-fdr-wifi-configuration-provisioning-url-value="<%= api_v1_assembly_fdr_wifi_provisioning_path(@assembly) %>"
+  data-fdr-wifi-configuration-confirmation-url-value="<%= api_v1_assembly_fdr_wifi_provisioning_path(@assembly) %>"
+  data-fdr-wifi-configuration-authentication-url-value="<%= api_v1_fdr_authentication_path %>"
+  data-fdr-wifi-configuration-preview-value="<%= @preview_wifi %>"
+>
+  <%= render "fdr_shell", active_tab: :connectivity %>
+
+  <section class="fdr-connection-strip" aria-label="Recorder connection status">
+    <div>
+      <%= sillage_icon "wifi", size: 18 %>
+      <span data-fdr-wifi-configuration-target="bleStatus" data-state="disconnected">Recorder disconnected</span>
+    </div>
+    <div>
+      <%= sillage_icon "code", size: 18 %>
+      <span>Firmware <strong data-fdr-wifi-configuration-target="firmware">not read</strong></span>
+    </div>
+    <div>
+      <%= sillage_icon "database", size: 18 %>
+      <span>Source <strong>Hangar library</strong></span>
+    </div>
+    <div>
+      <%= sillage_icon "circle-check", size: 18 %>
+      <span data-fdr-wifi-configuration-target="health">Not read</span>
+    </div>
+    <div>
+      <%= sillage_icon "clock", size: 18 %>
+      <span>Last read <strong data-fdr-wifi-configuration-target="lastRead">never</strong></span>
+    </div>
+    <span class="fdr-device-id" data-fdr-wifi-configuration-target="bleDevice"><%= @assembly.device_id.presence || @assembly.internal_number %></span>
+  </section>
+
+  <div class="fdr-wifi-layout">
+    <section class="fdr-wifi-saved" aria-labelledby="saved-wifi-title">
+      <div class="fdr-wifi-section-head">
+        <div>
+          <h3 id="saved-wifi-title">Saved Wi-Fi networks</h3>
+          <p>Ordered connection profiles assigned to this recorder.</p>
+        </div>
+        <span><%= @wifi_profiles.size %> / <%= FdrWifiProfile::MAX_PROFILES %></span>
+      </div>
+
+      <div class="fdr-wifi-profile-table">
+        <div class="fdr-wifi-profile-header" aria-hidden="true">
+          <span>Priority</span><span>Network</span><span>Security</span><span>State</span><span>Enabled</span><span>Order</span><span></span>
+        </div>
+        <% if @wifi_profiles.any? %>
+          <% @wifi_profiles.each do |profile| %>
+            <div class="fdr-wifi-profile-row" data-wifi-ssid="<%= profile.ssid %>">
+              <span class="fdr-wifi-priority"><%= profile.position + 1 %></span>
+              <span class="fdr-wifi-network">
+                <strong><%= profile.ssid %></strong>
+                <small class="<%= "is-pending" if profile.pending? %>">
+                  <%= profile.pending? ? "Not yet applied" : "Applied to #{profile.last_provisioned_device_id}" %>
+                </small>
+              </span>
+              <span class="fdr-wifi-cell-muted"><%= profile.security_label %></span>
+              <span class="fdr-wifi-cell-muted">
+                <%= profile.last_provisioned_at ? "#{time_ago_in_words(profile.last_provisioned_at)} ago" : "Never" %>
+              </span>
+              <%= button_to hangar_assembly_fdr_wifi_profile_path(@assembly, profile), method: :patch,
+                params: { enabled: !profile.enabled },
+                class: [ "fdr-wifi-toggle", ("is-enabled" if profile.enabled) ],
+                title: profile.enabled ? "Disable network" : "Enable network",
+                aria: { label: profile.enabled ? "Disable #{profile.ssid}" : "Enable #{profile.ssid}", pressed: profile.enabled } do %>
+                <span></span>
+              <% end %>
+              <span class="fdr-wifi-order-actions">
+                <%= button_to move_hangar_assembly_fdr_wifi_profile_path(@assembly, profile), method: :patch,
+                  params: { direction: "up" }, class: "fdr-wifi-icon-button", disabled: profile.position.zero?, title: "Move up" do %>
+                  <%= sillage_icon "chevron-up", size: 15 %>
+                <% end %>
+                <%= button_to move_hangar_assembly_fdr_wifi_profile_path(@assembly, profile), method: :patch,
+                  params: { direction: "down" }, class: "fdr-wifi-icon-button", disabled: profile.position == @wifi_profiles.size - 1, title: "Move down" do %>
+                  <%= sillage_icon "chevron-down", size: 15 %>
+                <% end %>
+              </span>
+              <%= button_to hangar_assembly_fdr_wifi_profile_path(@assembly, profile), method: :delete,
+                class: "fdr-wifi-icon-button is-danger", title: "Remove from recorder",
+                form: { data: { turbo_confirm: "Remove #{profile.ssid} from this recorder? The Hangar password will be kept." } } do %>
+                <%= sillage_icon "trash", size: 15 %>
+              <% end %>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="fdr-wifi-empty">No network is assigned yet. Add one from the Hangar library or scan from the recorder.</div>
+        <% end %>
+      </div>
+
+      <button type="button" class="fdr-wifi-text-action" data-action="fdr-wifi-configuration#openManual">
+        <%= sillage_icon "plus", size: 15 %>
+        Use a saved network or enter one manually
+      </button>
+
+      <aside class="fdr-wifi-security-note">
+        <%= sillage_icon "shield", size: 18 %>
+        <span>Passwords are encrypted in Hangar and only decrypted during an explicit USB-C or BLE provisioning operation.</span>
+      </aside>
+    </section>
+
+    <section class="fdr-wifi-scan" aria-labelledby="wifi-scan-title">
+      <div class="fdr-wifi-section-head">
+        <div>
+          <h3 id="wifi-scan-title">Networks in range</h3>
+          <p data-fdr-wifi-configuration-target="scanStatus">Connect the recorder to scan nearby networks.</p>
+        </div>
+        <button type="button" class="button-secondary is-compact" disabled data-fdr-wifi-configuration-target="scanButton" data-action="fdr-wifi-configuration#scan">
+          <%= sillage_icon "rotate-ccw", size: 15 %>
+          Scan now
+        </button>
+      </div>
+
+      <div class="fdr-wifi-scan-header" aria-hidden="true"><span>Network</span><span>Security</span><span>Action</span></div>
+      <div class="fdr-wifi-scan-results" data-fdr-wifi-configuration-target="scanResults">
+        <div class="fdr-wifi-empty">No scan result yet.</div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="fdr-wifi-apply-bar">
+    <span data-fdr-wifi-configuration-target="applyStatus">Changes remain pending until they are verified on the recorder.</span>
+    <button type="button" class="button-primary" disabled data-fdr-wifi-configuration-target="applyButton" data-action="fdr-wifi-configuration#apply">
+      Apply to recorder
+    </button>
+  </footer>
+
+  <dialog class="fdr-wifi-dialog" data-fdr-wifi-configuration-target="manualDialog">
+    <div class="fdr-wifi-dialog-head">
+      <div><span class="section-eyebrow">Hangar Wi-Fi library</span><h3>Add a network</h3></div>
+      <button type="button" class="fdr-wifi-icon-button" aria-label="Close" data-action="fdr-wifi-configuration#closeManual"><%= sillage_icon "x", size: 17 %></button>
+    </div>
+
+    <% if @known_wifi_credentials.any? %>
+      <section class="fdr-wifi-dialog-section">
+        <h4>Use a saved network</h4>
+        <%= form_with url: hangar_assembly_fdr_wifi_profiles_path(@assembly), class: "workspace-form" do |form| %>
+          <label>
+            <span>Hangar credential</span>
+            <%= select_tag :wifi_credential_id, options_from_collection_for_select(@known_wifi_credentials, :id, ->(credential) { "#{credential.ssid} · #{credential.security_label}" }), required: true %>
+          </label>
+          <div class="workspace-actions"><%= form.submit "Add saved network", class: "button-primary" %></div>
+        <% end %>
+      </section>
+    <% end %>
+
+    <section class="fdr-wifi-dialog-section">
+      <h4>Save a new network</h4>
+      <%= form_with url: hangar_assembly_fdr_wifi_profiles_path(@assembly), scope: :wifi_credential, class: "workspace-form" do |form| %>
+        <label>
+          <span>Network name (SSID)</span>
+          <%= form.text_field :ssid, required: true, maxlength: 32, autocomplete: "off", data: { fdr_wifi_configuration_target: "ssid" } %>
+        </label>
+        <label>
+          <span>Security</span>
+          <%= form.select :security, WifiCredential::SECURITIES.map { |security| [ WifiCredential.new(security:).security_label, security ] }, { selected: "wpa2" }, data: { fdr_wifi_configuration_target: "security", action: "fdr-wifi-configuration#togglePasswordRequirement" } %>
+        </label>
+        <label>
+          <span>Password</span>
+          <%= form.password_field :password, required: true, minlength: 8, maxlength: 63, autocomplete: "new-password", data: { fdr_wifi_configuration_target: "password" } %>
+        </label>
+        <p class="workspace-muted">The password will be encrypted by Sillage. It will never be returned by a normal list response.</p>
+        <div class="workspace-actions"><%= form.submit "Save in Hangar and add", class: "button-primary" %></div>
+      <% end %>
+    </section>
+  </dialog>
+</div>

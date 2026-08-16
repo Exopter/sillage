@@ -41,6 +41,10 @@ module Hangar
     end
 
     def destroy
+      if @aircraft.deletion_blockers.any?
+        return redirect_to hangar_aircraft_path(@aircraft), alert: deletion_blocked_message
+      end
+
       if @aircraft.destroy
         redirect_to hangar_aircraft_index_path, notice: "Aircraft deleted."
       else
@@ -55,7 +59,12 @@ module Hangar
     end
 
     def aircraft_params
-      params.require(:aircraft).permit(:registration, :name, :telemetry_system_id, :notes, :active)
+      params.require(:aircraft).permit(:registration, :name, :notes, :active)
+    end
+
+    def deletion_blocked_message
+      "Cannot delete #{@aircraft.registration} because it has #{@aircraft.deletion_blockers.to_sentence}. " \
+        "Historical records must be retained."
     end
   end
 end

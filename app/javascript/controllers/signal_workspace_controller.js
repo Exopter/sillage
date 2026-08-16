@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
 
 const DATABASE_NAME = "sillage-signal-v1"
 const DATABASE_VERSION = 1
@@ -30,6 +31,8 @@ export default class extends Controller {
     this.pendingSamples = []
     this.connectedAt = null
     this.lastFrameAt = null
+    this.mavlinkSystemId = null
+    this.mavlinkComponentId = null
     this.syncing = false
     this.ended = false
     this.layoutStorageKey = `signal-layout:${this.sessionValue}`
@@ -44,7 +47,7 @@ export default class extends Controller {
       this.autoReconnect()
     }
     this.boundSerialDisconnect = () => {
-      this.showWarning("The station was disconnected. Acquisition will resume after USB reconnection.")
+      this.showWarning("The ground radio was disconnected. Acquisition will resume after USB reconnection.")
       this.stopSerial()
     }
     window.addEventListener("online", this.boundOnline)
@@ -110,7 +113,7 @@ export default class extends Controller {
       const port = authorized.length === 1 ? authorized[0] : await navigator.serial.requestPort()
       await this.acquirePort(port)
     } catch (error) {
-      if (error.name !== "NotFoundError") this.showWarning(`Station connection failed: ${error.message}`)
+      if (error.name !== "NotFoundError") this.showWarning(`Ground radio connection failed: ${error.message}`)
     }
   }
 
@@ -121,7 +124,7 @@ export default class extends Controller {
     navigator.locks.request(lockName, { ifAvailable: true }, async (lock) => {
       if (!lock) {
         this.openingPort = false
-        this.showWarning("This station is already being read by another browser tab.")
+        this.showWarning("This ground radio is already being read by another browser tab.")
         return
       }
       await new Promise(async (release) => {
@@ -129,7 +132,7 @@ export default class extends Controller {
         try {
           await this.openSerial(port)
         } catch (error) {
-          this.showWarning(`Station connection failed: ${error.message}`)
+          this.showWarning(`Ground radio connection failed: ${error.message}`)
           await this.stopSerial()
         }
       })
@@ -145,10 +148,10 @@ export default class extends Controller {
     this.worker = new Worker("/signal_serial_worker.js")
     this.worker.onmessage = ({ data }) => this.handleWorkerMessage(data)
     this.worker.postMessage({ type: "init-capture", filename: `${this.flightCodeValue}-${this.sessionValue}.mavcap` })
-    this.connectButtonTarget.querySelector("span:last-child").textContent = "Disconnect station"
-    this.connectButtonTarget.setAttribute("aria-label", "Disconnect station")
+    this.connectButtonTarget.querySelector("span:last-child").textContent = "Disconnect ground radio"
+    this.connectButtonTarget.setAttribute("aria-label", "Disconnect ground radio")
     this.radioStatusTarget.textContent = "Connected · waiting for MAVLink"
-    this.updateStationState("connected")
+    this.updateGroundRadioState("connected")
     await this.acquireWakeLock()
     this.readSerial()
   }
@@ -165,7 +168,7 @@ export default class extends Controller {
           this.worker.postMessage({ type: "bytes", bytes, receivedAtUs: String(Date.now() * 1000) }, [bytes])
         }
       } catch (error) {
-        if (!this.ended) this.showWarning(`The station was disconnected: ${error.message}`)
+        if (!this.ended) this.showWarning(`The ground radio was disconnected: ${error.message}`)
       } finally {
         this.reader.releaseLock()
         this.reader = null
@@ -200,17 +203,14 @@ export default class extends Controller {
     this.openingPort = false
     this.releasePortLock?.()
     this.releasePortLock = null
-    this.connectButtonTarget.querySelector("span:last-child").textContent = "Connect station"
-    this.connectButtonTarget.setAttribute("aria-label", "Connect station")
+    this.connectButtonTarget.querySelector("span:last-child").textContent = "Connect ground radio"
+    this.connectButtonTarget.setAttribute("aria-label", "Connect ground radio")
     this.radioStatusTarget.textContent = "Not connected"
-    this.updateStationState("disconnected")
+    this.updateGroundRadioState("disconnected")
   }
 
-  updateStationState(state) {
-    document.querySelectorAll("[data-station-state]").forEach((node) => { node.dataset.stationState = state })
-    document.querySelectorAll("[data-station-label]").forEach((node) => {
-      node.textContent = state === "connected" ? "connected" : "not connected"
-    })
+  updateGroundRadioState(state) {
+    setAircraftConnection(AircraftConnectionTransport.GROUND_RADIO, state === "connected")
   }
 
   handleWorkerMessage(message) {
@@ -226,8 +226,9 @@ export default class extends Controller {
     if (message.type !== "frame") return
 
     this.lastFrameAt = Date.now()
-    this.telemetrySystemId = String(message.systemId)
-    this.radioStatusTarget.textContent = `Live · system ${message.systemId}`
+    this.mavlinkSystemId = String(message.systemId)
+    this.mavlinkComponentId = String(message.componentId)
+    this.radioStatusTarget.textContent = `Live · MAVLink ${message.systemId}/${message.componentId}`
     this.parserStatusTarget.textContent = `${message.parser.errors} CRC errors · ${message.parser.dropped} missing frames`
     this.applyTelemetry(message.decoded, message)
     this.drawAll()
@@ -310,7 +311,8 @@ export default class extends Controller {
         sequence,
         first_received_at: samples[0].recorded_at,
         last_received_at: samples.at(-1).recorded_at,
-        telemetry_system_id: this.telemetrySystemId,
+        mavlink_system_id: this.mavlinkSystemId,
+        mavlink_component_id: this.mavlinkComponentId,
         position: this.telemetry.gps ? { longitude: this.telemetry.gps[0], latitude: this.telemetry.gps[1] } : null,
         samples
       },

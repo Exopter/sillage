@@ -49,7 +49,7 @@ module Core
     end
 
     def function_params
-      params.require(:function).permit(:code, :name, :description)
+      params.require(:function).permit(:name, :description)
     end
   end
 end

@@ -1,5 +1,9 @@
 class Part < ApplicationRecord
+  include AssetIdentifiable
+
+  ASSET_IDENTIFIER_PREFIX = "PART"
   STATES = %w[available installed quarantined retired].freeze
+  EDITABLE_STATES = %w[available quarantined retired].freeze
 
   belongs_to :function
   belongs_to :assembly, optional: true
@@ -8,11 +12,12 @@ class Part < ApplicationRecord
 
   before_validation :synchronize_installation_state
 
-  normalizes :internal_number, with: ->(number) { number.to_s.strip.upcase }
+  normalizes :internal_number, with: ->(number) { number.to_s.strip.upcase.presence }
   normalizes :serial_number, with: ->(number) { number.to_s.strip.presence }
 
-  validates :internal_number, :model, presence: true
-  validates :internal_number, uniqueness: true
+  validates :model, presence: true
+  validates :internal_number, uniqueness: true, allow_nil: true
+  validates :internal_number, format: { with: /\APART-\d{6,}\z/ }, allow_nil: true
   validates :serial_number, uniqueness: { scope: :manufacturer }, allow_blank: true
   validates :state, inclusion: { in: STATES }
   validate :non_serviceable_part_is_not_installed
@@ -20,11 +25,6 @@ class Part < ApplicationRecord
 
   scope :ordered, -> { order(:internal_number) }
   scope :available, -> { where(state: "available", assembly_id: nil) }
-
-  def self.next_internal_number
-    highest = pluck(:internal_number).filter_map { |value| value[/\APART-(\d+)\z/, 1]&.to_i }.max || 0
-    format("PART-%06d", highest + 1)
-  end
 
   def display_name
     [ manufacturer, model ].compact_blank.join(" ")
@@ -38,6 +38,14 @@ class Part < ApplicationRecord
 
   def remove_from_assembly!
     update!(assembly: nil)
+  end
+
+  def deletion_blockers
+    [].tap do |blockers|
+      blockers << "an assembly assignment" if assembly_id.present?
+      blockers << "test history" if test_runs.exists?
+      blockers << "installation history" if installations.exists?
+    end
   end
 
   private

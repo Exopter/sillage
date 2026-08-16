@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_11_150000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -45,20 +45,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_090000) do
     t.string "name", null: false
     t.text "notes"
     t.string "registration", null: false
-    t.string "telemetry_system_id"
     t.datetime "updated_at", null: false
     t.index ["registration"], name: "index_aircraft_on_registration", unique: true
-    t.index ["telemetry_system_id"], name: "index_aircraft_on_telemetry_system_id", unique: true, where: "telemetry_system_id IS NOT NULL AND telemetry_system_id != ''"
   end
 
   create_table "assemblies", force: :cascade do |t|
-    t.string "code", null: false
     t.datetime "created_at", null: false
+    t.string "device_id"
+    t.string "device_model"
+    t.text "fdr_auth_key_ciphertext"
+    t.datetime "fdr_auth_key_installed_at"
+    t.string "internal_number"
+    t.datetime "last_seen_at"
+    t.string "last_seen_firmware"
+    t.datetime "last_sillage_seen_at"
+    t.json "last_sillage_status", default: {}, null: false
+    t.integer "mavlink_component_id"
+    t.integer "mavlink_system_id"
     t.string "name", null: false
     t.text "notes"
     t.integer "parent_id"
     t.datetime "updated_at", null: false
-    t.index ["code"], name: "index_assemblies_on_code", unique: true
+    t.index ["device_id"], name: "index_assemblies_on_device_id", unique: true, where: "device_id IS NOT NULL AND device_id != ''"
+    t.index ["internal_number"], name: "index_assemblies_on_internal_number", unique: true
+    t.index ["last_sillage_seen_at"], name: "index_assemblies_on_last_sillage_seen_at"
     t.index ["parent_id"], name: "index_assemblies_on_parent_id"
   end
 
@@ -85,6 +95,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_090000) do
     t.index ["previous_build_id"], name: "index_builds_on_previous_build_id"
   end
 
+  create_table "fdr_wifi_profiles", force: :cascade do |t|
+    t.integer "assembly_id", null: false
+    t.datetime "created_at", null: false
+    t.boolean "enabled", default: true, null: false
+    t.datetime "last_provisioned_at"
+    t.string "last_provisioned_device_id"
+    t.integer "position", null: false
+    t.datetime "updated_at", null: false
+    t.integer "wifi_credential_id", null: false
+    t.index ["assembly_id", "position"], name: "index_fdr_wifi_profiles_on_assembly_id_and_position", unique: true
+    t.index ["assembly_id", "wifi_credential_id"], name: "index_fdr_wifi_profiles_on_assembly_id_and_wifi_credential_id", unique: true
+    t.index ["assembly_id"], name: "index_fdr_wifi_profiles_on_assembly_id"
+    t.index ["wifi_credential_id"], name: "index_fdr_wifi_profiles_on_wifi_credential_id"
+  end
+
   create_table "flight_imports", force: :cascade do |t|
     t.integer "aircraft_id"
     t.datetime "created_at", null: false
@@ -97,6 +122,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_090000) do
     t.datetime "log_started_at"
     t.string "session_id"
     t.string "source_filename"
+    t.string "source_sha256"
     t.string "status", default: "pending", null: false
     t.integer "target_flight_id"
     t.datetime "updated_at", null: false
@@ -107,6 +133,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_090000) do
     t.index ["session_id"], name: "index_flight_imports_on_session_id"
     t.index ["status"], name: "index_flight_imports_on_status"
     t.index ["target_flight_id"], name: "index_flight_imports_on_target_flight_id"
+    t.index ["user_id", "source_sha256"], name: "index_flight_imports_on_user_and_source_sha256", unique: true, where: "source_sha256 IS NOT NULL"
     t.index ["user_id"], name: "index_flight_imports_on_user_id"
   end
 
@@ -210,7 +237,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_090000) do
     t.integer "assembly_id"
     t.datetime "created_at", null: false
     t.integer "function_id", null: false
-    t.string "internal_number", null: false
+    t.string "internal_number"
     t.string "manufacturer"
     t.string "model", null: false
     t.text "notes"
@@ -264,6 +291,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_090000) do
     t.datetime "ended_at"
     t.integer "flight_id", null: false
     t.integer "last_acknowledged_sequence", default: -1, null: false
+    t.integer "mavlink_component_id"
+    t.integer "mavlink_system_id"
     t.datetime "started_at", null: false
     t.json "station_metadata", default: {}, null: false
     t.string "status", default: "live", null: false
@@ -352,12 +381,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_090000) do
     t.index ["role"], name: "index_users_on_role"
   end
 
+  create_table "wifi_credentials", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "created_by_id", null: false
+    t.datetime "last_used_at"
+    t.text "password_ciphertext", null: false
+    t.string "security", null: false
+    t.string "ssid", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_wifi_credentials_on_created_by_id"
+    t.index ["ssid"], name: "index_wifi_credentials_on_ssid", unique: true
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "assemblies", "assemblies", column: "parent_id"
   add_foreign_key "builds", "assemblies"
   add_foreign_key "builds", "builds", column: "previous_build_id"
   add_foreign_key "builds", "users", column: "created_by_id"
+  add_foreign_key "fdr_wifi_profiles", "assemblies"
+  add_foreign_key "fdr_wifi_profiles", "wifi_credentials"
   add_foreign_key "flight_imports", "aircraft"
   add_foreign_key "flight_imports", "flights", column: "target_flight_id"
   add_foreign_key "flight_imports", "landing_zones"
@@ -381,4 +424,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_090000) do
   add_foreign_key "test_runs", "users", column: "operator_id"
   add_foreign_key "test_runs", "users", column: "validated_by_id"
   add_foreign_key "track_points", "flights"
+  add_foreign_key "wifi_credentials", "users", column: "created_by_id"
 end

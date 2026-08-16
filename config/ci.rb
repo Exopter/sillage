@@ -7,6 +7,8 @@ CI.run do
   step "Style: Design system contract", "ruby script/check_design_system_contract"
   step "Style: Documentation boundary", "ruby script/check_documentation_boundary"
   step "Tests: Cesium ion tile provider", "node test/javascript/flight_viewer_cesium_ion_test.mjs"
+  step "Tests: FDR synchronization protocol", "node test/javascript/fdr_sync_protocol_test.mjs"
+  step "Tests: Aircraft connection identity", "node test/javascript/aircraft_connection_test.mjs"
   step "Tests: Signal worker", "node test/javascript/signal_serial_worker_test.mjs"
 
   step "Security: Gem audit", "bin/bundler-audit"

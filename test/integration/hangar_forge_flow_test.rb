@@ -3,9 +3,8 @@ require "test_helper"
 class HangarForgeFlowTest < ActionDispatch::IntegrationTest
   setup do
     @function = Function.create!(code: "GPS_FLOW", name: "GPS")
-    @assembly = Assembly.create!(code: "FDR-FLOW-001", name: "Flow FDR")
+    @assembly = Assembly.create!(name: "Flow FDR")
     @part = Part.create!(
-      internal_number: "PART-FLOW-000001",
       function: @function,
       manufacturer: "Holybro",
       model: "M9N",
@@ -26,7 +25,12 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_select ".hangar-fleet-layout"
     assert_select "aside[aria-label='Fleet aircraft'] .hangar-fleet-item", minimum: 1
     assert_select "section[aria-label='Selected aircraft configuration']"
+    assert_select ".hangar-asset-title .status-dot", text: "Ready", count: 1
+    assert_select ".hangar-asset-head > .workspace-status", count: 0
+    assert_select "main", text: /Operational vehicle/, count: 0
     assert_select ".hangar-config-head", text: /Installed configuration/
+    assert_select ".hangar-config-head > span", count: 1
+    assert_select ".hangar-detail-foot", count: 0
     assert_select ".sillage-room-link.is-separated", text: /Signal/
 
     get hangar_parts_path
@@ -43,10 +47,32 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "a", text: @part.internal_number, count: 0
 
+    get new_hangar_part_path
+    assert_response :success
+    assert_select "label", text: /Exopter Asset ID/
+    assert_select "input[name='part[internal_number]']", count: 0
+
+    get new_hangar_assembly_path
+    assert_response :success
+    assert_select "label", text: /Exopter Asset ID/
+    assert_select "input[name='assembly[code]'], input[name='assembly[internal_number]']", count: 0
+    assert_select "input[name='assembly[device_id]'][placeholder='EXOFDR-A172E0']", count: 1
+
     get hangar_assembly_path(@assembly)
     assert_response :success
-    assert_select "h2", @assembly.code
+    assert_select "h2", @assembly.internal_number
     assert_select ".assembly-function", "GPS"
+    assert_select "h2", "Signal identity"
+
+    get new_hangar_aircraft_path
+    assert_response :success
+    assert_select "input[name='aircraft[telemetry_system_id]']", count: 0
+    assert_select "label", text: /Selectable for flight preparation/
+
+    get new_hangar_function_path
+    assert_response :success
+    assert_select "input[name='function[code]']", count: 0
+    assert_select "input[name='function[name]']", count: 1
 
     get forge_build_path(@build)
     assert_response :success
@@ -55,7 +81,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
 
     get new_forge_build_path(build: { assembly_id: @assembly.id })
     assert_response :success
-    assert_select "select[name='build[assembly_id]'] option[selected]", @assembly.code
+    assert_select "select[name='build[assembly_id]'] option[selected]", /#{@assembly.internal_number}/
   end
 
   test "bench token accepts an idempotent test result and freezes the build" do
@@ -86,6 +112,24 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :bad_request
     assert_equal 1, @build.test_runs.count
+  end
+
+  test "installed is displayed as a derived part state instead of an editable option" do
+    sign_in_as users(:julien)
+
+    get new_hangar_part_path
+
+    assert_response :success
+    assert_select "select[name='part[state]'] option[value='installed']", count: 0
+    assert_select "select[name='part[state]'] option", text: "Available"
+    assert_select "select[name='part[state]'] option", text: "Quarantined"
+    assert_select "select[name='part[state]'] option", text: "Retired"
+
+    get edit_hangar_part_path(@part)
+
+    assert_response :success
+    assert_select "select[name='part[state]']", count: 0
+    assert_select "input[disabled][value='Installed']", count: 1
   end
 
   test "bench endpoint rejects invalid or changed credentials and payloads" do
@@ -125,7 +169,6 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
 
   test "operator can replace a part and clone the next build" do
     replacement = Part.create!(
-      internal_number: "PART-FLOW-000002",
       function: @function,
       manufacturer: "Holybro",
       model: "M9N",

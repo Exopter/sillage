@@ -12,6 +12,8 @@ class SignalSession < ApplicationRecord
   validates :uuid, :started_at, presence: true
   validates :uuid, uniqueness: true
   validates :status, inclusion: { in: STATUSES }
+  validates :mavlink_system_id, :mavlink_component_id,
+    inclusion: { in: 1..255 }, allow_nil: true
 
   scope :recent, -> { order(started_at: :desc) }
 
@@ -26,6 +28,20 @@ class SignalSession < ApplicationRecord
       update!(status: "completed", ended_at:)
       flight.update!(status: "processing", ended_at: flight.ended_at || ended_at)
     end
+  end
+
+  def observe_mavlink_identity!(system_id:, component_id: nil)
+    metadata = station_metadata.deep_dup
+    observed_system_ids = Array(metadata["observed_mavlink_system_ids"])
+    observed_component_ids = Array(metadata["observed_mavlink_component_ids"])
+    metadata["observed_mavlink_system_ids"] = (observed_system_ids + [ system_id ]).compact.uniq
+    metadata["observed_mavlink_component_ids"] = (observed_component_ids + [ component_id ]).compact.uniq
+
+    attributes = { station_metadata: metadata }
+    attributes[:mavlink_system_id] = system_id if mavlink_system_id.nil?
+    attributes[:mavlink_component_id] = component_id if mavlink_component_id.nil? && component_id
+    attributes.delete(:station_metadata) if metadata == station_metadata
+    update!(attributes) if attributes.any?
   end
 
   private

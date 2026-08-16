@@ -1,0 +1,48 @@
+<nav class="fdr-breadcrumb" aria-label="Recorder breadcrumb">
+  <%= link_to "Hangar", hangar_path %>
+  <%= sillage_icon "chevron-right", size: 13 %>
+  <% if @aircraft %>
+    <%= link_to @aircraft.registration, hangar_aircraft_path(@aircraft) %>
+    <%= sillage_icon "chevron-right", size: 13 %>
+  <% end %>
+  <span aria-current="page"><%= @assembly.internal_number %></span>
+</nav>
+
+<header class="fdr-connectivity-heading">
+  <div>
+    <span class="section-eyebrow">Flight data recorder</span>
+    <h2><%= @assembly.internal_number %> · <%= @assembly.name %></h2>
+    <p>
+      <%= @assembly.device_id.presence || @controller_part&.serial_number.presence || "Recorder identity not recorded" %>
+      · <%= @assembly.device_model.presence || @controller_part&.model.presence || "Controller model not recorded" %>
+      <% if @aircraft %>· Installed in <%= @aircraft.registration %><% end %>
+    </p>
+  </div>
+
+  <div class="fdr-connectivity-actions">
+    <% if active_tab == :connectivity %>
+      <button type="button" class="button-secondary" data-fdr-wifi-configuration-target="usbButton" data-action="fdr-wifi-configuration#connectUsb">
+        <%= sillage_icon "usb-c", size: 16, stroke_width: 2.4 %>
+        <span>Connect USB-C</span>
+      </button>
+      <button type="button" class="button-secondary" data-fdr-wifi-configuration-target="bleButton" data-action="fdr-wifi-configuration#connectBle">
+        <%= sillage_icon "bluetooth", size: 16 %>
+        <span>Connect BLE</span>
+      </button>
+    <% else %>
+      <%= link_to "Create build", new_forge_build_path(build: { assembly_id: @assembly.id }), class: "button-primary" %>
+      <%= link_to "Edit", edit_hangar_assembly_path(@assembly), class: "button-secondary" %>
+      <%= button_to "Delete", hangar_assembly_path(@assembly), method: :delete, class: "button-danger",
+        form: { data: { turbo_confirm: "Delete #{@assembly.internal_number} permanently? This cannot be undone." } } %>
+    <% end %>
+  </div>
+</header>
+
+<nav class="fdr-recorder-tabs" aria-label="Recorder sections">
+  <%= link_to "Overview", hangar_assembly_path(@assembly),
+    class: ("is-active" if active_tab == :overview),
+    aria: { current: ("page" if active_tab == :overview) } %>
+  <%= link_to "Connectivity", connectivity_hangar_assembly_path(@assembly),
+    class: ("is-active" if active_tab == :connectivity),
+    aria: { current: ("page" if active_tab == :connectivity) } %>
+</nav>

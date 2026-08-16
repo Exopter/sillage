@@ -46,13 +46,18 @@ Rails.application.routes.draw do
     resources :parts
     resources :assemblies do
       member do
+        get :connectivity
         post :install_part
         delete "parts/:part_id", action: :remove_part, as: :remove_part
         patch "parts/:part_id/replace", action: :replace_part, as: :replace_part
         post :attach_assembly
         delete "assemblies/:child_id", action: :detach_assembly, as: :detach_assembly
       end
+      resources :fdr_wifi_profiles, only: %i[create update destroy], path: "wifi-profiles" do
+        member { patch :move }
+      end
     end
+    resources :wifi_credentials, only: :update, path: "wifi-credentials"
     resources :functions
     get "qualification" => "qualification#index", as: :qualification
   end
@@ -87,6 +92,15 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
+      resource :fdr_registration, only: %i[show create], path: "fdr-registration"
+      resource :fdr_sillage_heartbeat, only: :create, path: "fdr-sillage-heartbeat"
+      resources :fdr_sillage_heartbeats, only: :index, path: "fdr-sillage-heartbeats"
+      resource :fdr_authentication, only: :create, path: "fdr-authentication"
+      resources :assemblies, only: [] do
+        resource :fdr_initialization, only: %i[create update], path: "fdr-initialization"
+        resource :fdr_wifi_provisioning, only: %i[create update], path: "fdr-wifi-provisioning"
+      end
+      resources :fdr_syncs, only: :create, path: "fdr-syncs"
       resources :signal_sessions, only: :create, param: :uuid do
         member do
           post :batches

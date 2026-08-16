@@ -4,13 +4,44 @@ class HangarForgeTest < ActiveSupport::TestCase
   setup do
     @gps = Function.create!(code: "gps_test", name: "GPS")
     @imu = Function.create!(code: "imu_test", name: "IMU")
-    @assembly = Assembly.create!(code: "FDR-TEST-001", name: "Test FDR")
+    @assembly = Assembly.create!(name: "Test FDR")
     @gps_part = Part.create!(
-      internal_number: "PART-TEST-000001",
       function: @gps,
       manufacturer: "Holybro",
       model: "M9N"
     )
+  end
+
+  test "parts and assemblies receive immutable Exopter Asset IDs" do
+    assembly = Assembly.create!(name: "Identified assembly")
+    part = Part.create!(function: @gps, model: "Identified part")
+
+    assert_equal format("ASY-%06d", assembly.id), assembly.internal_number
+    assert_equal format("PART-%06d", part.id), part.internal_number
+
+    assert_not assembly.update(internal_number: "ASY-999999")
+    assert_includes assembly.errors[:internal_number], "cannot be changed"
+    assert_not part.update(internal_number: "PART-999999")
+    assert_includes part.errors[:internal_number], "cannot be changed"
+  end
+
+  test "asset IDs remain stable when business attributes change" do
+    assembly_number = @assembly.internal_number
+    part_number = @gps_part.internal_number
+
+    @assembly.update!(name: "Renamed FDR")
+    @gps_part.update!(function: @imu, model: "Replacement role")
+
+    assert_equal assembly_number, @assembly.reload.internal_number
+    assert_equal part_number, @gps_part.reload.internal_number
+  end
+
+  test "physical recorder IDs are normalized, validated, and unique" do
+    recorder = Assembly.create!(name: "Physical recorder", device_id: " exofdr-a172e0 ")
+
+    assert_equal "EXOFDR-A172E0", recorder.device_id
+    assert_not Assembly.new(name: "Duplicate recorder", device_id: "EXOFDR-A172E0").valid?
+    assert_not Assembly.new(name: "Invalid recorder", device_id: "EXOFDR-not-a-chip").valid?
   end
 
   test "part installation keeps one current assembly and state" do
@@ -33,7 +64,7 @@ class HangarForgeTest < ActiveSupport::TestCase
   end
 
   test "assembly cannot be attached below its descendant" do
-    child = Assembly.create!(code: "FDR-TEST-CHILD", name: "Child", parent: @assembly)
+    child = Assembly.create!(name: "Child", parent: @assembly)
 
     assert_not @assembly.update(parent: child)
     assert_includes @assembly.errors[:parent], "cannot be one of its descendants"
@@ -53,7 +84,7 @@ class HangarForgeTest < ActiveSupport::TestCase
   test "cloning captures the current assembly and previous build" do
     @gps_part.install_in!(@assembly)
     original = Build.create!(code: "FDR-DEV-902", assembly: @assembly, created_by: users(:operator))
-    imu_part = Part.create!(internal_number: "PART-TEST-000002", function: @imu, model: "BNO085", assembly: @assembly)
+    imu_part = Part.create!(function: @imu, model: "BNO085", assembly: @assembly)
 
     copy = original.clone_as_next!(by: users(:operator))
     copy.update!(source_revision: "next-revision")

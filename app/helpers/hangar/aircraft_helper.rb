@@ -1,6 +1,6 @@
 module Hangar::AircraftHelper
   def hangar_asset_code(asset)
-    asset.respond_to?(:code) ? asset.code : asset.internal_number
+    asset.internal_number
   end
 
   def hangar_asset_name(asset)

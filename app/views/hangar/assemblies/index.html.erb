@@ -16,7 +16,7 @@
             <% @assemblies.each do |assembly| %>
               <% installed_aircraft = hangar_assembly_aircraft assembly %>
               <tr class="<%= "is-selected" if assembly == @selected_assembly %>">
-                <td><%= link_to hangar_assemblies_path(assembly_id: assembly.id), class: "hangar-table-primary" do %><strong><%= assembly.code %></strong><small><%= assembly.name %></small><% end %></td>
+                <td><%= link_to hangar_assemblies_path(assembly_id: assembly.id), class: "hangar-table-primary" do %><strong><%= assembly.internal_number %></strong><small><%= assembly.name %></small><% end %></td>
                 <td><%= installed_aircraft&.registration || "Not installed" %></td>
                 <td><%= assembly.parts.size %></td>
                 <td><span class="status-dot is-<%= installed_aircraft ? "ready" : "unknown" %>"><span></span><%= installed_aircraft ? "Serviceable" : "In preparation" %></span></td>
@@ -32,15 +32,22 @@
       <header class="hangar-panel-head"><span class="section-eyebrow">Assembly details</span></header>
       <div class="hangar-details-body">
         <span class="section-eyebrow"><%= @selected_assembly.parent ? "Subassembly" : "Root assembly" %></span>
-        <h3><%= @selected_assembly.code %></h3>
+        <h3><%= @selected_assembly.internal_number %></h3>
         <p><%= @selected_assembly.notes.presence || "Reusable configuration managed in the Sillage Hangar." %></p>
         <dl>
           <div><dt>Name</dt><dd><%= @selected_assembly.name %></dd></div>
           <div><dt>Installed in</dt><dd><%= selected_aircraft&.registration || "Not installed" %></dd></div>
           <div><dt>Direct parts</dt><dd><%= @selected_assembly.parts.size %></dd></div>
-          <div><dt>Parent</dt><dd><%= @selected_assembly.parent&.code || "—" %></dd></div>
+          <div><dt>Parent</dt><dd><%= @selected_assembly.parent&.internal_number || "—" %></dd></div>
+          <div><dt>Recorder identity</dt><dd><%= @selected_assembly.device_id || "Not identified" %></dd></div>
+          <div><dt>MAVLink identity</dt><dd><%= @selected_assembly.mavlink_identity_label || "Not observed yet" %></dd></div>
         </dl>
-        <%= link_to "Open assembly", hangar_assembly_path(@selected_assembly), class: "workspace-strong-link" %>
+        <div class="workspace-actions">
+          <%= link_to "Open", hangar_assembly_path(@selected_assembly), class: "button-secondary is-compact" %>
+          <%= link_to "Edit", edit_hangar_assembly_path(@selected_assembly), class: "button-secondary is-compact" %>
+          <%= button_to "Delete", hangar_assembly_path(@selected_assembly), method: :delete, class: "button-danger is-compact",
+            form: { data: { turbo_confirm: "Delete #{@selected_assembly.internal_number} permanently? This cannot be undone." } } %>
+        </div>
       </div>
       <footer class="hangar-detail-note">Parts are installed in an assembly. Aircraft installation is tracked separately, so the complete assembly can be moved without rewriting its contents.</footer>
     </section>

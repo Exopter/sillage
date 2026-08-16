@@ -1,5 +1,5 @@
 <article class="build-snapshot-node">
-  <header><strong><%= node["code"] %></strong><span><%= node["name"] %></span></header>
+  <header><strong><%= node["internal_number"] %></strong><span><%= node["name"] %></span></header>
   <% if Array(node["parts"]).any? %>
     <ul>
       <% Array(node["parts"]).each do |part| %>

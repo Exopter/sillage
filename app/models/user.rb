@@ -11,6 +11,9 @@ class User < ApplicationRecord
   has_many :flight_imports, dependent: :restrict_with_error
   has_many :flights, dependent: :restrict_with_error
   has_many :signal_sessions, dependent: :restrict_with_error
+  has_many :created_wifi_credentials,
+    class_name: "WifiCredential", foreign_key: :created_by_id,
+    inverse_of: :created_by, dependent: :restrict_with_error
   has_many :created_builds, class_name: "Build", foreign_key: :created_by_id, dependent: :restrict_with_error
   has_many :operated_test_runs, class_name: "TestRun", foreign_key: :operator_id, dependent: :restrict_with_error
   has_many :validated_test_runs, class_name: "TestRun", foreign_key: :validated_by_id, dependent: :restrict_with_error

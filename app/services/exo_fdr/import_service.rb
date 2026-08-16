@@ -56,15 +56,14 @@ module ExoFdr
         first = decoded_files.first.last
         @flight_import.update!(
           status: "imported",
-          device_id: "EXOFDR-#{first.header.fetch('boot_id')}",
           firmware_version: first.header["firmware"],
           log_started_at: started_at_for(first.records),
-          details: {
+          details: @flight_import.details.to_h.merge(
             "format" => "exofdr_binary_v#{first.header.fetch('format_version')}",
             "files" => decoded_files.map do |filename, result|
               { "filename" => filename, "header" => result.header, "recovery" => result.stats }
             end
-          }
+          )
         )
       end
       @flight_import

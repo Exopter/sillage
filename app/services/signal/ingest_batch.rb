@@ -102,10 +102,13 @@ module Signal
 
     def identify_flight_context
       flight = @signal_session.flight
+      Signal::IdentifySource.new(
+        signal_session: @signal_session,
+        system_id: @payload["mavlink_system_id"] || @payload["telemetry_system_id"],
+        component_id: @payload["mavlink_component_id"]
+      ).call
+
       attributes = {}
-      if flight.aircraft_id.nil? && @payload["telemetry_system_id"].present?
-        attributes[:aircraft] = Aircraft.find_by(telemetry_system_id: @payload["telemetry_system_id"].to_s)
-      end
       if flight.landing_zone_id.nil? && @payload.dig("position", "latitude").present? && @payload.dig("position", "longitude").present?
         attributes[:landing_zone] = LandingZone.detect(
           latitude: @payload.dig("position", "latitude"),
@@ -114,7 +117,6 @@ module Signal
       end
       attributes.compact!
       flight.update!(attributes) if attributes.any?
-      @signal_session.update!(station_metadata: @signal_session.station_metadata.merge("telemetry_system_id" => @payload["telemetry_system_id"])) if @payload["telemetry_system_id"].present?
     end
 
     def broadcast(batch)

@@ -1,0 +1,176 @@
+<section id="sillage-fdr-connectivity"
+         class="signal-fdr-connectivity"
+         data-turbo-permanent
+         data-controller="fdr-connectivity"
+         data-fdr-connectivity-upload-url-value="<%= api_v1_fdr_syncs_path %>"
+         data-fdr-connectivity-registration-url-value="<%= api_v1_fdr_registration_path %>"
+         data-fdr-connectivity-authentication-url-value="<%= api_v1_fdr_authentication_path %>"
+         data-fdr-connectivity-sillage-heartbeat-url-value="<%= api_v1_fdr_sillage_heartbeats_path %>">
+  <header class="signal-fdr-head">
+    <div>
+      <span class="signal-k">Integrated recorder</span>
+      <h2>FDR connectivity</h2>
+      <p>USB-C, BLE and Wi-Fi report recorder connectivity. USB-C also synchronizes telemetry; USB-C and BLE provide settings.</p>
+    </div>
+  </header>
+
+  <div class="signal-fdr-transports" aria-label="Recorder connections">
+    <article class="signal-fdr-transport">
+      <div class="signal-fdr-channel-head">
+        <div class="signal-fdr-channel-identity">
+          <span class="signal-fdr-channel-icon"><%= sillage_icon "usb-c", size: 19, stroke_width: 2.4 %></span>
+          <div><span class="signal-k">USB-C</span><strong data-fdr-connectivity-target="usbStatus" data-state="disconnected">Not connected</strong></div>
+        </div>
+        <button type="button" class="signal-tool-button is-primary" data-action="fdr-connectivity#connectUsb" data-fdr-connectivity-target="usbButton">Connect USB-C</button>
+      </div>
+      <div class="signal-fdr-transport-feedback">
+        <strong data-fdr-connectivity-target="usbDevice">No recorder selected</strong>
+        <progress class="signal-fdr-progress" value="0" max="1" data-fdr-connectivity-target="syncProgress" hidden></progress>
+        <div class="signal-fdr-transport-notice" data-fdr-connectivity-target="usbNotice" data-state="status" role="status" hidden>
+          <span class="signal-fdr-transport-notice-label" data-fdr-connectivity-target="usbNoticeLabel">Synchronization</span>
+          <small class="signal-fdr-transport-message" data-fdr-connectivity-target="syncDetail" hidden></small>
+          <small class="signal-fdr-technical" data-fdr-connectivity-target="syncTechnical" hidden></small>
+        </div>
+        <div class="signal-fdr-capabilities" aria-label="USB-C capabilities">
+          <span>Capabilities</span>
+          <ul>
+            <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Live status, settings and diagnostics</span></li>
+            <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Telemetry synchronization</span></li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="signal-fdr-transport">
+      <div class="signal-fdr-channel-head">
+        <div class="signal-fdr-channel-identity">
+          <span class="signal-fdr-channel-icon"><%= sillage_icon "bluetooth", size: 17 %></span>
+          <div><span class="signal-k">Bluetooth Low Energy</span><strong data-fdr-connectivity-target="bleStatus" data-state="disconnected">Not connected</strong></div>
+        </div>
+        <button type="button" class="signal-tool-button" data-action="fdr-connectivity#connectBle" data-fdr-connectivity-target="bleButton">Connect BLE</button>
+      </div>
+      <div class="signal-fdr-transport-feedback">
+        <strong data-fdr-connectivity-target="bleDevice">No recorder selected</strong>
+        <div class="signal-fdr-transport-notice" data-fdr-connectivity-target="bleNotice" data-state="status" role="status" hidden>
+          <span class="signal-fdr-transport-notice-label" data-fdr-connectivity-target="bleNoticeLabel">Connection status</span>
+          <small class="signal-fdr-transport-message" data-fdr-connectivity-target="bleDetail" hidden></small>
+        </div>
+        <div class="signal-fdr-capabilities" aria-label="Bluetooth Low Energy capabilities">
+          <span>Capabilities</span>
+          <ul>
+            <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Live status, settings and diagnostics</span></li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="signal-fdr-transport">
+      <div class="signal-fdr-channel-head">
+        <div class="signal-fdr-channel-identity">
+          <span class="signal-fdr-channel-icon"><%= sillage_icon "wifi", size: 17 %></span>
+          <div><span class="signal-k">Wi-Fi</span><strong data-fdr-connectivity-target="wifiStatus" data-state="disconnected">Not connected</strong></div>
+        </div>
+        <span class="signal-tool-button signal-fdr-auto-label"
+              data-fdr-connectivity-target="wifiAutoLabel"
+              aria-label="Automatic Wi-Fi connection: waiting for signed Sillage heartbeat"
+              title="Waiting for signed Sillage heartbeat">Automatic</span>
+      </div>
+      <div class="signal-fdr-transport-feedback">
+        <strong data-fdr-connectivity-target="wifiDevice">No recorder detected</strong>
+        <div class="signal-fdr-transport-notice" data-fdr-connectivity-target="wifiNotice" data-state="status" role="status" hidden>
+          <span class="signal-fdr-transport-notice-label" data-fdr-connectivity-target="wifiNoticeLabel">Automatic connection</span>
+          <small class="signal-fdr-transport-message" data-fdr-connectivity-target="wifiDetail" hidden></small>
+        </div>
+        <div class="signal-fdr-capabilities" aria-label="Wi-Fi capabilities">
+          <span>Capabilities</span>
+          <ul>
+            <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Signed live status and diagnostics</span></li>
+          </ul>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <section class="signal-fdr-overview" aria-labelledby="recorder-information-title">
+    <header class="signal-fdr-section-head">
+      <div class="signal-fdr-overview-title">
+        <div><span class="signal-k">Recorder</span><h3 id="recorder-information-title">Information</h3></div>
+        <span class="signal-fdr-recorder-status" hidden
+              data-fdr-connectivity-target="recorderStatus"
+              data-state="disconnected"></span>
+      </div>
+      <span class="signal-fdr-source" data-fdr-connectivity-target="recorderSource" data-state="disconnected" hidden></span>
+    </header>
+    <div class="signal-fdr-recorder-alert" data-fdr-connectivity-target="recorderAlert" role="alert" hidden>
+      <strong data-fdr-connectivity-target="recorderAlertMessage"></strong>
+      <small data-fdr-connectivity-target="recorderAlertTechnical" hidden></small>
+    </div>
+    <div class="signal-fdr-onboarding" data-fdr-connectivity-target="recorderOnboarding" hidden>
+      <div>
+        <span class="signal-k">Secure onboarding</span>
+        <strong data-fdr-connectivity-target="recorderOnboardingTitle">New recorder detected</strong>
+        <small class="signal-fdr-wifi-status" data-fdr-connectivity-target="wifiRegistrationStatus" role="status"></small>
+      </div>
+      <button type="button" class="signal-tool-button is-primary"
+              data-action="fdr-connectivity#onboardRecorder"
+              data-fdr-connectivity-target="wifiRegisterButton">
+        <%= sillage_icon "shield", size: 15 %>
+        <span data-fdr-connectivity-target="wifiRegisterLabel">Add and initialize recorder</span>
+      </button>
+    </div>
+    <dl class="signal-fdr-status-list">
+      <div><dt>Recorder</dt><dd data-fdr-connectivity-target="recorderDevice">No recorder identified</dd></div>
+      <div><dt>Firmware</dt><dd data-fdr-connectivity-target="recorderFirmware">—</dd></div>
+      <div><dt>Health</dt><dd data-fdr-connectivity-target="health">—</dd></div>
+      <div><dt>Storage</dt><dd data-fdr-connectivity-target="storage">—</dd></div>
+      <div><dt>Synchronization</dt><dd data-fdr-connectivity-target="lastSync">—</dd></div>
+      <div><dt>Security</dt><dd data-fdr-connectivity-target="security">—</dd></div>
+    </dl>
+  </section>
+
+  <details class="signal-fdr-tools" data-fdr-connectivity-target="recorderTools">
+    <summary class="signal-fdr-tools-summary">
+      <div><span class="signal-k">Recorder tools</span><strong>Settings and diagnostics</strong></div>
+      <small data-fdr-connectivity-target="recorderToolsHint">Connect USB-C or BLE to access</small>
+    </summary>
+    <div class="signal-fdr-tools-body">
+      <div class="signal-fdr-controls">
+        <h3 id="recorder-controls-title">Recorder controls</h3>
+        <div class="signal-fdr-config">
+          <label for="fdr-status-interval">Status update interval</label>
+          <select id="fdr-status-interval" disabled data-fdr-connectivity-target="configInterval">
+            <option value="1">1 second</option>
+            <option value="5" selected>5 seconds</option>
+            <option value="10">10 seconds</option>
+            <option value="30">30 seconds</option>
+          </select>
+          <button type="button" class="signal-tool-button" disabled data-action="fdr-connectivity#saveConfig" data-fdr-connectivity-target="configButton">Save</button>
+        </div>
+        <small class="signal-fdr-config-result" data-fdr-connectivity-target="configResult">Connect over USB-C or BLE to change recorder settings.</small>
+      </div>
+
+      <div class="signal-fdr-diagnostics">
+        <header class="signal-fdr-section-head">
+          <h3>Diagnostics</h3>
+          <button type="button" class="signal-fdr-debug-button" disabled data-action="fdr-connectivity#refreshDebug" data-fdr-connectivity-target="debugButton">Refresh debug log</button>
+        </header>
+        <pre class="signal-fdr-debug" data-fdr-connectivity-target="debug">No debug snapshot loaded.</pre>
+      </div>
+
+      <div class="signal-fdr-wifi-entry">
+        <div>
+          <span class="signal-k">Recorder network</span>
+          <h3>Wi-Fi configuration</h3>
+          <small data-fdr-connectivity-target="wifiDescription">Manage saved networks and apply them to the recorder over USB-C or BLE.</small>
+        </div>
+        <div class="signal-fdr-wifi-actions">
+          <%= link_to @fdr_wifi_recorder ? connectivity_hangar_assembly_path(@fdr_wifi_recorder) : hangar_assemblies_path,
+            class: "signal-tool-button", data: { fdr_connectivity_target: "wifiLink" } do %>
+            <%= sillage_icon "wifi", size: 15 %>
+            <span data-fdr-connectivity-target="wifiLinkLabel"><%= @fdr_wifi_recorder ? "Configure Wi-Fi" : "Select recorder in Hangar" %></span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </details>
+</section>
