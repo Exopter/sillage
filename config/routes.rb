@@ -11,15 +11,11 @@ Rails.application.routes.draw do
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
-
-  # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
-  # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
-  # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
+  get "ready" => "readiness#show", as: :readiness if ActiveModel::Type::Boolean.new.cast(ENV.fetch("MONITORING_ENABLED", "false"))
 
   constraints ->(request) { landing_hosts.include?(request.host) } do
     root "landing#show", as: :landing_root
   end
-  get "landing" => "landing#show", as: :landing
 
   resource :session, only: %i[new create destroy]
   delete "logout" => "sessions#destroy", as: :logout
@@ -61,7 +57,7 @@ Rails.application.routes.draw do
     get "qualification" => "qualification#index", as: :qualification
   end
 
-  resources :signal_sessions, only: %i[create show]
+  resources :signal_sessions, only: :create
 
   scope module: :forge, path: "forge", as: "forge" do
     resources :builds do
@@ -85,7 +81,6 @@ Rails.application.routes.draw do
         patch :reset_two_factor
       end
     end
-    resources :functions
   end
 
   namespace :api do
@@ -112,8 +107,6 @@ Rails.application.routes.draw do
     end
   end
   get "flight/hud" => "dashboard#hud", as: :flight_hud
-
-  get "devreference/design-system" => "devreference/design_system#show", as: :devreference_design_system
 
   resources :flight_imports, only: [ :new, :create, :show ]
   resources :flights

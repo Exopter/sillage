@@ -16,12 +16,15 @@ class HangarForgeTest < ActiveSupport::TestCase
     assembly = Assembly.create!(name: "Identified assembly")
     part = Part.create!(function: @gps, model: "Identified part")
 
-    assert_equal format("ASY-%06d", assembly.id), assembly.internal_number
-    assert_equal format("PART-%06d", part.id), part.internal_number
+    assert_match(/\AEXO-\d{6,}\z/, assembly.internal_number)
+    assert_match(/\AEXO-\d{6,}\z/, part.internal_number)
+    assert_not_equal assembly.internal_number, part.internal_number
+    assert_equal assembly.internal_number, assembly.asset_identifier.formatted
+    assert_equal part.internal_number, part.asset_identifier.formatted
 
-    assert_not assembly.update(internal_number: "ASY-999999")
+    assert_not assembly.update(internal_number: "EXO-999999")
     assert_includes assembly.errors[:internal_number], "cannot be changed"
-    assert_not part.update(internal_number: "PART-999999")
+    assert_not part.update(internal_number: "EXO-999998")
     assert_includes part.errors[:internal_number], "cannot be changed"
   end
 
@@ -34,6 +37,18 @@ class HangarForgeTest < ActiveSupport::TestCase
 
     assert_equal assembly_number, @assembly.reload.internal_number
     assert_equal part_number, @gps_part.reload.internal_number
+  end
+
+  test "asset IDs are never reused after an asset is deleted" do
+    deleted_number = @gps_part.internal_number
+    identifier = @gps_part.asset_identifier
+
+    @gps_part.destroy!
+    replacement = Part.create!(function: @gps, model: "Replacement part")
+
+    assert AssetIdentifier.exists?(identifier.id)
+    assert_not_equal deleted_number, replacement.internal_number
+    assert_operator replacement.asset_identifier.id, :>, identifier.id
   end
 
   test "physical recorder IDs are normalized, validated, and unique" do

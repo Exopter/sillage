@@ -38,7 +38,7 @@ module FlySight
         }
       end
 
-      raise Error, "Aucun point GPS valide dans #{@filename || "le CSV FlySight"}." if track_points.empty?
+      raise Error, "No valid GPS point was found in #{@filename || "the FlySight CSV"}." if track_points.empty?
 
       ParsedSession.new(
         format: "flysight_v1",
@@ -57,7 +57,7 @@ module FlySight
       missing = REQUIRED_COLUMNS - headers
       return if missing.empty?
 
-      raise Error, "CSV FlySight V1 invalide: colonnes manquantes #{missing.join(", ")}."
+      raise Error, "Invalid FlySight V1 CSV: missing columns #{missing.join(", ")}."
     end
   end
 end

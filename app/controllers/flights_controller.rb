@@ -142,13 +142,6 @@ class FlightsController < ApplicationController
     end
   end
 
-  def downsample(records, limit:)
-    return records if records.size <= limit
-
-    step = (records.size.to_f / limit).ceil
-    records.each_with_index.filter_map { |record, index| record if (index % step).zero? }
-  end
-
   def sampled_track_points(limit:)
     scope = @flight.track_points.ordered
     count = scope.count

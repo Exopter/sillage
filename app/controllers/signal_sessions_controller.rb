@@ -18,9 +18,4 @@ class SignalSessionsController < ApplicationController
     )
     redirect_to signal_path(session: signal_session.uuid), notice: "Signal session started."
   end
-
-  def show
-    session = Current.user.signal_sessions.find_by!(uuid: params[:id])
-    redirect_to signal_path(session: session.uuid)
-  end
 end

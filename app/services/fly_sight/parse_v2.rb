@@ -17,7 +17,7 @@ module FlySight
       track_points = parse_track_points(track_document)
       sensor_samples = parse_sensor_samples(sensor_document, track_points.first&.fetch(:recorded_at, nil))
 
-      raise Error, "Aucun point GNSS valide dans #{@track_filename}." if track_points.empty?
+      raise Error, "No valid GNSS point was found in #{@track_filename}." if track_points.empty?
 
       ParsedSession.new(
         format: "flysight_v2",
@@ -65,14 +65,14 @@ module FlySight
         end
       end
 
-      raise Error, "Fichier FlySight V2 invalide: section $DATA absente." unless in_data
+      raise Error, "Invalid FlySight V2 file: missing $DATA section." unless in_data
 
       { vars: vars, columns: columns, units: units, rows: data_rows }
     end
 
     def parse_track_points(document)
       columns = document.fetch(:columns).fetch("GNSS") do
-        raise Error, "#{@track_filename} ne contient pas de définition $COL,GNSS."
+        raise Error, "#{@track_filename} does not contain a $COL,GNSS definition."
       end
 
       document.fetch(:rows).filter_map do |row|

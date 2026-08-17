@@ -1,0 +1,56 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "set"
+
+ROOT = File.expand_path("..", __dir__)
+STYLESHEET_GLOB = File.join(ROOT, "app/assets/stylesheets/**/*.css")
+CONSUMER_GLOBS = %w[
+  app/components/**/*.{erb,rb}
+  app/helpers/**/*.rb
+  app/javascript/**/*.{js,mjs}
+  app/views/**/*.{erb,html}
+].freeze
+
+# These selectors belong to markup created by Rails or third-party JavaScript.
+RUNTIME_CLASSES = Set.new(%w[
+  cesium-button
+  cesium-viewer
+  cesium-widget
+  field_with_errors
+  is-available
+  is-failed
+  is-fault
+  is-installed
+  is-level-1
+  is-level-2
+  is-level-3
+  is-quarantined
+  is-retired
+  notice
+  turbo-progress-bar
+]).freeze
+
+stylesheets = Dir[STYLESHEET_GLOB].sort
+consumers = CONSUMER_GLOBS.flat_map { |glob| Dir[File.join(ROOT, glob)] }.uniq.sort
+consumer_source = consumers.map { |path| File.read(path) }.join("\n")
+
+defined_classes = stylesheets.flat_map do |path|
+  File.read(path).scan(/([^{}]+)\{/).flat_map do |selector|
+    selector.first.scan(/\.([A-Za-z_][A-Za-z0-9_-]*)/).flatten
+  end
+end.to_set
+
+unused_classes = defined_classes.reject do |name|
+  RUNTIME_CLASSES.include?(name) || consumer_source.match?(/(?<![A-Za-z0-9_-])#{Regexp.escape(name)}(?![A-Za-z0-9_-])/)
+end.sort
+
+if unused_classes.empty?
+  puts "Unused CSS selector guard passed: every declared class has a consumer."
+  exit 0
+end
+
+warn "CSS classes without a consumer:"
+unused_classes.each { |name| warn "  .#{name}" }
+warn "Remove the selector or document a runtime-generated consumer in RUNTIME_CLASSES."
+exit 1

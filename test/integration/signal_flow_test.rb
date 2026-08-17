@@ -163,6 +163,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "#sillage-fdr-connectivity[data-fdr-connectivity-expected-device-id-value]", count: 0
     assert_select ".sillage-persistent-fdr-connectivity", count: 0
     assert_select ".signal-fdr-transport", count: 3
+    assert_select ".signal-fdr-channel-head.signal-fdr-channel-head--usb", count: 1
     assert_select ".signal-fdr-channel-identity .signal-k", text: /\AUSB-C\z/, count: 1
     assert_select "button[data-action='fdr-connectivity#connectUsb']", text: "Connect USB-C"
     assert_select "button[data-action='fdr-connectivity#connectBle']", text: "Connect BLE"
@@ -171,28 +172,33 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-fdr-connectivity-target='wifiDevice']", text: "No recorder detected"
     assert_select ".signal-fdr-transport-meta", count: 0
     assert_select ".signal-fdr-capabilities", count: 3
-    assert_select ".signal-fdr-capabilities > span", text: "Capabilities", count: 3
-    assert_select ".signal-fdr-capabilities li", count: 4
-    assert_select ".signal-fdr-capabilities", text: /Telemetry synchronization/, count: 1
+    assert_select ".signal-fdr-capabilities-trigger[aria-describedby]", count: 3
+    assert_select ".signal-fdr-capabilities-tooltip[role='tooltip']", count: 3
+    assert_select ".signal-fdr-capabilities-tooltip > span", text: "Capabilities", count: 3
+    assert_select ".signal-fdr-capabilities-tooltip li", count: 4
+    assert_select ".signal-fdr-capabilities-tooltip", text: /Telemetry synchronization/, count: 1
+    assert_select ".signal-fdr-capabilities-trigger[aria-label='USB-C capabilities'][aria-describedby='usb-capabilities-tooltip']"
+    assert_select "#usb-capabilities-tooltip[role='tooltip']"
+    assert_select ".signal-fdr-capabilities-trigger[aria-label='Bluetooth Low Energy capabilities'][aria-describedby='ble-capabilities-tooltip']"
+    assert_select "#ble-capabilities-tooltip[role='tooltip']"
+    assert_select ".signal-fdr-capabilities-trigger[aria-label='Wi-Fi capabilities'][aria-describedby='wifi-capabilities-tooltip']"
+    assert_select "#wifi-capabilities-tooltip[role='tooltip']"
     usb_feedback_children = css_select(".signal-fdr-transport:first-of-type .signal-fdr-transport-feedback > *")
     assert_equal [
-      "usbDevice",
+      "signal-fdr-device-row",
       "syncProgress",
-      "usbNotice",
-      "USB-C capabilities"
-    ], usb_feedback_children.map { |node| node["data-fdr-connectivity-target"] || node["aria-label"] }
+      "usbNotice"
+    ], usb_feedback_children.map { |node| node["data-fdr-connectivity-target"] || node["class"] }
     ble_feedback_children = css_select(".signal-fdr-transport:nth-of-type(2) .signal-fdr-transport-feedback > *")
     assert_equal [
-      "bleDevice",
-      "bleNotice",
-      "Bluetooth Low Energy capabilities"
-    ], ble_feedback_children.map { |node| node["data-fdr-connectivity-target"] || node["aria-label"] }
+      "signal-fdr-device-row",
+      "bleNotice"
+    ], ble_feedback_children.map { |node| node["data-fdr-connectivity-target"] || node["class"] }
     wifi_feedback_children = css_select(".signal-fdr-transport:nth-of-type(3) .signal-fdr-transport-feedback > *")
     assert_equal [
-      "wifiDevice",
-      "wifiNotice",
-      "Wi-Fi capabilities"
-    ], wifi_feedback_children.map { |node| node["data-fdr-connectivity-target"] || node["aria-label"] }
+      "signal-fdr-device-row",
+      "wifiNotice"
+    ], wifi_feedback_children.map { |node| node["data-fdr-connectivity-target"] || node["class"] }
     assert_select "[data-fdr-connectivity-target='usbNotice'][data-state='status'][role='status'][hidden]"
     assert_select "[data-fdr-connectivity-target='bleNotice'][data-state='status'][role='status'][hidden]"
     assert_select "[data-fdr-connectivity-target='syncDetail'][hidden]"

@@ -11,9 +11,6 @@
 
     <%= yield :head %>
 
-    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
-    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
-
     <link rel="icon" href="/icon.svg?v=exopter-e" type="image/svg+xml">
 
     <%# Includes all stylesheet files in app/assets/stylesheets %>
@@ -40,6 +37,15 @@
             <% end %>
           <% end %>
         </nav>
+        <% if Current.user&.admin? %>
+          <%= link_to core_path,
+            class: [ "sillage-room-link", "sillage-core-link", ("is-active" if sillage_current_room == "core") ],
+            title: "Core",
+            aria: { current: ("page" if sillage_current_room == "core") } do %>
+            <span class="sillage-room-icon"><%= sillage_icon "shield", size: 18, class_name: "sillage-room-svg" %></span>
+            <span class="sillage-room-label">Core</span>
+          <% end %>
+        <% end %>
       </aside>
 
       <div class="sillage-main">

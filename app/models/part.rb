@@ -1,7 +1,6 @@
 class Part < ApplicationRecord
   include AssetIdentifiable
 
-  ASSET_IDENTIFIER_PREFIX = "PART"
   STATES = %w[available installed quarantined retired].freeze
   EDITABLE_STATES = %w[available quarantined retired].freeze
 
@@ -17,7 +16,7 @@ class Part < ApplicationRecord
 
   validates :model, presence: true
   validates :internal_number, uniqueness: true, allow_nil: true
-  validates :internal_number, format: { with: /\APART-\d{6,}\z/ }, allow_nil: true
+  validates :internal_number, format: { with: /\AEXO-\d{6,}\z/ }, allow_nil: true
   validates :serial_number, uniqueness: { scope: :manufacturer }, allow_blank: true
   validates :state, inclusion: { in: STATES }
   validate :non_serviceable_part_is_not_installed

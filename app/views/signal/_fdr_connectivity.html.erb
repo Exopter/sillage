@@ -16,7 +16,7 @@
 
   <div class="signal-fdr-transports" aria-label="Recorder connections">
     <article class="signal-fdr-transport">
-      <div class="signal-fdr-channel-head">
+      <div class="signal-fdr-channel-head signal-fdr-channel-head--usb">
         <div class="signal-fdr-channel-identity">
           <span class="signal-fdr-channel-icon"><%= sillage_icon "usb-c", size: 19, stroke_width: 2.4 %></span>
           <div><span class="signal-k">USB-C</span><strong data-fdr-connectivity-target="usbStatus" data-state="disconnected">Not connected</strong></div>
@@ -34,19 +34,28 @@
         </div>
       </div>
       <div class="signal-fdr-transport-feedback">
-        <strong data-fdr-connectivity-target="usbDevice">No recorder selected</strong>
+        <div class="signal-fdr-device-row">
+          <strong data-fdr-connectivity-target="usbDevice">No recorder selected</strong>
+          <div class="signal-fdr-capabilities">
+            <button type="button" class="signal-fdr-capabilities-trigger"
+                    aria-label="USB-C capabilities"
+                    aria-describedby="usb-capabilities-tooltip">
+              <%= sillage_icon "info", size: 14 %>
+            </button>
+            <div id="usb-capabilities-tooltip" class="signal-fdr-capabilities-tooltip" role="tooltip">
+              <span>Capabilities</span>
+              <ul>
+                <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Live status, settings and diagnostics</span></li>
+                <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Telemetry synchronization, interruption and authenticated recording erasure</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
         <progress class="signal-fdr-progress" value="0" max="1" data-fdr-connectivity-target="syncProgress" hidden></progress>
         <div class="signal-fdr-transport-notice" data-fdr-connectivity-target="usbNotice" data-state="status" role="status" hidden>
           <span class="signal-fdr-transport-notice-label" data-fdr-connectivity-target="usbNoticeLabel">Synchronization</span>
           <small class="signal-fdr-transport-message" data-fdr-connectivity-target="syncDetail" hidden></small>
           <small class="signal-fdr-technical" data-fdr-connectivity-target="syncTechnical" hidden></small>
-        </div>
-        <div class="signal-fdr-capabilities" aria-label="USB-C capabilities">
-          <span>Capabilities</span>
-          <ul>
-            <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Live status, settings and diagnostics</span></li>
-            <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Telemetry synchronization, interruption and authenticated recording erasure</span></li>
-          </ul>
         </div>
       </div>
     </article>
@@ -60,16 +69,25 @@
         <button type="button" class="signal-tool-button" data-action="fdr-connectivity#connectBle" data-fdr-connectivity-target="bleButton">Connect BLE</button>
       </div>
       <div class="signal-fdr-transport-feedback">
-        <strong data-fdr-connectivity-target="bleDevice">No recorder selected</strong>
+        <div class="signal-fdr-device-row">
+          <strong data-fdr-connectivity-target="bleDevice">No recorder selected</strong>
+          <div class="signal-fdr-capabilities">
+            <button type="button" class="signal-fdr-capabilities-trigger"
+                    aria-label="Bluetooth Low Energy capabilities"
+                    aria-describedby="ble-capabilities-tooltip">
+              <%= sillage_icon "info", size: 14 %>
+            </button>
+            <div id="ble-capabilities-tooltip" class="signal-fdr-capabilities-tooltip" role="tooltip">
+              <span>Capabilities</span>
+              <ul>
+                <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Live status, settings and diagnostics</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
         <div class="signal-fdr-transport-notice" data-fdr-connectivity-target="bleNotice" data-state="status" role="status" hidden>
           <span class="signal-fdr-transport-notice-label" data-fdr-connectivity-target="bleNoticeLabel">Connection status</span>
           <small class="signal-fdr-transport-message" data-fdr-connectivity-target="bleDetail" hidden></small>
-        </div>
-        <div class="signal-fdr-capabilities" aria-label="Bluetooth Low Energy capabilities">
-          <span>Capabilities</span>
-          <ul>
-            <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Live status, settings and diagnostics</span></li>
-          </ul>
         </div>
       </div>
     </article>
@@ -86,16 +104,25 @@
               title="Waiting for signed Sillage heartbeat">Automatic</span>
       </div>
       <div class="signal-fdr-transport-feedback">
-        <strong data-fdr-connectivity-target="wifiDevice">No recorder detected</strong>
+        <div class="signal-fdr-device-row">
+          <strong data-fdr-connectivity-target="wifiDevice">No recorder detected</strong>
+          <div class="signal-fdr-capabilities">
+            <button type="button" class="signal-fdr-capabilities-trigger"
+                    aria-label="Wi-Fi capabilities"
+                    aria-describedby="wifi-capabilities-tooltip">
+              <%= sillage_icon "info", size: 14 %>
+            </button>
+            <div id="wifi-capabilities-tooltip" class="signal-fdr-capabilities-tooltip" role="tooltip">
+              <span>Capabilities</span>
+              <ul>
+                <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Signed live status and diagnostics</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
         <div class="signal-fdr-transport-notice" data-fdr-connectivity-target="wifiNotice" data-state="status" role="status" hidden>
           <span class="signal-fdr-transport-notice-label" data-fdr-connectivity-target="wifiNoticeLabel">Automatic connection</span>
           <small class="signal-fdr-transport-message" data-fdr-connectivity-target="wifiDetail" hidden></small>
-        </div>
-        <div class="signal-fdr-capabilities" aria-label="Wi-Fi capabilities">
-          <span>Capabilities</span>
-          <ul>
-            <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Signed live status and diagnostics</span></li>
-          </ul>
         </div>
       </div>
     </article>

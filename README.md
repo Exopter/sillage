@@ -18,14 +18,23 @@ Open `http://localhost:3000`.
 bin/ci
 ```
 
-The suite checks Ruby style, design-system usage, the documentation boundary,
+The suite checks Ruby style, canonical design-system synchronization,
+design-system usage, unused CSS selectors, the documentation boundary,
 JavaScript workers, dependency security, Rails tests, and seeds.
 
 ## Design implementation
 
 - Shared design assets: [Exopter/design-system](https://github.com/Exopter/design-system)
-- Rails visual reference: `/devreference/design-system`
-- Canonical tokens: `app/assets/stylesheets/exopter_design_system.css`
+- Canonical tokens: `../design_system/tokens/exopter-tokens.css`
+- Rails consumer copy: `app/assets/stylesheets/exopter_design_system.css`
+
+Check or refresh the byte-for-byte consumer copy from a sibling checkout:
+
+```sh
+ruby script/sync_design_system_tokens --check
+ruby script/sync_design_system_tokens --write
+```
+
 - Shared application components: `app/assets/stylesheets/application.css`
 
 Design decisions and governance live in the

@@ -1,5 +1,5 @@
 export const USB_PROTOCOL_VERSION = 1
-export const USB_CHUNK_SIZE = 1024
+export const USB_CHUNK_SIZE = 4096
 export const USB_CONNECTION_TIMEOUT_MS = 10_000
 export const USB_REQUEST_TIMEOUT_MS = 30_000
 export const USB_FILE_PREPARATION_TIMEOUT_MS = 120_000

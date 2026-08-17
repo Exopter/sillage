@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_17_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_17_120000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -70,6 +70,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_100000) do
     t.index ["internal_number"], name: "index_assemblies_on_internal_number", unique: true
     t.index ["last_sillage_seen_at"], name: "index_assemblies_on_last_sillage_seen_at"
     t.index ["parent_id"], name: "index_assemblies_on_parent_id"
+  end
+
+  create_table "asset_identifiers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "identifiable_id", null: false
+    t.string "identifiable_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["identifiable_type", "identifiable_id"], name: "index_asset_identifiers_on_identifiable", unique: true
   end
 
   create_table "builds", force: :cascade do |t|

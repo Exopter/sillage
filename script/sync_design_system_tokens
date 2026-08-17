@@ -1,0 +1,33 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "fileutils"
+
+ROOT = File.expand_path("..", __dir__)
+DESIGN_SYSTEM_ROOT = File.expand_path(
+  ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(ROOT, "..", "design_system"))
+)
+SOURCE = File.join(DESIGN_SYSTEM_ROOT, "tokens", "exopter-tokens.css")
+TARGET = File.join(ROOT, "app", "assets", "stylesheets", "exopter_design_system.css")
+
+mode = ARGV.fetch(0, "--check")
+abort "Usage: ruby script/sync_design_system_tokens [--check|--write]" unless %w[--check --write].include?(mode)
+abort "Canonical design-system tokens not found at #{SOURCE}" unless File.file?(SOURCE)
+
+source = File.binread(SOURCE)
+
+if mode == "--write"
+  FileUtils.mkdir_p(File.dirname(TARGET))
+  File.binwrite(TARGET, source)
+  puts "Copied canonical design-system tokens to #{TARGET.delete_prefix("#{ROOT}/")}."
+  exit 0
+end
+
+if File.file?(TARGET) && File.binread(TARGET) == source
+  puts "Design-system tokens are synchronized byte for byte."
+  exit 0
+end
+
+warn "Sillage design-system tokens differ from #{SOURCE}."
+warn "Run `ruby script/sync_design_system_tokens --write` from the Sillage root."
+exit 1

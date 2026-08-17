@@ -3,13 +3,6 @@ en:
     name: "Sillage"
     short_name: "Sillage"
     tagline: "Sillage Flight Lab"
-  nav:
-    primary: "Primary navigation"
-    dashboard: "Dashboard"
-    flights: "Flights"
-    import: "Import"
-    design_system: "Design System"
-    language: "Language"
   flight_lab:
     readiness_label: "Flight Lab readiness"
     import_label: "Flight import context"
@@ -36,16 +29,6 @@ en:
     sensors: "Sensors"
     unknown: "Unknown"
     none: "None"
-  design_system:
-    eyebrow: "Dev reference"
-    title: "Exopter Design System"
-  dashboard:
-    eyebrow: "FlySight logbook"
-    title: "Trajectory workshop"
-    all_flights: "All flights"
-    recent_flights: "Recent flights"
-    recent_imports: "Recent imports"
-    no_imports: "No import yet."
   imports:
     form:
       title: "Load a flight trace"

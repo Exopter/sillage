@@ -520,16 +520,6 @@
   border-bottom: 0;
 }
 
-.hangar-admin-badge {
-  padding: 5px 9px;
-  border-radius: 4px;
-  background: var(--surface-panel, #eef3f1);
-  color: var(--text-muted, #5f6c6b);
-  font: 600 10px/1 var(--ex-font-mono, ui-monospace, monospace);
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
 .hangar-function-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1262,40 +1252,6 @@
   padding: 0;
 }
 
-.fleet-grid,
-.function-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.fleet-card,
-.function-card {
-  display: block;
-  min-width: 0;
-  padding: 17px;
-  border: 1px solid var(--border-rule, #d4dfdc);
-  border-radius: var(--radius, 8px);
-  background: var(--surface-card, #fff);
-  box-shadow: var(--shadow-sm, 0 7px 20px rgba(16, 24, 26, .07));
-  color: var(--text-body, #10181a);
-  transition: border-color 180ms ease, transform 180ms ease;
-}
-
-.fleet-card:hover,
-.function-card:hover {
-  border-color: var(--ex-aqua-500, #2fd6c6);
-  transform: translateY(-1px);
-}
-
-.fleet-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
 .hangar-kind {
   color: var(--text-muted, #5f6c6b);
   font-family: var(--ex-font-mono, ui-monospace, monospace);
@@ -1303,61 +1259,6 @@
   font-weight: 600;
   letter-spacing: .08em;
   text-transform: uppercase;
-}
-
-.fleet-card > strong {
-  display: block;
-  color: var(--ex-state-live-text, #00615b);
-  font: 700 13px/1.2 var(--ex-font-mono, ui-monospace, monospace);
-  letter-spacing: .04em;
-}
-
-.fleet-card h3,
-.function-card h3 {
-  margin: 6px 0 15px;
-  color: var(--text-strong, #10181a);
-  font-size: 17px;
-}
-
-.fleet-card dl {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin: 0;
-  padding-top: 13px;
-  border-top: 1px solid var(--border-rule, #d4dfdc);
-}
-
-.fleet-card dt {
-  color: var(--text-muted, #5f6c6b);
-  font: 600 8px/1 var(--ex-font-mono, ui-monospace, monospace);
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-
-.fleet-card dd {
-  margin: 5px 0 0;
-  color: var(--text-strong, #10181a);
-  font-size: 11px;
-}
-
-.function-card p {
-  min-height: 40px;
-  color: var(--text-muted, #5f6c6b);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.function-card > strong {
-  color: var(--ex-state-live-text, #00615b);
-  font: 600 10px var(--ex-font-mono, ui-monospace, monospace);
-  text-transform: uppercase;
-}
-
-.qualification-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
 }
 
 .workspace-panel h2,
@@ -1862,10 +1763,7 @@
   .workspace-grid,
   .workspace-grid.is-assembly,
   .workspace-grid.is-build-index,
-  .workspace-form-grid,
-  .fleet-grid,
-  .function-grid,
-  .qualification-grid {
+  .workspace-form-grid {
     grid-template-columns: 1fr;
   }
 

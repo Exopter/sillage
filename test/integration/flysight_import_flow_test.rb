@@ -146,7 +146,8 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{new_flight_import_path}']", text: "Import data"
     assert_select ".sillage-room-link", text: /Signal/
     assert_select ".sillage-room-link.is-separated", text: /Signal/
-    assert_select ".sillage-room-link", count: 3
+    assert_select ".sillage-room-link", count: 4
+    assert_select ".sillage-core-link[href='#{core_path}']", text: "Core", count: 1
     assert_select ".sillage-subtabs .sillage-subtab", 3
     assert_select ".sillage-subtabs .sillage-subtab", text: "Flight prep"
     assert_select ".sillage-subtabs .sillage-subtab", text: "HUD"
@@ -158,8 +159,6 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_select "h1", "Builds"
     assert_select ".sillage-breadcrumb [aria-current='page']", text: "Builds"
     assert_select ".workspace-panel"
-    assert_select ".room-placeholder-card", count: 0
-    assert_select ".reference-layout", count: 0
   end
 
   test "top breadcrumb follows the current room and tab" do
@@ -185,14 +184,6 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_response :success
     assert_select ".flash.notice", text: "Signed out."
-  end
-
-  test "french locale falls back to english" do
-    get root_path(locale: :fr)
-
-    assert_response :success
-    assert_select "html[lang=en]"
-    assert_select ".locale-switch", count: 0
   end
 
   test "uploads a video for web optimization and stores the marked exit point" do

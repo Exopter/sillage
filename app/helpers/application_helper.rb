@@ -13,10 +13,9 @@ module ApplicationHelper
     "route" => '<circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/>',
     "map" => '<path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M9 4v13"/><path d="M15 7v13"/>',
     "radio" => '<path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"/>',
-    "battery" => '<rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/><path d="M6 11v2"/><path d="M10 11v2"/>',
-    "thermometer" => '<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>',
     "check" => '<path d="M20 6 9 17l-5-5"/>',
     "circle-check" => '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    "info" => '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
     "triangle-alert" => '<path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
     "octagon-x" => '<path d="M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586z"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
     "play" => '<polygon points="6 3 20 12 6 21 6 3"/>',
@@ -25,7 +24,6 @@ module ApplicationHelper
     "download" => '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
     "usb-c" => '<rect x="3" y="7" width="18" height="10" rx="5"/><path d="M8 12h8"/>',
     "upload" => '<path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
-    "clipboard-check" => '<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
     "shield" => '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
     "wrench" => '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
     "crosshair" => '<circle cx="12" cy="12" r="10"/><line x1="22" x2="18" y1="12" y2="12"/><line x1="6" x2="2" y1="12" y2="12"/><line x1="12" x2="12" y1="6" y2="2"/><line x1="12" x2="12" y1="22" y2="18"/>',
@@ -33,7 +31,6 @@ module ApplicationHelper
     "chevron-up" => '<path d="m18 15-6-6-6 6"/>',
     "chevron-right" => '<path d="m9 18 6-6-6-6"/>',
     "layers" => '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>',
-    "list" => '<path d="M3 5h.01M3 12h.01M3 19h.01M8 5h13M8 12h13M8 19h13"/>',
     "search" => '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
     "settings" => '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
     "plus" => '<path d="M5 12h14"/><path d="M12 5v14"/>',
@@ -47,7 +44,6 @@ module ApplicationHelper
     "database" => '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>',
     "code" => '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
     "trash" => '<path d="M3 6h18"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M19 6 18 20c0 1-1 2-2 2H8c-1 0-2-1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>',
-    "wind" => '<path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/>',
     "arrow-up-right" => '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',
     "menu" => '<path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/>'
   }.freeze
@@ -77,7 +73,7 @@ module ApplicationHelper
     return "signal" if controller_path == "signal" || controller_path == "signal_sessions"
     return "hangar" if controller_path.start_with?("hangar/")
     return "forge" if controller_path.start_with?("forge/")
-    return "core" if controller_path.start_with?("core/") || controller_path.start_with?("devreference/")
+    return "core" if controller_path.start_with?("core/")
 
     "flight"
   end
@@ -86,30 +82,15 @@ module ApplicationHelper
     content_for(:title).presence || t("app.name")
   end
 
-  def sillage_shell_room_label
-    case sillage_current_room
-    when "flight"
-      "Flights"
-    else
-      sillage_current_room.titleize
-    end
-  end
-
-  def sillage_current_room_item
-    sillage_room_items.find { |item| item[:id] == sillage_current_room }
-  end
-
   def sillage_current_tab_label
     if sillage_current_room == "flight"
       sillage_flight_tabs.find { |tab| tab[:id] == sillage_current_flight_tab }&.fetch(:label) || sillage_shell_title
     elsif controller_path.start_with?("core/")
-      controller_name == "functions" ? "Functions" : "Users"
+      "Users"
     elsif controller_path.start_with?("hangar/")
       controller_name.titleize
     elsif controller_path.start_with?("forge/")
       controller_name.titleize
-    elsif controller_path == "devreference/design_system"
-      "Design system"
     else
       "Overview"
     end

@@ -1599,10 +1599,6 @@ export default class extends Controller {
     })
   }
 
-  updateScrubbedPoint(ratio) {
-    this.updateScrubbedElapsed(this.timelineStart + (ratio * this.timelineSpan()))
-  }
-
   updateScrubbedElapsed(elapsed, options = {}) {
     const followCamera = options.followCamera !== false
     const syncVideo = options.syncVideo !== false
@@ -1786,18 +1782,6 @@ export default class extends Controller {
 
   hideChartPanel(target) {
     target.closest(".chart-panel")?.setAttribute("hidden", "")
-  }
-
-  pointAtElapsed(elapsed, points = this.points) {
-    if (!Number.isFinite(Number(elapsed))) return null
-
-    return points.reduce((closest, point) => {
-      if (!closest) return point
-
-      const closestDistance = Math.abs(this.number(closest.t) - Number(elapsed))
-      const pointDistance = Math.abs(this.number(point.t) - Number(elapsed))
-      return pointDistance < closestDistance ? point : closest
-    }, null)
   }
 
   telemetryPointAtElapsed(elapsed) {
@@ -2025,10 +2009,6 @@ export default class extends Controller {
 
   clamp(value, min, max) {
     return Math.min(max, Math.max(min, value))
-  }
-
-  durationFromPoints() {
-    return Math.max(...this.points.map((point) => this.number(point.t) ?? 0), 0)
   }
 
   number(value) {

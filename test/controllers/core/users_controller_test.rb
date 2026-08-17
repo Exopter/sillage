@@ -10,6 +10,9 @@ class Core::UsersControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to root_path
     assert_equal "Admin access is required.", flash[:alert]
+
+    follow_redirect!
+    assert_select ".sillage-core-link", count: 0
   end
 
   test "lists users for admins" do
@@ -20,6 +23,7 @@ class Core::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "Users"
     assert_select ".core-user-row", minimum: 3
+    assert_select ".sillage-core-link[href='#{core_path}']", text: "Core", count: 1
   end
 
   test "invites users from Core" do

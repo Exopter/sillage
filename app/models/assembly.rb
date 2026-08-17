@@ -3,7 +3,6 @@ require "base64"
 class Assembly < ApplicationRecord
   include AssetIdentifiable
 
-  ASSET_IDENTIFIER_PREFIX = "ASY"
   DEVICE_ID_PATTERN = /\AEXOFDR-[0-9A-F]{6}\z/
   FDR_AUTH_KEY_BYTES = 32
   FDR_AUTH_ENCRYPTION_PURPOSE = "sillage fdr authentication key v1"
@@ -25,7 +24,7 @@ class Assembly < ApplicationRecord
 
   validates :name, presence: true
   validates :internal_number, uniqueness: true, allow_nil: true
-  validates :internal_number, format: { with: /\AASY-\d{6,}\z/ }, allow_nil: true
+  validates :internal_number, format: { with: /\AEXO-\d{6,}\z/ }, allow_nil: true
   validates :device_id, uniqueness: true, allow_nil: true, length: { maximum: 64 }
   validates :device_id, format: { with: DEVICE_ID_PATTERN }, allow_nil: true
   validates :device_model, :last_seen_firmware, length: { maximum: 128 }, allow_nil: true

@@ -32,6 +32,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_select ".hangar-config-head > span", count: 1
     assert_select ".hangar-detail-foot", count: 0
     assert_select ".sillage-room-link.is-separated", text: /Signal/
+    assert_select ".sillage-core-link", count: 0
 
     get hangar_parts_path
     assert_response :success

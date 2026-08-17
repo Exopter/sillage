@@ -165,12 +165,6 @@ html {
   color: #070b0d;
 }
 
-.landing-button.is-dark {
-  border-color: var(--landing-panel-strong);
-  background: var(--landing-panel-strong);
-  color: var(--landing-ink);
-}
-
 .landing-button.is-quiet {
   color: var(--landing-muted);
 }

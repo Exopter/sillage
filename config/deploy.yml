@@ -17,6 +17,8 @@
   end
 
   boolean = ->(value) { value.to_s.match?(/\A(?:1|true|yes|on)\z/i) }
+  backups_enabled = boolean.call(ENV.fetch("BACKUPS_ENABLED", "false"))
+  monitoring_enabled = boolean.call(ENV.fetch("MONITORING_ENABLED", "false"))
 
   if boolean.call(ENV.fetch("EMAIL_ENABLED", "false"))
     required_mail = %w[MAIL_FROM POSTMARK_SERVER_TOKEN POSTMARK_MESSAGE_STREAM]
@@ -25,6 +27,23 @@
     if missing_mail.any?
       raise "EMAIL_ENABLED=true requires #{missing_mail.join(', ')}"
     end
+  end
+
+  if monitoring_enabled
+    missing_monitoring = %w[MONITORING_PLAN_URL].select { |key| ENV[key].to_s.strip.empty? }
+    raise "MONITORING_ENABLED=true requires #{missing_monitoring.join(', ')}" if missing_monitoring.any?
+  end
+
+  if backups_enabled
+    required_backup = %w[
+      BACKUP_PLAN_URL R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BACKUP_BUCKET
+    ]
+    missing_backup = required_backup.select { |key| ENV[key].to_s.strip.empty? }
+    raise "BACKUPS_ENABLED=true requires #{missing_backup.join(', ')}" if missing_backup.any?
+
+    raise "BACKUPS_ENABLED=true is not supported yet. Keep it false until Litestream replication, " \
+      "R2 lifecycle rules, restore commands, and monitored backup freshness are implemented " \
+      "and linked from BACKUP_PLAN_URL."
   end
 %>
 
@@ -72,6 +91,9 @@ env:
     SILLAGE_LANDING_HOSTS: exopter.com
     SILLAGE_HOSTS: sillage.exopter.com
     EMAIL_ENABLED: "<%= ENV.fetch("EMAIL_ENABLED", "false") %>"
+    BACKUPS_ENABLED: "<%= ENV.fetch("BACKUPS_ENABLED", "false") %>"
+    MONITORING_ENABLED: "<%= ENV.fetch("MONITORING_ENABLED", "false") %>"
+    MONITORING_PLAN_URL: "<%= ENV.fetch("MONITORING_PLAN_URL", "") %>"
     MAIL_FROM: "<%= ENV.fetch("MAIL_FROM", "") %>"
     MAIL_FROM_NAME: "<%= ENV.fetch("MAIL_FROM_NAME", "") %>"
     MAIL_REPLY_TO: "<%= ENV.fetch("MAIL_REPLY_TO", "") %>"
