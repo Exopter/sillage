@@ -1,10 +1,14 @@
 export const USB_PROTOCOL_VERSION = 1
-export const USB_CHUNK_SIZE = 4096
+export const USB_CHUNK_SIZE = 1024
 export const USB_CONNECTION_TIMEOUT_MS = 10_000
+export const USB_REQUEST_TIMEOUT_MS = 30_000
+export const USB_FILE_PREPARATION_TIMEOUT_MS = 120_000
+export const USB_ERASE_RECORDINGS_TIMEOUT_MS = 120_000
 export const USB_PORT_RELEASE_TIMEOUT_MS = 2_000
 
 const USB_CONNECTION_TIMEOUT_MESSAGE = "USB connection timed out after 10 seconds. Disconnect and reconnect the recorder, then try again."
 const USB_PORT_BUSY_MESSAGE = "USB-C is still in use by another Sillage page. Wait a moment, then try again."
+const USB_CONNECTION_CLOSED_MESSAGE = "The recorder disconnected during synchronization. The source recording and any partial transfer are preserved; reconnect it to resume."
 
 export const UsbMessage = Object.freeze({
   HELLO: 1,
@@ -31,7 +35,24 @@ export const UsbMessage = Object.freeze({
   WIFI_DATA: 22,
   SECURITY: 23,
   SECURITY_DATA: 24,
+  MEMORY: 25,
+  MEMORY_DATA: 26,
+  RATE_STATUS: 27,
+  RATE_STATUS_DATA: 28,
+  STORAGE_PERFORMANCE: 29,
+  STORAGE_PERFORMANCE_DATA: 30,
+  ERASE_RECORDINGS: 31,
+  ERASE_RECORDINGS_DATA: 32,
   ERROR: 255
+})
+
+export const UsbCapability = Object.freeze({
+  ERASE_RECORDINGS: 1 << 10
+})
+
+export const EraseRecordingsResult = Object.freeze({
+  OK: 0,
+  STORAGE_ERROR: 1
 })
 
 export const UsbErrorCode = Object.freeze({
@@ -190,7 +211,12 @@ export class UsbFdrClient {
   }
 
   async nextFile() {
-    const frame = await this.request(UsbMessage.NEXT_FILE, new Uint8Array(), [UsbMessage.FILE_MANIFEST, UsbMessage.NO_FILE])
+    const frame = await this.request(
+      UsbMessage.NEXT_FILE,
+      new Uint8Array(),
+      [UsbMessage.FILE_MANIFEST, UsbMessage.NO_FILE],
+      { timeoutMs: USB_FILE_PREPARATION_TIMEOUT_MS }
+    )
     return frame.type === UsbMessage.NO_FILE ? null : parseFileManifest(frame.payload)
   }
 
@@ -209,6 +235,16 @@ export class UsbFdrClient {
     new DataView(payload.buffer).setUint32(0, fileIndex, true)
     payload.set(hexToBytes(sha256), 4)
     await this.request(UsbMessage.ACK_FILE, payload, [UsbMessage.ACK_ACCEPTED])
+  }
+
+  async eraseRecordings() {
+    const frame = await this.request(
+      UsbMessage.ERASE_RECORDINGS,
+      new Uint8Array(),
+      [UsbMessage.ERASE_RECORDINGS_DATA],
+      { timeoutMs: USB_ERASE_RECORDINGS_TIMEOUT_MS }
+    )
+    return parseEraseRecordingsResult(frame.payload)
   }
 
   async status() {
@@ -254,7 +290,6 @@ export class UsbFdrClient {
     const frame = await this.request(UsbMessage.SECURITY, payload, [UsbMessage.SECURITY_DATA])
     const status = parseUsbSecurityStatus(frame.payload)
     if (status.result !== FdrAuthResult.OK) throw fdrAuthenticationError(status.result)
-    if (!status.authenticated) throw new Error("The recorder installed the key but did not authenticate the USB-C session.")
     return status
   }
 
@@ -264,6 +299,9 @@ export class UsbFdrClient {
     const status = parseUsbSecurityStatus(frame.payload)
     if (![FdrAuthResult.OK, FdrAuthResult.NOT_CONFIGURED].includes(status.result)) {
       throw fdrAuthenticationError(status.result)
+    }
+    if (status.configured && /^0+$/.test(status.nonce)) {
+      throw new Error("The recorder did not provide a fresh authentication challenge. Disconnect and reconnect it, then try again.")
     }
     return status
   }
@@ -280,21 +318,51 @@ export class UsbFdrClient {
     return status
   }
 
-  request(type, payload, expectedTypes) {
-    const operation = this.requestTail.then(() => this.performRequest(type, payload, expectedTypes))
+  request(type, payload, expectedTypes, { timeoutMs = USB_REQUEST_TIMEOUT_MS } = {}) {
+    const operation = this.requestTail.then(() => this.performRequest(type, payload, expectedTypes, { timeoutMs }))
     this.requestTail = operation.catch(() => {})
     return operation
   }
 
-  async performRequest(type, payload, expectedTypes) {
+  async performRequest(type, payload, expectedTypes, { timeoutMs }) {
+    if (!this.writer || !this.frameReader) throw usbConnectionError()
+
+    let timeoutId
+    const exchange = this.exchangeFrame(type, payload, expectedTypes)
+    const timeout = new Promise((_, reject) => {
+      timeoutId = globalThis.setTimeout(() => {
+        reject(usbRequestTimeoutError(type, timeoutMs))
+        void this.close()
+      }, timeoutMs)
+    })
+
+    try {
+      return await Promise.race([exchange, timeout])
+    } catch (error) {
+      if (!this.writer || !this.frameReader) {
+        if (error?.usbRequestTimedOut) throw error
+        throw usbConnectionError()
+      }
+      throw error
+    } finally {
+      globalThis.clearTimeout(timeoutId)
+    }
+  }
+
+  async exchangeFrame(type, payload, expectedTypes) {
     const sequence = this.sequence++ >>> 0
-    await this.writer.write(encodeFrame(type, sequence, payload))
-    while (true) {
-      const frame = await this.frameReader.read()
-      if (frame.sequence !== sequence) continue
-      if (frame.type === UsbMessage.ERROR) throw parseUsbDeviceError(frame.payload)
-      if (!expectedTypes.includes(frame.type)) throw new Error(`Unexpected EXS1 response ${frame.type}.`)
-      return frame
+    try {
+      await this.writer.write(encodeFrame(type, sequence, payload))
+      while (true) {
+        const frame = await this.frameReader.read()
+        if (frame.sequence !== sequence) continue
+        if (frame.type === UsbMessage.ERROR) throw parseUsbDeviceError(frame.payload)
+        if (!expectedTypes.includes(frame.type)) throw new Error(`Unexpected EXS1 response ${frame.type}.`)
+        return frame
+      }
+    } catch (error) {
+      if (!this.writer || !this.frameReader || isUsbTransportError(error)) throw usbConnectionError()
+      throw error
     }
   }
 
@@ -309,15 +377,46 @@ export class UsbFdrClient {
   }
 
   async performClose() {
-    try { await this.reader?.cancel() } catch (_) {}
-    try { this.reader?.releaseLock() } catch (_) {}
-    try { this.writer?.releaseLock() } catch (_) {}
+    const reader = this.reader
+    const writer = this.writer
     this.reader = null
     this.writer = null
-    if (this.port.readable || this.port.writable) {
-      try { await this.port.close() } catch (_) {}
-    }
+    this.frameReader = null
+    try { await reader?.cancel() } catch (_) {}
+    try { reader?.releaseLock() } catch (_) {}
+    try { writer?.releaseLock() } catch (_) {}
+    try { await this.port?.close() } catch (_) {}
   }
+}
+
+function usbConnectionError() {
+  const error = new Error(USB_CONNECTION_CLOSED_MESSAGE)
+  error.usbConnectionLost = true
+  return error
+}
+
+function usbRequestTimeoutError(type, timeoutMs) {
+  const seconds = Math.ceil(timeoutMs / 1000)
+  let message
+  if (type === UsbMessage.NEXT_FILE) {
+    message = `The recorder stopped responding while preparing the sealed recording (${seconds}s timeout). The recording remains stored on the recorder; reconnect it to try again.`
+  } else if (type === UsbMessage.READ_CHUNK) {
+    message = `The recorder stopped responding while transferring the recording (${seconds}s timeout). The partial transfer is saved; reconnect it to resume.`
+  } else {
+    message = `The recorder stopped responding over USB-C (${seconds}s timeout). Reconnect it and try again.`
+  }
+  const error = new Error(message)
+  error.usbConnectionLost = true
+  error.usbRequestTimedOut = true
+  error.usbRequestType = type
+  error.timeoutMs = timeoutMs
+  return error
+}
+
+function isUsbTransportError(error) {
+  return error?.name === "NetworkError"
+    || error?.name === "InvalidStateError"
+    || error?.message === "The recorder disconnected during synchronization."
 }
 
 export async function waitForUsbPortAvailability(port, { timeoutMs = USB_PORT_RELEASE_TIMEOUT_MS } = {}) {
@@ -411,6 +510,12 @@ export function parseBleStatus(value) {
     activeFileIndex: view.getUint32(12, true),
     lastSyncedFileIndex: view.getUint32(16, true)
   }
+}
+
+export function formatStorageCapacity(freeMiB, totalMiB) {
+  if (totalMiB < 1024) return `${freeMiB} MiB free of ${totalMiB} MiB`
+
+  return `${(freeMiB / 1024).toFixed(1)} GiB free of ${(totalMiB / 1024).toFixed(1)} GiB`
 }
 
 export function parseBleDiagnostics(value) {
@@ -693,6 +798,21 @@ export function parseUsbSecurityStatus(payload) {
   }
 }
 
+export function parseEraseRecordingsResult(payload) {
+  const view = dataView(payload, 16, "erase-recordings result")
+  if (view.getUint8(0) !== 1) throw new Error("Unsupported erase-recordings result version.")
+  const result = view.getUint8(1)
+  if (result !== EraseRecordingsResult.OK) {
+    throw new Error("The recorder could not erase all recordings or restart logging. Check storage diagnostics before trying again.")
+  }
+  return {
+    version: 1,
+    result,
+    deletedFiles: view.getUint32(4, true),
+    deletedBytes: Number(view.getBigUint64(8, true))
+  }
+}
+
 function fdrAuthenticationError(result) {
   const error = new Error(FDR_AUTH_ERROR_MESSAGES[result] || "The recorder returned an unknown Sillage authentication error.")
   error.fdrAuthResult = result
@@ -742,6 +862,7 @@ export function parseUsbDeviceError(payload) {
   const error = new Error(USB_ERROR_MESSAGES[code] || "The recorder reported an unknown USB error. Disconnect and reconnect it, then try again.")
   error.recorderCode = code
   error.recorderRequestType = requestType
+  if (code === UsbErrorCode.BAD_SEQUENCE) error.usbConnectionLost = true
   return error
 }
 

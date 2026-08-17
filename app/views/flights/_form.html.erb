@@ -13,8 +13,8 @@
       <%= form.collection_select :aircraft_id, @aircraft, :id, :display_name, { prompt: "Select aircraft" }, required: true %>
     </label>
     <label>
-      <span>Landing zone</span>
-      <%= form.collection_select :landing_zone_id, @landing_zones, :id, :name, { prompt: "Select landing zone" }, required: true %>
+      <span>Location</span>
+      <%= form.text_field :location, placeholder: "Optional operating location" %>
     </label>
     <label class="is-wide">
       <span>Notes</span>

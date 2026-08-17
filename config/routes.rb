@@ -32,7 +32,6 @@ Rails.application.routes.draw do
   end
 
   root "flights#index"
-  get "atlas" => "landing_zones#index", as: :atlas
   get "hangar" => "hangar/aircraft#index", as: :hangar
   get "signal" => "signal#index", as: :signal
   get "forge" => "forge/builds#index", as: :forge
@@ -62,7 +61,6 @@ Rails.application.routes.draw do
     get "qualification" => "qualification#index", as: :qualification
   end
 
-  resources :landing_zones, path: "atlas/zones"
   resources :signal_sessions, only: %i[create show]
 
   scope module: :forge, path: "forge", as: "forge" do

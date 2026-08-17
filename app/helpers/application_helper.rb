@@ -75,7 +75,6 @@ module ApplicationHelper
 
   def sillage_current_room
     return "signal" if controller_path == "signal" || controller_path == "signal_sessions"
-    return "atlas" if controller_path == "landing_zones"
     return "hangar" if controller_path.start_with?("hangar/")
     return "forge" if controller_path.start_with?("forge/")
     return "core" if controller_path.start_with?("core/") || controller_path.start_with?("devreference/")
@@ -125,7 +124,6 @@ module ApplicationHelper
 
   def sillage_shell_crumb
     return "Hangar" if sillage_current_room == "hangar"
-    return "Atlas" if sillage_current_room == "atlas"
     return "Signal" if sillage_current_room == "signal"
     return sillage_current_tab_label if sillage_current_room.in?(%w[forge core])
 
@@ -141,7 +139,6 @@ module ApplicationHelper
     [
       { id: "flight", label: "Flights", icon: "plane", href: flights_path, enabled: true },
       { id: "hangar", label: "Hangar", icon: "wrench", href: hangar_path, enabled: true },
-      { id: "atlas", label: "Atlas", icon: "map", href: atlas_path, enabled: true },
       { id: "signal", label: "Signal", icon: "signal", href: signal_path, enabled: true, separated: true }
     ]
   end

@@ -8,7 +8,7 @@ module FlySight
     SessionFile = Data.define(:format, :track, :sensor, :csv)
 
     class << self
-      def create!(uploaded_files, user: Current.user, aircraft: nil, landing_zone: nil, target_flight: nil)
+      def create!(uploaded_files, user: Current.user, aircraft: nil, target_flight: nil)
         uploaded_files = Array(uploaded_files).compact_blank
         raise Error, "Select a FlySight ZIP file or CSV files." if uploaded_files.empty?
         raise Error, "Sign in before importing a FlySight session." unless user
@@ -18,7 +18,6 @@ module FlySight
           status: "pending",
           import_type: "flysight",
           aircraft: aircraft || target_flight&.aircraft,
-          landing_zone: landing_zone || target_flight&.landing_zone,
           target_flight:
         )
         attach_uploaded_files(flight_import, uploaded_files)
@@ -209,7 +208,6 @@ module FlySight
         name: generated_name(parsed_session, index),
         user: flight_import.user,
         aircraft: flight_import.aircraft,
-        landing_zone: flight_import.landing_zone,
         status: "analysed",
         started_at: parsed_session.started_at
       }.merge(summary, bounds)

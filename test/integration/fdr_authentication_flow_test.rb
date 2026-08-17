@@ -45,6 +45,12 @@ class FdrAuthenticationFlowTest < ActionDispatch::IntegrationTest
       as: :json
     assert_response :unprocessable_entity
 
+    post api_v1_fdr_authentication_path,
+      params: { device_id: @recorder.device_id, nonce: "00" * 16, transport: "usb" },
+      as: :json
+    assert_response :unprocessable_entity
+    assert_equal "The recorder authentication challenge is invalid.", response.parsed_body.fetch("error")
+
     unclaimed = Assembly.create!(name: "Unclaimed recorder", device_id: "EXOFDR-ABC123")
     post api_v1_fdr_authentication_path,
       params: { device_id: unclaimed.device_id, nonce: "00" * 16, transport: "usb" },
@@ -55,7 +61,7 @@ class FdrAuthenticationFlowTest < ActionDispatch::IntegrationTest
 
   test "rejects an unknown authentication transport" do
     post api_v1_fdr_authentication_path,
-      params: { device_id: @recorder.device_id, nonce: "00" * 16, transport: "wifi" },
+      params: { device_id: @recorder.device_id, nonce: "01" * 16, transport: "wifi" },
       as: :json
 
     assert_response :unprocessable_entity

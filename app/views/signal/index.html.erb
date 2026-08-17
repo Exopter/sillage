@@ -9,14 +9,13 @@
        data-signal-workspace-batch-url-value="<%= batches_api_v1_signal_session_path(@active_session.uuid) %>"
        data-signal-workspace-event-url-value="<%= events_api_v1_signal_session_path(@active_session.uuid) %>"
        data-signal-workspace-complete-url-value="<%= complete_api_v1_signal_session_path(@active_session.uuid) %>"
-       data-signal-workspace-map-image-url-value="<%= asset_path("landing-zone-terrain-v1.png") %>"
-       data-signal-workspace-landing-zone-value="<%= flight.display_landing_zone %>">
+       data-signal-workspace-map-image-url-value="<%= asset_path("flight-terrain-v1.png") %>">
     <div class="signal-live-shell" data-signal-workspace-target="presentation">
       <header class="signal-command-bar">
         <div class="signal-session-identity">
           <span class="signal-k">Flight</span>
           <strong><%= flight.code %></strong>
-          <small><%= flight.display_aircraft %> · <%= flight.display_landing_zone %></small>
+          <small><%= flight.display_aircraft %></small>
         </div>
         <div class="signal-link-stack" aria-label="Signal link status">
           <div><span>Radio</span><strong data-signal-workspace-target="radioStatus">Waiting for ground radio</strong></div>
@@ -38,14 +37,13 @@
         <section class="signal-widget" data-signal-workspace-target="widget" data-widget="map" data-mode="large">
           <header class="signal-widget-head">
             <button type="button" class="signal-drag-handle" aria-label="Move Live map" title="Drag to move · arrow keys to nudge" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget"><%= sillage_icon "menu", size: 13 %></button>
-            <span class="signal-head-icon"><%= sillage_icon "map", size: 15 %></span><strong>Live map</strong><span class="signal-widget-subtitle">Flight path, heading and landing zone</span>
+            <span class="signal-head-icon"><%= sillage_icon "map", size: 15 %></span><strong>Live map</strong><span class="signal-widget-subtitle">Flight path and heading</span>
             <span class="signal-live-badge">Live</span>
             <span class="signal-mode-buttons"><%= render "signal/widget_modes" %></span>
           </header>
-          <div class="signal-widget-body signal-map-body" style="--signal-map-image: url('<%= asset_path("landing-zone-terrain-v1.png") %>')">
+          <div class="signal-widget-body signal-map-body" style="--signal-map-image: url('<%= asset_path("flight-terrain-v1.png") %>')">
             <canvas data-signal-workspace-target="mapCanvas" aria-label="Live flight path and heading"></canvas>
             <div class="signal-aircraft" data-signal-workspace-target="aircraftMarker"><span class="signal-heading-ray"></span><span class="signal-aircraft-icon"><%= sillage_icon "plane", size: 23, stroke_width: 1.8 %></span><span class="signal-aircraft-label"><strong><%= flight.code %> · LIVE</strong><small data-signal-workspace-target="aircraftLabel">Waiting for telemetry</small></span></div>
-            <div class="signal-lz-marker"><span><%= sillage_icon "crosshair", size: 22 %></span><strong>Landing zone · <%= flight.display_landing_zone %></strong></div>
             <div class="signal-map-cache">Terrain available in this session</div>
             <div class="signal-map-event" data-signal-workspace-target="latestEvent" hidden></div>
           </div>
@@ -91,10 +89,10 @@
       <%= render "signal/fdr_connectivity" %>
       <div class="signal-launch-grid">
         <section class="signal-launch-card">
-          <div class="signal-launch-body"><span class="signal-k">Prepared flights</span><h2>Attach to an existing flight</h2><p>The aircraft, landing zone and Hangar configuration are inherited automatically.</p></div>
+          <div class="signal-launch-body"><span class="signal-k">Prepared flights</span><h2>Attach to an existing flight</h2><p>The aircraft and Hangar configuration are inherited automatically.</p></div>
           <% @preparation_flights.each do |flight| %>
             <div class="signal-prep-row">
-              <div><strong><%= flight.code %></strong><span><%= flight.display_aircraft %> · <%= flight.display_landing_zone %></span></div>
+              <div><strong><%= flight.code %></strong><span><%= flight.display_aircraft %></span></div>
               <%= button_to "Open session", signal_sessions_path(flight_id: flight.id), class: "signal-tool-button is-primary", form: { data: { turbo: false } } %>
             </div>
           <% end %>
@@ -102,7 +100,7 @@
         </section>
         <section class="signal-launch-card">
           <div class="signal-launch-body">
-            <span class="signal-k">Direct acquisition</span><h2>Create from Signal</h2><p>A new Flight is created. Aircraft and landing zone are filled automatically when identification is unambiguous; otherwise they remain To complete.</p>
+            <span class="signal-k">Direct acquisition</span><h2>Create from Signal</h2><p>A new Flight is created. Its aircraft is filled automatically when identification is unambiguous; otherwise it remains To complete.</p>
             <%= button_to signal_sessions_path, class: "signal-tool-button is-primary signal-start-direct", form: { data: { turbo: false } } do %><%= sillage_icon "radio", size: 15 %><span>Start unassigned session</span><% end %>
             <div class="signal-launch-rules"><div><%= sillage_icon "download", size: 15 %><span><strong>Local capture first</strong>Raw MAVLink continues during a brief Internet cut.</span></div><div><%= sillage_icon "upload", size: 15 %><span><strong>Automatic recovery</strong>Queued batches resume from the last acknowledgement.</span></div><div><%= sillage_icon "shield", size: 15 %><span><strong>microSD authoritative</strong>Signal complements the onboard recorder.</span></div></div>
           </div>

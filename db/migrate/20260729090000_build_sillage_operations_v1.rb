@@ -11,19 +11,6 @@ class BuildSillageOperationsV1 < ActiveRecord::Migration[8.1]
     add_index :aircraft, :registration, unique: true
     add_index :aircraft, :telemetry_system_id, unique: true, where: "telemetry_system_id IS NOT NULL AND telemetry_system_id != ''"
 
-    create_table :landing_zones do |t|
-      t.string :code, null: false
-      t.string :name, null: false
-      t.float :latitude, null: false
-      t.float :longitude, null: false
-      t.float :elevation_m
-      t.float :detection_radius_km, null: false, default: 25.0
-      t.text :practical_information
-      t.text :notes
-      t.timestamps
-    end
-    add_index :landing_zones, :code, unique: true
-
     rename_table :jumps, :flights
     rename_column :track_points, :jump_id, :flight_id
     rename_column :sensor_samples, :jump_id, :flight_id
@@ -40,7 +27,6 @@ class BuildSillageOperationsV1 < ActiveRecord::Migration[8.1]
     change_column_null :flights, :user_id, false
     change_column_null :flights, :flight_import_id, true
     add_reference :flights, :aircraft, foreign_key: true
-    add_reference :flights, :landing_zone, foreign_key: true
     add_column :flights, :code, :string
     add_column :flights, :status, :string, null: false, default: "analysed"
     add_column :flights, :configuration_snapshot, :json, null: false, default: {}
@@ -55,7 +41,6 @@ class BuildSillageOperationsV1 < ActiveRecord::Migration[8.1]
     change_column_default :flights, :status, from: "analysed", to: "preparation"
 
     add_reference :flight_imports, :aircraft, foreign_key: true
-    add_reference :flight_imports, :landing_zone, foreign_key: true
     add_reference :flight_imports, :target_flight, foreign_key: { to_table: :flights }
     add_column :flight_imports, :import_type, :string, null: false, default: "flysight"
 
@@ -119,21 +104,18 @@ class BuildSillageOperationsV1 < ActiveRecord::Migration[8.1]
     drop_table :installations
     remove_column :flight_imports, :import_type
     remove_reference :flight_imports, :target_flight, foreign_key: { to_table: :flights }
-    remove_reference :flight_imports, :landing_zone, foreign_key: true
     remove_reference :flight_imports, :aircraft, foreign_key: true
     remove_index :flights, :status
     remove_index :flights, :code
     remove_column :flights, :configuration_snapshot
     remove_column :flights, :status
     remove_column :flights, :code
-    remove_reference :flights, :landing_zone, foreign_key: true
     remove_reference :flights, :aircraft, foreign_key: true
     remove_reference :flights, :user, foreign_key: true
     change_column_null :flights, :flight_import_id, false
     rename_column :sensor_samples, :flight_id, :jump_id
     rename_column :track_points, :flight_id, :jump_id
     rename_table :flights, :jumps
-    drop_table :landing_zones
     drop_table :aircraft
   end
 end

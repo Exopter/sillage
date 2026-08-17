@@ -58,10 +58,30 @@ class FdrSyncFlowTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "acknowledges but does not import a synchronized file shorter than five seconds" do
+    with_upload(duration_us: 4_999_999) do |upload, binary|
+      assert_no_enqueued_jobs only: ExoFdrImportJob do
+        assert_no_difference -> { Flight.count } do
+          assert_no_difference -> { Current.user.flight_imports.count } do
+            post api_v1_fdr_syncs_path,
+              params: sync_params(upload, binary),
+              headers: { "ACCEPT" => "application/json" }
+          end
+        end
+      end
+
+      assert_response :success
+      assert_equal true, response.parsed_body.fetch("ignored")
+      assert_in_delta 4.999999, response.parsed_body.fetch("duration_seconds")
+      assert_equal Digest::SHA256.hexdigest(binary), response.parsed_body.fetch("sha256")
+      assert_not response.parsed_body.key?("import_id")
+    end
+  end
+
   private
 
-  def with_upload
-    binary = valid_file
+  def with_upload(duration_us: 5_000_000)
+    binary = valid_file(duration_us:)
     Tempfile.create([ "FDR000001", ".BIN" ]) do |file|
       file.binmode
       file.write(binary)
@@ -89,11 +109,17 @@ class FdrSyncFlowTest < ActionDispatch::IntegrationTest
     }
   end
 
-  def valid_file
+  def valid_file(duration_us:)
     header_body = [ "EXOFDR1\0", 3, 64, 1_234, 777_000, "fdr-test", "" ].pack("a8vvVQ<a24a12")
     header = header_body + [ Zlib.crc32(header_body) ].pack("V")
     payload = [ 40, 6, "Storage ready" ].pack("vCa48")
-    record_body = [ 0xA55A, 2, 4, 28, payload.bytesize, 1, 0, 0, 1_000_000 ].pack("vCCvvvvVQ<")
-    header + record_body + [ Zlib.crc32(record_body + payload) ].pack("V") + payload
+    first_record = record(payload:, sequence: 0, timestamp_us: 1_000_000)
+    last_record = record(payload:, sequence: 1, timestamp_us: 1_000_000 + duration_us)
+    header + first_record + last_record
+  end
+
+  def record(payload:, sequence:, timestamp_us:)
+    body = [ 0xA55A, 2, 4, 28, payload.bytesize, 1, 0, sequence, timestamp_us ].pack("vCCvvvvVQ<")
+    body + [ Zlib.crc32(body + payload) ].pack("V") + payload
   end
 end

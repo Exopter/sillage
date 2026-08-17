@@ -3,7 +3,7 @@ class FlightsController < ApplicationController
 
   def index
     @query = params[:q].to_s.strip
-    @flights = Current.user.flights.recent.includes(:flight_import, :aircraft, :landing_zone)
+    @flights = Current.user.flights.recent.includes(:flight_import, :aircraft)
     return if @query.blank?
 
     pattern = "%#{Flight.sanitize_sql_like(@query)}%"
@@ -18,7 +18,6 @@ class FlightsController < ApplicationController
   def create
     @flight = Current.user.flights.new(flight_params.merge(status: "preparation"))
     @flight.errors.add(:aircraft, "must be selected") unless @flight.aircraft
-    @flight.errors.add(:landing_zone, "must be selected") unless @flight.landing_zone
 
     if @flight.errors.empty? && @flight.save
       @flight.capture_configuration!
@@ -95,7 +94,6 @@ class FlightsController < ApplicationController
       :name,
       :location,
       :aircraft_id,
-      :landing_zone_id,
       :notes,
       :exit_at,
       :opening_at,
@@ -107,7 +105,6 @@ class FlightsController < ApplicationController
 
   def load_form_options
     @aircraft = Aircraft.active.ordered
-    @landing_zones = LandingZone.ordered
   end
 
   def video_upload?(upload)

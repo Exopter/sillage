@@ -1,22 +1,19 @@
 class FlightImportsController < ApplicationController
   def new
     @aircraft = Aircraft.active.ordered
-    @landing_zones = LandingZone.ordered
     @target_flight = Current.user.flights.find_by(id: params[:flight_id])
   end
 
   def create
     target_flight = Current.user.flights.find_by(id: import_params[:target_flight_id])
     aircraft = target_flight&.aircraft || Aircraft.find_by(id: import_params[:aircraft_id])
-    landing_zone = target_flight&.landing_zone || LandingZone.find_by(id: import_params[:landing_zone_id])
-    raise FlySight::Error, "Select an aircraft and landing zone." unless aircraft && landing_zone
+    raise FlySight::Error, "Select an aircraft." unless aircraft
 
     service = import_params[:import_type] == "exofdr" ? ExoFdr::ImportService : FlySight::ImportService
     flight_import = service.create!(
       source_files,
       user: Current.user,
       aircraft:,
-      landing_zone:,
       target_flight:
     )
     target_flight&.update!(status: "processing")
@@ -39,7 +36,7 @@ class FlightImportsController < ApplicationController
   end
 
   def import_params
-    params.fetch(:flight_import, {}).permit(:import_type, :aircraft_id, :landing_zone_id, :target_flight_id)
+    params.fetch(:flight_import, {}).permit(:import_type, :aircraft_id, :target_flight_id)
   end
 
   def respond_to_upload_success(redirect_url, notice)

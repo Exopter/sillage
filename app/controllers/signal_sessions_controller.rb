@@ -6,7 +6,6 @@ class SignalSessionsController < ApplicationController
       Current.user.flights.create!(
         name: "Live flight",
         status: "live",
-        landing_zone: detected_landing_zone,
         started_at: Time.current
       )
     end
@@ -23,13 +22,5 @@ class SignalSessionsController < ApplicationController
   def show
     session = Current.user.signal_sessions.find_by!(uuid: params[:id])
     redirect_to signal_path(session: session.uuid)
-  end
-
-  private
-
-  def detected_landing_zone
-    return if params[:latitude].blank? || params[:longitude].blank?
-
-    LandingZone.detect(latitude: params[:latitude], longitude: params[:longitude])
   end
 end

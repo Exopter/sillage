@@ -21,7 +21,17 @@
           <span class="signal-fdr-channel-icon"><%= sillage_icon "usb-c", size: 19, stroke_width: 2.4 %></span>
           <div><span class="signal-k">USB-C</span><strong data-fdr-connectivity-target="usbStatus" data-state="disconnected">Not connected</strong></div>
         </div>
-        <button type="button" class="signal-tool-button is-primary" data-action="fdr-connectivity#connectUsb" data-fdr-connectivity-target="usbButton">Connect USB-C</button>
+        <div class="signal-fdr-channel-actions">
+          <button type="button" class="signal-tool-button" hidden
+                  data-action="fdr-connectivity#interruptUsbSync"
+                  data-fdr-connectivity-target="stopSyncButton">Stop transfer</button>
+          <button type="button" class="signal-tool-button is-danger" hidden
+                  data-action="fdr-connectivity#eraseSdRecordings"
+                  data-fdr-connectivity-target="eraseSdButton">Erase recordings</button>
+          <button type="button" class="signal-tool-button is-primary"
+                  data-action="fdr-connectivity#connectUsb"
+                  data-fdr-connectivity-target="usbButton">Connect USB-C</button>
+        </div>
       </div>
       <div class="signal-fdr-transport-feedback">
         <strong data-fdr-connectivity-target="usbDevice">No recorder selected</strong>
@@ -35,7 +45,7 @@
           <span>Capabilities</span>
           <ul>
             <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Live status, settings and diagnostics</span></li>
-            <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Telemetry synchronization</span></li>
+            <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Telemetry synchronization, interruption and authenticated recording erasure</span></li>
           </ul>
         </div>
       </div>

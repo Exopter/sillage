@@ -3,8 +3,8 @@ require "test_helper"
 class OperationsFormLayoutTest < ActionDispatch::IntegrationTest
   setup { sign_in_as users(:julien) }
 
-  test "flight and Atlas forms use the constrained shared form shell" do
-    [ new_flight_path, edit_flight_path(flights(:one)), new_landing_zone_path ].each do |path|
+  test "flight forms use the constrained shared form shell" do
+    [ new_flight_path, edit_flight_path(flights(:one)) ].each do |path|
       get path
 
       assert_response :success

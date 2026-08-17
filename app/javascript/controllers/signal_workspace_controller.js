@@ -21,8 +21,7 @@ export default class extends Controller {
     batchUrl: String,
     eventUrl: String,
     completeUrl: String,
-    mapImageUrl: String,
-    landingZone: String
+    mapImageUrl: String
   }
 
   async connect() {
@@ -626,7 +625,7 @@ export default class extends Controller {
     ctx.strokeStyle = "#ffb74d"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(cx - 70, cy - 7); ctx.lineTo(cx - 24, cy - 7); ctx.lineTo(cx, cy + 6); ctx.lineTo(cx + 24, cy - 7); ctx.lineTo(cx + 70, cy - 7); ctx.stroke()
     ctx.fillStyle = "#8cff4d"; ctx.textAlign = "center"; ctx.font = "600 28px ui-monospace"; ctx.fillText(`${formatNumber(this.telemetry.heading, 0, 3)}°`, cx, 42)
     ctx.fillStyle = "#788281"; ctx.font = "600 10px ui-monospace"; ctx.fillText("HEADING", cx, 58)
-    ctx.fillStyle = "#e6ece9"; ctx.font = "500 12px ui-monospace"; ctx.fillText(`LANDING ZONE · ${this.landingZoneValue.toUpperCase()}`, cx, h - 24)
+    ctx.fillStyle = "#e6ece9"; ctx.font = "500 12px ui-monospace"; ctx.fillText("FLIGHT DATA · LIVE", cx, h - 24)
     if (w > 420 && h > 260) {
       drawTape(ctx, 32, cy, "AIRSPEED", this.telemetry.airspeed, "km/h", true)
       drawTape(ctx, w - 32, cy, "ALTITUDE", this.telemetry.altitude, "m", false)

@@ -4,9 +4,11 @@ import {
   BleUuid,
   BleAuthenticationClient,
   USB_CHUNK_SIZE,
+  UsbCapability,
   UsbErrorCode,
   UsbFdrClient,
   encodeBleConfig,
+  formatStorageCapacity,
   formatUsbErrorDetails,
   parseBleConfig,
   parseBleDeviceInfo,
@@ -25,7 +27,7 @@ export default class extends Controller {
     sillageHeartbeatUrl: String
   }
   static targets = [
-    "usbButton", "usbStatus", "usbDevice", "syncProgress", "syncDetail", "syncTechnical",
+    "usbButton", "stopSyncButton", "eraseSdButton", "usbStatus", "usbDevice", "syncProgress", "syncDetail", "syncTechnical",
     "usbNotice", "usbNoticeLabel", "bleButton", "bleStatus", "bleDevice", "bleDetail",
     "bleNotice", "bleNoticeLabel", "wifiStatus", "wifiDevice", "wifiAutoLabel", "wifiDetail",
     "wifiNotice", "wifiNoticeLabel", "recorderStatus",
@@ -43,6 +45,7 @@ export default class extends Controller {
     this.initialized = true
     this.usbBusy = false
     this.usbClient = null
+    this.usbSession = null
     this.usbAuthenticated = false
     this.usbAuthenticationConfigured = false
     this.usbPort = null
@@ -51,6 +54,10 @@ export default class extends Controller {
     this.usbFacts = null
     this.usbSynchronization = null
     this.usbRecorderError = null
+    this.usbSyncActive = false
+    this.usbSyncInterrupted = false
+    this.usbUploadController = null
+    this.usbEraseActive = false
     this.bleDevice = null
     this.bleServer = null
     this.bleCharacteristics = {}
@@ -183,27 +190,36 @@ export default class extends Controller {
 
   handleSerialDisconnect(event) {
     const port = event.port || event.target
-    if (port === this.usbPort) this.disconnectUsb({ closePort: false })
+    if (port === this.usbPort) void this.disconnectUsb()
   }
 
-  async synchronizeUsb(port) {
+  async synchronizeUsb(port, { skipFileSynchronization = false } = {}) {
     if (this.usbBusy || this.usbClient) return
+    const session = Symbol("usb-session")
+    const client = new UsbFdrClient(port)
     this.usbBusy = true
+    this.usbSession = session
+    this.usbClient = client
+    this.usbPort = port
     this.usbAuthenticated = false
     this.usbAuthenticationConfigured = false
     this.usbIdentity = null
     this.usbFacts = null
     this.usbSynchronization = null
     this.usbRecorderError = null
+    this.usbSyncActive = false
+    this.usbSyncInterrupted = false
+    this.usbEraseActive = false
     this.usbDeviceTarget.textContent = "Identifying recorder"
     this.syncProgressTarget.hidden = false
-    this.showUsbNotice("Checking for sealed recordings")
+    this.showUsbNotice(skipFileSynchronization
+      ? "Restoring the authenticated USB-C control session without restarting synchronization"
+      : "Preparing sealed recordings and verifying checksums")
     this.renderRecorderInformation()
-    this.usbButtonTarget.disabled = true
     this.setTransportStatus(this.usbStatusTarget, "Connecting", "connecting")
-    const client = new UsbFdrClient(port)
     try {
       const device = await client.connect()
+      if (!this.usbSessionActive(session, client)) return
       let authenticationNotice = null
       const challenge = await client.usbAuthenticationChallenge()
       this.usbAuthenticationConfigured = challenge.configured
@@ -226,26 +242,49 @@ export default class extends Controller {
           }
         }
       }
-      this.usbClient = client
-      this.usbPort = port
       this.usbIdentity = device
       this.refreshRecorderRegistration()
       setAircraftConnection(AircraftConnectionTransport.USB_C, true, { deviceId: device.deviceId })
       this.usbDeviceTarget.textContent = device.deviceId
       this.usbButtonTarget.textContent = "Disconnect USB-C"
       await this.refreshUsbControlData()
+      if (!this.usbSessionActive(session, client)) return
       this.updateToolsAvailability()
-      this.startUsbPolling()
       this.renderRecorderInformation()
-      if (this.usbAuthenticated) {
+      if (this.usbAuthenticated && skipFileSynchronization) {
+        this.usbSynchronization = "Interrupted by operator"
+        this.usbFacts.synchronization = this.usbSynchronization
+        this.showUsbNotice("Transfer interrupted. The recordings and partial transfer are preserved.", {
+          state: "caution",
+          label: "Synchronization stopped"
+        })
+      } else if (this.usbAuthenticated) {
         this.setTransportStatus(this.usbStatusTarget, "Synchronizing", "connecting")
+        this.usbSyncActive = true
+        this.usbSyncInterrupted = false
+        this.updateUsbActions()
         try {
           const synchronization = await this.synchronizeUsbFiles(client, device)
+          if (!this.usbSessionActive(session, client)) return
           this.showUsbNotice(synchronization)
           this.usbSynchronization = synchronization
           this.usbFacts.synchronization = synchronization
         } catch (error) {
-          this.showUsbSyncError(error)
+          if (!this.usbSessionActive(session, client) || error?.usbConnectionLost) throw error
+          if (error?.usbSyncInterrupted) {
+            this.usbSynchronization = "Interrupted by operator"
+            this.usbFacts.synchronization = this.usbSynchronization
+            this.showUsbNotice("Transfer interrupted. The recordings and partial transfer are preserved.", {
+              state: "caution",
+              label: "Synchronization stopped"
+            })
+          } else {
+            this.showUsbSyncError(error)
+          }
+        } finally {
+          this.usbSyncActive = false
+          this.usbUploadController = null
+          this.updateUsbActions()
         }
       } else {
         this.showUsbNotice(authenticationNotice.message, authenticationNotice)
@@ -256,34 +295,48 @@ export default class extends Controller {
         this.usbAuthenticated ? "Authenticated" : "Connected read-only",
         "ready"
       )
+      this.startUsbPolling()
       this.renderRecorderInformation()
     } catch (error) {
-      if (this.usbClient === client) this.usbClient = null
+      if (!this.usbSessionActive(session, client)) return
+      this.usbClient = null
       this.usbAuthenticated = false
       this.usbPort = null
       await client.close()
       this.showUsbConnectionError(error)
     } finally {
-      this.usbBusy = false
-      this.usbButtonTarget.disabled = false
+      if (this.usbSession === session) {
+        this.usbSession = null
+        this.usbBusy = false
+        this.usbButtonTarget.disabled = false
+        this.updateUsbActions()
+      }
     }
+  }
+
+  usbSessionActive(session, client) {
+    return this.usbSession === session && this.usbClient === client
   }
 
   async synchronizeUsbFiles(client, device) {
     let synchronizedFiles = 0
     while (true) {
+      this.ensureUsbSyncContinues()
       const manifest = await client.nextFile()
+      this.ensureUsbSyncContinues()
       if (!manifest) break
       this.syncDetailTarget.textContent = `${manifest.filename} · ${formatBytes(manifest.sizeBytes)}`
       const partial = await PartialFdrFile.open(device.deviceId, manifest)
       try {
         let offset = partial.size
         while (offset < manifest.sizeBytes) {
+          this.ensureUsbSyncContinues()
           const chunk = await client.readChunk(
             manifest.fileIndex,
             offset,
             Math.min(USB_CHUNK_SIZE, manifest.sizeBytes - offset)
           )
+          this.ensureUsbSyncContinues()
           if (!chunk.length) throw new Error("The recorder returned an empty chunk before end of file.")
           await partial.append(offset, chunk)
           offset += chunk.length
@@ -291,19 +344,105 @@ export default class extends Controller {
           this.syncProgressTarget.max = manifest.sizeBytes
           this.syncDetailTarget.textContent = `${manifest.filename} · ${formatBytes(offset)} / ${formatBytes(manifest.sizeBytes)}`
         }
+        this.ensureUsbSyncContinues()
         const blob = await partial.blob()
-        await this.uploadFile(device, manifest, blob)
+        this.ensureUsbSyncContinues()
+        const uploadController = new AbortController()
+        this.usbUploadController = uploadController
+        await this.uploadFile(device, manifest, blob, { signal: uploadController.signal })
+        this.usbUploadController = null
+        this.ensureUsbSyncContinues()
         await client.acknowledge(manifest.fileIndex, manifest.sha256)
         await partial.remove()
         synchronizedFiles += 1
       } catch (error) {
+        this.usbUploadController = null
         await partial.close()
+        if (this.usbSyncInterrupted) throw usbSyncInterruptedError()
         throw error
       }
     }
     return synchronizedFiles
       ? `${synchronizedFiles} file${synchronizedFiles === 1 ? "" : "s"} synchronized`
       : "No sealed file waiting"
+  }
+
+  async interruptUsbSync() {
+    if (!this.usbSyncActive || this.usbSyncInterrupted) return
+
+    const port = this.usbPort
+    this.usbSyncInterrupted = true
+    this.usbUploadController?.abort()
+    this.stopSyncButtonTarget.disabled = true
+    this.stopSyncButtonTarget.textContent = "Stopping…"
+    this.showUsbNotice("Closing the transfer and preserving the partial file…", {
+      state: "caution",
+      label: "Stopping synchronization"
+    })
+    await this.disconnectUsb()
+    if (port) await this.synchronizeUsb(port, { skipFileSynchronization: true })
+  }
+
+  ensureUsbSyncContinues() {
+    if (this.usbSyncInterrupted) throw usbSyncInterruptedError()
+  }
+
+  async eraseSdRecordings() {
+    const client = this.usbClient
+    if (!client || !this.usbAuthenticated) {
+      return this.showUsbNotice("Connect and authenticate the recorder over USB-C first.", {
+        state: "error",
+        label: "Erase unavailable"
+      })
+    }
+    if (this.usbSyncActive) {
+      return this.showUsbNotice("Stop the transfer before erasing recordings.", {
+        state: "caution",
+        label: "Erase unavailable"
+      })
+    }
+    if ((this.usbIdentity?.capabilities & UsbCapability.ERASE_RECORDINGS) === 0) {
+      return this.showUsbNotice("Update the recorder firmware before erasing recordings from Sillage.", {
+        state: "caution",
+        label: "Erase unavailable"
+      })
+    }
+    if (!window.confirm("Erase all FDR recordings from this recorder's microSD card? This cannot be undone. Files already synchronized to Sillage and non-FDR files on the card will be preserved.")) return
+
+    window.clearInterval(this.usbPollTimer)
+    this.usbPollTimer = null
+    this.usbEraseActive = true
+    this.updateUsbActions()
+    this.setTransportStatus(this.usbStatusTarget, "Erasing recordings", "connecting")
+    this.showUsbNotice("Closing the active recording and erasing FDR files…", {
+      state: "caution",
+      label: "Erasing microSD recordings"
+    })
+    try {
+      const result = await client.eraseRecordings()
+      if (client !== this.usbClient) return
+      this.usbSynchronization = "Recordings erased"
+      if (this.usbFacts) this.usbFacts.synchronization = this.usbSynchronization
+      await this.refreshUsbControlData()
+      this.showUsbNotice(`${result.deletedFiles} recording${result.deletedFiles === 1 ? "" : "s"} erased · ${formatBytes(result.deletedBytes)} freed. Recording resumed in a new file.`, {
+        label: "microSD recordings erased"
+      })
+    } catch (error) {
+      if (error?.usbConnectionLost) {
+        await this.disconnectUsb()
+        this.showUsbConnectionError(error)
+      } else {
+        this.showUsbNotice(error.message, { state: "error", label: "Erase failed" })
+      }
+    } finally {
+      this.usbEraseActive = false
+      if (client === this.usbClient) {
+        this.setTransportStatus(this.usbStatusTarget, "Authenticated", "ready")
+        this.startUsbPolling()
+      }
+      this.updateUsbActions()
+      this.renderRecorderInformation()
+    }
   }
 
   async refreshUsbControlData() {
@@ -322,25 +461,31 @@ export default class extends Controller {
       try {
         await this.refreshUsbControlData()
       } catch (error) {
-        await this.disconnectUsb({ closePort: true })
+        await this.disconnectUsb()
         this.showUsbConnectionError(error)
       }
     }, 2000)
   }
 
-  async disconnectUsb({ closePort = true } = {}) {
+  async disconnectUsb() {
     window.clearInterval(this.usbPollTimer)
     this.usbPollTimer = null
     const client = this.usbClient
+    this.usbSyncInterrupted = true
+    this.usbUploadController?.abort()
     this.usbClient = null
+    this.usbSession = null
+    this.usbBusy = false
     this.usbAuthenticated = false
     this.usbAuthenticationConfigured = false
     this.usbPort = null
-    if (closePort) await client?.close()
     this.usbIdentity = null
     this.usbFacts = null
     this.usbSynchronization = null
     this.usbRecorderError = null
+    this.usbSyncActive = false
+    this.usbUploadController = null
+    this.usbEraseActive = false
     setAircraftConnection(AircraftConnectionTransport.USB_C, false)
     this.usbButtonTarget.textContent = "Connect USB-C"
     this.usbButtonTarget.disabled = false
@@ -350,9 +495,10 @@ export default class extends Controller {
     this.refreshRecorderRegistration()
     this.updateToolsAvailability()
     this.renderRecorderInformation()
+    await client?.close()
   }
 
-  async uploadFile(device, manifest, blob) {
+  async uploadFile(device, manifest, blob, { signal } = {}) {
     const form = new FormData()
     form.append("source_file", blob, manifest.filename)
     form.append("device_id", device.deviceId)
@@ -365,7 +511,8 @@ export default class extends Controller {
     const response = await fetch(this.uploadUrlValue, {
       method: "POST",
       headers: { "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || "" },
-      body: form
+      body: form,
+      signal
     })
     const payload = await response.json()
     if (!response.ok) throw new Error(payload.error || `Sillage rejected ${manifest.filename}.`)
@@ -564,7 +711,7 @@ export default class extends Controller {
     const facts = {
       health: describeAlerts(status.alertFlags),
       storage: storageReady
-        ? `${status.storageFreeMiB} MiB free of ${status.storageTotalMiB} MiB`
+        ? formatStorageCapacity(status.storageFreeMiB, status.storageTotalMiB)
         : "microSD unavailable",
       synchronization: status.lastSyncedFileIndex
         ? `Last file FDR${String(status.lastSyncedFileIndex).padStart(6, "0")}.BIN`
@@ -741,6 +888,19 @@ export default class extends Controller {
     this.recorderToolsHintTarget.textContent = available
       ? "Available"
       : "Connect USB-C or BLE to access"
+    this.updateUsbActions()
+  }
+
+  updateUsbActions() {
+    const authenticated = Boolean(this.usbClient) && this.usbAuthenticated
+    const canErase = authenticated
+      && (this.usbIdentity?.capabilities & UsbCapability.ERASE_RECORDINGS) !== 0
+    this.stopSyncButtonTarget.hidden = !this.usbSyncActive
+    this.stopSyncButtonTarget.disabled = !this.usbSyncActive || this.usbSyncInterrupted
+    this.stopSyncButtonTarget.textContent = this.usbSyncInterrupted ? "Stopping…" : "Stop transfer"
+    this.eraseSdButtonTarget.hidden = !canErase || this.usbSyncActive
+    this.eraseSdButtonTarget.disabled = !canErase || this.usbEraseActive
+    this.eraseSdButtonTarget.textContent = this.usbEraseActive ? "Erasing…" : "Erase recordings"
   }
 
   async requestAuthenticationProof(deviceId, nonce, transport) {
@@ -868,7 +1028,7 @@ export default class extends Controller {
       await this.confirmRecorderInitialization(recorder, identity)
       recorder.initialization_confirmed = true
       this.renderRegisteredRecorder(recorder, aircraft)
-      await this.disconnectUsb({ closePort: true })
+      await this.disconnectUsb()
       window.location.assign(recorder.connectivity_url)
     } catch (error) {
       this.registrationSubmitting = false
@@ -1156,6 +1316,12 @@ export default class extends Controller {
     this.recorderAlertTechnicalTarget.hidden = !issue.technical
     this.recorderAlertTarget.hidden = false
   }
+}
+
+function usbSyncInterruptedError() {
+  const error = new Error("Synchronization interrupted by operator.")
+  error.usbSyncInterrupted = true
+  return error
 }
 
 function samePort(info, saved) {

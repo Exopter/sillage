@@ -17,8 +17,9 @@ module Api
         }, status: :conflict unless key&.bytesize == Assembly::FDR_AUTH_KEY_BYTES
 
         nonce_hex = params.require(:nonce).to_s
+        valid_nonce = nonce_hex.match?(/\A[0-9a-f]{#{NONCE_BYTES * 2}}\z/i) && !nonce_hex.match?(/\A0+\z/)
         return render json: { error: "The recorder authentication challenge is invalid." },
-          status: :unprocessable_entity unless nonce_hex.match?(/\A[0-9a-f]{#{NONCE_BYTES * 2}}\z/i)
+          status: :unprocessable_entity unless valid_nonce
         nonce = [ nonce_hex ].pack("H*")
         domain = SESSION_DOMAINS[params.require(:transport).to_s]
         return render json: { error: "The recorder authentication transport is invalid." },

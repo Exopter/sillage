@@ -25,7 +25,7 @@ module Signal
         )
         insert_track_points
         insert_sensor_samples
-        identify_flight_context
+        identify_flight_source
         @signal_session.acknowledge!(@sequence)
         mark_flight_live
         broadcast(batch)
@@ -100,23 +100,12 @@ module Signal
       flight.update!(attributes)
     end
 
-    def identify_flight_context
-      flight = @signal_session.flight
+    def identify_flight_source
       Signal::IdentifySource.new(
         signal_session: @signal_session,
         system_id: @payload["mavlink_system_id"] || @payload["telemetry_system_id"],
         component_id: @payload["mavlink_component_id"]
       ).call
-
-      attributes = {}
-      if flight.landing_zone_id.nil? && @payload.dig("position", "latitude").present? && @payload.dig("position", "longitude").present?
-        attributes[:landing_zone] = LandingZone.detect(
-          latitude: @payload.dig("position", "latitude"),
-          longitude: @payload.dig("position", "longitude")
-        )
-      end
-      attributes.compact!
-      flight.update!(attributes) if attributes.any?
     end
 
     def broadcast(batch)

@@ -55,7 +55,6 @@ module Api
           Current.user.flights.create!(
             name: "Live flight",
             status: "live",
-            landing_zone: detected_landing_zone,
             started_at: parse_time(create_params[:started_at]) || Time.current
           )
         end
@@ -82,8 +81,6 @@ module Api
           :mavlink_system_id,
           :mavlink_component_id,
           :telemetry_system_id,
-          :latitude,
-          :longitude,
           :started_at,
           station_metadata: {}
         )
@@ -124,12 +121,6 @@ module Api
             { readings: {} }
           ]
         )
-      end
-
-      def detected_landing_zone
-        return if create_params[:latitude].blank? || create_params[:longitude].blank?
-
-        LandingZone.detect(latitude: create_params[:latitude], longitude: create_params[:longitude])
       end
 
       def parse_time(value)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_11_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_17_100000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -118,7 +118,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_150000) do
     t.text "error_message"
     t.string "firmware_version"
     t.string "import_type", default: "flysight", null: false
-    t.integer "landing_zone_id"
     t.datetime "log_started_at"
     t.string "session_id"
     t.string "source_filename"
@@ -128,7 +127,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_150000) do
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
     t.index ["aircraft_id"], name: "index_flight_imports_on_aircraft_id"
-    t.index ["landing_zone_id"], name: "index_flight_imports_on_landing_zone_id"
     t.index ["log_started_at"], name: "index_flight_imports_on_log_started_at"
     t.index ["session_id"], name: "index_flight_imports_on_session_id"
     t.index ["status"], name: "index_flight_imports_on_status"
@@ -150,7 +148,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_150000) do
     t.datetime "exit_at"
     t.integer "flight_import_id"
     t.datetime "landing_at"
-    t.integer "landing_zone_id"
     t.string "location"
     t.float "max_altitude_m"
     t.float "max_horizontal_speed_mps"
@@ -173,7 +170,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_150000) do
     t.index ["code"], name: "index_flights_on_code", unique: true
     t.index ["exit_at"], name: "index_flights_on_exit_at"
     t.index ["flight_import_id"], name: "index_flights_on_flight_import_id"
-    t.index ["landing_zone_id"], name: "index_flights_on_landing_zone_id"
     t.index ["started_at"], name: "index_flights_on_started_at"
     t.index ["status"], name: "index_flights_on_status"
     t.index ["user_id"], name: "index_flights_on_user_id"
@@ -202,20 +198,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_150000) do
     t.index ["aircraft_id"], name: "index_installations_on_aircraft_id"
     t.index ["installable_type", "installable_id"], name: "index_active_installation_per_asset", unique: true, where: "removed_at IS NULL"
     t.index ["installable_type", "installable_id"], name: "index_installations_on_installable"
-  end
-
-  create_table "landing_zones", force: :cascade do |t|
-    t.string "code", null: false
-    t.datetime "created_at", null: false
-    t.float "detection_radius_km", default: 25.0, null: false
-    t.float "elevation_m"
-    t.float "latitude", null: false
-    t.float "longitude", null: false
-    t.string "name", null: false
-    t.text "notes"
-    t.text "practical_information"
-    t.datetime "updated_at", null: false
-    t.index ["code"], name: "index_landing_zones_on_code", unique: true
   end
 
   create_table "operator_events", force: :cascade do |t|
@@ -403,11 +385,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_150000) do
   add_foreign_key "fdr_wifi_profiles", "wifi_credentials"
   add_foreign_key "flight_imports", "aircraft"
   add_foreign_key "flight_imports", "flights", column: "target_flight_id"
-  add_foreign_key "flight_imports", "landing_zones"
   add_foreign_key "flight_imports", "users"
   add_foreign_key "flights", "aircraft"
   add_foreign_key "flights", "flight_imports"
-  add_foreign_key "flights", "landing_zones"
   add_foreign_key "flights", "users"
   add_foreign_key "installations", "aircraft"
   add_foreign_key "operator_events", "flights"

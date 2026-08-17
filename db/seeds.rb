@@ -60,8 +60,7 @@ DEMO_FLIGHTS = [
     },
     satellite_count: 17,
     vbat_drop_per_second: 0.0018,
-    aircraft_registration: "WS-001",
-    landing_zone_code: "LZ-BRENTO"
+    aircraft_registration: "WS-001"
   },
   {
     session_id: "demo-gap-tallard-wingsuit",
@@ -82,8 +81,7 @@ DEMO_FLIGHTS = [
     },
     satellite_count: 19,
     vbat_drop_per_second: 0.0011,
-    aircraft_registration: "F-GOCC",
-    landing_zone_code: "LZ-TALLARD"
+    aircraft_registration: "F-GOCC"
   }
 ].freeze
 
@@ -91,12 +89,6 @@ OPERATIONAL_AIRCRAFT = [
   [ "F-GOCC", "Pilatus PC-6 test aircraft" ],
   [ "WS-001", "Development wingsuit" ],
   [ "EXO-001", "Exowing prototype" ]
-].freeze
-
-OPERATIONAL_LANDING_ZONES = [
-  [ "LZ-TOURNON", "Tournon Valley", 44.1994, 5.7168, 642, "Track access from the D20.", "Open grass axis in the valley." ],
-  [ "LZ-BRENTO", "Monte Brento", 45.995653, 10.926176, 225, "Local road access in the Sarca valley.", "Synthetic development site used by the bundled replay." ],
-  [ "LZ-TALLARD", "Gap Tallard", 44.455, 6.0378, 596, "Airfield access procedures apply.", "Synthetic development site used by the bundled replay." ]
 ].freeze
 
 DEFAULT_FUNCTIONS = {
@@ -124,12 +116,6 @@ def seed_demo_operational_context
     aircraft = Aircraft.find_or_initialize_by(registration:)
     aircraft.assign_attributes(name:, active: true)
     aircraft.save!
-  end
-
-  OPERATIONAL_LANDING_ZONES.each do |code, name, latitude, longitude, elevation_m, practical_information, notes|
-    zone = LandingZone.find_or_initialize_by(code:)
-    zone.assign_attributes(name:, latitude:, longitude:, elevation_m:, detection_radius_km: 25, practical_information:, notes:)
-    zone.save!
   end
 end
 
@@ -206,7 +192,6 @@ def seed_synthetic_flight(config, default_user:)
   flight_import.assign_attributes(
     user: default_user,
     aircraft: Aircraft.find_by!(registration: config.fetch(:aircraft_registration)),
-    landing_zone: LandingZone.find_by!(code: config.fetch(:landing_zone_code)),
     source_filename: config.fetch(:source_filename),
     status: "imported",
     device_id: "Sillage demo",
@@ -240,7 +225,6 @@ def seed_synthetic_flight(config, default_user:)
     {
       user: default_user,
       aircraft: flight_import.aircraft,
-      landing_zone: flight_import.landing_zone,
       status: "analysed",
       name: config.fetch(:name),
       location: config.fetch(:location),

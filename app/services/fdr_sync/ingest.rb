@@ -2,9 +2,10 @@ require "digest"
 
 module FdrSync
   class Ingest
-    Result = Data.define(:flight_import, :duplicate)
+    Result = Data.define(:flight_import, :duplicate, :ignored, :duration_seconds, :sha256)
 
     MAX_FILE_SIZE = 512.megabytes
+    MIN_RECORDING_DURATION_SECONDS = 5.0
     FILENAME_PATTERN = /\AFDR\d{6}\.BIN\z/i
     SHA256_PATTERN = /\A[0-9a-f]{64}\z/
 
@@ -20,16 +21,21 @@ module FdrSync
       raise Error, "The uploaded file does not match its declared SHA-256." unless actual_sha256 == expected_sha256
 
       existing = @user.flight_imports.find_by(source_sha256: actual_sha256)
-      return Result.new(flight_import: existing, duplicate: true) if existing
+      return result_for(existing, duplicate: true, sha256: actual_sha256) if existing
 
       decoded = decode_file
       validate_header!(decoded.header)
+      duration_seconds = recording_duration_seconds(decoded.records)
+      if duration_seconds < MIN_RECORDING_DURATION_SECONDS
+        return result_for(nil, ignored: true, duration_seconds:, sha256: actual_sha256)
+      end
+
       flight_import = create_import!(decoded.header, actual_sha256)
       ExoFdrImportJob.perform_later(flight_import)
-      Result.new(flight_import:, duplicate: false)
+      result_for(flight_import, duration_seconds:, sha256: actual_sha256)
     rescue ActiveRecord::RecordNotUnique
       existing = @user.flight_imports.find_by!(source_sha256: expected_sha256)
-      Result.new(flight_import: existing, duplicate: true)
+      result_for(existing, duplicate: true, sha256: expected_sha256)
     end
 
     private
@@ -53,6 +59,17 @@ module FdrSync
     def validate_header!(header)
       raise Error, "The ExoFDR boot identifier does not match the manifest." unless header.fetch("boot_id") == declared_boot_id
       raise Error, "The ExoFDR format does not match the manifest." unless header.fetch("format_version") == declared_format_version
+    end
+
+    def recording_duration_seconds(records)
+      timestamps = records.map { |record| record.fetch("timestamp_us").to_i }
+      return 0.0 if timestamps.empty?
+
+      (timestamps.max - timestamps.min) / 1_000_000.0
+    end
+
+    def result_for(flight_import, duplicate: false, ignored: false, duration_seconds: nil, sha256:)
+      Result.new(flight_import:, duplicate:, ignored:, duration_seconds:, sha256:)
     end
 
     def create_import!(header, actual_sha256)

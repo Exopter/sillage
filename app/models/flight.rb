@@ -6,7 +6,6 @@ class Flight < ApplicationRecord
   belongs_to :user
   belongs_to :flight_import, optional: true, inverse_of: :flights
   belongs_to :aircraft, optional: true
-  belongs_to :landing_zone, optional: true
   has_many :track_points, dependent: :delete_all, inverse_of: :flight
   has_many :sensor_samples, dependent: :delete_all, inverse_of: :flight
   has_many :signal_sessions, dependent: :restrict_with_error
@@ -42,8 +41,8 @@ class Flight < ApplicationRecord
     aircraft&.display_name || "To complete"
   end
 
-  def display_landing_zone
-    landing_zone&.name || location.presence || "To complete"
+  def display_location
+    location.presence || "Not recorded"
   end
 
   def capture_configuration!

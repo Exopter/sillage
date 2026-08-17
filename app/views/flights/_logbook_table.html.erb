@@ -7,7 +7,7 @@
     <%= form_with url: flights_path, method: :get, class: "flights-search" do |form| %>
       <label class="search-control">
         <%= sillage_icon "search", size: 16 %>
-        <%= form.search_field :q, value: local_assigns[:query], placeholder: "Search flight, aircraft, zone", autocomplete: "off" %>
+        <%= form.search_field :q, value: local_assigns[:query], placeholder: "Search flight, aircraft, location", autocomplete: "off" %>
       </label>
     <% end %>
     <%= link_to new_flight_import_path, class: "button-secondary" do %>
@@ -24,7 +24,7 @@
         <tr>
           <th>Flight</th>
           <th>Aircraft</th>
-          <th>Landing zone</th>
+          <th>Location</th>
           <th>Date</th>
           <th>Duration</th>
           <th>Source</th>
@@ -44,7 +44,7 @@
             data-action="click->row-link#open keydown->row-link#openWithKeyboard">
             <td><%= link_to flight.code, flight, class: "flights-code" %></td>
             <td><strong class="flights-data"><%= flight.aircraft&.registration || "To complete" %></strong></td>
-            <td><%= flight.display_landing_zone %></td>
+            <td><%= flight.display_location %></td>
             <td class="flights-muted flights-data"><%= logbook_date(flight) %></td>
             <td class="flights-data"><%= duration(flight.duration_seconds) %></td>
             <td>

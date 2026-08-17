@@ -29,7 +29,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
       last_received_at: Time.current.iso8601,
       mavlink_system_id: @fdr.mavlink_system_id,
       mavlink_component_id: @fdr.mavlink_component_id,
-      position: { latitude: landing_zones(:tournon).latitude, longitude: landing_zones(:tournon).longitude },
+      position: { latitude: 44.1994, longitude: 5.7168 },
       samples: [
         { kind: "gps", recorded_at: Time.current.iso8601, latitude: 44.1994, longitude: 5.7168, altitude_m: 1_480, heading_deg: 36, gps_fix: 3, satellite_count: 12 },
         { kind: "sensor", sensor_type: "VFR_HUD", recorded_at: Time.current.iso8601, readings: { airspeedMps: 59.4 } }
@@ -72,23 +72,20 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_equal "processing", flight.reload.status
   end
 
-  test "a first live batch identifies an unassigned aircraft and landing zone" do
+  test "a first live batch identifies an unassigned aircraft" do
     post api_v1_signal_sessions_path, params: { uuid: SecureRandom.uuid }, as: :json
     session = SignalSession.order(:created_at).last
     assert_nil session.flight.aircraft
-    assert_nil session.flight.landing_zone
 
     post batches_api_v1_signal_session_path(session.uuid), params: {
       sequence: 0,
       mavlink_system_id: @fdr.mavlink_system_id,
       mavlink_component_id: @fdr.mavlink_component_id,
-      position: { latitude: landing_zones(:tournon).latitude, longitude: landing_zones(:tournon).longitude },
       samples: []
     }, as: :json
 
     assert_response :success
     assert_equal aircraft(:pilatus), session.flight.reload.aircraft
-    assert_equal landing_zones(:tournon), session.flight.landing_zone
   end
 
   test "a prepared flight learns the observed MAVLink identity for its installed FDR" do

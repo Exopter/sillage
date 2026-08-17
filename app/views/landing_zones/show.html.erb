@@ -1,5 +1,0 @@
-<% content_for :title, @landing_zone.name %>
-<div class="operations-narrow">
-  <header class="operations-page-head"><div><span class="operations-eyebrow">Landing zone</span><h1><%= @landing_zone.name %></h1><p><%= @landing_zone.code %></p></div><%= link_to "Edit", edit_landing_zone_path(@landing_zone), class: "button-secondary" %></header>
-  <section class="operations-panel operations-record"><dl><div><dt>Coordinates</dt><dd><%= @landing_zone.latitude %>, <%= @landing_zone.longitude %></dd></div><div><dt>Elevation</dt><dd><%= @landing_zone.elevation_m.present? ? "#{@landing_zone.elevation_m.round} m AMSL" : "Not recorded" %></dd></div><div><dt>Detection radius</dt><dd><%= @landing_zone.detection_radius_km %> km</dd></div><div><dt>Practical information</dt><dd><%= simple_format(@landing_zone.practical_information.presence || "Not recorded") %></dd></div><div><dt>Notes</dt><dd><%= simple_format(@landing_zone.notes.presence || "Not recorded") %></dd></div></dl></section>
-</div>

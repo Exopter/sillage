@@ -11,7 +11,6 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
         flight_import: {
           import_type: "flysight",
           aircraft_id: aircraft(:pilatus).id,
-          landing_zone_id: landing_zones(:tournon).id,
           source_files: [
             fixture_file_upload("flysight_v2/TRACK.CSV", "text/csv"),
             fixture_file_upload("flysight_v2/SENSOR.CSV", "text/csv")
@@ -67,7 +66,6 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
           flight_import: {
             import_type: "flysight",
             aircraft_id: aircraft(:pilatus).id,
-            landing_zone_id: landing_zones(:tournon).id,
             source_files: [
               fixture_file_upload("flysight_v2/TRACK.CSV", "text/csv"),
               fixture_file_upload("flysight_v2/SENSOR.CSV", "text/csv")
@@ -85,13 +83,13 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     clear_enqueued_jobs
   end
 
-  test "creates a prepared flight with an aircraft and landing zone" do
+  test "creates a prepared flight with an aircraft and optional location" do
     assert_difference -> { Flight.count }, 1 do
       post flights_path, params: {
         flight: {
           name: "Test programme flight",
           aircraft_id: aircraft(:pilatus).id,
-          landing_zone_id: landing_zones(:tournon).id
+          location: "Tournon"
         }
       }
     end
@@ -100,18 +98,17 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_redirected_to flight_path(flight)
     assert_equal "preparation", flight.status
     assert_equal aircraft(:pilatus), flight.aircraft
-    assert_equal landing_zones(:tournon), flight.landing_zone
+    assert_equal "Tournon", flight.location
     assert_equal aircraft(:pilatus).configuration_snapshot, flight.configuration_snapshot
   end
 
-  test "rejects a manually prepared flight without an aircraft or landing zone" do
+  test "rejects a manually prepared flight without an aircraft" do
     assert_no_difference -> { Flight.count } do
       post flights_path, params: { flight: { name: "Incomplete prepared flight" } }
     end
 
     assert_response :unprocessable_entity
     assert_select ".workspace-errors", text: /Aircraft must be selected/
-    assert_select ".workspace-errors", text: /Landing zone must be selected/
   end
 
   test "rejects an ExoFDR import without a source file" do
@@ -119,8 +116,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
       post flight_imports_path, params: {
         flight_import: {
           import_type: "exofdr",
-          aircraft_id: aircraft(:pilatus).id,
-          landing_zone_id: landing_zones(:tournon).id
+          aircraft_id: aircraft(:pilatus).id
         }
       }
     end
@@ -150,6 +146,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{new_flight_import_path}']", text: "Import data"
     assert_select ".sillage-room-link", text: /Signal/
     assert_select ".sillage-room-link.is-separated", text: /Signal/
+    assert_select ".sillage-room-link", count: 3
     assert_select ".sillage-subtabs .sillage-subtab", 3
     assert_select ".sillage-subtabs .sillage-subtab", text: "Flight prep"
     assert_select ".sillage-subtabs .sillage-subtab", text: "HUD"
@@ -179,10 +176,6 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     get flight_hud_path
     assert_response :success
     assert_sillage_header crumb: "Pilot display", title: "HUD preview"
-
-    get atlas_path
-    assert_response :success
-    assert_sillage_header crumb: "Atlas", title: "Landing zones"
   end
 
   test "logout clears the local session" do

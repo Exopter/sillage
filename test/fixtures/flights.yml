@@ -4,7 +4,6 @@ one:
   user: julien
   flight_import: one
   aircraft: pilatus
-  landing_zone: tournon
   code: FLT-2026-001
   status: analysed
   name: MyString
@@ -30,7 +29,6 @@ two:
   user: julien
   flight_import: two
   aircraft: exowing
-  landing_zone: laragne
   code: FLT-2026-002
   status: analysed
   name: MyString

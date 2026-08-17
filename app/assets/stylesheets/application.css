@@ -570,8 +570,7 @@ body {
   border-bottom: 1px solid var(--border-rule);
 }
 
-.operations-record dt,
-.atlas-facts dt {
+.operations-record dt {
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 9px;
@@ -580,188 +579,10 @@ body {
   text-transform: uppercase;
 }
 
-.operations-record dd,
-.atlas-facts dd {
+.operations-record dd {
   margin: 5px 0 0;
   color: var(--text-strong);
   font-size: 13px;
-}
-
-.atlas-root {
-  width: min(1180px, calc(100vw - 104px));
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.atlas-layout {
-  display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
-  gap: 14px;
-}
-
-.atlas-zone-list,
-.atlas-detail-panel {
-  overflow: hidden;
-}
-
-.atlas-list-head {
-  padding: 14px;
-  border-bottom: 1px solid var(--border-rule);
-}
-
-.atlas-zone-button {
-  display: grid;
-  width: 100%;
-  gap: 7px;
-  padding: 14px;
-  border: 0;
-  border-bottom: 1px solid var(--border-rule);
-  background: transparent;
-  color: var(--text-body);
-  cursor: pointer;
-  text-align: left;
-}
-
-.atlas-zone-button:hover,
-.atlas-zone-button[aria-pressed="true"] {
-  background: var(--surface-hover);
-}
-
-.atlas-zone-button[aria-pressed="true"] {
-  box-shadow: inset 3px 0 0 var(--ex-aqua-500);
-}
-
-.atlas-zone-button:focus-visible {
-  outline: 2px solid var(--ex-aqua-500);
-  outline-offset: -2px;
-}
-
-.atlas-zone-title,
-.atlas-zone-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.atlas-zone-title strong {
-  color: var(--text-strong);
-  font-size: 14px;
-}
-
-.atlas-zone-title svg {
-  color: var(--text-muted);
-}
-
-.atlas-zone-meta {
-  color: var(--text-muted);
-  font-family: var(--font-data);
-  font-size: 10px;
-}
-
-.atlas-zone-summary {
-  overflow: hidden;
-  color: var(--text-muted);
-  display: -webkit-box;
-  font-size: 12px;
-  line-height: 1.4;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.atlas-map {
-  position: relative;
-  height: 430px;
-  background-position: center;
-  background-size: cover;
-}
-
-.atlas-static-target {
-  position: absolute;
-  z-index: 2;
-  top: 52%;
-  left: 62%;
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  color: var(--ex-hud-green);
-  transform: translate(-50%, -50%);
-}
-
-.atlas-static-target[hidden] {
-  display: none;
-}
-
-.atlas-static-target > span {
-  display: grid;
-  width: 52px;
-  height: 52px;
-  place-items: center;
-  border: 2px solid currentColor;
-  border-radius: 50%;
-  background: rgba(7, 11, 13, .72);
-}
-
-.atlas-static-target strong {
-  margin-top: 8px;
-  padding: 5px 8px;
-  border-radius: 4px;
-  background: rgba(7, 11, 13, .84);
-  color: var(--ex-vapor-50);
-  font: 600 9px var(--font-mono);
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.atlas-map .maplibregl-canvas {
-  outline: 0;
-}
-
-.atlas-map .maplibregl-popup-content {
-  border: 1px solid var(--ex-carbon-700);
-  border-radius: 4px;
-  background: var(--ex-carbon-950);
-  color: var(--ex-vapor-50);
-  font: 600 10px var(--font-mono);
-  letter-spacing: .04em;
-}
-
-.atlas-details {
-  display: grid;
-  grid-template-columns: 1.25fr 1fr;
-  border-top: 1px solid var(--border-rule);
-}
-
-.atlas-notes {
-  padding: 16px;
-  border-right: 1px solid var(--border-rule);
-}
-
-.atlas-notes h2 {
-  margin: 6px 0;
-  color: var(--text-strong);
-  font-size: 19px;
-}
-
-.atlas-notes p {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.atlas-facts {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  align-content: start;
-  margin: 0;
-  padding: 16px;
-}
-
-.atlas-facts .is-wide {
-  grid-column: 1 / -1;
 }
 
 @media (max-width: 920px) {
@@ -785,29 +606,8 @@ body {
   }
 
   .operations-form-grid,
-  .operations-record dl,
-  .atlas-layout,
-  .atlas-details {
+  .operations-record dl {
     grid-template-columns: 1fr;
-  }
-
-  .atlas-root {
-    width: 100%;
-    padding: 16px;
-  }
-
-  .atlas-zone-list {
-    max-height: 280px;
-    overflow: auto;
-  }
-
-  .atlas-map {
-    height: 320px;
-  }
-
-  .atlas-notes {
-    border-right: 0;
-    border-bottom: 1px solid var(--border-rule);
   }
 }
 
@@ -979,6 +779,11 @@ body {
 .signal-tool-button.is-danger:focus-visible {
   border-color: var(--ex-state-fault-text);
   color: var(--ex-state-fault-text);
+}
+
+.signal-tool-button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
 }
 
 .signal-storage-warning {
@@ -1207,40 +1012,6 @@ body {
   color: var(--ex-hud-green);
 }
 
-.signal-lz-marker {
-  position: absolute;
-  z-index: 2;
-  top: 52%;
-  left: 72%;
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  color: var(--ex-hud-green);
-  transform: translate(-50%, -50%);
-}
-
-.signal-lz-marker > span {
-  display: grid;
-  width: 54px;
-  height: 54px;
-  place-items: center;
-  border: 2px solid currentColor;
-  border-radius: 50%;
-  background: rgba(7, 11, 13, .78);
-  box-shadow: 0 0 0 9px rgba(140, 255, 77, .08);
-}
-
-.signal-lz-marker strong {
-  margin-top: 9px;
-  padding: 6px 9px;
-  border-radius: 4px;
-  background: rgba(7, 11, 13, .88);
-  font: 600 9px/1.2 var(--font-mono);
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
 .signal-map-cache,
 .signal-map-event {
   position: absolute;
@@ -1269,10 +1040,6 @@ body {
 .signal-widget[data-mode="mini"] .signal-map-event,
 .signal-widget[data-mode="mini"] .signal-aircraft-label {
   display: none;
-}
-
-.signal-widget[data-mode="mini"] .signal-lz-marker strong {
-  font-size: 7px;
 }
 
 .signal-telemetry-strip {
@@ -1407,6 +1174,17 @@ body {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.signal-fdr-channel-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.signal-fdr-channel-actions [hidden] {
+  display: none;
 }
 
 .signal-fdr-channel-identity {
@@ -1888,6 +1666,11 @@ body {
 
   .signal-fdr-channel-head .signal-tool-button {
     width: 100%;
+  }
+
+  .signal-fdr-channel-actions {
+    width: 100%;
+    flex-direction: column;
   }
 
   .signal-fdr-onboarding {
@@ -3892,23 +3675,6 @@ textarea {
   transform: translate(-50%, -50%);
 }
 
-.hud-landing-zone {
-  position: absolute;
-  top: 34%;
-  left: 63%;
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  color: var(--ex-amber-500);
-  font-family: var(--ex-font-mono);
-  font-size: 0.72rem;
-}
-
-.hud-landing-zone svg {
-  width: 26px;
-  height: 34px;
-}
-
 .hud-alert {
   position: absolute;
   top: 12px;
@@ -5802,10 +5568,6 @@ textarea {
 
   .hud-ladder strong {
     font-size: 1.35rem;
-  }
-
-  .hud-landing-zone {
-    left: 58%;
   }
 
   .hud-bottom-data {

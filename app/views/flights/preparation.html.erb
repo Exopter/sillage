@@ -17,7 +17,7 @@
     </div>
     <dl class="preparation-grid">
       <div><dt>Aircraft</dt><dd><%= @flight.display_aircraft %></dd></div>
-      <div><dt>Landing zone</dt><dd><%= @flight.display_landing_zone %></dd></div>
+      <div><dt>Location</dt><dd><%= @flight.display_location %></dd></div>
       <div><dt>Flight ID</dt><dd><%= @flight.code %></dd></div>
       <div><dt>Configuration</dt><dd><%= @flight.configuration_snapshot.present? ? "Captured" : "To complete" %></dd></div>
     </dl>
@@ -37,5 +37,5 @@
     </div>
   </section>
 
-  <p class="operations-help">Signal inherits this Flight ID, aircraft, landing zone, and current Hangar configuration. The microSD recorder remains authoritative.</p>
+  <p class="operations-help">Signal inherits this Flight ID, aircraft, and current Hangar configuration. The microSD recorder remains authoritative.</p>
 </section>

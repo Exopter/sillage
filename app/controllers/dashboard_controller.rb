@@ -1,10 +1,5 @@
 class DashboardController < ApplicationController
   ROOM_PLACEHOLDERS = {
-    "atlas" => {
-      title: "Atlas",
-      description: "Landing-zone maps, terrain context, practical information, and notes.",
-      icon: "layers"
-    },
     "hangar" => {
       title: "Hangar",
       description: "Fleet, wing hardware, equipment, maintenance, and spare parts.",

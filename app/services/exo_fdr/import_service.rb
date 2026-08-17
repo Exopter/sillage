@@ -3,7 +3,7 @@ require "stringio"
 module ExoFdr
   class ImportService
     class << self
-      def create!(uploaded_files, user: Current.user, aircraft: nil, landing_zone: nil, target_flight: nil)
+      def create!(uploaded_files, user: Current.user, aircraft: nil, target_flight: nil)
         uploaded_files = Array(uploaded_files).compact_blank
         raise Error, "Select an ExoFDR binary file." if uploaded_files.empty?
 
@@ -12,7 +12,6 @@ module ExoFdr
           status: "pending",
           import_type: "exofdr",
           aircraft: aircraft || target_flight&.aircraft,
-          landing_zone: landing_zone || target_flight&.landing_zone,
           target_flight:
         )
         uploaded_files.each do |uploaded|
@@ -91,9 +90,7 @@ module ExoFdr
       attributes = {
         user: @flight_import.user,
         aircraft: @flight_import.aircraft,
-        landing_zone: @flight_import.landing_zone,
         name: [ "ExoFDR", started_at&.in_time_zone&.strftime("%Y-%m-%d %H:%M") || "session #{index}" ].join(" "),
-        location: @flight_import.landing_zone&.name,
         status: "analysed",
         started_at:
       }.merge(summary, bounds)
