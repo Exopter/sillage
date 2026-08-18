@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-builder="kamal-remote-ssh---root-exopter-com"
-context="${builder}-context"
 deploy_host="${KAMAL_DEPLOY_HOST:-157.90.155.63}"
+builder="kamal-remote-ssh---root-${deploy_host//./-}"
+context="${builder}-context"
 remote="ssh://root@${deploy_host}"
 host="root@${deploy_host}"
 container="buildx_buildkit_${builder}0"
