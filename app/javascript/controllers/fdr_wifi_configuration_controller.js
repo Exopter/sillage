@@ -304,7 +304,7 @@ export default class extends Controller {
       await this.wifiClient.beginUpdate(bundle.profiles.length)
       for (const profile of bundle.profiles) await this.wifiClient.stageProfile(profile)
       await this.wifiClient.commitUpdate()
-      await this.wifiClient.configureSillage(bundle.sillage)
+      await this.wifiClient.configureSillage(bundle.sillage.heartbeat_url)
 
       this.applyStatusTarget.textContent = "Verifying the recorder copy…"
       const status = await this.wifiClient.status()

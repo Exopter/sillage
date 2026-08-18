@@ -352,6 +352,14 @@ assert.equal(
   sillageHeartbeatUrl
 )
 
+const sillageClient = new protocol.BleWifiClient(null)
+sillageClient.request = async (payload, expectedType) => {
+  assert.deepEqual(payload, encodedSillage)
+  assert.equal(expectedType, protocol.WifiResponse.ACK)
+  return { type: protocol.WifiResponse.ACK }
+}
+await sillageClient.configureSillage(sillageHeartbeatUrl)
+
 const sillageResponse = new Uint8Array(5 + sillageHeartbeatUrl.length)
 sillageResponse.set([1, protocol.WifiResponse.SILLAGE, 0, 1, sillageHeartbeatUrl.length])
 sillageResponse.set(new TextEncoder().encode(sillageHeartbeatUrl), 5)

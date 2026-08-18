@@ -854,9 +854,9 @@ export class BleWifiClient {
     return this.request(encodeWifiCommand(WifiCommand.CANCEL_UPDATE), WifiResponse.ACK)
   }
 
-  /** @param {WifiSillageInput} sillage */
-  configureSillage(sillage) {
-    return this.request(encodeWifiSillage(sillage), WifiResponse.ACK)
+  /** @param {string} heartbeatUrl */
+  configureSillage(heartbeatUrl) {
+    return this.request(encodeWifiSillage({ heartbeatUrl }), WifiResponse.ACK)
   }
 
   sillage() {
