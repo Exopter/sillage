@@ -60,11 +60,10 @@ module Api
       end
 
       def normalized_device_id
-        params.require(:device_id).to_s.strip.upcase.tap do |device_id|
-          unless device_id.match?(Assembly::DEVICE_ID_PATTERN)
-            raise ActionController::ParameterMissing, :device_id
-          end
-        end
+        value = params.require(:device_id)
+        raise ActionController::ParameterMissing, :device_id unless FdrIdentity::DeviceId.valid?(value)
+
+        FdrIdentity::DeviceId.normalize(value)
       end
 
       def recorder_binding_available?(device_id)

@@ -73,9 +73,9 @@ module Api
       end
 
       def normalize_device_id(value)
-        value.to_s.strip.upcase.tap do |device_id|
-          raise KeyError unless device_id.match?(Assembly::DEVICE_ID_PATTERN)
-        end
+        raise KeyError unless FdrIdentity::DeviceId.valid?(value)
+
+        FdrIdentity::DeviceId.normalize(value)
       end
 
       def valid_signature?(recorder, body)

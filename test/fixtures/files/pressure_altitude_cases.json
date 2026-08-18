@@ -1,0 +1,6 @@
+[
+  { "pressure_pa": 101325.0, "altitude_m": 0.0 },
+  { "pressure_pa": 90000.0, "altitude_m": 988.6466 },
+  { "pressure_pa": 80000.0, "altitude_m": 1949.2730 },
+  { "pressure_pa": 62000.0, "altitude_m": 3955.8796 }
+]

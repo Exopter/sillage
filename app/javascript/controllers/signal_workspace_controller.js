@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
+import { clamp, signalLayoutPreset } from "../lib/signal_layout"
 
 const DATABASE_NAME = "sillage-signal-v1"
 const DATABASE_VERSION = 1
@@ -477,28 +478,20 @@ export default class extends Controller {
   applyPreset(largeId) {
     const width = this.boardTarget.clientWidth
     const height = this.boardTarget.clientHeight
-    const gap = 10
-    const pad = 8
-    const minimumSideWidth = width < 960 ? 300 : 250
-    const preferredLargeWidth = Math.max(420, Math.round(width * .68) - gap)
-    const largeWidth = Math.max(360, Math.min(preferredLargeWidth, width - minimumSideWidth - gap - pad * 2))
-    const sideWidth = Math.max(minimumSideWidth, width - largeWidth - gap - pad * 2)
-    const sideWidgets = this.widgetTargets.filter((widget) => widget.dataset.widget !== largeId)
-    const availableSideHeight = height - pad * 2 - gap
-    const visibleSide = sideWidgets.filter((widget) => widget.dataset.mode !== "hidden")
-    const hiddenHeight = sideWidgets.filter((widget) => widget.dataset.mode === "hidden").length * 38
-    const miniHeight = visibleSide.length ? Math.max(150, (availableSideHeight - hiddenHeight) / visibleSide.length) : 38
-    let top = pad
-
+    const rectangles = signalLayoutPreset(
+      width,
+      height,
+      this.widgetTargets.map((widget) => ({ id: widget.dataset.widget, mode: widget.dataset.mode })),
+      largeId
+    )
     this.widgetTargets.forEach((widget) => {
-      if (widget.dataset.widget === largeId) {
-        Object.assign(widget.style, { left: `${pad}px`, top: `${pad}px`, width: `${largeWidth}px`, height: `${height - pad * 2}px` })
-      }
-    })
-    sideWidgets.forEach((widget) => {
-      const widgetHeight = widget.dataset.mode === "hidden" ? 38 : miniHeight
-      Object.assign(widget.style, { left: `${pad + largeWidth + gap}px`, top: `${top}px`, width: `${sideWidth}px`, height: `${widgetHeight}px` })
-      top += widgetHeight + gap
+      const rectangle = rectangles[widget.dataset.widget]
+      Object.assign(widget.style, {
+        left: `${rectangle.left}px`,
+        top: `${rectangle.top}px`,
+        width: `${rectangle.width}px`,
+        height: `${rectangle.height}px`
+      })
     })
     this.updateModeButtons()
     this.saveLayout()

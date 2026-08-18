@@ -5,8 +5,15 @@ module Api
       before_action :set_signal_session, only: %i[batches events complete]
 
       def create
-        signal_session = Current.user.signal_sessions.find_by(uuid: create_params[:uuid])
-        signal_session ||= create_signal_session!
+        signal_session = Signal::StartSession.new(
+          user: Current.user,
+          flight_id: create_params[:flight_id],
+          uuid: create_params[:uuid],
+          started_at: parse_time(create_params[:started_at]),
+          station_metadata: create_params[:station_metadata] || {},
+          mavlink_system_id: create_params[:mavlink_system_id] || create_params[:telemetry_system_id],
+          mavlink_component_id: create_params[:mavlink_component_id]
+        ).call
         render json: session_payload(signal_session), status: :created
       end
 
@@ -46,32 +53,6 @@ module Api
 
       def set_signal_session
         @signal_session = Current.user.signal_sessions.find_by!(uuid: params[:uuid])
-      end
-
-      def create_signal_session!
-        flight = if create_params[:flight_id].present?
-          Current.user.flights.find(create_params[:flight_id])
-        else
-          Current.user.flights.create!(
-            name: "Live flight",
-            status: "live",
-            started_at: parse_time(create_params[:started_at]) || Time.current
-          )
-        end
-        flight.update!(status: "live", started_at: flight.started_at || Time.current)
-        flight.capture_configuration!
-        signal_session = Current.user.signal_sessions.create!(
-          uuid: create_params[:uuid],
-          flight:,
-          started_at: parse_time(create_params[:started_at]) || Time.current,
-          station_metadata: create_params[:station_metadata] || {}
-        )
-        Signal::IdentifySource.new(
-          signal_session:,
-          system_id: create_params[:mavlink_system_id] || create_params[:telemetry_system_id],
-          component_id: create_params[:mavlink_component_id]
-        ).call
-        signal_session
       end
 
       def create_params

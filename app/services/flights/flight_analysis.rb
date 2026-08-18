@@ -34,8 +34,6 @@ module Flights
       end
     end
 
-    STANDARD_PRESSURE_PA = 101_325.0
-    PRESSURE_ALTITUDE_EXPONENT = 0.190294957
     SENSOR_ALTITUDE_DOMINANCE_M = 500.0
     MIN_AIRCRAFT_OPENING_ALTITUDE_M = 500.0
     EXIT_LOOKAHEAD_SECONDS = 8.0
@@ -267,7 +265,7 @@ module Flights
         next unless sample[:sensor_type] == "BARO"
 
         altitude = numeric(sample.dig(:readings, "pressure_altitude_m")) ||
-          pressure_altitude(sample.dig(:readings, "pressure"))
+          PressureAltitude.from_pascals(sample.dig(:readings, "pressure"))
         elapsed_seconds = numeric(sample[:elapsed_seconds])
         next unless altitude && elapsed_seconds
 
@@ -321,13 +319,6 @@ module Flights
       return nil if speed.abs > PRESSURE_SPEED_MAX_MPS
 
       speed
-    end
-
-    def pressure_altitude(pressure)
-      pressure = numeric(pressure)
-      return nil unless pressure
-
-      44_330.0 * (1.0 - (pressure / STANDARD_PRESSURE_PA)**PRESSURE_ALTITUDE_EXPONENT)
     end
 
     def readings(record)

@@ -1,0 +1,1304 @@
+/* Signal live workspace */
+.signal-root {
+  min-height: calc(100vh - 57px);
+  background: var(--ex-carbon-950);
+  color: var(--ex-vapor-50);
+}
+
+.signal-live-shell {
+  display: flex;
+  height: calc(100vh - 57px);
+  min-height: 620px;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ex-carbon-950);
+}
+
+.signal-live-shell:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  min-height: 0;
+}
+
+.signal-command-bar {
+  display: grid;
+  min-height: 58px;
+  flex: none;
+  grid-template-columns: minmax(210px, .8fr) minmax(230px, .65fr) minmax(520px, 1.4fr);
+  border-bottom: 1px solid var(--ex-carbon-700);
+  background: var(--ex-carbon-900);
+}
+
+.signal-session-identity {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  padding: 8px 12px;
+  border-right: 1px solid var(--ex-carbon-700);
+}
+
+.signal-session-identity strong {
+  color: var(--ex-vapor-50);
+  font: 600 13px/1.2 var(--font-data);
+}
+
+.signal-session-identity small {
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--ex-graphite-400);
+  font: 500 9px/1.2 var(--font-mono);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.signal-k {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--ex-graphite-400);
+  font: 600 9px/1.2 var(--font-mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.signal-link-stack {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  padding: 6px 10px;
+  border-right: 1px solid var(--ex-carbon-700);
+}
+
+.signal-link-stack > div {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 7px;
+  color: var(--ex-graphite-400);
+  font: 600 9px/1.15 var(--font-mono);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.signal-link-stack strong {
+  overflow: hidden;
+  color: var(--ex-field-500);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signal-command-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  padding: 8px 10px;
+}
+
+.signal-tool-button {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--ex-carbon-700);
+  border-radius: 5px;
+  background: var(--ex-carbon-900);
+  color: var(--ex-vapor-50);
+  cursor: pointer;
+  font: 600 9px/1 var(--font-mono);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.signal-tool-button:hover,
+.signal-tool-button:focus-visible {
+  border-color: var(--ex-aqua-500);
+  color: var(--ex-aqua-500);
+  outline: 0;
+}
+
+.signal-tool-button.is-primary {
+  border-color: var(--ex-aqua-500);
+  background: rgba(47, 214, 198, .09);
+  color: var(--ex-aqua-500);
+}
+
+.signal-tool-button.is-danger:hover,
+.signal-tool-button.is-danger:focus-visible {
+  border-color: var(--ex-state-fault-text);
+  color: var(--ex-state-fault-text);
+}
+
+.signal-tool-button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+.signal-storage-warning {
+  flex: none;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--ex-amber-500);
+  background: color-mix(in srgb, var(--ex-amber-500) 13%, var(--ex-carbon-950));
+  color: var(--ex-amber-500);
+  font: 600 10px/1.3 var(--font-mono);
+}
+
+.signal-dashboard {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  background: var(--ex-carbon-950);
+}
+
+.signal-widget {
+  position: absolute;
+  display: flex;
+  min-width: 250px;
+  min-height: 38px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--ex-carbon-700);
+  border-radius: var(--radius);
+  background: var(--ex-carbon-900);
+  transition: border-color var(--dur) var(--ease-out);
+}
+
+.signal-widget:hover,
+.signal-widget.is-dragging {
+  border-color: var(--ex-aqua-500);
+}
+
+.signal-widget.is-dragging {
+  user-select: none;
+}
+
+.signal-widget[data-mode="hidden"] .signal-widget-body {
+  display: none;
+}
+
+.signal-widget-head {
+  display: flex;
+  height: 38px;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--ex-carbon-700);
+  background: var(--ex-carbon-900);
+}
+
+.signal-widget[data-mode="hidden"] .signal-widget-head {
+  border-bottom: 0;
+}
+
+.signal-drag-handle {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  padding: 0;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ex-graphite-400);
+  cursor: grab;
+  touch-action: none;
+}
+
+.signal-drag-handle:hover,
+.signal-drag-handle:focus-visible {
+  border-color: var(--ex-carbon-700);
+  background: var(--ex-carbon-950);
+  color: var(--ex-aqua-500);
+  outline: 0;
+}
+
+.signal-head-icon {
+  display: flex;
+  color: var(--ex-aqua-500);
+}
+
+.signal-widget-head > strong {
+  color: var(--ex-vapor-50);
+  font: 600 10px/1 var(--font-mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.signal-widget-subtitle {
+  overflow: hidden;
+  color: var(--ex-graphite-400);
+  font: 500 8px/1 var(--font-mono);
+  letter-spacing: .04em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.signal-live-badge {
+  margin-left: auto;
+  padding: 4px 7px;
+  border: 1px solid var(--ex-aqua-500);
+  border-radius: 4px;
+  color: var(--ex-aqua-500);
+  font: 600 8px/1 var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.signal-mode-buttons {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--ex-carbon-700);
+  border-radius: 4px;
+  background: var(--ex-carbon-950);
+}
+
+.signal-mode-buttons button {
+  height: 21px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ex-graphite-400);
+  cursor: pointer;
+  font: 600 8px/1 var(--font-mono);
+  text-transform: uppercase;
+}
+
+.signal-mode-buttons button:hover,
+.signal-mode-buttons button:focus-visible,
+.signal-mode-buttons button[aria-pressed="true"] {
+  background: var(--ex-carbon-700);
+  color: var(--ex-aqua-500);
+  outline: 0;
+}
+
+.signal-widget[data-mode="mini"] .signal-widget-subtitle,
+.signal-widget[data-mode="hidden"] .signal-widget-subtitle,
+.signal-widget[data-mode="hidden"] .signal-live-badge {
+  display: none;
+}
+
+.signal-widget-body {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  background: var(--ex-carbon-950);
+}
+
+.signal-map-body {
+  background-image: linear-gradient(rgba(7, 11, 13, .2), rgba(7, 11, 13, .42)), var(--signal-map-image);
+  background-position: center;
+  background-size: cover;
+}
+
+.signal-map-body > canvas,
+.signal-instrument-canvas,
+.signal-chart-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.signal-aircraft {
+  --aircraft-heading: 36deg;
+  position: absolute;
+  z-index: 3;
+  color: var(--ex-hud-green);
+  transform: translate(-50%, -50%);
+  transition: left .45s linear, top .45s linear;
+}
+
+.signal-aircraft-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: rgba(7, 11, 13, .84);
+  box-shadow: 0 0 0 7px rgba(140, 255, 77, .1);
+  transform: rotate(var(--aircraft-heading));
+}
+
+.signal-heading-ray {
+  position: absolute;
+  left: 50%;
+  bottom: 30px;
+  height: 74px;
+  border-left: 1px dashed currentColor;
+  transform: rotate(var(--aircraft-heading));
+  transform-origin: bottom center;
+}
+
+.signal-aircraft-label {
+  position: absolute;
+  top: -42px;
+  left: 48px;
+  min-width: 190px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: rgba(7, 11, 13, .9);
+  color: var(--ex-vapor-50);
+  font: 600 10px/1.35 var(--font-mono);
+  white-space: nowrap;
+}
+
+.signal-aircraft-label strong,
+.signal-aircraft-label small {
+  display: block;
+}
+
+.signal-aircraft-label strong {
+  color: var(--ex-hud-green);
+}
+
+.signal-map-cache,
+.signal-map-event {
+  position: absolute;
+  z-index: 4;
+  top: 12px;
+  padding: 6px 8px;
+  border: 1px solid var(--ex-carbon-700);
+  border-radius: 4px;
+  background: rgba(7, 11, 13, .88);
+  color: var(--ex-graphite-400);
+  font: 600 8px/1 var(--font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.signal-map-cache {
+  left: 12px;
+}
+
+.signal-map-event {
+  right: 12px;
+  color: var(--ex-vapor-50);
+}
+
+.signal-widget[data-mode="mini"] .signal-map-cache,
+.signal-widget[data-mode="mini"] .signal-map-event,
+.signal-widget[data-mode="mini"] .signal-aircraft-label {
+  display: none;
+}
+
+.signal-telemetry-strip {
+  display: grid;
+  height: 50px;
+  min-height: 50px;
+  flex: none;
+  grid-template-columns: repeat(5, minmax(88px, .72fr)) minmax(220px, 1.35fr);
+  border-top: 1px solid var(--ex-carbon-700);
+  background: var(--ex-carbon-900);
+}
+
+.signal-telemetry-strip > div {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto 1fr;
+  align-content: center;
+  padding: 7px 12px;
+  border-right: 1px solid var(--ex-carbon-700);
+}
+
+.signal-telemetry-strip > div:last-child {
+  border-right: 0;
+}
+
+.signal-telemetry-strip span {
+  grid-column: 1 / -1;
+  color: var(--ex-graphite-400);
+  font: 600 8px/1 var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.signal-telemetry-strip strong {
+  overflow: hidden;
+  margin-top: 4px;
+  color: var(--ex-hud-green);
+  font: 600 15px/1 var(--font-data);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signal-telemetry-strip small {
+  align-self: end;
+  margin: 0 0 1px 5px;
+  color: var(--ex-graphite-400);
+  font: 500 8px/1 var(--font-mono);
+}
+
+.signal-telemetry-health strong {
+  font-size: 11px;
+}
+
+.signal-home {
+  min-height: calc(100vh - 57px);
+  padding: 28px;
+  background: var(--ex-carbon-950);
+  color: var(--ex-vapor-50);
+}
+
+.signal-home-inner {
+  width: min(920px, 100%);
+  margin: 0 auto;
+}
+
+.signal-home-head {
+  margin-bottom: 18px;
+}
+
+.sillage-persistent-fdr-connectivity {
+  display: none;
+}
+
+.signal-fdr-connectivity {
+  margin-bottom: 18px;
+  overflow: hidden;
+  border: 1px solid var(--ex-carbon-700);
+  border-radius: var(--radius);
+  background: var(--ex-carbon-900);
+}
+
+.signal-fdr-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--ex-carbon-700);
+}
+
+.signal-fdr-head h2 {
+  margin: 4px 0;
+  color: var(--ex-vapor-50);
+  font-size: 20px;
+}
+
+.signal-fdr-head p,
+.signal-fdr-transport small,
+.signal-fdr-config-result {
+  margin: 0;
+  color: var(--ex-graphite-400);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.signal-fdr-transports {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--ex-carbon-700);
+}
+
+.signal-fdr-auto-label {
+  flex: 0 0 auto;
+  color: var(--ex-graphite-400);
+  cursor: default;
+}
+
+.signal-fdr-auto-label:hover {
+  border-color: var(--ex-carbon-700);
+  color: var(--ex-graphite-400);
+}
+
+.signal-fdr-transport {
+  display: flex;
+  min-width: 0;
+  min-height: 126px;
+  flex-direction: column;
+  padding: 14px 18px;
+  background: var(--ex-carbon-900);
+}
+
+.signal-fdr-channel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.signal-fdr-channel-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.signal-fdr-channel-actions [hidden] {
+  display: none;
+}
+
+.signal-fdr-channel-head--usb:has(
+  [data-fdr-connectivity-target="stopSyncButton"]:not([hidden]),
+  [data-fdr-connectivity-target="eraseSdButton"]:not([hidden])
+) {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.signal-fdr-channel-head--usb:has(
+  [data-fdr-connectivity-target="stopSyncButton"]:not([hidden]),
+  [data-fdr-connectivity-target="eraseSdButton"]:not([hidden])
+) .signal-fdr-channel-actions {
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.signal-fdr-channel-identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.signal-fdr-channel-identity > div {
+  min-width: 0;
+}
+
+.signal-fdr-channel-icon {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ex-carbon-700);
+  border-radius: 50%;
+  color: var(--ex-aqua-500);
+}
+
+.signal-fdr-channel-head strong {
+  display: block;
+  overflow: hidden;
+  color: var(--ex-graphite-400);
+  font: 600 13px/1.2 var(--font-data);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signal-fdr-channel-head strong[data-state="ready"] { color: var(--ex-hud-green); }
+.signal-fdr-channel-head strong[data-state="connecting"] { color: var(--ex-amber-500); }
+.signal-fdr-channel-head strong[data-state="error"] { color: var(--ex-red-600); }
+
+.signal-fdr-status-list dt {
+  color: var(--ex-graphite-400);
+  font: 600 8px/1.2 var(--font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.signal-fdr-transport-feedback {
+  display: grid;
+  gap: 5px;
+  padding-top: 9px;
+  border-top: 1px solid var(--ex-carbon-700);
+}
+
+.signal-fdr-device-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.signal-fdr-device-row > strong {
+  overflow: hidden;
+  color: var(--ex-vapor-50);
+  font: 500 10px/1.3 var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signal-fdr-capabilities {
+  position: relative;
+  z-index: 10;
+  flex: 0 0 auto;
+}
+
+.signal-fdr-capabilities-trigger {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ex-graphite-400);
+  cursor: help;
+}
+
+.signal-fdr-capabilities-trigger:hover,
+.signal-fdr-capabilities-trigger:focus-visible {
+  border-color: var(--ex-aqua-500);
+  color: var(--ex-aqua-500);
+  outline: 0;
+}
+
+.signal-fdr-capabilities-tooltip {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  width: min(260px, calc(100vw - 36px));
+  padding: 10px 11px;
+  border: 1px solid var(--ex-carbon-700);
+  border-radius: var(--radius);
+  background: var(--ex-carbon-800);
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-3px);
+  transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out), visibility var(--dur);
+  visibility: hidden;
+}
+
+.signal-fdr-capabilities-tooltip::before {
+  position: absolute;
+  top: -5px;
+  right: 7px;
+  width: 8px;
+  height: 8px;
+  border-top: 1px solid var(--ex-carbon-700);
+  border-left: 1px solid var(--ex-carbon-700);
+  background: var(--ex-carbon-800);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.signal-fdr-capabilities:hover .signal-fdr-capabilities-tooltip,
+.signal-fdr-capabilities:focus-within .signal-fdr-capabilities-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.signal-fdr-capabilities-tooltip > span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ex-vapor-50);
+  font: 600 8px/1.2 var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.signal-fdr-transport-notice-label {
+  color: var(--ex-aqua-500);
+  font: 600 8px/1.2 var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.signal-fdr-capabilities-tooltip ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.signal-fdr-capabilities-tooltip li {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  color: var(--ex-vapor-100);
+  font: 500 10px/1.4 var(--font-data);
+}
+
+.signal-fdr-capabilities-tooltip li svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--ex-aqua-500);
+}
+
+.signal-fdr-transport-notice {
+  display: grid;
+  gap: 3px;
+  padding: 7px 8px;
+  border-left: 2px solid var(--ex-aqua-500);
+  background: color-mix(in srgb, var(--ex-aqua-500) 7%, var(--ex-carbon-950));
+}
+
+.signal-fdr-transport-notice[hidden] { display: none; }
+
+.signal-fdr-transport-notice[data-state="caution"] {
+  border-left-color: var(--ex-amber-500);
+  background: color-mix(in srgb, var(--ex-amber-500) 11%, var(--ex-carbon-950));
+}
+
+.signal-fdr-transport-notice[data-state="caution"] .signal-fdr-transport-notice-label {
+  color: var(--ex-amber-500);
+}
+
+.signal-fdr-transport-notice[data-state="error"] {
+  border-left-color: var(--ex-red-600);
+  background: color-mix(in srgb, var(--ex-red-600) 11%, var(--ex-carbon-950));
+}
+
+.signal-fdr-transport-notice[data-state="error"] .signal-fdr-transport-notice-label {
+  color: var(--ex-red-600);
+}
+
+.signal-fdr-transport-message {
+  color: var(--ex-vapor-50);
+  font: 600 10px/1.4 var(--font-data);
+}
+
+.signal-fdr-progress {
+  width: 100%;
+  height: 6px;
+  margin: 0;
+  accent-color: var(--ex-aqua-500);
+}
+
+.signal-fdr-technical {
+  color: var(--ex-graphite-400);
+  font: 500 9px/1.4 var(--font-mono);
+  letter-spacing: .01em;
+}
+
+.signal-fdr-overview {
+  padding: 14px 18px 16px;
+  border-top: 1px solid var(--ex-carbon-700);
+}
+
+.signal-fdr-recorder-alert {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border-left: 2px solid var(--ex-red-600);
+  background: color-mix(in srgb, var(--ex-red-600) 9%, var(--ex-carbon-950));
+}
+
+.signal-fdr-recorder-alert[hidden] { display: none; }
+
+.signal-fdr-recorder-alert > strong {
+  color: var(--ex-state-fault-text);
+  font: 600 10px/1.4 var(--font-data);
+}
+
+.signal-fdr-recorder-alert > small {
+  color: var(--ex-graphite-400);
+  font: 500 9px/1.4 var(--font-mono);
+}
+
+.signal-fdr-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.signal-fdr-section-head h3 {
+  margin: 3px 0 0;
+  color: var(--ex-vapor-50);
+  font-size: 14px;
+}
+
+.signal-fdr-overview-title {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.signal-fdr-recorder-status {
+  margin: 0;
+  padding: 0 0 1px;
+  border: 0;
+  background: transparent;
+  color: var(--ex-graphite-400);
+  font: 600 9px/1.3 var(--font-mono);
+  text-align: left;
+}
+
+.signal-fdr-recorder-status[hidden] { display: none; }
+.signal-fdr-recorder-status[data-state="ready"] { color: var(--ex-hud-green); }
+.signal-fdr-recorder-status[data-state="connecting"] { color: var(--ex-amber-500); }
+.signal-fdr-recorder-status[data-state="error"] { color: var(--ex-red-600); }
+
+.signal-fdr-onboarding {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 22px 18px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--ex-aqua-500) 55%, var(--ex-carbon-700));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ex-aqua-500) 8%, var(--ex-carbon-900));
+}
+
+.signal-fdr-onboarding[hidden] { display: none; }
+
+.signal-fdr-onboarding > div {
+  display: grid;
+  gap: 4px;
+}
+
+.signal-fdr-onboarding strong {
+  color: var(--ex-vapor-50);
+  font: 700 13px/1.25 var(--font-data);
+}
+
+.signal-fdr-onboarding .signal-fdr-wifi-status { margin: 0; }
+
+.signal-fdr-source {
+  padding: 5px 8px;
+  border: 1px solid var(--ex-carbon-700);
+  border-radius: 999px;
+  color: var(--ex-graphite-400);
+  font: 600 8px/1 var(--font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.signal-fdr-source[data-state="ready"] {
+  border-color: color-mix(in srgb, var(--ex-aqua-500) 45%, var(--ex-carbon-700));
+  color: var(--ex-aqua-500);
+}
+
+.signal-fdr-source[data-state="error"] {
+  border-color: var(--ex-red-600);
+  color: var(--ex-red-600);
+}
+
+.signal-fdr-status-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 10px 0 0;
+  border-top: 1px solid var(--ex-carbon-700);
+  border-bottom: 1px solid var(--ex-carbon-700);
+}
+
+.signal-fdr-status-list > div {
+  min-width: 0;
+  padding: 9px 10px;
+}
+
+.signal-fdr-status-list > div:not(:nth-child(3n + 1)) {
+  border-left: 1px solid var(--ex-carbon-700);
+}
+
+.signal-fdr-status-list > div:nth-child(n + 4) {
+  border-top: 1px solid var(--ex-carbon-700);
+}
+
+.signal-fdr-status-list dd {
+  overflow: hidden;
+  margin: 4px 0 0;
+  color: var(--ex-vapor-50);
+  font: 500 10px/1.3 var(--font-mono);
+  text-overflow: ellipsis;
+}
+
+.signal-fdr-tools {
+  border-top: 1px solid var(--ex-carbon-700);
+  background: color-mix(in srgb, var(--ex-carbon-950) 35%, var(--ex-carbon-900));
+}
+
+.signal-fdr-tools-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 18px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.signal-fdr-tools-summary::-webkit-details-marker { display: none; }
+
+.signal-fdr-tools-summary > div strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--ex-vapor-50);
+  font-size: 12px;
+}
+
+.signal-fdr-tools-summary > small {
+  margin-left: auto;
+  color: var(--ex-graphite-400);
+  font: 500 9px/1.3 var(--font-mono);
+}
+
+.signal-fdr-tools-summary::after {
+  content: "+";
+  color: var(--ex-aqua-500);
+  font: 600 15px/1 var(--font-mono);
+}
+
+.signal-fdr-tools[open] > .signal-fdr-tools-summary {
+  border-bottom: 1px solid var(--ex-carbon-700);
+}
+
+.signal-fdr-tools[open] > .signal-fdr-tools-summary::after { content: "−"; }
+
+.signal-fdr-tools-body {
+  display: grid;
+  grid-template-columns: minmax(260px, .8fr) minmax(0, 1.2fr);
+  gap: 22px;
+  padding: 14px 18px 16px;
+}
+
+.signal-fdr-controls,
+.signal-fdr-diagnostics,
+.signal-fdr-wifi-entry {
+  min-width: 0;
+}
+
+.signal-fdr-controls h3,
+.signal-fdr-diagnostics h3,
+.signal-fdr-wifi-entry h3 {
+  margin: 0;
+  color: var(--ex-vapor-50);
+  font-size: 13px;
+}
+
+.signal-fdr-wifi-entry {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding-top: 13px;
+  border-top: 1px solid var(--ex-carbon-700);
+}
+
+.signal-fdr-wifi-entry h3 {
+  margin: 3px 0 2px;
+}
+
+.signal-fdr-wifi-entry small {
+  color: var(--ex-graphite-400);
+  font: 500 10px/1.4 var(--font-data);
+}
+
+.signal-fdr-wifi-entry .signal-tool-button {
+  flex: 0 0 auto;
+  text-decoration: none;
+}
+
+.signal-fdr-wifi-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.signal-fdr-wifi-actions [hidden],
+.signal-fdr-wifi-status[hidden] {
+  display: none;
+}
+
+.signal-fdr-wifi-status {
+  display: block;
+  margin-top: 4px;
+}
+
+.signal-fdr-wifi-status[data-state="error"] {
+  color: var(--ex-red-600);
+}
+
+.signal-fdr-wifi-status[data-state="success"] {
+  color: var(--ex-hud-green);
+}
+
+.signal-fdr-config {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 7px;
+}
+
+.signal-fdr-config label {
+  flex: 1;
+  color: var(--ex-graphite-400);
+  font: 600 9px/1.2 var(--font-mono);
+  text-transform: uppercase;
+}
+
+.signal-fdr-config select {
+  height: 32px;
+  border: 1px solid var(--ex-carbon-700);
+  border-radius: 4px;
+  background: var(--ex-carbon-950);
+  color: var(--ex-vapor-50);
+  font: 500 10px/1 var(--font-mono);
+}
+
+.signal-fdr-debug-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ex-aqua-500);
+  font: 600 9px/1.2 var(--font-mono);
+  text-transform: uppercase;
+}
+
+.signal-fdr-debug-button:disabled {
+  color: var(--ex-graphite-400);
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.signal-fdr-debug {
+  max-height: 96px;
+  margin: 12px 0 0;
+  padding: 9px;
+  overflow: auto;
+  border: 1px solid var(--ex-carbon-700);
+  border-radius: 4px;
+  background: var(--ex-carbon-950);
+  color: var(--ex-graphite-400);
+  font: 500 9px/1.4 var(--font-mono);
+  white-space: pre-wrap;
+}
+
+.signal-home-head h1 {
+  margin: 4px 0 5px;
+  color: var(--ex-vapor-50);
+  font-size: 27px;
+}
+
+.signal-home-head p,
+.signal-launch-body p {
+  margin: 0;
+  color: var(--ex-graphite-400);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.signal-launch-grid {
+  display: grid;
+  grid-template-columns: 1.15fr .85fr;
+  gap: 14px;
+}
+
+@media (max-width: 760px) {
+  .signal-fdr-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .signal-fdr-transports,
+  .signal-fdr-tools-body {
+    grid-template-columns: 1fr;
+  }
+
+  .signal-fdr-status-list {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .signal-fdr-channel-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .signal-fdr-channel-head .signal-tool-button {
+    width: 100%;
+  }
+
+  .signal-fdr-channel-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .signal-fdr-onboarding {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .signal-fdr-onboarding .signal-tool-button {
+    width: 100%;
+  }
+
+  .signal-fdr-wifi-entry {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .signal-fdr-wifi-actions,
+  .signal-fdr-wifi-actions .signal-tool-button {
+    width: 100%;
+  }
+}
+
+.signal-launch-card {
+  overflow: hidden;
+  border: 1px solid var(--ex-carbon-700);
+  border-radius: var(--radius);
+  background: var(--ex-carbon-900);
+}
+
+.signal-launch-body {
+  padding: 18px;
+}
+
+.signal-launch-body h2 {
+  margin: 6px 0;
+  color: var(--ex-vapor-50);
+  font-size: 20px;
+}
+
+.signal-prep-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--ex-carbon-700);
+}
+
+.signal-prep-row > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.signal-prep-row strong,
+.signal-prep-row span {
+  display: block;
+}
+
+.signal-prep-row strong {
+  color: var(--ex-vapor-50);
+  font: 600 12px var(--font-data);
+}
+
+.signal-prep-row span,
+.signal-prep-empty {
+  margin-top: 3px;
+  color: var(--ex-graphite-400);
+  font-size: 11px;
+}
+
+.signal-prep-empty {
+  padding: 14px;
+  border-top: 1px solid var(--ex-carbon-700);
+}
+
+.signal-start-direct {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.signal-launch-rules {
+  display: grid;
+  gap: 0;
+  margin-top: 14px;
+}
+
+.signal-launch-rules > div {
+  display: flex;
+  gap: 9px;
+  padding: 10px 0;
+  border-top: 1px solid var(--ex-carbon-700);
+  color: var(--ex-aqua-500);
+}
+
+.signal-launch-rules span {
+  display: block;
+  color: var(--ex-graphite-400);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.signal-launch-rules strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--ex-vapor-50);
+  font-size: 11px;
+}
+
+@media (max-width: 1150px) {
+  .signal-command-bar {
+    grid-template-columns: minmax(180px, .65fr) minmax(200px, .6fr) minmax(430px, 1.2fr);
+  }
+
+  .signal-command-actions .signal-tool-button span {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .signal-widget-head {
+    gap: 4px;
+    padding: 0 4px;
+  }
+
+  .signal-drag-handle {
+    width: 18px;
+  }
+
+  .signal-head-icon {
+    display: none;
+  }
+
+  .signal-widget-head > strong {
+    letter-spacing: .05em;
+  }
+
+  .signal-live-badge {
+    padding: 4px;
+  }
+
+  .signal-mode-buttons button {
+    padding: 0 4px;
+  }
+}
+
+@media (max-width: 800px) {
+  .signal-command-bar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .signal-link-stack {
+    display: none;
+  }
+
+  .signal-launch-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .signal-telemetry-strip {
+    grid-template-columns: repeat(3, 1fr);
+    height: auto;
+  }
+
+  .signal-live-shell {
+    min-height: 760px;
+  }
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+input,
+textarea {
+  color-scheme: light;
+}
+
+.sillage-icon {
+  display: block;
+  flex: 0 0 auto;
+}
+

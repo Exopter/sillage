@@ -196,7 +196,9 @@ class FlightsController < ApplicationController
 
   def serialize_sensor_sample(sample)
     readings = sample.readings || {}
-    readings = readings.merge("pressure_altitude_m" => pressure_altitude(readings["pressure"])) if sample.sensor_type == "BARO" && readings["pressure_altitude_m"].blank?
+    if sample.sensor_type == "BARO" && readings["pressure_altitude_m"].blank?
+      readings = readings.merge("pressure_altitude_m" => Flights::PressureAltitude.from_pascals(readings["pressure"]))
+    end
 
     {
       type: sample.sensor_type,
@@ -215,13 +217,6 @@ class FlightsController < ApplicationController
     return sample.recorded_at - @flight.started_at if sample.recorded_at && @flight.started_at
 
     sample.elapsed_seconds
-  end
-
-  def pressure_altitude(pressure)
-    return nil if pressure.blank?
-
-    pressure = pressure.to_f
-    44_330.0 * (1.0 - (pressure / 101_325.0)**0.190294957)
   end
 
   def analysis_payload(analysis)

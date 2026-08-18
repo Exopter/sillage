@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 
-const source = await readFile(new URL("../../app/javascript/lib/fdr_sync_protocol.js", import.meta.url), "utf8")
-const protocol = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`)
+const protocol = await import(new URL("../../app/javascript/lib/fdr_sync_protocol.js", import.meta.url))
+const contract = await import(new URL("../../app/javascript/lib/exs1_contract.js", import.meta.url))
 const connectivitySource = await readFile(
   new URL("../../app/javascript/controllers/fdr_connectivity_controller.js", import.meta.url),
   "utf8"
@@ -39,6 +39,10 @@ assert.match(connectivityViewSource, /fdr-connectivity#eraseSdRecordings/)
 
 const payload = new TextEncoder().encode("abc")
 assert.equal(protocol.crc32(payload), 0x352441c2)
+assert.equal(
+  Buffer.from(protocol.encodeFrame(protocol.UsbMessage.HELLO, 0x10203040, Uint8Array.from([0, 1, 2, 3]))).toString("hex"),
+  contract.EXS1_GOLDEN_FRAME_HEX
+)
 assert.equal(protocol.UsbMessage.STATUS, 12)
 assert.equal(protocol.UsbMessage.DIAGNOSTICS, 14)
 assert.equal(protocol.UsbMessage.CONFIG, 16)

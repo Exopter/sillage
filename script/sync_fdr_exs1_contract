@@ -1,0 +1,30 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "fileutils"
+
+ROOT = File.expand_path("..", __dir__)
+FDR_ROOT = File.expand_path(ENV.fetch("EXOPTER_FDR_PATH", File.join(ROOT, "..", "fdr")))
+SOURCE = File.join(FDR_ROOT, "protocol", "generated", "exs1_contract.js")
+TARGET = File.join(ROOT, "app", "javascript", "lib", "exs1_contract.js")
+
+mode = ARGV.fetch(0, "--check")
+abort "Usage: ruby script/sync_fdr_exs1_contract [--check|--write]" unless %w[--check --write].include?(mode)
+abort "Canonical EXS1 binding not found at #{SOURCE}" unless File.file?(SOURCE)
+
+source = File.binread(SOURCE)
+if mode == "--write"
+  FileUtils.mkdir_p(File.dirname(TARGET))
+  File.binwrite(TARGET, source)
+  puts "Copied canonical EXS1 binding to #{TARGET.delete_prefix("#{ROOT}/")}."
+  exit 0
+end
+
+if File.file?(TARGET) && File.binread(TARGET) == source
+  puts "EXS1 binding is synchronized byte for byte."
+  exit 0
+end
+
+warn "Sillage EXS1 binding differs from #{SOURCE}."
+warn "Run `ruby script/sync_fdr_exs1_contract --write` from the Sillage root."
+exit 1

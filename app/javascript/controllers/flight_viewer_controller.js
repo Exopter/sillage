@@ -1,4 +1,14 @@
 import { Controller } from "@hotwired/stimulus"
+import {
+  clamp,
+  finiteNumber,
+  interpolateFlightPoint,
+  lerp,
+  median,
+  sampleFlightPoint,
+  sampleSensorValue
+} from "../lib/flight_geometry"
+import { pressureAltitudeFromPascals } from "../lib/pressure_altitude"
 
 const CESIUM_TILE_PROVIDER = "CESIUM_ION"
 
@@ -1458,19 +1468,13 @@ export default class extends Controller {
   }
 
   median(values) {
-    const sorted = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b)
-    if (sorted.length === 0) return null
-
-    const middle = Math.floor(sorted.length / 2)
-    return sorted.length % 2 === 1
-      ? sorted[middle]
-      : (sorted[middle - 1] + sorted[middle]) / 2
+    return median(values)
   }
 
   normalizedSensorSample(sample) {
     const readings = { ...(sample.readings || {}) }
     if (sample.type === "BARO" && !Number.isFinite(this.number(readings.pressure_altitude_m))) {
-      readings.pressure_altitude_m = this.pressureAltitudeFromPressure(readings.pressure)
+      readings.pressure_altitude_m = pressureAltitudeFromPascals(readings.pressure)
     }
 
     return { ...sample, readings }
@@ -1483,13 +1487,6 @@ export default class extends Controller {
     if (![ ax, ay, az ].every(Number.isFinite)) return null
 
     return Math.sqrt((ax ** 2) + (ay ** 2) + (az ** 2))
-  }
-
-  pressureAltitudeFromPressure(pressure) {
-    const pressurePa = this.number(pressure)
-    if (!Number.isFinite(pressurePa)) return null
-
-    return 44_330 * (1 - ((pressurePa / 101_325) ** 0.190294957))
   }
 
   timeAxis() {
@@ -1824,54 +1821,11 @@ export default class extends Controller {
   }
 
   sampleSensorRowsAtElapsed(elapsed, rows, key) {
-    if (!rows.length) return null
-
-    const firstTime = this.number(rows[0].t) ?? 0
-    if (elapsed <= firstTime) {
-      return { row: rows[0], value: this.number(rows[0].readings?.[key]) }
-    }
-
-    for (let index = 1; index < rows.length; index += 1) {
-      const previous = rows[index - 1]
-      const next = rows[index]
-      const previousTime = this.number(previous.t) ?? 0
-      const nextTime = this.number(next.t) ?? previousTime
-      if (elapsed > nextTime) continue
-
-      const previousValue = this.number(previous.readings?.[key])
-      const nextValue = this.number(next.readings?.[key])
-      if (!Number.isFinite(previousValue)) return { row: next, value: nextValue }
-      if (!Number.isFinite(nextValue)) return { row: previous, value: previousValue }
-
-      return {
-        row: next,
-        value: this.lerp(previousValue, nextValue, (elapsed - previousTime) / Math.max(nextTime - previousTime, 0.001))
-      }
-    }
-
-    const last = rows[rows.length - 1]
-    return { row: last, value: this.number(last.readings?.[key]) }
+    return sampleSensorValue(elapsed, rows, key)
   }
 
   samplePointAtElapsed(elapsed, points = this.points) {
-    if (!points?.length) return null
-    if (points.length === 1) return { ...points[0], t: elapsed }
-
-    const firstTime = this.number(points[0].t) ?? 0
-    if (elapsed <= firstTime) return { ...points[0], t: elapsed }
-
-    for (let index = 1; index < points.length; index += 1) {
-      const previous = points[index - 1]
-      const next = points[index]
-      const previousTime = this.number(previous.t) ?? 0
-      const nextTime = this.number(next.t) ?? previousTime
-      if (elapsed > nextTime) continue
-
-      const span = Math.max(nextTime - previousTime, 0.001)
-      return this.interpolatePoint(previous, next, (elapsed - previousTime) / span, elapsed)
-    }
-
-    return { ...points[points.length - 1], t: elapsed }
+    return sampleFlightPoint(elapsed, points)
   }
 
   sampleCoordinateAtElapsed(elapsed) {
@@ -1899,20 +1853,11 @@ export default class extends Controller {
   }
 
   interpolatePoint(previous, next, ratio, elapsed) {
-    const point = { ...previous, t: elapsed }
-    const keys = ["lat", "lon", "alt", "height", "hspeed", "vspeed", "glide", "distance", "visualAlt", "groundAlt", "datumOffset"]
-
-    keys.forEach((key) => {
-      const a = this.number(previous[key])
-      const b = this.number(next[key])
-      if (Number.isFinite(a) && Number.isFinite(b)) point[key] = this.lerp(a, b, ratio)
-    })
-
-    return point
+    return interpolateFlightPoint(previous, next, ratio, elapsed)
   }
 
   lerp(a, b, ratio) {
-    return a + ((b - a) * ratio)
+    return lerp(a, b, ratio)
   }
 
   designColors() {
@@ -2008,12 +1953,11 @@ export default class extends Controller {
   }
 
   clamp(value, min, max) {
-    return Math.min(max, Math.max(min, value))
+    return clamp(value, min, max)
   }
 
   number(value) {
-    const number = Number(value)
-    return Number.isFinite(number) ? number : null
+    return finiteNumber(value)
   }
 
   groundAltitudeFromPoints() {

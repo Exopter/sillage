@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       EXOPTER_DESIGN_SYSTEM_PATH: ${{ github.workspace }}/design-system
+      EXOPTER_FDR_PATH: ${{ github.workspace }}/fdr
       RUBOCOP_CACHE_ROOT: tmp/rubocop
 
     steps:
@@ -21,6 +22,12 @@ jobs:
         with:
           repository: Exopter/design-system
           path: design-system
+
+      - name: Checkout canonical FDR firmware
+        uses: actions/checkout@v6
+        with:
+          repository: Exopter/fdr
+          path: fdr
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1

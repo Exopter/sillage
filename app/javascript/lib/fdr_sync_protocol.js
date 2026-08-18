@@ -1,5 +1,24 @@
-export const USB_PROTOCOL_VERSION = 1
-export const USB_CHUNK_SIZE = 4096
+import {
+  EraseRecordingsResult,
+  Exs1Layout,
+  FRAME_HEADER_SIZE,
+  FRAME_MAGIC,
+  USB_CHUNK_SIZE,
+  USB_PROTOCOL_VERSION,
+  UsbCapability,
+  UsbErrorCode,
+  UsbMessage
+} from "./exs1_contract.js"
+
+export {
+  EraseRecordingsResult,
+  USB_CHUNK_SIZE,
+  USB_PROTOCOL_VERSION,
+  UsbCapability,
+  UsbErrorCode,
+  UsbMessage
+} from "./exs1_contract.js"
+
 export const USB_CONNECTION_TIMEOUT_MS = 10_000
 export const USB_REQUEST_TIMEOUT_MS = 30_000
 export const USB_FILE_PREPARATION_TIMEOUT_MS = 120_000
@@ -56,61 +75,6 @@ export const USB_PORT_RELEASE_TIMEOUT_MS = 2_000
 const USB_CONNECTION_TIMEOUT_MESSAGE = "USB connection timed out after 10 seconds. Disconnect and reconnect the recorder, then try again."
 const USB_PORT_BUSY_MESSAGE = "USB-C is still in use by another Sillage page. Wait a moment, then try again."
 const USB_CONNECTION_CLOSED_MESSAGE = "The recorder disconnected during synchronization. The source recording and any partial transfer are preserved; reconnect it to resume."
-
-export const UsbMessage = Object.freeze({
-  HELLO: 1,
-  DEVICE_INFO: 2,
-  NEXT_FILE: 3,
-  FILE_MANIFEST: 4,
-  NO_FILE: 5,
-  READ_CHUNK: 6,
-  FILE_CHUNK: 7,
-  ACK_FILE: 8,
-  ACK_ACCEPTED: 9,
-  STORAGE_STATUS: 10,
-  STORAGE_STATUS_DATA: 11,
-  STATUS: 12,
-  STATUS_DATA: 13,
-  DIAGNOSTICS: 14,
-  DIAGNOSTICS_DATA: 15,
-  CONFIG: 16,
-  CONFIG_DATA: 17,
-  SET_CONFIG: 18,
-  DEBUG: 19,
-  DEBUG_DATA: 20,
-  WIFI: 21,
-  WIFI_DATA: 22,
-  SECURITY: 23,
-  SECURITY_DATA: 24,
-  MEMORY: 25,
-  MEMORY_DATA: 26,
-  RATE_STATUS: 27,
-  RATE_STATUS_DATA: 28,
-  STORAGE_PERFORMANCE: 29,
-  STORAGE_PERFORMANCE_DATA: 30,
-  ERASE_RECORDINGS: 31,
-  ERASE_RECORDINGS_DATA: 32,
-  ERROR: 255
-})
-
-export const UsbCapability = Object.freeze({
-  ERASE_RECORDINGS: 1 << 10
-})
-
-export const EraseRecordingsResult = Object.freeze({
-  OK: 0,
-  STORAGE_ERROR: 1
-})
-
-export const UsbErrorCode = Object.freeze({
-  BAD_FRAME: 1,
-  BAD_SEQUENCE: 2,
-  NOT_READY: 3,
-  BAD_REQUEST: 4,
-  STORAGE_ERROR: 5,
-  HASH_MISMATCH: 6,
-  AUTHENTICATION_REQUIRED: 7
-})
 
 export const UsbSecurityCommand = Object.freeze({
   INSTALL_KEY: 1,
@@ -177,8 +141,6 @@ export const WIFI_MAX_PROFILES = 5
 export const WIFI_MAX_SILLAGE_URL_BYTES = 112
 export const FDR_AUTH_KEY_BYTES = 32
 
-const FRAME_MAGIC = Uint8Array.from([0x45, 0x58, 0x53, 0x31])
-const FRAME_HEADER_SIZE = 20
 const MAX_FRAME_PAYLOAD = 1024 * 1024
 const USB_ERROR_MESSAGES = /** @type {Readonly<Record<number, string>>} */ (Object.freeze({
   [UsbErrorCode.BAD_FRAME]: "The recorder rejected a corrupted USB command. Disconnect and reconnect it, then try again.",
@@ -282,7 +244,7 @@ export class UsbFdrClient {
    * @param {number} [length]
    */
   async readChunk(fileIndex, offset, length = USB_CHUNK_SIZE) {
-    const payload = new Uint8Array(16)
+    const payload = new Uint8Array(Exs1Layout.READ_CHUNK)
     const view = new DataView(payload.buffer)
     view.setUint32(0, fileIndex, true)
     view.setBigUint64(4, BigInt(offset), true)
@@ -296,7 +258,7 @@ export class UsbFdrClient {
    * @param {string} sha256
    */
   async acknowledge(fileIndex, sha256) {
-    const payload = new Uint8Array(36)
+    const payload = new Uint8Array(Exs1Layout.ACK_FILE)
     new DataView(payload.buffer).setUint32(0, fileIndex, true)
     payload.set(hexToBytes(sha256), 4)
     await this.request(UsbMessage.ACK_FILE, payload, [UsbMessage.ACK_ACCEPTED])
@@ -610,7 +572,7 @@ export function crc32(bytes) {
 
 /** @param {BinaryValue} value */
 export function parseBleStatus(value) {
-  const view = dataView(value, 20, "BLE status")
+  const view = dataView(value, Exs1Layout.STATUS, "BLE status")
   if (view.getUint8(0) !== 1) throw new Error("Unsupported BLE status version.")
   return {
     version: 1,
@@ -638,7 +600,7 @@ export function formatStorageCapacity(freeMiB, totalMiB) {
 
 /** @param {BinaryValue} value */
 export function parseBleDiagnostics(value) {
-  const view = dataView(value, 20, "BLE diagnostics")
+  const view = dataView(value, Exs1Layout.DIAGNOSTICS, "BLE diagnostics")
   return {
     gpsErrors: view.getUint32(0, true),
     imuErrors: view.getUint32(4, true),
@@ -650,7 +612,7 @@ export function parseBleDiagnostics(value) {
 
 /** @param {BinaryValue} value */
 export function parseBleConfig(value) {
-  const view = dataView(value, 8, "BLE configuration")
+  const view = dataView(value, Exs1Layout.CONFIG, "BLE configuration")
   if (view.getUint8(0) !== 1) throw new Error("Unsupported BLE configuration version.")
   return {
     version: 1,
@@ -662,7 +624,7 @@ export function parseBleConfig(value) {
 
 /** @param {number} statusIntervalSeconds */
 export function encodeBleConfig(statusIntervalSeconds) {
-  const payload = new Uint8Array(8)
+  const payload = new Uint8Array(Exs1Layout.CONFIG)
   payload[0] = 1
   payload[1] = statusIntervalSeconds
   payload[2] = 1
@@ -672,7 +634,7 @@ export function encodeBleConfig(statusIntervalSeconds) {
 /** @param {BinaryValue} value */
 export function parseBleDeviceInfo(value) {
   const bytes = exactBytes(value)
-  const view = dataView(bytes, 64, "BLE device information")
+  const view = dataView(bytes, Exs1Layout.BLE_DEVICE_INFO, "BLE device information")
   if (view.getUint8(0) !== 1) throw new Error("Unsupported BLE device information version.")
   return {
     version: 1,
@@ -923,7 +885,7 @@ export class UsbWifiClient extends BleWifiClient {
 /** @param {BinaryValue} value */
 export function parseBleAuthenticationStatus(value) {
   const bytes = exactBytes(value)
-  const view = dataView(bytes, 20, "BLE authentication status")
+  const view = dataView(bytes, Exs1Layout.SECURITY_STATUS, "BLE authentication status")
   if (view.getUint8(0) !== 1) throw new Error("Unsupported BLE authentication version.")
   return {
     version: 1,
@@ -937,7 +899,7 @@ export function parseBleAuthenticationStatus(value) {
 /** @param {BinaryValue} payload */
 export function parseUsbSecurityStatus(payload) {
   const bytes = exactBytes(payload)
-  const view = dataView(bytes, 20, "USB authentication status")
+  const view = dataView(bytes, Exs1Layout.SECURITY_STATUS, "USB authentication status")
   if (view.getUint8(0) !== 1) throw new Error("Unsupported USB authentication version.")
   return {
     version: 1,
@@ -950,7 +912,7 @@ export function parseUsbSecurityStatus(payload) {
 
 /** @param {BinaryValue} payload */
 export function parseEraseRecordingsResult(payload) {
-  const view = dataView(payload, 16, "erase-recordings result")
+  const view = dataView(payload, Exs1Layout.ERASE_RECORDINGS_RESULT, "erase-recordings result")
   if (view.getUint8(0) !== 1) throw new Error("Unsupported erase-recordings result version.")
   const result = view.getUint8(1)
   if (result !== EraseRecordingsResult.OK) {
@@ -973,7 +935,7 @@ function fdrAuthenticationError(result) {
 
 /** @param {Uint8Array} payload */
 function parseDeviceInfo(payload) {
-  const view = dataView(payload, 64, "device information")
+  const view = dataView(payload, Exs1Layout.DEVICE_INFO, "device information")
   return {
     protocolVersion: view.getUint16(0, true),
     capabilities: view.getUint16(2, true),
@@ -985,7 +947,7 @@ function parseDeviceInfo(payload) {
 
 /** @param {Uint8Array} payload */
 function parseFileManifest(payload) {
-  const view = dataView(payload, 72, "file manifest")
+  const view = dataView(payload, Exs1Layout.FILE_MANIFEST, "file manifest")
   return {
     fileIndex: view.getUint32(0, true),
     bootId: view.getUint32(4, true),
@@ -1002,12 +964,12 @@ function parseFileManifest(payload) {
  * @param {number} expectedOffset
  */
 function parseFileChunk(payload, expectedFileIndex, expectedOffset) {
-  if (payload.length < 16) throw new Error("Truncated EXS1 file chunk.")
+  if (payload.length < Exs1Layout.FILE_CHUNK_PREFIX) throw new Error("Truncated EXS1 file chunk.")
   const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength)
   const fileIndex = view.getUint32(0, true)
   const offset = Number(view.getBigUint64(4, true))
   const length = view.getUint32(12, true)
-  const bytes = payload.slice(16)
+  const bytes = payload.slice(Exs1Layout.FILE_CHUNK_PREFIX)
   if (fileIndex !== expectedFileIndex || offset !== expectedOffset || length !== bytes.length) {
     throw new Error("Unexpected EXS1 file chunk.")
   }
@@ -1016,7 +978,7 @@ function parseFileChunk(payload, expectedFileIndex, expectedOffset) {
 
 /** @param {BinaryValue} payload */
 export function parseUsbDeviceError(payload) {
-  const view = dataView(payload, 8, "device error")
+  const view = dataView(payload, Exs1Layout.ERROR, "device error")
   const code = view.getUint16(0, true)
   const requestType = view.getUint8(2)
   const error = /** @type {FdrProtocolError} */ (new Error(USB_ERROR_MESSAGES[code] || "The recorder reported an unknown USB error. Disconnect and reconnect it, then try again."))

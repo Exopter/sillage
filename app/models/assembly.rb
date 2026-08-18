@@ -3,7 +3,7 @@ require "base64"
 class Assembly < ApplicationRecord
   include AssetIdentifiable
 
-  DEVICE_ID_PATTERN = /\AEXOFDR-[0-9A-F]{6}\z/
+  DEVICE_ID_PATTERN = FdrIdentity::DeviceId::PATTERN
   FDR_AUTH_KEY_BYTES = 32
   FDR_AUTH_ENCRYPTION_PURPOSE = "sillage fdr authentication key v1"
 
@@ -19,7 +19,7 @@ class Assembly < ApplicationRecord
   has_many :wifi_credentials, through: :fdr_wifi_profiles
 
   normalizes :internal_number, with: ->(number) { number.to_s.strip.upcase.presence }
-  normalizes :device_id, with: ->(identifier) { identifier.to_s.strip.upcase.presence }
+  normalizes :device_id, with: ->(identifier) { FdrIdentity::DeviceId.normalize(identifier) }
   normalizes :device_model, :last_seen_firmware, with: ->(value) { value.to_s.strip.presence }
 
   validates :name, presence: true

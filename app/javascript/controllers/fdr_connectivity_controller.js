@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
+import { PartialFdrFile } from "../lib/fdr_partial_file"
 import {
   BleUuid,
   BleAuthenticationClient,
@@ -1388,69 +1389,4 @@ function formatSeenAt(value) {
   if (!Number.isFinite(timestamp)) return "just now"
   const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000))
   return seconds < 2 ? "just now" : `${seconds}s ago`
-}
-
-class PartialFdrFile {
-  static async open(deviceId, manifest) {
-    if (!navigator.storage?.getDirectory) return new MemoryPartialFdrFile()
-    const root = await navigator.storage.getDirectory()
-    const directory = await root.getDirectoryHandle("sillage-fdr-sync", { create: true })
-    const filename = `${deviceId}-${manifest.fileIndex}-${manifest.sha256}.partial`.replace(/[^a-zA-Z0-9_.-]/g, "-")
-    const handle = await directory.getFileHandle(filename, { create: true })
-    const existing = await handle.getFile()
-    if (existing.size > manifest.sizeBytes) {
-      const reset = await handle.createWritable()
-      await reset.close()
-    }
-    const file = await handle.getFile()
-    const instance = new PartialFdrFile(directory, handle, filename, file.size)
-    instance.writable = await handle.createWritable({ keepExistingData: true })
-    return instance
-  }
-
-  constructor(directory, handle, filename, size) {
-    this.directory = directory
-    this.handle = handle
-    this.filename = filename
-    this.size = size
-    this.writable = null
-  }
-
-  async append(offset, bytes) {
-    await this.writable.write({ type: "write", position: offset, data: bytes })
-    this.size = Math.max(this.size, offset + bytes.length)
-  }
-
-  async close() {
-    if (!this.writable) return
-    await this.writable.close()
-    this.writable = null
-  }
-
-  async blob() {
-    await this.close()
-    return this.handle.getFile()
-  }
-
-  async remove() {
-    await this.close()
-    await this.directory.removeEntry(this.filename)
-  }
-}
-
-class MemoryPartialFdrFile {
-  constructor() {
-    this.size = 0
-    this.chunks = []
-  }
-
-  async append(offset, bytes) {
-    if (offset !== this.size) throw new Error("The in-memory FDR transfer cannot resume out of order.")
-    this.chunks.push(bytes)
-    this.size += bytes.length
-  }
-
-  async close() {}
-  async blob() { return new Blob(this.chunks, { type: "application/octet-stream" }) }
-  async remove() { this.chunks = [] }
 }

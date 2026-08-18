@@ -26,7 +26,7 @@ module Api
       private
 
       def device_id
-        value = params.require(:device_id).to_s.strip.upcase
+        value = FdrIdentity::DeviceId.normalize(params.require(:device_id))
         raise ActionController::ParameterMissing, :device_id if value.blank?
 
         @device_id ||= value

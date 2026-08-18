@@ -4,35 +4,16 @@ module ExoFdr
   class ImportService
     class << self
       def create!(uploaded_files, user: Current.user, aircraft: nil, target_flight: nil)
-        uploaded_files = Array(uploaded_files).compact_blank
-        raise Error, "Select an ExoFDR binary file." if uploaded_files.empty?
-
-        flight_import = user.flight_imports.create!(
-          source_filename: uploaded_files.map { |file| filename_for(file) }.join(", "),
-          status: "pending",
+        FlightImports::SourceBuilder.create!(
+          uploaded_files,
+          user:,
           import_type: "exofdr",
-          aircraft: aircraft || target_flight&.aircraft,
-          target_flight:
+          error_class: Error,
+          empty_message: "Select an ExoFDR binary file.",
+          aircraft:,
+          target_flight:,
+          content_type: ->(_file) { "application/octet-stream" }
         )
-        uploaded_files.each do |uploaded|
-          uploaded.rewind if uploaded.respond_to?(:rewind)
-          flight_import.source_files.attach(
-            io: uploaded,
-            filename: filename_for(uploaded),
-            content_type: "application/octet-stream"
-          )
-          uploaded.rewind if uploaded.respond_to?(:rewind)
-        end
-        flight_import
-      rescue StandardError => error
-        flight_import&.update(status: "failed", error_message: error.message)
-        raise
-      end
-
-      private
-
-      def filename_for(uploaded)
-        uploaded.respond_to?(:original_filename) ? uploaded.original_filename : File.basename(uploaded.path.to_s)
       end
     end
 
@@ -41,10 +22,18 @@ module ExoFdr
     end
 
     def call
-      return @flight_import if @flight_import.imported?
-      raise Error, "No ExoFDR file is attached to this import." unless @flight_import.source_files.attached?
+      FlightImports::Processor.new(
+        @flight_import,
+        error_class: Error,
+        missing_source_message: "No ExoFDR file is attached to this import."
+      ).call do
+        import!
+      end
+    end
 
-      @flight_import.update!(status: "processing", error_message: nil)
+    private
+
+    def import!
       decoded_files = @flight_import.source_files.attachments.includes(:blob).map do |attachment|
         [ attachment.blob.filename.to_s, Decoder.new(StringIO.new(attachment.blob.download)).call ]
       end
@@ -65,47 +54,19 @@ module ExoFdr
           )
         )
       end
-      @flight_import
-    rescue StandardError => error
-      @flight_import&.update(status: "failed", error_message: error.message)
-      @flight_import&.target_flight&.update(status: "review")
-      raise
     end
-
-    private
 
     def create_flight!(result, index)
       points, sensors = records_to_samples(result.records)
-      metrics = Flights::TrackMetrics.new(points)
-      prepared_points = metrics.prepared_points
-      analysis = Flights::FlightAnalysis.new(track_points: prepared_points, sensor_samples: sensors).call
-      bounds = analysis.bounds
-      summary = metrics.summary(prepared_points, sensor_count: sensors.size, bounds:).merge(
-        min_altitude_m: analysis.altitude_min,
-        max_altitude_m: analysis.altitude_max,
-        altitude_loss_m: altitude_loss(analysis),
-        duration_seconds: analysis.duration_seconds
-      ).compact
       started_at = started_at_for(result.records)
-      attributes = {
-        user: @flight_import.user,
-        aircraft: @flight_import.aircraft,
+      FlightImports::FlightWriter.new(
+        flight_import: @flight_import,
         name: [ "ExoFDR", started_at&.in_time_zone&.strftime("%Y-%m-%d %H:%M") || "session #{index}" ].join(" "),
-        status: "analysed",
-        started_at:
-      }.merge(summary, bounds)
-      flight = if index == 1 && @flight_import.target_flight
-        @flight_import.target_flight.tap do |target|
-          target.track_points.delete_all
-          target.sensor_samples.delete_all
-          target.update!(attributes.merge(flight_import: @flight_import))
-        end
-      else
-        @flight_import.flights.create!(attributes)
-      end
-      insert_points(flight, prepared_points)
-      insert_sensors(flight, sensors)
-      flight.capture_configuration!
+        started_at:,
+        track_points: points,
+        sensor_samples: sensors,
+        replace_target: index == 1
+      ).call
     end
 
     def records_to_samples(records)
@@ -172,26 +133,6 @@ module ExoFdr
 
     def started_at_for(records)
       records.filter_map { |record| gps_recorded_at(record) }.first
-    end
-
-    def altitude_loss(analysis)
-      return unless analysis.altitude_min && analysis.altitude_max
-
-      analysis.altitude_max - analysis.altitude_min
-    end
-
-    def insert_points(flight, points)
-      now = Time.current
-      points.each_slice(1_000) do |slice|
-        TrackPoint.insert_all!(slice.map { |point| point.merge(flight_id: flight.id, created_at: now, updated_at: now) })
-      end
-    end
-
-    def insert_sensors(flight, sensors)
-      now = Time.current
-      sensors.each_slice(1_000) do |slice|
-        SensorSample.insert_all!(slice.map { |sample| sample.merge(flight_id: flight.id, created_at: now, updated_at: now) })
-      end
     end
   end
 end

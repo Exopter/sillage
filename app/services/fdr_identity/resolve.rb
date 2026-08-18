@@ -3,7 +3,7 @@ module FdrIdentity
     Result = Data.define(:device_id, :recorder, :installation, :aircraft)
 
     def initialize(device_id)
-      @device_id = device_id.to_s.strip.upcase
+      @device_id = DeviceId.normalize(device_id)
     end
 
     def call
