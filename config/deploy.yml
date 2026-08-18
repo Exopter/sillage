@@ -17,6 +17,7 @@
   end
 
   boolean = ->(value) { value.to_s.match?(/\A(?:1|true|yes|on)\z/i) }
+  deploy_host = ENV.fetch("KAMAL_DEPLOY_HOST", "157.90.155.63")
   backups_enabled = boolean.call(ENV.fetch("BACKUPS_ENABLED", "false"))
   monitoring_enabled = boolean.call(ENV.fetch("MONITORING_ENABLED", "false"))
 
@@ -57,7 +58,7 @@ image: sillage
 # Deploy to the host serving the public domain.
 servers:
   web:
-    - exopter.com
+    - <%= deploy_host %>
 
 ssh:
   user: root
@@ -115,7 +116,7 @@ asset_path: /rails/public/assets
 # Build on the VPS so the image is pushed directly to its local registry.
 builder:
   arch: amd64
-  remote: ssh://root@exopter.com
+  remote: ssh://root@<%= deploy_host %>
   local: false
 
 aliases:
