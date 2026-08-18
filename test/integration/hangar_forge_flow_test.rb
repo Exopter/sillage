@@ -4,6 +4,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
   setup do
     @function = Function.create!(code: "GPS_FLOW", name: "GPS")
     @assembly = Assembly.create!(name: "Flow FDR")
+    @fdr = EmbeddedDevice.create!(assembly: @assembly, device_id: "EXOFDR-F10A01")
     @part = Part.create!(
       function: @function,
       manufacturer: "Holybro",
@@ -32,6 +33,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_select ".hangar-config-head > span", count: 1
     assert_select ".hangar-detail-foot", count: 0
     assert_select ".sillage-room-link.is-separated", text: /Signal/
+    assert_select ".sillage-room-link[href='#{forge_path}']", text: /Forge/
     assert_select ".sillage-core-link", count: 0
 
     get hangar_parts_path
@@ -57,13 +59,20 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "label", text: /Exopter Asset ID/
     assert_select "input[name='assembly[code]'], input[name='assembly[internal_number]']", count: 0
-    assert_select "input[name='assembly[device_id]'][placeholder='EXOFDR-A172E0']", count: 1
+    assert_select "input[name='assembly[device_id]']", count: 0
 
     get hangar_assembly_path(@assembly)
     assert_response :success
     assert_select "h2", @assembly.internal_number
     assert_select ".assembly-function", "GPS"
-    assert_select "h2", "Signal identity"
+    assert_select "h2", text: "Signal identity", count: 0
+    assert_select "a[href='#{forge_fdr_path(@fdr)}']", text: "Open FDR in Forge"
+
+    get forge_fdr_path(@fdr)
+    assert_response :success
+    assert_select ".fdr-recorder-tabs", text: /Overview.*Connectivity.*Activity/
+    assert_select ".workspace-panel", text: /Software identity/
+    assert_select ".workspace-details dt", text: "Hardware platform", count: 1
 
     get new_hangar_aircraft_path
     assert_response :success
@@ -99,6 +108,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert @build.reload.locked?
     assert_equal "bench-revision", @build.source_revision
     assert_equal "e" * 64, @build.firmware_sha256
+    assert_equal "test_run_synchronized", @fdr.device_activities.recent.first.event_type
 
     post api_v1_bench_test_runs_path, params: { result: payload.to_json }, headers: headers
 
@@ -166,6 +176,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to forge_test_run_path(run)
     assert_equal users(:julien), run.reload.validated_by
+    assert_equal "test_run_validated", @fdr.device_activities.recent.first.event_type
   end
 
   test "operator can replace a part and clone the next build" do

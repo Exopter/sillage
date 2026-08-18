@@ -30,7 +30,7 @@ Rails.application.routes.draw do
   root "flights#index"
   get "hangar" => "hangar/aircraft#index", as: :hangar
   get "signal" => "signal#index", as: :signal
-  get "forge" => "forge/builds#index", as: :forge
+  get "forge" => "forge/fdrs#index", as: :forge
   get "core" => "core/users#index", as: :core
 
   scope module: :hangar, path: "hangar", as: "hangar" do
@@ -41,25 +41,29 @@ Rails.application.routes.draw do
     resources :parts
     resources :assemblies do
       member do
-        get :connectivity
         post :install_part
         delete "parts/:part_id", action: :remove_part, as: :remove_part
         patch "parts/:part_id/replace", action: :replace_part, as: :replace_part
         post :attach_assembly
         delete "assemblies/:child_id", action: :detach_assembly, as: :detach_assembly
       end
-      resources :fdr_wifi_profiles, only: %i[create update destroy], path: "wifi-profiles" do
-        member { patch :move }
-      end
     end
-    resources :wifi_credentials, only: :update, path: "wifi-credentials"
     resources :functions
-    get "qualification" => "qualification#index", as: :qualification
   end
 
   resources :signal_sessions, only: :create
 
   scope module: :forge, path: "forge", as: "forge" do
+    resources :fdrs, only: %i[index show update] do
+      member do
+        get :connectivity
+        get :activity
+      end
+      resources :fdr_wifi_profiles, only: %i[create update destroy], path: "wifi-profiles" do
+        member { patch :move }
+      end
+    end
+    resources :wifi_credentials, only: :update, path: "wifi-credentials"
     resources :builds do
       member do
         post :clone
@@ -95,9 +99,9 @@ Rails.application.routes.draw do
         end
       end
       resource :fdr_authentication, only: :create, path: "fdr-authentication"
-      resources :assemblies, only: [] do
-        resource :fdr_initialization, only: %i[create update], path: "fdr-initialization"
-        resource :fdr_wifi_provisioning, only: %i[create update], path: "fdr-wifi-provisioning"
+      resources :fdrs, only: [] do
+        resource :initialization, controller: "fdr_initializations", only: %i[create update]
+        resource :wifi_provisioning, controller: "fdr_wifi_provisionings", only: %i[create update], path: "wifi-provisioning"
       end
       resources :fdr_syncs, only: :create, path: "fdr-syncs"
       resources :signal_sessions, only: :create, param: :uuid do

@@ -10,7 +10,7 @@
 /**
  * @typedef {Object} FdrWifiProvisioningBundle
  * @property {number} version
- * @property {string} assembly_id
+ * @property {string} fdr_id
  * @property {FdrWifiProvisioningProfile[]} profiles
  * @property {{ heartbeat_url: string }} sillage
  */
@@ -25,8 +25,8 @@
 export function parseFdrWifiProvisioningBundle(value) {
   const bundle = objectValue(value, "provisioning bundle")
   if (bundle.version !== 1) throw invalidBundle("version must be 1")
-  if (typeof bundle.assembly_id !== "string" || bundle.assembly_id.length === 0) {
-    throw invalidBundle("assembly_id must be a non-empty string")
+  if (typeof bundle.fdr_id !== "string" || bundle.fdr_id.length === 0) {
+    throw invalidBundle("fdr_id must be a non-empty string")
   }
   if (!Array.isArray(bundle.profiles)) throw invalidBundle("profiles must be an array")
 
@@ -37,7 +37,7 @@ export function parseFdrWifiProvisioningBundle(value) {
 
   return {
     version: 1,
-    assembly_id: bundle.assembly_id,
+    fdr_id: bundle.fdr_id,
     profiles: bundle.profiles.map(parseProfile),
     sillage: { heartbeat_url: sillage.heartbeat_url }
   }

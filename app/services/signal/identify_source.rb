@@ -30,7 +30,7 @@ module Signal
     end
 
     def resolve_aircraft
-      assembly_ids = Assembly.where(mavlink_system_id: @system_id).select(:id)
+      assembly_ids = EmbeddedDevice.where(mavlink_system_id: @system_id).where.not(assembly_id: nil).select(:assembly_id)
       aircraft = Installation.active
         .where(installable_type: "Assembly", installable_id: assembly_ids)
         .includes(:aircraft)
@@ -46,11 +46,12 @@ module Signal
         .includes(:installable)
         .map(&:installable)
 
-      configured_matches = assemblies.select { |assembly| assembly.mavlink_system_id == @system_id }
+      devices = assemblies.filter_map(&:embedded_device)
+      configured_matches = devices.select { |device| device.mavlink_system_id == @system_id }
       candidate = if configured_matches.one?
         configured_matches.first
-      elsif configured_matches.empty? && assemblies.one? && assemblies.first.mavlink_system_id.nil?
-        assemblies.first
+      elsif configured_matches.empty? && assemblies.one?
+        assemblies.first.embedded_device || assemblies.first.build_embedded_device
       end
       return false unless candidate
 
@@ -60,6 +61,11 @@ module Signal
       return false if attributes.empty?
 
       candidate.update!(attributes)
+      candidate.record_activity!(
+        "mavlink_identity_observed",
+        source: "signal",
+        details: attributes.transform_keys(&:to_s)
+      )
       true
     end
 

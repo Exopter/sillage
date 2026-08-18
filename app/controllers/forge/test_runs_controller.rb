@@ -15,6 +15,16 @@ module Forge
       end
 
       @test_run.validate_by!(Current.user, note: params[:validation_note].to_s)
+      @test_run.build.assembly.embedded_device&.record_activity!(
+        "test_run_validated",
+        source: "forge",
+        actor: Current.user,
+        details: {
+          test_run_id: @test_run.id,
+          recipe_id: @test_run.recipe_id,
+          build_code: @test_run.build.code
+        }
+      )
       redirect_to forge_test_run_path(@test_run), notice: "Test validated."
     rescue ActiveRecord::RecordInvalid
       redirect_to forge_test_run_path(@test_run), alert: "Only passed tests can be validated."

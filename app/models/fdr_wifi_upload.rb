@@ -16,7 +16,7 @@ class FdrWifiUpload < ApplicationRecord
     end
   end
 
-  belongs_to :assembly
+  belongs_to :embedded_device
   belongs_to :flight_import, optional: true
 
   before_validation :assign_token, on: :create
@@ -104,7 +104,7 @@ class FdrWifiUpload < ApplicationRecord
 
   def ingest_metadata
     {
-      device_id: assembly.device_id,
+      device_id: embedded_device.device_id,
       filename:,
       file_index:,
       boot_id:,

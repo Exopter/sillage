@@ -7,8 +7,9 @@ class FdrSyncFlowTest < ActionDispatch::IntegrationTest
   setup { sign_in_as users(:julien) }
 
   test "stores, verifies and acknowledges an idempotent USB synchronized file" do
-    recorder = Assembly.create!(name: "Synchronized recorder", device_id: "EXOFDR-ABC123")
-    Installation.create!(aircraft: aircraft(:pilatus), installable: recorder, installed_at: 1.hour.ago)
+    asset = Assembly.create!(name: "Synchronized recorder")
+    EmbeddedDevice.create!(assembly: asset, device_id: "EXOFDR-ABC123")
+    Installation.create!(aircraft: aircraft(:pilatus), installable: asset, installed_at: 1.hour.ago)
 
     with_upload do |upload, binary|
       assert_enqueued_with(job: ExoFdrImportJob) do

@@ -469,27 +469,68 @@
 .signal-fdr-connectivity {
   margin-bottom: 18px;
   overflow: hidden;
-  border: 1px solid var(--ex-carbon-700);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: var(--ex-carbon-900);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-body);
+}
+
+.signal-fdr-connectivity .signal-k {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.signal-fdr-connectivity .signal-tool-button {
+  height: 34px;
+  border-color: var(--border-strong);
+  background: var(--surface-card);
+  color: var(--text-body);
+  font-size: 10px;
+}
+
+.signal-fdr-connectivity .signal-tool-button:hover,
+.signal-fdr-connectivity .signal-tool-button:focus-visible {
+  border-color: var(--ds-teal);
+  color: var(--ds-teal);
+}
+
+.signal-fdr-connectivity .signal-tool-button.is-primary {
+  border-color: var(--ds-teal);
+  background: var(--ex-state-live-bg);
+  color: var(--ds-teal-dark);
+}
+
+.signal-fdr-connectivity .signal-tool-button.is-danger:hover,
+.signal-fdr-connectivity .signal-tool-button.is-danger:focus-visible {
+  border-color: var(--ex-state-fault-text);
+  color: var(--ex-state-fault-text);
 }
 
 .signal-fdr-head {
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--ex-carbon-700);
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--ds-panel-2);
 }
 
 .signal-fdr-head h2 {
-  margin: 4px 0;
-  color: var(--ex-vapor-50);
-  font-size: 20px;
+  margin: 0 0 4px;
+  color: var(--text-strong);
+  font-size: 22px;
 }
 
-.signal-fdr-head p,
+.signal-fdr-head p {
+  max-width: 850px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .signal-fdr-transport small,
 .signal-fdr-config-result {
   margin: 0;
-  color: var(--ex-graphite-400);
+  color: var(--text-muted);
   font-size: 11px;
   line-height: 1.45;
 }
@@ -498,18 +539,24 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px;
-  background: var(--ex-carbon-700);
+  background: var(--border-strong);
 }
 
-.signal-fdr-auto-label {
+.signal-fdr-connectivity .signal-fdr-auto-label {
   flex: 0 0 auto;
-  color: var(--ex-graphite-400);
+  border-color: var(--border-rule);
+  background: var(--surface-panel);
+  color: var(--text-muted);
   cursor: default;
+  opacity: .72;
 }
 
-.signal-fdr-auto-label:hover {
-  border-color: var(--ex-carbon-700);
-  color: var(--ex-graphite-400);
+.signal-fdr-connectivity .signal-fdr-auto-label:hover,
+.signal-fdr-connectivity .signal-fdr-auto-label:focus-visible {
+  border-color: var(--border-rule);
+  background: var(--surface-panel);
+  color: var(--text-muted);
+  outline: 0;
 }
 
 .signal-fdr-transport {
@@ -517,8 +564,8 @@
   min-width: 0;
   min-height: 126px;
   flex-direction: column;
-  padding: 14px 18px;
-  background: var(--ex-carbon-900);
+  padding: 16px 18px;
+  background: var(--surface-card);
 }
 
 .signal-fdr-channel-head {
@@ -574,27 +621,28 @@
   flex: 0 0 28px;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--ex-carbon-700);
+  border: 1px solid color-mix(in srgb, var(--ds-teal) 32%, var(--border-rule));
   border-radius: 50%;
-  color: var(--ex-aqua-500);
+  background: var(--ex-state-live-bg);
+  color: var(--ds-teal);
 }
 
 .signal-fdr-channel-head strong {
   display: block;
   overflow: hidden;
-  color: var(--ex-graphite-400);
+  color: var(--text-body);
   font: 600 13px/1.2 var(--font-data);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.signal-fdr-channel-head strong[data-state="ready"] { color: var(--ex-hud-green); }
+.signal-fdr-channel-head strong[data-state="ready"] { color: var(--ex-state-ready-text); }
 .signal-fdr-channel-head strong[data-state="connecting"] { color: var(--ex-amber-500); }
 .signal-fdr-channel-head strong[data-state="error"] { color: var(--ex-red-600); }
 
 .signal-fdr-status-list dt {
-  color: var(--ex-graphite-400);
-  font: 600 8px/1.2 var(--font-mono);
+  color: var(--text-muted);
+  font: 600 9px/1.2 var(--font-mono);
   letter-spacing: .06em;
   text-transform: uppercase;
 }
@@ -602,8 +650,8 @@
 .signal-fdr-transport-feedback {
   display: grid;
   gap: 5px;
-  padding-top: 9px;
-  border-top: 1px solid var(--ex-carbon-700);
+  padding-top: 11px;
+  border-top: 1px solid var(--border-rule);
 }
 
 .signal-fdr-device-row {
@@ -616,8 +664,8 @@
 
 .signal-fdr-device-row > strong {
   overflow: hidden;
-  color: var(--ex-vapor-50);
-  font: 500 10px/1.3 var(--font-mono);
+  color: var(--text-strong);
+  font: 600 11px/1.35 var(--font-mono);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -638,14 +686,14 @@
   border: 1px solid transparent;
   border-radius: 50%;
   background: transparent;
-  color: var(--ex-graphite-400);
+  color: var(--text-muted);
   cursor: help;
 }
 
 .signal-fdr-capabilities-trigger:hover,
 .signal-fdr-capabilities-trigger:focus-visible {
-  border-color: var(--ex-aqua-500);
-  color: var(--ex-aqua-500);
+  border-color: var(--ds-teal);
+  color: var(--ds-teal);
   outline: 0;
 }
 
@@ -655,9 +703,9 @@
   right: 0;
   width: min(260px, calc(100vw - 36px));
   padding: 10px 11px;
-  border: 1px solid var(--ex-carbon-700);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: var(--ex-carbon-800);
+  background: var(--surface-card);
   box-shadow: var(--shadow-sm);
   opacity: 0;
   pointer-events: none;
@@ -672,9 +720,9 @@
   right: 7px;
   width: 8px;
   height: 8px;
-  border-top: 1px solid var(--ex-carbon-700);
-  border-left: 1px solid var(--ex-carbon-700);
-  background: var(--ex-carbon-800);
+  border-top: 1px solid var(--border-rule);
+  border-left: 1px solid var(--border-rule);
+  background: var(--surface-card);
   content: "";
   transform: rotate(45deg);
 }
@@ -689,14 +737,14 @@
 .signal-fdr-capabilities-tooltip > span {
   display: block;
   margin-bottom: 6px;
-  color: var(--ex-vapor-50);
+  color: var(--text-strong);
   font: 600 8px/1.2 var(--font-mono);
   letter-spacing: .08em;
   text-transform: uppercase;
 }
 
 .signal-fdr-transport-notice-label {
-  color: var(--ex-aqua-500);
+  color: var(--ds-teal);
   font: 600 8px/1.2 var(--font-mono);
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -714,29 +762,29 @@
   display: flex;
   align-items: flex-start;
   gap: 5px;
-  color: var(--ex-vapor-100);
+  color: var(--text-body);
   font: 500 10px/1.4 var(--font-data);
 }
 
 .signal-fdr-capabilities-tooltip li svg {
   flex: 0 0 auto;
   margin-top: 1px;
-  color: var(--ex-aqua-500);
+  color: var(--ds-teal);
 }
 
 .signal-fdr-transport-notice {
   display: grid;
   gap: 3px;
   padding: 7px 8px;
-  border-left: 2px solid var(--ex-aqua-500);
-  background: color-mix(in srgb, var(--ex-aqua-500) 7%, var(--ex-carbon-950));
+  border-left: 2px solid var(--ds-teal);
+  background: var(--ex-state-live-bg);
 }
 
 .signal-fdr-transport-notice[hidden] { display: none; }
 
 .signal-fdr-transport-notice[data-state="caution"] {
   border-left-color: var(--ex-amber-500);
-  background: color-mix(in srgb, var(--ex-amber-500) 11%, var(--ex-carbon-950));
+  background: var(--ex-state-caution-bg);
 }
 
 .signal-fdr-transport-notice[data-state="caution"] .signal-fdr-transport-notice-label {
@@ -745,7 +793,7 @@
 
 .signal-fdr-transport-notice[data-state="error"] {
   border-left-color: var(--ex-red-600);
-  background: color-mix(in srgb, var(--ex-red-600) 11%, var(--ex-carbon-950));
+  background: var(--ex-state-fault-bg);
 }
 
 .signal-fdr-transport-notice[data-state="error"] .signal-fdr-transport-notice-label {
@@ -753,7 +801,7 @@
 }
 
 .signal-fdr-transport-message {
-  color: var(--ex-vapor-50);
+  color: var(--text-strong);
   font: 600 10px/1.4 var(--font-data);
 }
 
@@ -761,18 +809,19 @@
   width: 100%;
   height: 6px;
   margin: 0;
-  accent-color: var(--ex-aqua-500);
+  accent-color: var(--ds-teal);
 }
 
 .signal-fdr-technical {
-  color: var(--ex-graphite-400);
+  color: var(--text-muted);
   font: 500 9px/1.4 var(--font-mono);
   letter-spacing: .01em;
 }
 
 .signal-fdr-overview {
-  padding: 14px 18px 16px;
-  border-top: 1px solid var(--ex-carbon-700);
+  padding: 16px 18px 18px;
+  border-top: 1px solid var(--border-strong);
+  background: var(--surface-panel);
 }
 
 .signal-fdr-recorder-alert {
@@ -781,7 +830,7 @@
   margin-top: 10px;
   padding: 9px 10px;
   border-left: 2px solid var(--ex-red-600);
-  background: color-mix(in srgb, var(--ex-red-600) 9%, var(--ex-carbon-950));
+  background: var(--ex-state-fault-bg);
 }
 
 .signal-fdr-recorder-alert[hidden] { display: none; }
@@ -792,7 +841,7 @@
 }
 
 .signal-fdr-recorder-alert > small {
-  color: var(--ex-graphite-400);
+  color: var(--text-muted);
   font: 500 9px/1.4 var(--font-mono);
 }
 
@@ -804,9 +853,9 @@
 }
 
 .signal-fdr-section-head h3 {
-  margin: 3px 0 0;
-  color: var(--ex-vapor-50);
-  font-size: 14px;
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 15px;
 }
 
 .signal-fdr-overview-title {
@@ -820,13 +869,13 @@
   padding: 0 0 1px;
   border: 0;
   background: transparent;
-  color: var(--ex-graphite-400);
+  color: var(--text-muted);
   font: 600 9px/1.3 var(--font-mono);
   text-align: left;
 }
 
 .signal-fdr-recorder-status[hidden] { display: none; }
-.signal-fdr-recorder-status[data-state="ready"] { color: var(--ex-hud-green); }
+.signal-fdr-recorder-status[data-state="ready"] { color: var(--ex-state-ready-text); }
 .signal-fdr-recorder-status[data-state="connecting"] { color: var(--ex-amber-500); }
 .signal-fdr-recorder-status[data-state="error"] { color: var(--ex-red-600); }
 
@@ -837,9 +886,9 @@
   gap: 18px;
   margin: 0 22px 18px;
   padding: 14px 16px;
-  border: 1px solid color-mix(in srgb, var(--ex-aqua-500) 55%, var(--ex-carbon-700));
+  border: 1px solid color-mix(in srgb, var(--ds-teal) 45%, var(--border-rule));
   border-radius: 8px;
-  background: color-mix(in srgb, var(--ex-aqua-500) 8%, var(--ex-carbon-900));
+  background: var(--ex-state-live-bg);
 }
 
 .signal-fdr-onboarding[hidden] { display: none; }
@@ -850,7 +899,7 @@
 }
 
 .signal-fdr-onboarding strong {
-  color: var(--ex-vapor-50);
+  color: var(--text-strong);
   font: 700 13px/1.25 var(--font-data);
 }
 
@@ -858,17 +907,17 @@
 
 .signal-fdr-source {
   padding: 5px 8px;
-  border: 1px solid var(--ex-carbon-700);
+  border: 1px solid var(--border-rule);
   border-radius: 999px;
-  color: var(--ex-graphite-400);
+  color: var(--text-muted);
   font: 600 8px/1 var(--font-mono);
   letter-spacing: .06em;
   text-transform: uppercase;
 }
 
 .signal-fdr-source[data-state="ready"] {
-  border-color: color-mix(in srgb, var(--ex-aqua-500) 45%, var(--ex-carbon-700));
-  color: var(--ex-aqua-500);
+  border-color: color-mix(in srgb, var(--ds-teal) 45%, var(--border-rule));
+  color: var(--ds-teal);
 }
 
 .signal-fdr-source[data-state="error"] {
@@ -880,41 +929,45 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 10px 0 0;
-  border-top: 1px solid var(--ex-carbon-700);
-  border-bottom: 1px solid var(--ex-carbon-700);
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--border-rule);
 }
 
 .signal-fdr-status-list > div {
   min-width: 0;
-  padding: 9px 10px;
+  padding: 11px 12px;
+  background: var(--surface-card);
 }
 
 .signal-fdr-status-list > div:not(:nth-child(3n + 1)) {
-  border-left: 1px solid var(--ex-carbon-700);
+  border-left: 0;
 }
 
 .signal-fdr-status-list > div:nth-child(n + 4) {
-  border-top: 1px solid var(--ex-carbon-700);
+  border-top: 0;
 }
 
 .signal-fdr-status-list dd {
   overflow: hidden;
   margin: 4px 0 0;
-  color: var(--ex-vapor-50);
-  font: 500 10px/1.3 var(--font-mono);
+  color: var(--text-strong);
+  font: 500 11px/1.35 var(--font-mono);
   text-overflow: ellipsis;
 }
 
 .signal-fdr-tools {
-  border-top: 1px solid var(--ex-carbon-700);
-  background: color-mix(in srgb, var(--ex-carbon-950) 35%, var(--ex-carbon-900));
+  border-top: 1px solid var(--border-strong);
+  background: var(--ds-panel-2);
 }
 
 .signal-fdr-tools-summary {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 11px 18px;
+  padding: 14px 18px;
   cursor: pointer;
   list-style: none;
 }
@@ -923,25 +976,25 @@
 
 .signal-fdr-tools-summary > div strong {
   display: block;
-  margin-top: 2px;
-  color: var(--ex-vapor-50);
-  font-size: 12px;
+  margin-top: 0;
+  color: var(--text-strong);
+  font-size: 13px;
 }
 
 .signal-fdr-tools-summary > small {
   margin-left: auto;
-  color: var(--ex-graphite-400);
-  font: 500 9px/1.3 var(--font-mono);
+  color: var(--text-muted);
+  font: 500 10px/1.3 var(--font-mono);
 }
 
 .signal-fdr-tools-summary::after {
   content: "+";
-  color: var(--ex-aqua-500);
+  color: var(--ds-teal);
   font: 600 15px/1 var(--font-mono);
 }
 
 .signal-fdr-tools[open] > .signal-fdr-tools-summary {
-  border-bottom: 1px solid var(--ex-carbon-700);
+  border-bottom: 1px solid var(--border-rule);
 }
 
 .signal-fdr-tools[open] > .signal-fdr-tools-summary::after { content: "−"; }
@@ -951,6 +1004,7 @@
   grid-template-columns: minmax(260px, .8fr) minmax(0, 1.2fr);
   gap: 22px;
   padding: 14px 18px 16px;
+  background: var(--surface-card);
 }
 
 .signal-fdr-controls,
@@ -963,7 +1017,7 @@
 .signal-fdr-diagnostics h3,
 .signal-fdr-wifi-entry h3 {
   margin: 0;
-  color: var(--ex-vapor-50);
+  color: var(--text-strong);
   font-size: 13px;
 }
 
@@ -974,7 +1028,7 @@
   justify-content: space-between;
   gap: 18px;
   padding-top: 13px;
-  border-top: 1px solid var(--ex-carbon-700);
+  border-top: 1px solid var(--border-rule);
 }
 
 .signal-fdr-wifi-entry h3 {
@@ -982,7 +1036,7 @@
 }
 
 .signal-fdr-wifi-entry small {
-  color: var(--ex-graphite-400);
+  color: var(--text-muted);
   font: 500 10px/1.4 var(--font-data);
 }
 
@@ -1013,7 +1067,7 @@
 }
 
 .signal-fdr-wifi-status[data-state="success"] {
-  color: var(--ex-hud-green);
+  color: var(--ex-state-ready-text);
 }
 
 .signal-fdr-config {
@@ -1025,17 +1079,17 @@
 
 .signal-fdr-config label {
   flex: 1;
-  color: var(--ex-graphite-400);
+  color: var(--text-muted);
   font: 600 9px/1.2 var(--font-mono);
   text-transform: uppercase;
 }
 
 .signal-fdr-config select {
   height: 32px;
-  border: 1px solid var(--ex-carbon-700);
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
-  background: var(--ex-carbon-950);
-  color: var(--ex-vapor-50);
+  background: var(--surface-card);
+  color: var(--text-body);
   font: 500 10px/1 var(--font-mono);
 }
 
@@ -1043,13 +1097,13 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--ex-aqua-500);
+  color: var(--ds-teal);
   font: 600 9px/1.2 var(--font-mono);
   text-transform: uppercase;
 }
 
 .signal-fdr-debug-button:disabled {
-  color: var(--ex-graphite-400);
+  color: var(--text-muted);
   cursor: not-allowed;
   opacity: .55;
 }
@@ -1059,10 +1113,10 @@
   margin: 12px 0 0;
   padding: 9px;
   overflow: auto;
-  border: 1px solid var(--ex-carbon-700);
+  border: 1px solid var(--border-rule);
   border-radius: 4px;
-  background: var(--ex-carbon-950);
-  color: var(--ex-graphite-400);
+  background: var(--surface-panel);
+  color: var(--text-muted);
   font: 500 9px/1.4 var(--font-mono);
   white-space: pre-wrap;
 }
@@ -1301,4 +1355,3 @@ textarea {
   display: block;
   flex: 0 0 auto;
 }
-

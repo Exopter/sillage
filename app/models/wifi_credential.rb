@@ -14,7 +14,7 @@ class WifiCredential < ApplicationRecord
 
   belongs_to :created_by, class_name: "User", inverse_of: :created_wifi_credentials
   has_many :fdr_wifi_profiles, dependent: :restrict_with_error
-  has_many :assemblies, through: :fdr_wifi_profiles
+  has_many :embedded_devices, through: :fdr_wifi_profiles
 
   before_validation :prepare_open_network_password
   before_save :encrypt_pending_password

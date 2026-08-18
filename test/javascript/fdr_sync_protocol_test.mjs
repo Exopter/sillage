@@ -17,7 +17,7 @@ const connectivitySource = await readFile(
   "utf8"
 )
 const connectivityViewSource = await readFile(
-  new URL("../../app/views/signal/_fdr_connectivity.html.erb", import.meta.url),
+  new URL("../../app/views/forge/fdrs/_connection_manager.html.erb", import.meta.url),
   "utf8"
 )
 

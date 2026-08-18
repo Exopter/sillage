@@ -24,15 +24,23 @@ class Aircraft < ApplicationRecord
       "aircraft" => { "registration" => registration, "name" => name },
       "installations" => active_installations.map do |installation|
         installable = installation.installable
-        {
-          "type" => installation.installable_type,
-          "installed_at" => installation.installed_at.iso8601,
-          "asset" => installable.respond_to?(:snapshot) ? installable.snapshot : {
+        asset_snapshot = if installable.respond_to?(:snapshot)
+          installable.snapshot
+        else
+          {
             "internal_number" => installable.internal_number,
             "manufacturer" => installable.manufacturer,
             "model" => installable.model,
             "serial_number" => installable.serial_number
           }
+        end
+        if installable.is_a?(Assembly) && installable.embedded_device
+          asset_snapshot = asset_snapshot.merge("embedded_device" => installable.embedded_device.snapshot)
+        end
+        {
+          "type" => installation.installable_type,
+          "installed_at" => installation.installed_at.iso8601,
+          "asset" => asset_snapshot
         }
       end
     }

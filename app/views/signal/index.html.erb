@@ -86,10 +86,9 @@
       <header class="signal-home-head">
         <div><span class="signal-k">Sillage Signal</span><h1>Start live acquisition</h1><p>Connect the ground radio, display telemetry and record a durable local capture while the cloud stays synchronized.</p></div>
       </header>
-      <%= render "signal/fdr_connectivity" %>
       <div class="signal-launch-grid">
         <section class="signal-launch-card">
-          <div class="signal-launch-body"><span class="signal-k">Prepared flights</span><h2>Attach to an existing flight</h2><p>The aircraft and Hangar configuration are inherited automatically.</p></div>
+          <div class="signal-launch-body"><span class="signal-k">Prepared flights</span><h2>Attach to an existing flight</h2><p>The aircraft and installed Hangar assets are inherited automatically.</p></div>
           <% @preparation_flights.each do |flight| %>
             <div class="signal-prep-row">
               <div><strong><%= flight.code %></strong><span><%= flight.display_aircraft %></span></div>

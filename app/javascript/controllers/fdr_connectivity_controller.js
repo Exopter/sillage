@@ -947,7 +947,7 @@ export default class extends Controller {
       this.registrationLookupDeviceId = null
       this.registrationIdentity = null
       this.registrationState = "mismatch"
-      this.wifiDescriptionTarget.textContent = "Several recorders are reporting connectivity. Keep only the intended recorder online before configuring Hangar."
+      this.wifiDescriptionTarget.textContent = "Several recorders are reporting connectivity. Keep only the intended recorder online before configuring Forge."
       this.wifiLinkTarget.hidden = true
       this.recorderOnboardingTarget.hidden = true
       this.setWifiRegistrationStatus("Multiple recorders detected", "error")
@@ -966,7 +966,7 @@ export default class extends Controller {
 
     this.registrationLookupDeviceId = identity.deviceId
     const requestToken = ++this.registrationRequestToken
-    this.wifiDescriptionTarget.textContent = `Checking ${identity.deviceId} in Hangar…`
+    this.wifiDescriptionTarget.textContent = `Checking ${identity.deviceId} in Forge…`
     this.wifiLinkTarget.hidden = true
     this.recorderOnboardingTarget.hidden = true
     this.setWifiRegistrationStatus("")
@@ -980,7 +980,7 @@ export default class extends Controller {
         headers: { "Accept": "application/json" }
       })
       const payload = await response.json()
-      if (!response.ok) throw new Error(payload.error || "Sillage could not check this recorder in Hangar.")
+      if (!response.ok) throw new Error(payload.error || "Sillage could not check this recorder in Forge.")
       if (requestToken !== this.registrationRequestToken) return
 
       if (payload.registered) {
@@ -1021,8 +1021,8 @@ export default class extends Controller {
     let aircraft = this.registeredAircraft
     try {
       if (!recorder) {
-        this.wifiRegisterLabelTarget.textContent = "Adding to Hangar…"
-        this.setWifiRegistrationStatus("Creating the recorder in Hangar…")
+        this.wifiRegisterLabelTarget.textContent = "Adding to Forge…"
+        this.setWifiRegistrationStatus("Creating the FDR in Forge…")
         const registration = await this.createRecorderRegistration(identity)
         recorder = registration.recorder
         aircraft = registration.aircraft
@@ -1070,7 +1070,7 @@ export default class extends Controller {
       })
     })
     const payload = await response.json()
-    if (!response.ok) throw new Error(payload.error || "Sillage could not add this recorder to Hangar.")
+    if (!response.ok) throw new Error(payload.error || "Sillage could not add this recorder to Forge.")
     return payload
   }
 
@@ -1146,9 +1146,11 @@ export default class extends Controller {
     this.registrationState = "registered"
     this.registrationSubmitting = false
     this.updateResolvedConnections(recorder.device_id, aircraft)
-    this.wifiDescriptionTarget.textContent = `${recorder.device_id} is registered as ${recorder.internal_number}.`
+    this.wifiDescriptionTarget.textContent = recorder.internal_number
+      ? `${recorder.device_id} is registered in Forge and linked to ${recorder.internal_number}.`
+      : `${recorder.device_id} is registered in Forge without a physical asset assignment.`
     this.wifiLinkTarget.href = recorder.connectivity_url
-    this.wifiLinkLabelTarget.textContent = "Configure Wi-Fi"
+    this.wifiLinkLabelTarget.textContent = "Open connectivity"
     this.wifiLinkTarget.hidden = false
     this.recorderOnboardingTarget.hidden = true
     this.wifiRegisterButtonTarget.disabled = false
@@ -1163,7 +1165,7 @@ export default class extends Controller {
     this.registrationState = this.usbAuthenticationConfigured ? "authentication_error" : "initialization_required"
     this.registrationSubmitting = false
     this.updateResolvedConnections(recorder.device_id, aircraft)
-    this.wifiDescriptionTarget.textContent = `${recorder.device_id} is registered as ${recorder.internal_number} but requires secure USB-C initialization.`
+    this.wifiDescriptionTarget.textContent = `${recorder.device_id} is registered in Forge but requires secure USB-C initialization.`
     this.wifiLinkTarget.hidden = true
     this.recorderOnboardingTitleTarget.textContent = this.usbAuthenticationConfigured
       ? "Recorder authentication needs attention"
@@ -1186,7 +1188,7 @@ export default class extends Controller {
     this.registrationState = "unregistered"
     this.registrationSubmitting = false
     this.updateResolvedConnections(identity.deviceId, null)
-    this.wifiDescriptionTarget.textContent = `${identity.deviceId} is connected but not registered in Hangar.`
+    this.wifiDescriptionTarget.textContent = `${identity.deviceId} is connected but not registered in Forge.`
     this.wifiLinkTarget.hidden = true
     this.recorderOnboardingTitleTarget.textContent = "New recorder detected"
     this.recorderOnboardingTarget.hidden = false
@@ -1194,7 +1196,7 @@ export default class extends Controller {
     this.wifiRegisterButtonTarget.disabled = !canOnboard
     this.wifiRegisterLabelTarget.textContent = "Add and initialize recorder"
     this.setWifiRegistrationStatus(error || (canOnboard
-      ? "Create the Hangar record and install its unique Sillage key without disconnecting USB-C."
+      ? "Create the Forge record and install its unique Sillage key without disconnecting USB-C."
       : this.onboardingBlockedMessage(identity)), error || (this.usbAuthenticationConfigured && !canOnboard) ? "error" : "status")
     this.renderRecorderInformation()
   }
@@ -1284,7 +1286,7 @@ export default class extends Controller {
       this.recorderSourceTarget.hidden = false
     } else {
       if (this.registrationState === "unregistered") {
-        this.setTransportStatus(this.recorderStatusTarget, "Not registered in Hangar", "connecting")
+        this.setTransportStatus(this.recorderStatusTarget, "Not registered in Forge", "connecting")
         this.recorderStatusTarget.hidden = false
       } else if (this.registrationState === "initialization_required") {
         this.setTransportStatus(this.recorderStatusTarget, "Initialization required", "connecting")
@@ -1293,7 +1295,7 @@ export default class extends Controller {
         this.setTransportStatus(this.recorderStatusTarget, "Authentication failed", "error")
         this.recorderStatusTarget.hidden = false
       } else if (this.registrationState === "error") {
-        this.setTransportStatus(this.recorderStatusTarget, "Hangar lookup unavailable", "error")
+        this.setTransportStatus(this.recorderStatusTarget, "Forge lookup unavailable", "error")
         this.recorderStatusTarget.hidden = false
       } else {
         this.recorderStatusTarget.textContent = ""

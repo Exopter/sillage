@@ -6,8 +6,8 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
   BLE_SESSION_DOMAIN = "exopter/fdr/ble-session/v1\0".b
 
   setup do
-    @recorder = Assembly.create!(
-      name: "Connected recorder",
+    @recorder = EmbeddedDevice.create!(
+      assembly: Assembly.create!(name: "Connected recorder"),
       device_id: "EXOFDR-A172E0"
     )
     @key = @recorder.ensure_fdr_auth_key!
@@ -22,11 +22,12 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :accepted
     @recorder.reload
-    assert_in_delta Time.current, @recorder.last_sillage_seen_at, 2.seconds
+    presence = @recorder.signal_presence
+    assert_in_delta Time.current, presence.last_seen_at, 2.seconds
     assert_equal "fdr_integrated/26", @recorder.last_seen_firmware
-    assert_equal 0x80, @recorder.last_sillage_status.fetch("state_flags")
-    assert_equal "uploading", @recorder.last_sillage_status.dig("wifi_upload", "state")
-    assert_equal 65_536, @recorder.last_sillage_status.dig("wifi_upload", "offset")
+    assert_equal 0x80, presence.status.fetch("state_flags")
+    assert_equal "uploading", presence.status.dig("wifi_upload", "state")
+    assert_equal 65_536, presence.status.dig("wifi_upload", "offset")
   end
 
   test "rejects unsigned, tampered, and stale Sillage heartbeats" do
@@ -66,13 +67,13 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
     heartbeats = response.parsed_body.fetch("heartbeats")
     assert_equal [ @recorder.device_id ], heartbeats.map { |heartbeat| heartbeat.dig("recorder", "device_id") }
 
-    @recorder.update!(last_sillage_seen_at: 30.seconds.ago)
+    @recorder.signal_presence.update!(last_seen_at: 30.seconds.ago)
     get api_v1_fdr_sillage_heartbeats_path, as: :json
     assert_empty response.parsed_body.fetch("heartbeats")
   end
 
   test "signed-in operator discovers every recorder emitting a fresh signed heartbeat" do
-    second_recorder = Assembly.create!(name: "Second connected recorder", device_id: "EXOFDR-ABC123")
+    second_recorder = EmbeddedDevice.create!(device_id: "EXOFDR-ABC123")
     second_key = second_recorder.ensure_fdr_auth_key!
 
     first_payload = heartbeat_payload.to_json

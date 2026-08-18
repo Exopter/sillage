@@ -7,8 +7,8 @@ module FdrIdentity
     end
 
     def call
-      recorder = Assembly.find_by(device_id: @device_id)
-      installation = recorder&.installations&.active&.includes(:aircraft)&.recent&.first
+      recorder = EmbeddedDevice.find_by(device_id: @device_id)
+      installation = recorder&.active_installation
 
       Result.new(
         device_id: @device_id,

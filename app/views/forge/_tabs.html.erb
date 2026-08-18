@@ -1,4 +1,5 @@
-<nav class="workspace-tabs" aria-label="Forge sections">
+<nav class="workspace-tabs workspace-segmented-tabs" aria-label="Forge sections">
+  <%= link_to "Recorders", forge_fdrs_path, class: [ "workspace-tab", ("is-active" if controller_name == "fdrs" || controller_name == "fdr_wifi_profiles" || controller_name == "wifi_credentials") ] %>
   <%= link_to "Builds", forge_builds_path, class: [ "workspace-tab", ("is-active" if controller_name == "builds") ] %>
   <%= link_to "Test runs", forge_test_runs_path, class: [ "workspace-tab", ("is-active" if controller_name == "test_runs") ] %>
 </nav>

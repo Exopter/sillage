@@ -52,11 +52,63 @@ class HangarForgeTest < ActiveSupport::TestCase
   end
 
   test "physical recorder IDs are normalized, validated, and unique" do
-    recorder = Assembly.create!(name: "Physical recorder", device_id: " exofdr-a172e0 ")
+    recorder = EmbeddedDevice.create!(assembly: Assembly.create!(name: "Physical recorder"), device_id: " exofdr-a172e0 ")
 
     assert_equal "EXOFDR-A172E0", recorder.device_id
-    assert_not Assembly.new(name: "Duplicate recorder", device_id: "EXOFDR-A172E0").valid?
-    assert_not Assembly.new(name: "Invalid recorder", device_id: "EXOFDR-not-a-chip").valid?
+    assert_not EmbeddedDevice.new(device_id: "EXOFDR-A172E0").valid?
+    assert_not EmbeddedDevice.new(device_id: "EXOFDR-not-a-chip").valid?
+  end
+
+  test "device activity is append-only and human-readable" do
+    fdr = EmbeddedDevice.create!(assembly: @assembly, device_id: "EXOFDR-A172E0")
+    activity = fdr.record_activity!(
+      "assembly_linked",
+      source: "forge",
+      actor: users(:operator),
+      details: { asset_id: @assembly.internal_number }
+    )
+
+    assert_equal "Physical asset assignment changed", activity.title
+    assert_equal "Linked to physical asset #{@assembly.internal_number}.", activity.description
+    assert_not activity.update(event_type: "registered")
+    assert_not activity.destroy
+    assert DeviceActivity.exists?(activity.id)
+  end
+
+  test "Wi-Fi upload file identity is scoped to one embedded device" do
+    first = EmbeddedDevice.create!(assembly: @assembly, device_id: "EXOFDR-A172E0")
+    second = EmbeddedDevice.create!(device_id: "EXOFDR-ABC123")
+    attributes = {
+      filename: "FDR000001.BIN",
+      file_index: 1,
+      boot_id: 42,
+      format_version: 3,
+      size_bytes: 1_024,
+      sha256: "a" * 64
+    }
+
+    assert first.fdr_wifi_uploads.create!(attributes).persisted?
+    assert second.fdr_wifi_uploads.create!(attributes).persisted?
+  end
+
+  test "Signal presence presents recorder status in operator language" do
+    fdr = EmbeddedDevice.create!(assembly: @assembly, device_id: "EXOFDR-A172E0")
+    presence = fdr.create_signal_presence!(
+      last_seen_at: Time.current,
+      status: {
+        "alert_flags" => 0x08,
+        "last_sync_result" => 1,
+        "last_synced_file_index" => 42,
+        "diagnostics" => { "storage_write_errors" => 1 }
+      }
+    )
+
+    assert_equal "Storage attention", presence.health_label
+    assert_equal "Last file FDR000042.BIN", presence.synchronization_label
+
+    presence.status = { "alert_flags" => 0, "last_sync_result" => 0, "diagnostics" => {} }
+    assert_equal "Nominal", presence.health_label
+    assert_equal "No synchronization yet", presence.synchronization_label
   end
 
   test "part installation keeps one current assembly and state" do

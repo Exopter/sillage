@@ -8,9 +8,10 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
   SIGNATURE_DOMAIN = "exopter/fdr/wifi-upload/v1\0".b
 
   setup do
-    @recorder = Assembly.create!(name: "Wi-Fi upload recorder", device_id: "EXOFDR-A172E0")
+    @asset = Assembly.create!(name: "Wi-Fi upload recorder")
+    @recorder = EmbeddedDevice.create!(assembly: @asset, device_id: "EXOFDR-A172E0")
     @key = @recorder.ensure_fdr_auth_key!
-    Installation.create!(aircraft: aircraft(:pilatus), installable: @recorder, installed_at: 1.hour.ago)
+    Installation.create!(aircraft: aircraft(:pilatus), installable: @asset, installed_at: 1.hour.ago)
     @binary = valid_file
     @manifest = {
       filename: "FDR000001.BIN",
@@ -23,7 +24,7 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
-    FdrWifiUpload.where(assembly: @recorder).find_each do |upload|
+    FdrWifiUpload.where(embedded_device: @recorder).find_each do |upload|
       FileUtils.rm_f(upload.staged_path)
     end
   end

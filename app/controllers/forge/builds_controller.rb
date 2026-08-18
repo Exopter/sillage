@@ -24,6 +24,7 @@ module Forge
     def create
       @build = Build.new(build_attributes.merge(created_by: Current.user))
       if @build.save
+        record_fdr_activity(@build, "build_created")
         redirect_to forge_build_path(@build), notice: "Build created from the current assembly."
       else
         load_assemblies
@@ -59,6 +60,7 @@ module Forge
 
     def clone
       copy = @build.clone_as_next!(by: Current.user)
+      record_fdr_activity(copy, "build_cloned", previous_build_code: @build.code)
       redirect_to edit_forge_build_path(copy), notice: "#{copy.code} created from the current assembly. Review its provenance before testing."
     end
 
@@ -87,6 +89,15 @@ module Forge
       references = attributes.delete("notion_references_text").to_s.lines.map(&:strip).reject(&:blank?)
       attributes["notion_references"] = references
       attributes
+    end
+
+    def record_fdr_activity(build, event_type, details = {})
+      build.assembly.embedded_device&.record_activity!(
+        event_type,
+        source: "forge",
+        actor: Current.user,
+        details: details.merge(build_code: build.code)
+      )
     end
   end
 end

@@ -6,7 +6,7 @@ class FdrAuthenticationFlowTest < ActionDispatch::IntegrationTest
   USB_SESSION_DOMAIN = "exopter/fdr/usb-session/v1\0".b
 
   setup do
-    @recorder = Assembly.create!(name: "Authenticated recorder", device_id: "EXOFDR-A172E0")
+    @recorder = EmbeddedDevice.create!(assembly: Assembly.create!(name: "Authenticated recorder"), device_id: "EXOFDR-A172E0")
     @key = @recorder.ensure_fdr_auth_key!
     sign_in_as users(:operator)
   end
@@ -51,7 +51,7 @@ class FdrAuthenticationFlowTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     assert_equal "The recorder authentication challenge is invalid.", response.parsed_body.fetch("error")
 
-    unclaimed = Assembly.create!(name: "Unclaimed recorder", device_id: "EXOFDR-ABC123")
+    unclaimed = EmbeddedDevice.create!(device_id: "EXOFDR-ABC123")
     post api_v1_fdr_authentication_path,
       params: { device_id: unclaimed.device_id, nonce: "00" * 16, transport: "usb" },
       as: :json

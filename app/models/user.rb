@@ -17,6 +17,7 @@ class User < ApplicationRecord
   has_many :created_builds, class_name: "Build", foreign_key: :created_by_id, dependent: :restrict_with_error
   has_many :operated_test_runs, class_name: "TestRun", foreign_key: :operator_id, dependent: :restrict_with_error
   has_many :validated_test_runs, class_name: "TestRun", foreign_key: :validated_by_id, dependent: :restrict_with_error
+  has_many :device_activities, foreign_key: :actor_id, dependent: :restrict_with_error
 
   normalizes :email_address, with: ->(email) { email.to_s.strip.downcase }
 

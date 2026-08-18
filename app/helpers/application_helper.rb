@@ -90,7 +90,7 @@ module ApplicationHelper
     elsif controller_path.start_with?("hangar/")
       controller_name.titleize
     elsif controller_path.start_with?("forge/")
-      controller_name.titleize
+      controller_name == "fdrs" ? "Recorders" : controller_name.titleize
     else
       "Overview"
     end
@@ -106,7 +106,8 @@ module ApplicationHelper
   def sillage_shell_crumb
     return "Hangar" if sillage_current_room == "hangar"
     return "Signal" if sillage_current_room == "signal"
-    return sillage_current_tab_label if sillage_current_room.in?(%w[forge core])
+    return "Forge" if sillage_current_room == "forge"
+    return sillage_current_tab_label if sillage_current_room == "core"
 
     case sillage_current_flight_tab
     when "prep" then "Pre-flight"
@@ -120,6 +121,7 @@ module ApplicationHelper
     [
       { id: "flight", label: "Flights", icon: "plane", href: flights_path, enabled: true },
       { id: "hangar", label: "Hangar", icon: "wrench", href: hangar_path, enabled: true },
+      { id: "forge", label: "Forge", icon: "code", href: forge_path, enabled: true },
       { id: "signal", label: "Signal", icon: "signal", href: signal_path, enabled: true, separated: true }
     ]
   end
@@ -151,11 +153,11 @@ module ApplicationHelper
   end
 
   def sillage_fdr_connectivity_visible?
-    controller_path == "signal" && action_name == "index" && @active_session.blank?
+    controller_path == "forge/fdrs" && action_name == "index"
   end
 
   def sillage_fdr_connectivity_managed_by_page?
-    controller_path == "hangar/assemblies" && action_name == "connectivity"
+    controller_path == "forge/fdrs" && action_name == "connectivity"
   end
 
   def sillage_user_initials(user)

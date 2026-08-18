@@ -2,8 +2,7 @@
   <% if assembly.errors.any? %><div class="workspace-errors"><%= assembly.errors.full_messages.to_sentence %></div><% end %>
   <div class="workspace-form-grid">
     <label><span>Exopter Asset ID</span><%= text_field_tag nil, assembly.internal_number || "Assigned automatically", disabled: true %></label>
-    <label><span>Name</span><%= form.text_field :name, required: true, placeholder: "Integrated FDR" %></label>
-    <label class="is-wide"><span>Physical device ID</span><%= form.text_field :device_id, placeholder: "EXOFDR-A172E0", autocomplete: "off" %><small>Reported by the recorder over USB-C or BLE.</small></label>
+    <label><span>Name</span><%= form.text_field :name, required: true, placeholder: "Flight data recorder assembly" %></label>
     <label class="is-wide"><span>Parent assembly</span><%= form.collection_select :parent_id, @parent_options, :id, ->(parent) { "#{parent.internal_number} · #{parent.name}" }, { include_blank: "No parent" } %></label>
   </div>
   <label><span>Notes</span><%= form.text_area :notes, rows: 4 %></label>

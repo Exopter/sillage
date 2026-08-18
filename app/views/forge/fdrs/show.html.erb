@@ -1,0 +1,63 @@
+<% content_for :title, @fdr.technical_reference %>
+<%= render "forge/tabs" %>
+
+<div class="fdr-connectivity">
+  <%= render "shell", active_tab: :overview %>
+
+  <div class="workspace-grid">
+    <section class="workspace-panel">
+      <div class="workspace-panel-header"><h2>Software identity</h2><span>Learned from the FDR</span></div>
+      <dl class="workspace-details">
+        <div><dt>Device ID</dt><dd class="workspace-mono"><%= @fdr.device_id.presence || "Not identified" %></dd></div>
+        <div><dt>Hardware platform</dt><dd><%= @fdr.device_model.presence || "Not reported" %></dd></div>
+        <div><dt>Firmware</dt><dd><%= @fdr.last_seen_firmware.presence || "Not reported" %></dd></div>
+        <div><dt>Last identified</dt><dd><%= @fdr.last_identified_at ? "#{time_ago_in_words(@fdr.last_identified_at)} ago" : "Never" %></dd></div>
+        <div><dt>MAVLink</dt><dd><%= @fdr.mavlink_identity_label.presence || "Not observed" %></dd></div>
+      </dl>
+    </section>
+
+    <section class="workspace-panel">
+      <div class="workspace-panel-header"><h2>Security and Signal</h2><span>Observed state</span></div>
+      <% presence = @fdr.signal_presence %>
+      <dl class="workspace-details">
+        <div><dt>Initialization</dt><dd><span class="workspace-status <%= @fdr.initialized? ? "is-validated" : "is-blocked" %>"><%= @fdr.initialized? ? "Initialized" : "Required" %></span></dd></div>
+        <div><dt>Last Signal presence</dt><dd><%= presence&.last_seen_at ? "#{time_ago_in_words(presence.last_seen_at)} ago" : "Never" %></dd></div>
+        <div><dt>Health</dt><dd><%= presence&.health_label || "Not reported" %></dd></div>
+        <div><dt>Last synchronization</dt><dd><%= presence&.synchronization_label || "Not reported" %></dd></div>
+      </dl>
+      <p class="workspace-muted">Heartbeat and telemetry samples remain in Signal; only the latest observed presence is summarized here.</p>
+    </section>
+  </div>
+
+  <div class="workspace-grid">
+    <section class="workspace-panel">
+      <div class="workspace-panel-header"><h2>Physical asset</h2><span>Owned by Hangar</span></div>
+      <%= form_with model: @fdr, url: forge_fdr_path(@fdr), class: "workspace-form" do |form| %>
+        <% if @fdr.errors.any? %><div class="workspace-errors"><%= @fdr.errors.full_messages.to_sentence %></div><% end %>
+        <label>
+          <span>Hangar assembly</span>
+          <%= form.collection_select :assembly_id, @available_assemblies, :id, ->(assembly) { "#{assembly.internal_number} · #{assembly.name}" }, { include_blank: "No physical asset assigned" } %>
+        </label>
+        <div class="workspace-actions"><%= form.submit "Update assignment", class: "button-primary" %></div>
+      <% end %>
+    </section>
+
+    <section class="workspace-panel">
+      <div class="workspace-panel-header"><h2>Engineering evidence</h2><span>Latest records</span></div>
+      <% if @latest_build %>
+        <dl class="workspace-details">
+          <div><dt>Latest build</dt><dd><%= link_to @latest_build.code, forge_build_path(@latest_build), class: "workspace-strong-link" %></dd></div>
+          <div><dt>Build state</dt><dd><span class="workspace-status <%= @latest_build.locked? ? "is-locked" : "is-draft" %>"><%= @latest_build.locked? ? "Frozen" : "Draft" %></span></dd></div>
+          <div><dt>Test runs</dt><dd><%= @recent_test_runs.size %> recent</dd></div>
+        </dl>
+        <% @recent_test_runs.each do |run| %>
+          <%= link_to forge_test_run_path(run), class: "workspace-list-row" do %><span><strong><%= run.recipe_id %></strong><small><%= run.build.code %> · <%= l run.ran_at, format: :short %></small></span><span class="workspace-status is-<%= run.outcome %>"><%= run.outcome.titleize %></span><% end %>
+        <% end %>
+      <% elsif @assembly %>
+        <div class="workspace-empty">No build exists for this physical configuration yet.</div>
+      <% else %>
+        <div class="workspace-empty">Assign a physical asset before creating a build.</div>
+      <% end %>
+    </section>
+  </div>
+</div>

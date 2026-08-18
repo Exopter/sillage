@@ -1,20 +1,18 @@
-<nav class="fdr-breadcrumb" aria-label="Recorder breadcrumb">
-  <%= link_to "Hangar", hangar_path %>
+<nav class="fdr-breadcrumb" aria-label="FDR breadcrumb">
+  <%= link_to "Forge", forge_path %>
   <%= sillage_icon "chevron-right", size: 13 %>
-  <% if @aircraft %>
-    <%= link_to @aircraft.registration, hangar_aircraft_path(@aircraft) %>
-    <%= sillage_icon "chevron-right", size: 13 %>
-  <% end %>
-  <span aria-current="page"><%= @assembly.internal_number %></span>
+  <%= link_to "Recorders", forge_fdrs_path %>
+  <%= sillage_icon "chevron-right", size: 13 %>
+  <span aria-current="page"><%= @fdr.technical_reference %></span>
 </nav>
 
 <header class="fdr-connectivity-heading">
   <div>
     <span class="section-eyebrow">Flight data recorder</span>
-    <h2><%= @assembly.internal_number %> · <%= @assembly.name %></h2>
+    <h2><%= @fdr.technical_reference %></h2>
     <p>
-      <%= @assembly.device_id.presence || @controller_part&.serial_number.presence || "Recorder identity not recorded" %>
-      · <%= @assembly.device_model.presence || @controller_part&.model.presence || "Controller model not recorded" %>
+      Hardware platform: <%= @fdr.device_model.presence || "not reported" %>
+      <% if @assembly %>· <%= @assembly.internal_number %> · <%= @assembly.name %><% else %>· No physical asset assigned<% end %>
       <% if @aircraft %>· Installed in <%= @aircraft.registration %><% end %>
     </p>
   </div>
@@ -29,20 +27,21 @@
         <%= sillage_icon "bluetooth", size: 16 %>
         <span>Connect BLE</span>
       </button>
-    <% else %>
+    <% elsif @assembly %>
       <%= link_to "Create build", new_forge_build_path(build: { assembly_id: @assembly.id }), class: "button-primary" %>
-      <%= link_to "Edit", edit_hangar_assembly_path(@assembly), class: "button-secondary" %>
-      <%= button_to "Delete", hangar_assembly_path(@assembly), method: :delete, class: "button-danger",
-        form: { data: { turbo_confirm: "Delete #{@assembly.internal_number} permanently? This cannot be undone." } } %>
+      <%= link_to "Open physical asset", hangar_assembly_path(@assembly), class: "button-secondary" %>
     <% end %>
   </div>
 </header>
 
-<nav class="fdr-recorder-tabs" aria-label="Recorder sections">
-  <%= link_to "Overview", hangar_assembly_path(@assembly),
+<nav class="fdr-recorder-tabs" aria-label="FDR sections">
+  <%= link_to "Overview", forge_fdr_path(@fdr),
     class: ("is-active" if active_tab == :overview),
     aria: { current: ("page" if active_tab == :overview) } %>
-  <%= link_to "Connectivity", connectivity_hangar_assembly_path(@assembly),
+  <%= link_to "Connectivity", connectivity_forge_fdr_path(@fdr),
     class: ("is-active" if active_tab == :connectivity),
     aria: { current: ("page" if active_tab == :connectivity) } %>
+  <%= link_to "Activity", activity_forge_fdr_path(@fdr),
+    class: ("is-active" if active_tab == :activity),
+    aria: { current: ("page" if active_tab == :activity) } %>
 </nav>

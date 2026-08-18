@@ -1,0 +1,39 @@
+<% content_for :title, "Recorders" %>
+<%= render "forge/tabs" %>
+
+<header class="workspace-header recorder-fleet-header">
+  <div>
+    <h1>Recorder fleet</h1>
+    <p>Software identity, connectivity, and engineering evidence for every recorder.</p>
+  </div>
+</header>
+
+<%= render "connection_manager" %>
+
+<section class="workspace-panel">
+  <div class="workspace-panel-header">
+    <h2>Registered recorders</h2>
+    <span><%= pluralize @fdrs.size, "recorder" %></span>
+  </div>
+  <% if @fdrs.any? %>
+    <div class="workspace-table-wrap">
+      <table class="workspace-table">
+        <thead><tr><th>Recorder</th><th>Physical asset</th><th>Firmware</th><th>Signal</th></tr></thead>
+        <tbody>
+          <% @fdrs.each do |fdr| %>
+            <% presence = fdr.signal_presence %>
+            <% live = presence&.fresh? %>
+            <tr>
+              <td><%= link_to forge_fdr_path(fdr), class: "workspace-strong-link" do %><%= fdr.technical_reference %><% end %></td>
+              <td><% if fdr.assembly %><%= link_to fdr.assembly.internal_number, hangar_assembly_path(fdr.assembly), class: "workspace-strong-link" %><br><small class="workspace-muted"><%= fdr.assembly.name %></small><% else %><span class="workspace-muted">Not assigned</span><% end %></td>
+              <td><%= fdr.last_seen_firmware.presence || "Not reported" %></td>
+              <td><span class="workspace-status <%= live ? "is-installed" : "is-draft" %>"><%= live ? "Live" : "Offline" %></span><% if presence&.last_seen_at %><br><small class="workspace-muted"><%= time_ago_in_words(presence.last_seen_at) %> ago</small><% end %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="workspace-empty">No recorder is registered yet. Connect one over USB-C or BLE to add it securely.</div>
+  <% end %>
+</section>

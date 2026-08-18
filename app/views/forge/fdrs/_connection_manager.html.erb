@@ -8,9 +8,8 @@
          data-fdr-connectivity-sillage-heartbeat-url-value="<%= api_v1_fdr_sillage_heartbeats_path %>">
   <header class="signal-fdr-head">
     <div>
-      <span class="signal-k">Integrated recorder</span>
-      <h2>FDR connectivity</h2>
-      <p>USB-C, BLE and Wi-Fi report recorder connectivity. USB-C also synchronizes telemetry; USB-C and BLE provide settings.</p>
+      <h2>Connect a recorder</h2>
+      <p>Identify and initialize a recorder, inspect its software state, synchronize recordings, or open its connectivity settings.</p>
     </div>
   </header>
 
@@ -98,10 +97,12 @@
           <span class="signal-fdr-channel-icon"><%= sillage_icon "wifi", size: 17 %></span>
           <div><span class="signal-k">Wi-Fi</span><strong data-fdr-connectivity-target="wifiStatus" data-state="disconnected">Not connected</strong></div>
         </div>
-        <span class="signal-tool-button signal-fdr-auto-label"
-              data-fdr-connectivity-target="wifiAutoLabel"
-              aria-label="Automatic Wi-Fi connection: waiting for signed Sillage heartbeat"
-              title="Waiting for signed Sillage heartbeat">Automatic</span>
+        <button type="button"
+                class="signal-tool-button signal-fdr-auto-label"
+                data-fdr-connectivity-target="wifiAutoLabel"
+                aria-label="Automatic Wi-Fi connection: waiting for signed Sillage heartbeat"
+                title="Waiting for signed Sillage heartbeat"
+                disabled>Automatic</button>
       </div>
       <div class="signal-fdr-transport-feedback">
         <div class="signal-fdr-device-row">
@@ -132,7 +133,7 @@
   <section class="signal-fdr-overview" aria-labelledby="recorder-information-title">
     <header class="signal-fdr-section-head">
       <div class="signal-fdr-overview-title">
-        <div><span class="signal-k">Recorder</span><h3 id="recorder-information-title">Information</h3></div>
+        <div><h3 id="recorder-information-title">Recorder information</h3></div>
         <span class="signal-fdr-recorder-status" hidden
               data-fdr-connectivity-target="recorderStatus"
               data-state="disconnected"></span>
@@ -168,7 +169,7 @@
 
   <details class="signal-fdr-tools" data-fdr-connectivity-target="recorderTools">
     <summary class="signal-fdr-tools-summary">
-      <div><span class="signal-k">Recorder tools</span><strong>Settings and diagnostics</strong></div>
+      <div><strong>Settings and diagnostics</strong></div>
       <small data-fdr-connectivity-target="recorderToolsHint">Connect USB-C or BLE to access</small>
     </summary>
     <div class="signal-fdr-tools-body">
@@ -202,10 +203,10 @@
           <small data-fdr-connectivity-target="wifiDescription">Manage saved networks and apply them to the recorder over USB-C or BLE.</small>
         </div>
         <div class="signal-fdr-wifi-actions">
-          <%= link_to @fdr_wifi_recorder ? connectivity_hangar_assembly_path(@fdr_wifi_recorder) : hangar_assemblies_path,
+          <%= link_to forge_fdrs_path,
             class: "signal-tool-button", data: { fdr_connectivity_target: "wifiLink" } do %>
             <%= sillage_icon "wifi", size: 15 %>
-            <span data-fdr-connectivity-target="wifiLinkLabel"><%= @fdr_wifi_recorder ? "Configure Wi-Fi" : "Select recorder in Hangar" %></span>
+            <span data-fdr-connectivity-target="wifiLinkLabel">Select recorder</span>
           <% end %>
         </div>
       </div>

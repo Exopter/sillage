@@ -9,7 +9,7 @@ import {
 const heartbeatUrl = "https://sillage.exopter.com/api/v1/fdr-sillage-heartbeat"
 const bundle = parseFdrWifiProvisioningBundle({
   version: 1,
-  assembly_id: "ASY-001",
+  fdr_id: "42",
   profiles: [{
     position: 0,
     ssid: "EXOPTER-LAB",
@@ -25,7 +25,7 @@ assert.equal(bundle.profiles[0].ssid, "EXOPTER-LAB")
 assert.throws(
   () => parseFdrWifiProvisioningBundle({
     version: 1,
-    assembly_id: "ASY-001",
+    fdr_id: "42",
     profiles: [],
     sillage: { heartbeatUrl }
   }),
@@ -34,7 +34,7 @@ assert.throws(
 assert.throws(
   () => parseFdrWifiProvisioningBundle({
     version: 1,
-    assembly_id: "ASY-001",
+    fdr_id: "42",
     profiles: [{ position: 0, ssid: "EXOPTER-LAB", security: 6, enabled: true }],
     sillage: { heartbeat_url: heartbeatUrl }
   }),

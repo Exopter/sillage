@@ -1,20 +1,15 @@
 <% content_for :title, @assembly.internal_number %>
 <%= render "hangar/tabs" %>
 
-<% if @fdr %>
-  <div class="fdr-connectivity">
-    <%= render "fdr_shell", active_tab: :overview %>
-<% else %>
-  <header class="workspace-header">
-    <div><span class="section-eyebrow">Assembly</span><h2><%= @assembly.internal_number %></h2><p><%= @assembly.name %></p></div>
-    <div class="workspace-actions">
-      <%= link_to "Create build", new_forge_build_path(build: { assembly_id: @assembly.id }), class: "button-primary" %>
-      <%= link_to "Edit", edit_hangar_assembly_path(@assembly), class: "button-secondary" %>
-      <%= button_to "Delete", hangar_assembly_path(@assembly), method: :delete, class: "button-danger",
-        form: { data: { turbo_confirm: "Delete #{@assembly.internal_number} permanently? This cannot be undone." } } %>
-    </div>
-  </header>
-<% end %>
+<header class="workspace-header">
+  <div><span class="section-eyebrow">Assembly</span><h2><%= @assembly.internal_number %></h2><p><%= @assembly.name %></p></div>
+  <div class="workspace-actions">
+    <% if @assembly.embedded_device %><%= link_to "Open FDR in Forge", forge_fdr_path(@assembly.embedded_device), class: "button-primary" %><% end %>
+    <%= link_to "Edit", edit_hangar_assembly_path(@assembly), class: "button-secondary" %>
+    <%= button_to "Delete", hangar_assembly_path(@assembly), method: :delete, class: "button-danger",
+      form: { data: { turbo_confirm: "Delete #{@assembly.internal_number} permanently? This cannot be undone." } } %>
+  </div>
+</header>
 
 <div class="workspace-grid is-assembly">
   <section class="workspace-panel is-wide">
@@ -44,30 +39,6 @@
     </section>
   </div>
 </div>
-
-<section class="workspace-panel">
-  <div class="workspace-panel-header"><h2>Recorder identity</h2><span>Learned from USB-C or BLE</span></div>
-  <% if @assembly.device_id %>
-    <dl class="workspace-details">
-      <div><dt>Device</dt><dd><%= @assembly.device_id %></dd></div>
-      <div><dt>Model</dt><dd><%= @assembly.device_model.presence || "Not reported" %></dd></div>
-      <div><dt>Firmware</dt><dd><%= @assembly.last_seen_firmware.presence || "Not reported" %></dd></div>
-      <div><dt>Last identified</dt><dd><%= @assembly.last_seen_at ? "#{time_ago_in_words(@assembly.last_seen_at)} ago" : "Not recorded" %></dd></div>
-    </dl>
-  <% else %>
-    <div class="workspace-empty">This assembly has not been identified through USB-C or BLE yet.</div>
-  <% end %>
-</section>
-
-<section class="workspace-panel">
-  <div class="workspace-panel-header"><h2>Signal identity</h2><span>Learned automatically</span></div>
-  <% if @assembly.mavlink_system_id %>
-    <p><strong><%= @assembly.mavlink_identity_label %></strong></p>
-    <p class="workspace-muted">Observed from MAVLink while this assembly was installed on a prepared aircraft.</p>
-  <% else %>
-    <div class="workspace-empty">No MAVLink source has been observed for this assembly yet.</div>
-  <% end %>
-</section>
 
 <section class="workspace-panel">
   <h2>Direct parts</h2>
@@ -101,8 +72,4 @@
       <% end %>
     </div>
   </section>
-<% end %>
-
-<% if @fdr %>
-  </div>
 <% end %>

@@ -3,12 +3,13 @@ require "test_helper"
 class SignalFlowTest < ActionDispatch::IntegrationTest
   setup do
     sign_in_as users(:julien)
-    @fdr = Assembly.create!(
-      name: "Signal FDR",
+    @asset = Assembly.create!(name: "Signal FDR")
+    @fdr = EmbeddedDevice.create!(
+      assembly: @asset,
       mavlink_system_id: 1,
       mavlink_component_id: 191
     )
-    Installation.create!(aircraft: aircraft(:pilatus), installable: @fdr, installed_at: 1.hour.ago)
+    Installation.create!(aircraft: aircraft(:pilatus), installable: @asset, installed_at: 1.hour.ago)
   end
 
   test "creates an idempotent live session and completes its flight" do
@@ -89,8 +90,9 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "a prepared flight learns the observed MAVLink identity for its installed FDR" do
-    fdr = Assembly.create!(name: "Unidentified FDR")
-    Installation.create!(aircraft: aircraft(:exowing), installable: fdr, installed_at: 1.hour.ago)
+    asset = Assembly.create!(name: "Unidentified FDR")
+    fdr = EmbeddedDevice.create!(assembly: asset)
+    Installation.create!(aircraft: aircraft(:exowing), installable: asset, installed_at: 1.hour.ago)
     flight = flights(:two)
     flight.update!(status: "preparation")
     uuid = SecureRandom.uuid
@@ -107,16 +109,17 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_equal 42, fdr.reload.mavlink_system_id
     assert_equal 191, fdr.mavlink_component_id
     assert_equal 42, SignalSession.find_by!(uuid:).mavlink_system_id
-    assert_equal({ "system_id" => 42, "component_id" => 191 }, flight.reload.configuration_snapshot.dig("installations", 0, "asset", "mavlink"))
+    assert_equal({ "system_id" => 42, "component_id" => 191 }, flight.reload.configuration_snapshot.dig("installations", 0, "asset", "embedded_device", "mavlink"))
   end
 
   test "an ambiguous MAVLink system does not select an aircraft" do
-    second_fdr = Assembly.create!(
-      name: "Second Signal FDR",
+    second_asset = Assembly.create!(name: "Second Signal FDR")
+    EmbeddedDevice.create!(
+      assembly: second_asset,
       mavlink_system_id: 1,
       mavlink_component_id: 191
     )
-    Installation.create!(aircraft: aircraft(:exowing), installable: second_fdr, installed_at: 1.hour.ago)
+    Installation.create!(aircraft: aircraft(:exowing), installable: second_asset, installed_at: 1.hour.ago)
 
     post api_v1_signal_sessions_path, params: { uuid: SecureRandom.uuid }, as: :json
     session = SignalSession.order(:created_at).last
@@ -146,15 +149,16 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select ".signal-tabs", count: 0
   end
 
-  test "renders uniform recorder connections and combined information" do
+  test "renders uniform recorder connections and combined information in Forge" do
     controller_function = Function.find_or_create_by!(code: "CONTROLLER") { |function| function.name = "Recorder controller" }
     storage_function = Function.find_or_create_by!(code: "STORAGE") { |function| function.name = "Recorder storage" }
-    Part.create!(function: controller_function, manufacturer: "Seeed Studio", model: "XIAO ESP32S3", assembly: @fdr)
-    Part.create!(function: storage_function, manufacturer: "SanDisk", model: "High Endurance", assembly: @fdr)
+    Part.create!(function: controller_function, manufacturer: "Seeed Studio", model: "XIAO ESP32S3", assembly: @asset)
+    Part.create!(function: storage_function, manufacturer: "SanDisk", model: "High Endurance", assembly: @asset)
 
-    get signal_path
+    get forge_fdrs_path
 
     assert_response :success
+    assert_select ".workspace-table", text: /Model not reported/, count: 0
     assert_select "#aircraft-connection-indicator.aircraft-connection-pill[data-turbo-permanent][data-controller='aircraft-connection-indicator'][data-aircraft-connection-state='disconnected']"
     assert_select "#aircraft-connection-indicator[data-turbo='false']", count: 0
     assert_select "[data-aircraft-connection-indicator-target='label']", text: "No aircraft connected"
@@ -167,7 +171,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select ".signal-fdr-channel-identity .signal-k", text: /\AUSB-C\z/, count: 1
     assert_select "button.signal-tool-button:not(.is-primary)[data-action='fdr-connectivity#connectUsb']", text: "Connect USB-C"
     assert_select "button[data-action='fdr-connectivity#connectBle']", text: "Connect BLE"
-    assert_select ".signal-tool-button.signal-fdr-auto-label[data-fdr-connectivity-target='wifiAutoLabel'][aria-label='Automatic Wi-Fi connection: waiting for signed Sillage heartbeat']", text: "Automatic"
+    assert_select "button.signal-tool-button.signal-fdr-auto-label[data-fdr-connectivity-target='wifiAutoLabel'][aria-label='Automatic Wi-Fi connection: waiting for signed Sillage heartbeat'][disabled]", text: "Automatic"
     assert_select "[data-fdr-connectivity-target='wifiStatus']", text: "Not connected"
     assert_select "[data-fdr-connectivity-target='wifiDevice']", text: "No recorder detected"
     assert_select ".signal-fdr-transport-meta", count: 0
@@ -215,7 +219,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "select[data-fdr-connectivity-target='configInterval'][disabled]"
     assert_select "button[data-fdr-connectivity-target='configButton'][disabled]"
     assert_select "button[data-fdr-connectivity-target='debugButton'][disabled]"
-    assert_select ".signal-fdr-wifi-entry a[data-fdr-connectivity-target='wifiLink'][href='#{connectivity_hangar_assembly_path(@fdr)}']", text: /Configure Wi-Fi/
+    assert_select ".signal-fdr-wifi-entry a[data-fdr-connectivity-target='wifiLink'][href='#{forge_fdrs_path}']", text: /Select recorder/
     assert_select "[data-fdr-connectivity-target='wifiDescription']", text: /Manage saved networks/
     assert_select "[data-fdr-connectivity-target='recorderOnboarding'][hidden]" do
       assert_select "[data-fdr-connectivity-target='recorderOnboardingTitle']", text: "New recorder detected"
@@ -225,6 +229,14 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "progress[data-fdr-connectivity-target='syncProgress'][hidden]"
     assert_select "[data-fdr-connectivity-target='syncTechnical'][hidden]"
     assert_select "details[data-fdr-connectivity-target='recorderTools']:not([open])"
+  end
+
+  test "Signal home excludes the visible FDR configuration manager" do
+    get signal_path
+
+    assert_response :success
+    assert_select ".signal-home #sillage-fdr-connectivity", count: 0
+    assert_select ".sillage-persistent-fdr-connectivity[hidden][aria-hidden='true'] #sillage-fdr-connectivity", count: 1
   end
 
   test "keeps the recorder connection manager in the application shell outside Signal" do

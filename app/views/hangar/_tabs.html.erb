@@ -1,12 +1,11 @@
 <header class="hangar-page-heading">
   <span class="section-eyebrow">Sillage</span>
   <h1>Hangar</h1>
-  <p>Aircraft, installed configurations, serialized inventory, and qualification evidence.</p>
+  <p>Aircraft, serialized inventory, and physical installations.</p>
 </header>
-<nav class="workspace-tabs hangar-tabs" aria-label="Hangar sections">
+<nav class="workspace-tabs workspace-segmented-tabs hangar-tabs" aria-label="Hangar sections">
   <%= link_to "Fleet", hangar_aircraft_index_path, class: [ "workspace-tab", ("is-active" if controller_name == "aircraft" || controller_name == "installations") ] %>
   <%= link_to "Assemblies", hangar_assemblies_path, class: [ "workspace-tab", ("is-active" if controller_name == "assemblies") ] %>
   <%= link_to "Parts", hangar_parts_path, class: [ "workspace-tab", ("is-active" if controller_name == "parts") ] %>
   <%= link_to "Functions", hangar_functions_path, class: [ "workspace-tab", ("is-active" if controller_name == "functions") ] %>
-  <%= link_to "Qualification", hangar_qualification_path, class: [ "workspace-tab", ("is-active" if controller_name == "qualification") ] %>
 </nav>

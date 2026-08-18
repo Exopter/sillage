@@ -35,7 +35,7 @@ class WifiCredentialTest < ActiveSupport::TestCase
     first.fdr_wifi_profiles.create!(wifi_credential: credential, position: 0)
     second.fdr_wifi_profiles.create!(wifi_credential: credential, position: 0)
 
-    assert_equal [ first, second ].sort_by(&:id), credential.assemblies.order(:id).to_a
+    assert_equal [ first, second ].sort_by(&:id), credential.embedded_devices.order(:id).to_a
   end
 
   test "a credential change makes confirmed assignments pending again" do
@@ -56,9 +56,10 @@ class WifiCredentialTest < ActiveSupport::TestCase
   private
 
   def create_fdr(name)
-    Assembly.create!(name:).tap do |assembly|
-      Part.create!(function: @controller_function, manufacturer: "Seeed", model: "XIAO ESP32S3", assembly:)
-      Part.create!(function: @storage_function, manufacturer: "SanDisk", model: "High Endurance", assembly:)
+    assembly = Assembly.create!(name:).tap do |record|
+      Part.create!(function: @controller_function, manufacturer: "Seeed", model: "XIAO ESP32S3", assembly: record)
+      Part.create!(function: @storage_function, manufacturer: "SanDisk", model: "High Endurance", assembly: record)
     end
+    EmbeddedDevice.create!(assembly:)
   end
 end

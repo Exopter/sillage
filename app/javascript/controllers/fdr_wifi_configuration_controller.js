@@ -367,7 +367,7 @@ export default class extends TypedController {
     const wifiClient = this.wifiClient
     const deviceInfo = this.deviceInfo
     if (this.usbClient && !this.usbAuthenticated) {
-      return this.showError("Initialize this recorder from Signal over USB-C before applying connectivity changes.")
+      return this.showError("Initialize this FDR in Forge over USB-C before applying connectivity changes.")
     }
     if (!this.usbClient && !this.bleAuthenticated) {
       return this.showError("Sillage has not authenticated this BLE session.")
@@ -406,7 +406,7 @@ export default class extends TypedController {
         method: "PATCH",
         body: JSON.stringify({ device_id: deviceInfo.deviceId })
       })
-      this.applyStatusTarget.textContent = "Configuration verified and confirmed in Hangar."
+      this.applyStatusTarget.textContent = "Configuration verified and confirmed in Forge."
       this.applyStatusTarget.dataset.state = "success"
       window.setTimeout(() => window.location.reload(), 700)
     } catch (error) {
@@ -466,7 +466,7 @@ export default class extends TypedController {
     this.applyButtonTarget.disabled = transport === "USB-C" ? !this.usbAuthenticated : !this.bleAuthenticated
     this.scanButtonTarget.disabled = transport === "USB-C" ? !this.usbAuthenticated : !this.bleAuthenticated
     if (transport === "USB-C" && !this.usbAuthenticated) {
-      this.applyStatusTarget.textContent = "Initialize this recorder from Signal over USB-C before applying connectivity changes."
+      this.applyStatusTarget.textContent = "Initialize this FDR in Forge over USB-C before applying connectivity changes."
     }
   }
 
@@ -587,7 +587,7 @@ export default class extends TypedController {
   }
 
   renderPreviewApply() {
-    this.applyStatusTarget.textContent = "Preview: configuration verified and confirmed in Hangar."
+    this.applyStatusTarget.textContent = "Preview: configuration verified and confirmed in Forge."
     this.applyStatusTarget.dataset.state = "success"
   }
 }

@@ -1,0 +1,32 @@
+<% content_for :title, "#{@fdr.technical_reference} activity" %>
+<%= render "forge/tabs" %>
+
+<div class="fdr-connectivity">
+  <%= render "shell", active_tab: :activity %>
+
+  <section class="workspace-panel">
+    <div class="workspace-panel-header">
+      <h2>Activity</h2>
+      <span>Append-only audit trail</span>
+    </div>
+    <% if @activities.any? %>
+      <div class="workspace-list">
+        <% @activities.each do |activity| %>
+          <div class="workspace-list-row is-static">
+            <span>
+              <strong><%= activity.title %></strong>
+              <small><%= activity.description %></small>
+            </span>
+            <span class="device-activity-meta">
+              <strong><%= l activity.occurred_at, format: :long %></strong>
+              <small><%= activity.actor&.email_address || activity.source.titleize %> · <%= activity.source.titleize %></small>
+            </span>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="workspace-empty">No operator or lifecycle activity has been recorded for this FDR.</div>
+    <% end %>
+    <p class="workspace-muted device-activity-note">Routine heartbeats and telemetry samples are intentionally excluded.</p>
+  </section>
+</div>

@@ -39,11 +39,10 @@
           <div><dt>Installed in</dt><dd><%= selected_aircraft&.registration || "Not installed" %></dd></div>
           <div><dt>Direct parts</dt><dd><%= @selected_assembly.parts.size %></dd></div>
           <div><dt>Parent</dt><dd><%= @selected_assembly.parent&.internal_number || "—" %></dd></div>
-          <div><dt>Recorder identity</dt><dd><%= @selected_assembly.device_id || "Not identified" %></dd></div>
-          <div><dt>MAVLink identity</dt><dd><%= @selected_assembly.mavlink_identity_label || "Not observed yet" %></dd></div>
         </dl>
         <div class="workspace-actions">
           <%= link_to "Open", hangar_assembly_path(@selected_assembly), class: "button-secondary is-compact" %>
+          <% if @selected_assembly.embedded_device %><%= link_to "Open FDR in Forge", forge_fdr_path(@selected_assembly.embedded_device), class: "button-secondary is-compact" %><% end %>
           <%= link_to "Edit", edit_hangar_assembly_path(@selected_assembly), class: "button-secondary is-compact" %>
           <%= button_to "Delete", hangar_assembly_path(@selected_assembly), method: :delete, class: "button-danger is-compact",
             form: { data: { turbo_confirm: "Delete #{@selected_assembly.internal_number} permanently? This cannot be undone." } } %>

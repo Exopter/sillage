@@ -22,6 +22,18 @@ module Api
           ))
           test_run.artifacts.attach(Array(params[:files])) if params[:files].present?
           test_run.save!
+          test_run.build.assembly.embedded_device&.record_activity!(
+            "test_run_synchronized",
+            source: "bench",
+            actor: current_bench_user,
+            occurred_at: test_run.ran_at,
+            details: {
+              test_run_id: test_run.id,
+              recipe_id: test_run.recipe_id,
+              outcome: test_run.outcome,
+              build_code: test_run.build.code
+            }
+          )
 
           render json: response_payload(test_run), status: :created
         rescue KeyError, JSON::ParserError, ArgumentError => error

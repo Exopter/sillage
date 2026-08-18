@@ -1,12 +1,11 @@
 module Hangar
   class AssembliesController < BaseController
     before_action :set_assembly, only: %i[
-      show edit update destroy connectivity install_part remove_part replace_part attach_assembly detach_assembly
+      show edit update destroy install_part remove_part replace_part attach_assembly detach_assembly
     ]
-    before_action :load_fdr_context, only: %i[show connectivity]
 
     def index
-      @assemblies = Assembly.includes(:parent, :parts, :children).ordered.to_a
+      @assemblies = Assembly.includes(:parent, :parts, :children, :embedded_device).ordered.to_a
       @selected_assembly = @assemblies.find { |assembly| assembly.id == params[:assembly_id].to_i } || @assemblies.first
     end
 
@@ -14,15 +13,6 @@ module Hangar
       @available_parts = Part.available.includes(:function).ordered
       excluded_ids = [ @assembly.id, *@assembly.descendant_ids ]
       @available_assemblies = Assembly.where(parent_id: nil).where.not(id: excluded_ids).ordered
-    end
-
-    def connectivity
-      return head :not_found unless @fdr
-
-      @wifi_profiles = @assembly.fdr_wifi_profiles.includes(:wifi_credential).ordered
-      assigned_ids = @wifi_profiles.map(&:wifi_credential_id)
-      @known_wifi_credentials = WifiCredential.where.not(id: assigned_ids).ordered
-      @preview_wifi = (Rails.env.local? || Rails.env.test?) && params[:preview] == "wifi"
     end
 
     def new
@@ -120,16 +110,8 @@ module Hangar
       @parent_options = Assembly.where.not(id: excluded_ids).ordered
     end
 
-    def load_fdr_context
-      @fdr = @assembly.flight_data_recorder?
-      return unless @fdr
-
-      @controller_part = @assembly.parts.joins(:function).find_by(functions: { code: "CONTROLLER" })
-      @aircraft = @assembly.installations.active.includes(:aircraft).first&.aircraft
-    end
-
     def assembly_params
-      params.require(:assembly).permit(:name, :device_id, :parent_id, :notes)
+      params.require(:assembly).permit(:name, :parent_id, :notes)
     end
 
     def deletion_blocked_message

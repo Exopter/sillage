@@ -19,13 +19,14 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
       security: "wpa3",
       password: "exopter-lab-secret"
     )
-    @profile = @assembly.fdr_wifi_profiles.create!(wifi_credential: @credential, position: 0)
+    @fdr = EmbeddedDevice.create!(assembly: @assembly)
+    @profile = @fdr.fdr_wifi_profiles.create!(wifi_credential: @credential, position: 0)
   end
 
   test "operator sees the recorder connectivity workspace without a password" do
     sign_in_as users(:operator)
 
-    get connectivity_hangar_assembly_path(@assembly)
+    get connectivity_forge_fdr_path(@fdr)
 
     assert_response :success
     assert_select "h2", text: /#{@assembly.internal_number}/
@@ -33,36 +34,36 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-wifi-ssid='EXOPTER-LAB']"
     assert_select "button[data-action='fdr-wifi-configuration#connectUsb']", text: "Connect USB-C"
     assert_select "button[data-action='fdr-wifi-configuration#connectBle']", text: "Connect BLE"
-    assert_select "button", text: "Apply to recorder"
+    assert_select "button", text: "Apply to FDR"
     assert_select "body", text: /exopter-lab-secret/, count: 0
     assert_select ".sillage-persistent-fdr-connectivity", count: 0
-    assert_select ".fdr-recorder-tabs[aria-label='Recorder sections']" do
-      assert_select "a[href='#{hangar_assembly_path(@assembly)}']", text: "Overview"
-      assert_select "a.is-active[aria-current='page'][href='#{connectivity_hangar_assembly_path(@assembly)}']", text: "Connectivity"
-      assert_select "a", text: "Diagnostics", count: 0
+    assert_select ".fdr-recorder-tabs[aria-label='FDR sections']" do
+      assert_select "a[href='#{forge_fdr_path(@fdr)}']", text: "Overview"
+      assert_select "a.is-active[aria-current='page'][href='#{connectivity_forge_fdr_path(@fdr)}']", text: "Connectivity"
+      assert_select "a[href='#{activity_forge_fdr_path(@fdr)}']", text: "Activity"
     end
   end
 
   test "recorder overview and connectivity share one stable navigation" do
     sign_in_as users(:operator)
 
-    get hangar_assembly_path(@assembly)
+    get forge_fdr_path(@fdr)
 
     assert_response :success
     assert_select ".fdr-connectivity"
-    assert_select ".fdr-connectivity-heading h2", text: /#{@assembly.internal_number} · #{@assembly.name}/
-    assert_select ".fdr-recorder-tabs[aria-label='Recorder sections']" do
-      assert_select "a.is-active[aria-current='page'][href='#{hangar_assembly_path(@assembly)}']", text: "Overview"
-      assert_select "a[href='#{connectivity_hangar_assembly_path(@assembly)}']", text: "Connectivity"
+    assert_select ".fdr-connectivity-heading h2", text: /#{@assembly.internal_number}/
+    assert_select ".fdr-recorder-tabs[aria-label='FDR sections']" do
+      assert_select "a.is-active[aria-current='page'][href='#{forge_fdr_path(@fdr)}']", text: "Overview"
+      assert_select "a[href='#{connectivity_forge_fdr_path(@fdr)}']", text: "Connectivity"
     end
 
-    get connectivity_hangar_assembly_path(@assembly)
+    get connectivity_forge_fdr_path(@fdr)
 
     assert_response :success
-    assert_select ".fdr-connectivity-heading h2", text: /#{@assembly.internal_number} · #{@assembly.name}/
-    assert_select ".fdr-recorder-tabs[aria-label='Recorder sections']" do
-      assert_select "a[href='#{hangar_assembly_path(@assembly)}']", text: "Overview"
-      assert_select "a.is-active[aria-current='page'][href='#{connectivity_hangar_assembly_path(@assembly)}']", text: "Connectivity"
+    assert_select ".fdr-connectivity-heading h2", text: /#{@assembly.internal_number}/
+    assert_select ".fdr-recorder-tabs[aria-label='FDR sections']" do
+      assert_select "a[href='#{forge_fdr_path(@fdr)}']", text: "Overview"
+      assert_select "a.is-active[aria-current='page'][href='#{connectivity_forge_fdr_path(@fdr)}']", text: "Connectivity"
     end
   end
 
@@ -71,18 +72,19 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
     @assembly.parts.includes(:function).each do |part|
       Part.create!(function: part.function, manufacturer: part.manufacturer, model: part.model, assembly: replacement)
     end
+    replacement_fdr = EmbeddedDevice.create!(assembly: replacement)
     sign_in_as users(:operator)
 
-    post hangar_assembly_fdr_wifi_profiles_path(replacement), params: { wifi_credential_id: @credential.id }
+    post forge_fdr_fdr_wifi_profiles_path(replacement_fdr), params: { wifi_credential_id: @credential.id }
 
-    assert_redirected_to connectivity_hangar_assembly_path(replacement)
-    assert_equal @credential, replacement.fdr_wifi_profiles.first.wifi_credential
+    assert_redirected_to connectivity_forge_fdr_path(replacement_fdr)
+    assert_equal @credential, replacement_fdr.fdr_wifi_profiles.first.wifi_credential
   end
 
   test "provisioning bundle is no-store and confirmation marks the exact device" do
     sign_in_as users(:operator)
 
-    post api_v1_assembly_fdr_wifi_provisioning_path(@assembly),
+    post api_v1_fdr_wifi_provisioning_path(@fdr),
       params: { device_id: "EXOFDR-ABC123" }, as: :json
 
     assert_response :success
@@ -92,60 +94,61 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
     assert_equal 6, payload.dig("profiles", 0, "security")
     assert_equal "http://sillage.test/api/v1/fdr-sillage-heartbeat", payload.dig("sillage", "heartbeat_url")
     assert_nil payload["authentication"]
-    assert_nil @assembly.reload.fdr_auth_key_ciphertext
+    assert_nil @fdr.reload.fdr_auth_key_ciphertext
 
-    patch api_v1_assembly_fdr_wifi_provisioning_path(@assembly), params: { device_id: "EXOFDR-ABC123" }, as: :json
+    patch api_v1_fdr_wifi_provisioning_path(@fdr), params: { device_id: "EXOFDR-ABC123" }, as: :json
 
     assert_response :success
     assert_equal "EXOFDR-ABC123", @profile.reload.last_provisioned_device_id
-    assert_equal "EXOFDR-ABC123", @assembly.reload.device_id
+    assert_equal "EXOFDR-ABC123", @fdr.reload.device_id
     assert_not @profile.pending?
   end
 
   test "Wi-Fi provisioning never exposes the raw FDR key" do
-    @assembly.ensure_fdr_auth_key!
+    @fdr.ensure_fdr_auth_key!
     sign_in_as users(:operator)
 
-    post api_v1_assembly_fdr_wifi_provisioning_path(@assembly),
+    post api_v1_fdr_wifi_provisioning_path(@fdr),
       params: { device_id: "EXOFDR-ABC123" }, as: :json
 
     assert_response :success
     assert_nil response.parsed_body["authentication"]
-    assert_not_includes response.body, @assembly.fdr_auth_key_encoded
+    assert_not_includes response.body, @fdr.fdr_auth_key_encoded
   end
 
   test "provisioning refuses to install an assembly key on the wrong recorder" do
-    @assembly.update!(device_id: "EXOFDR-A172E0")
+    @fdr.update!(device_id: "EXOFDR-A172E0")
     sign_in_as users(:operator)
 
-    post api_v1_assembly_fdr_wifi_provisioning_path(@assembly),
+    post api_v1_fdr_wifi_provisioning_path(@fdr),
       params: { device_id: "EXOFDR-ABC123" }, as: :json
 
     assert_response :conflict
-    assert_nil @assembly.reload.fdr_auth_key_ciphertext
+    assert_nil @fdr.reload.fdr_auth_key_ciphertext
     assert_includes response.parsed_body.fetch("error"), "already bound"
   end
 
-  test "another operator can reuse a credential already stored in Hangar" do
+  test "another operator can reuse a credential already stored in Forge" do
     shared = WifiCredential.create!(created_by: users(:julien), ssid: "PRIVATE", security: "wpa2", password: "private-secret")
     replacement = Assembly.create!(name: "Shared credential recorder")
     @assembly.parts.includes(:function).each do |part|
       Part.create!(function: part.function, manufacturer: part.manufacturer, model: part.model, assembly: replacement)
     end
+    replacement_fdr = EmbeddedDevice.create!(assembly: replacement)
     sign_in_as users(:operator)
 
-    post hangar_assembly_fdr_wifi_profiles_path(replacement), params: { wifi_credential_id: shared.id }
+    post forge_fdr_fdr_wifi_profiles_path(replacement_fdr), params: { wifi_credential_id: shared.id }
 
-    assert_redirected_to connectivity_hangar_assembly_path(replacement)
-    assert_equal shared, replacement.fdr_wifi_profiles.first.wifi_credential
+    assert_redirected_to connectivity_forge_fdr_path(replacement_fdr)
+    assert_equal shared, replacement_fdr.fdr_wifi_profiles.first.wifi_credential
   end
 
-  test "removing a recorder assignment keeps the reusable Hangar credential" do
+  test "removing a recorder assignment keeps the reusable Forge credential" do
     sign_in_as users(:operator)
 
-    delete hangar_assembly_fdr_wifi_profile_path(@assembly, @profile)
+    delete forge_fdr_fdr_wifi_profile_path(@fdr, @profile)
 
-    assert_redirected_to connectivity_hangar_assembly_path(@assembly)
+    assert_redirected_to connectivity_forge_fdr_path(@fdr)
     assert_not FdrWifiProfile.exists?(@profile.id)
     assert WifiCredential.exists?(@credential.id)
   end

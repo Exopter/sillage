@@ -1,15 +1,15 @@
 require "test_helper"
 
 class OperationsDomainTest < ActiveSupport::TestCase
-  test "MAVLink identity belongs to a physical assembly" do
-    assembly = Assembly.new(name: "MAVLink FDR", mavlink_system_id: 1, mavlink_component_id: 191)
+  test "MAVLink identity belongs to the embedded device" do
+    fdr = EmbeddedDevice.new(mavlink_system_id: 1, mavlink_component_id: 191)
 
-    assert assembly.valid?
-    assert_equal "System 1 · component 191", assembly.mavlink_identity_label
+    assert fdr.valid?
+    assert_equal "System 1 · component 191", fdr.mavlink_identity_label
 
-    assembly.mavlink_system_id = 256
-    assert_not assembly.valid?
-    assert_includes assembly.errors[:mavlink_system_id], "is not included in the list"
+    fdr.mavlink_system_id = 256
+    assert_not fdr.valid?
+    assert_includes fdr.errors[:mavlink_system_id], "is not included in the list"
   end
 
   test "an asset cannot have two active aircraft installations" do

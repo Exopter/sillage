@@ -37,12 +37,14 @@ module Api
       end
 
       def find_or_register_recorder
-        recorder = Assembly.find_by(device_id: device_id)
+        recorder = EmbeddedDevice.find_by(device_id: device_id)
         return [ recorder, false ] if recorder
 
-        [ Assembly.create!(device_id: device_id, name: "Integrated FDR · #{device_id}"), true ]
+        recorder = EmbeddedDevice.create!(device_id: device_id)
+        recorder.record_activity!("registered", source: "forge", actor: Current.user, details: { device_id: })
+        [ recorder, true ]
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
-        recorder = Assembly.find_by(device_id: device_id)
+        recorder = EmbeddedDevice.find_by(device_id: device_id)
         raise unless recorder
 
         [ recorder, false ]
@@ -51,7 +53,7 @@ module Api
       def update_observed_identity(recorder)
         recorder.device_model = observed_identity[:model] if observed_identity[:model].present?
         recorder.last_seen_firmware = observed_identity[:firmware] if observed_identity[:firmware].present?
-        recorder.last_seen_at = Time.current
+        recorder.last_identified_at = Time.current
         recorder.mavlink_system_id ||= observed_identity[:mavlink_system_id].presence
         recorder.mavlink_component_id ||= observed_identity[:mavlink_component_id].presence
         recorder.save!
@@ -67,14 +69,14 @@ module Api
           created: created,
           recorder: {
             id: recorder.id,
-            internal_number: recorder.internal_number,
-            name: recorder.name,
+            internal_number: recorder.assembly&.internal_number,
+            name: recorder.display_name,
             device_id: recorder.device_id,
             model: recorder.device_model,
             firmware: recorder.last_seen_firmware,
-            connectivity_url: connectivity_hangar_assembly_path(recorder),
-            initialization_url: api_v1_assembly_fdr_initialization_path(recorder),
-            initialization_confirmed: recorder.fdr_auth_key_installed_at?
+            connectivity_url: connectivity_forge_fdr_path(recorder),
+            initialization_url: api_v1_fdr_initialization_path(recorder),
+            initialization_confirmed: recorder.initialized?
           },
           aircraft: aircraft && {
             id: aircraft.id,

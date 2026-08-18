@@ -1,8 +1,7 @@
 module Api
   module V1
     class FdrWifiProvisioningsController < ApplicationController
-      before_action :set_assembly
-      before_action :ensure_flight_data_recorder
+      before_action :set_fdr
 
       def create
         device_id = normalized_device_id
@@ -14,7 +13,7 @@ module Api
 
         render json: {
           version: 1,
-          assembly_id: @assembly.internal_number,
+          fdr_id: @fdr.id.to_s,
           profiles: profiles.map { |profile| provisioning_payload(profile) },
           sillage: {
             heartbeat_url: sillage_heartbeat_url
@@ -31,13 +30,19 @@ module Api
         return unless recorder_binding_available?(device_id)
 
         provisioned_at = Time.current
-        Assembly.transaction do
-          @assembly.update!(device_id: device_id)
+        EmbeddedDevice.transaction do
+          @fdr.update!(device_id: device_id)
           owned_profiles.update_all(
             last_provisioned_at: provisioned_at,
             last_provisioned_device_id: device_id
           )
         end
+        @fdr.record_activity!(
+          "connectivity_provisioned",
+          source: "forge",
+          actor: Current.user,
+          details: { profile_count: owned_profiles.count, device_id: }
+        )
 
         response.headers["Cache-Control"] = "no-store, max-age=0"
         render json: { status: "confirmed", provisioned_at: provisioned_at.iso8601 }
@@ -47,16 +52,12 @@ module Api
 
       private
 
-      def set_assembly
-        @assembly = Assembly.find(params[:assembly_id])
-      end
-
-      def ensure_flight_data_recorder
-        head :not_found unless @assembly.flight_data_recorder?
+      def set_fdr
+        @fdr = EmbeddedDevice.find(params[:fdr_id])
       end
 
       def owned_profiles
-        @assembly.fdr_wifi_profiles
+        @fdr.fdr_wifi_profiles
       end
 
       def normalized_device_id
@@ -67,15 +68,15 @@ module Api
       end
 
       def recorder_binding_available?(device_id)
-        if @assembly.device_id.present? && @assembly.device_id != device_id
+        if @fdr.device_id.present? && @fdr.device_id != device_id
           render json: {
-            error: "This Hangar assembly is already bound to #{@assembly.device_id}; refusing to configure #{device_id}."
+            error: "This Forge FDR is already bound to #{@fdr.device_id}; refusing to configure #{device_id}."
           }, status: :conflict
           return false
         end
-        if Assembly.where(device_id: device_id).where.not(id: @assembly.id).exists?
+        if EmbeddedDevice.where(device_id: device_id).where.not(id: @fdr.id).exists?
           render json: {
-            error: "#{device_id} is already bound to another Hangar assembly."
+            error: "#{device_id} is already bound to another Forge FDR."
           }, status: :conflict
           return false
         end

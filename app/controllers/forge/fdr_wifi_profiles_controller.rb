@@ -1,60 +1,61 @@
-module Hangar
+module Forge
   class FdrWifiProfilesController < BaseController
-    before_action :set_assembly
-    before_action :ensure_flight_data_recorder
+    before_action :set_fdr
     before_action :set_profile, only: %i[update destroy move]
 
     def create
       credential = selected_or_saved_credential
-      profile = @assembly.fdr_wifi_profiles.build(
+      profile = @fdr.fdr_wifi_profiles.build(
         wifi_credential: credential,
-        position: @assembly.fdr_wifi_profiles.count,
+        position: @fdr.fdr_wifi_profiles.count,
         enabled: true
       )
 
       if credential.persisted? && profile.save
-        redirect_to connectivity_hangar_assembly_path(@assembly), notice: "#{credential.ssid} added to the recorder configuration."
+        record_activity("wifi_profile_added", ssid: credential.ssid)
+        redirect_to connectivity_forge_fdr_path(@fdr), notice: "#{credential.ssid} added to the FDR connectivity configuration."
       else
         errors = credential.errors.full_messages + profile.errors.full_messages
-        redirect_to connectivity_hangar_assembly_path(@assembly), alert: errors.to_sentence.presence || "The Wi-Fi network could not be saved."
+        redirect_to connectivity_forge_fdr_path(@fdr), alert: errors.to_sentence.presence || "The Wi-Fi network could not be saved."
       end
     end
 
     def update
       if @profile.update(enabled: ActiveModel::Type::Boolean.new.cast(params.require(:enabled)))
-        redirect_to connectivity_hangar_assembly_path(@assembly), notice: "Wi-Fi profile updated."
+        record_activity("wifi_profile_updated", ssid: @profile.ssid, enabled: @profile.enabled)
+        redirect_to connectivity_forge_fdr_path(@fdr), notice: "Wi-Fi profile updated."
       else
-        redirect_to connectivity_hangar_assembly_path(@assembly), alert: @profile.errors.full_messages.to_sentence
+        redirect_to connectivity_forge_fdr_path(@fdr), alert: @profile.errors.full_messages.to_sentence
       end
     end
 
     def move
       offset = params.require(:direction) == "up" ? -1 : 1
-      target = @assembly.fdr_wifi_profiles.find_by(position: @profile.position + offset)
+      target = @fdr.fdr_wifi_profiles.find_by(position: @profile.position + offset)
 
-      swap_positions!(@profile, target) if target
-      redirect_to connectivity_hangar_assembly_path(@assembly)
+      if target
+        swap_positions!(@profile, target)
+        record_activity("wifi_profiles_reordered", ssid: @profile.ssid, position: @profile.reload.position)
+      end
+      redirect_to connectivity_forge_fdr_path(@fdr)
     end
 
     def destroy
       ssid = @profile.ssid
       @profile.destroy!
       normalize_positions!
-      redirect_to connectivity_hangar_assembly_path(@assembly), notice: "#{ssid} removed from this recorder. The saved password remains in Hangar."
+      record_activity("wifi_profile_removed", ssid:)
+      redirect_to connectivity_forge_fdr_path(@fdr), notice: "#{ssid} removed from this FDR. The saved credential remains available in Forge."
     end
 
     private
 
-    def set_assembly
-      @assembly = Assembly.find(params[:assembly_id])
-    end
-
-    def ensure_flight_data_recorder
-      head :not_found unless @assembly.flight_data_recorder?
+    def set_fdr
+      @fdr = EmbeddedDevice.find(params[:fdr_id])
     end
 
     def set_profile
-      @profile = @assembly.fdr_wifi_profiles.find(params[:id])
+      @profile = @fdr.fdr_wifi_profiles.find(params[:id])
     end
 
     def selected_or_saved_credential
@@ -72,8 +73,6 @@ module Hangar
     end
 
     def swap_positions!(profile, target)
-      return unless target
-
       now = Time.current
       profile_position = profile.position
       target_position = target.position
@@ -86,9 +85,13 @@ module Hangar
 
     def normalize_positions!
       now = Time.current
-      @assembly.fdr_wifi_profiles.ordered.each_with_index do |profile, position|
+      @fdr.fdr_wifi_profiles.ordered.each_with_index do |profile, position|
         profile.update_columns(position: position, updated_at: now) if profile.position != position
       end
+    end
+
+    def record_activity(event_type, details)
+      @fdr.record_activity!(event_type, source: "forge", actor: Current.user, details:)
     end
   end
 end
