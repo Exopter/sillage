@@ -6,6 +6,53 @@ export const USB_FILE_PREPARATION_TIMEOUT_MS = 120_000
 export const USB_ERASE_RECORDINGS_TIMEOUT_MS = 120_000
 export const USB_PORT_RELEASE_TIMEOUT_MS = 2_000
 
+/**
+ * Error metadata shared across USB, BLE, and Wi-Fi protocol failures.
+ *
+ * @typedef {Error & {
+ *   fdrAuthResult?: number,
+ *   recorderCode?: number,
+ *   recorderRequestType?: number,
+ *   recorderWifiCommand?: number,
+ *   recorderWifiResult?: number,
+ *   timeoutMs?: number,
+ *   usbConnectionLost?: boolean,
+ *   usbRequestTimedOut?: boolean,
+ *   usbRequestType?: number
+ * }} FdrProtocolError
+ */
+/** @typedef {Uint8Array | DataView | ArrayBuffer | ArrayLike<number> | number | null | undefined} BinaryValue */
+/** @typedef {{ payload: Uint8Array, sequence: number, type: number }} UsbFrame */
+/**
+ * @typedef {Object} UsbSerialPort
+ * @property {ReadableStream<Uint8Array> | null} readable
+ * @property {WritableStream<Uint8Array> | null} writable
+ * @property {(options: { baudRate: number }) => Promise<void>} open
+ * @property {() => Promise<void>} close
+ */
+/**
+ * @typedef {Object} UsbPortLockState
+ * @property {{ locked?: boolean } | null} [readable]
+ * @property {{ locked?: boolean } | null} [writable]
+ */
+/**
+ * @typedef {Object} GattCharacteristicLike
+ * @property {() => Promise<DataView>} readValue
+ * @property {(payload: Uint8Array) => Promise<void>} writeValue
+ * @property {(payload: Uint8Array) => Promise<void>} [writeValueWithResponse]
+ */
+/**
+ * @typedef {Object} WifiProfileInput
+ * @property {boolean} enabled
+ * @property {string} [password]
+ * @property {number} position
+ * @property {boolean} [preservePassword]
+ * @property {number} security
+ * @property {string} ssid
+ */
+/** @typedef {{ heartbeatUrl: string }} WifiSillageInput */
+/** @typedef {{ wifi: (payload: Uint8Array) => Promise<Uint8Array> }} UsbWifiTransport */
+
 const USB_CONNECTION_TIMEOUT_MESSAGE = "USB connection timed out after 10 seconds. Disconnect and reconnect the recorder, then try again."
 const USB_PORT_BUSY_MESSAGE = "USB-C is still in use by another Sillage page. Wait a moment, then try again."
 const USB_CONNECTION_CLOSED_MESSAGE = "The recorder disconnected during synchronization. The source recording and any partial transfer are preserved; reconnect it to resume."
@@ -133,7 +180,7 @@ export const FDR_AUTH_KEY_BYTES = 32
 const FRAME_MAGIC = Uint8Array.from([0x45, 0x58, 0x53, 0x31])
 const FRAME_HEADER_SIZE = 20
 const MAX_FRAME_PAYLOAD = 1024 * 1024
-const USB_ERROR_MESSAGES = Object.freeze({
+const USB_ERROR_MESSAGES = /** @type {Readonly<Record<number, string>>} */ (Object.freeze({
   [UsbErrorCode.BAD_FRAME]: "The recorder rejected a corrupted USB command. Disconnect and reconnect it, then try again.",
   [UsbErrorCode.BAD_SEQUENCE]: "The recorder USB session is no longer active. Disconnect and reconnect it, then try again.",
   [UsbErrorCode.NOT_READY]: "The recorder is not ready yet. Wait a few seconds, then try again.",
@@ -141,8 +188,8 @@ const USB_ERROR_MESSAGES = Object.freeze({
   [UsbErrorCode.STORAGE_ERROR]: "The recorder microSD is unavailable. Check that the card and reader are connected, then try again.",
   [UsbErrorCode.HASH_MISMATCH]: "The recorder rejected the synchronization acknowledgement because the file checksum did not match. The file remains on the recorder; reconnect and try again.",
   [UsbErrorCode.AUTHENTICATION_REQUIRED]: "Sillage must authenticate this USB-C session before the recorder accepts synchronization or configuration commands."
-})
-const WIFI_ERROR_MESSAGES = Object.freeze({
+}))
+const WIFI_ERROR_MESSAGES = /** @type {Readonly<Record<number, string>>} */ (Object.freeze({
   [WifiResult.INVALID_COMMAND]: "The recorder does not support this Wi-Fi command. Check that Sillage and the recorder firmware are compatible.",
   [WifiResult.INVALID_INDEX]: "The selected Wi-Fi profile no longer exists. Refresh the page and try again.",
   [WifiResult.INVALID_DATA]: "The recorder rejected the Wi-Fi settings. Check the network name, security type, and password.",
@@ -150,23 +197,29 @@ const WIFI_ERROR_MESSAGES = Object.freeze({
   [WifiResult.BUSY]: "The recorder is busy with another Wi-Fi operation. Wait a few seconds and try again.",
   [WifiResult.NOT_READY]: "The recorder is not ready for this Wi-Fi operation. Wait for the current scan or update to finish.",
   [WifiResult.UNAUTHORIZED]: "Sillage has not authenticated this BLE session. Reconnect the recorder and try again."
-})
-const FDR_AUTH_ERROR_MESSAGES = Object.freeze({
+}))
+const FDR_AUTH_ERROR_MESSAGES = /** @type {Readonly<Record<number, string>>} */ (Object.freeze({
   [FdrAuthResult.INVALID_DATA]: "The recorder rejected the Sillage authentication data.",
   [FdrAuthResult.ALREADY_CONFIGURED]: "This recorder is already claimed with a different Sillage authentication key.",
   [FdrAuthResult.STORAGE_ERROR]: "The recorder could not save its Sillage authentication key.",
   [FdrAuthResult.NOT_CONFIGURED]: "Connect this recorder over USB-C once to establish its Sillage authentication key.",
   [FdrAuthResult.AUTHENTICATION_FAILED]: "The recorder rejected the Sillage authentication proof."
-})
+}))
 
 export class UsbFdrClient {
+  /** @param {UsbSerialPort} port */
   constructor(port) {
     this.port = port
     this.sequence = 0
+    /** @type {ReadableStreamDefaultReader<Uint8Array> | null} */
     this.reader = null
+    /** @type {WritableStreamDefaultWriter<Uint8Array> | null} */
     this.writer = null
+    /** @type {FrameReader | null} */
     this.frameReader = null
+    /** @type {Promise<unknown>} */
     this.requestTail = Promise.resolve()
+    /** @type {Promise<void> | null} */
     this.closePromise = null
   }
 
@@ -174,8 +227,11 @@ export class UsbFdrClient {
     await waitForUsbPortAvailability(this.port)
     if (!this.port.readable || !this.port.writable) await this.port.open({ baudRate: 115200 })
     await waitForUsbPortAvailability(this.port)
-    this.reader = this.port.readable.getReader()
-    this.writer = this.port.writable.getWriter()
+    const readable = this.port.readable
+    const writable = this.port.writable
+    if (!readable || !writable) throw usbConnectionError()
+    this.reader = readable.getReader()
+    this.writer = writable.getWriter()
     this.frameReader = new FrameReader(this.reader)
   }
 
@@ -220,6 +276,11 @@ export class UsbFdrClient {
     return frame.type === UsbMessage.NO_FILE ? null : parseFileManifest(frame.payload)
   }
 
+  /**
+   * @param {number} fileIndex
+   * @param {number} offset
+   * @param {number} [length]
+   */
   async readChunk(fileIndex, offset, length = USB_CHUNK_SIZE) {
     const payload = new Uint8Array(16)
     const view = new DataView(payload.buffer)
@@ -230,6 +291,10 @@ export class UsbFdrClient {
     return parseFileChunk(frame.payload, fileIndex, offset)
   }
 
+  /**
+   * @param {number} fileIndex
+   * @param {string} sha256
+   */
   async acknowledge(fileIndex, sha256) {
     const payload = new Uint8Array(36)
     new DataView(payload.buffer).setUint32(0, fileIndex, true)
@@ -262,6 +327,7 @@ export class UsbFdrClient {
     return parseBleConfig(frame.payload)
   }
 
+  /** @param {number} statusIntervalSeconds */
   async writeConfig(statusIntervalSeconds) {
     const frame = await this.request(
       UsbMessage.SET_CONFIG,
@@ -276,11 +342,13 @@ export class UsbFdrClient {
     return new TextDecoder().decode(frame.payload)
   }
 
+  /** @param {Uint8Array} payload */
   async wifi(payload) {
     const frame = await this.request(UsbMessage.WIFI, payload, [UsbMessage.WIFI_DATA])
     return frame.payload
   }
 
+  /** @param {string} encodedKey */
   async installAuthenticationKey(encodedKey) {
     const key = decodeBase64Url(encodedKey)
     if (key.length !== FDR_AUTH_KEY_BYTES) throw new Error("The Sillage authentication key must be 32 bytes.")
@@ -297,7 +365,7 @@ export class UsbFdrClient {
     const payload = Uint8Array.from([1, UsbSecurityCommand.GET_CHALLENGE])
     const frame = await this.request(UsbMessage.SECURITY, payload, [UsbMessage.SECURITY_DATA])
     const status = parseUsbSecurityStatus(frame.payload)
-    if (![FdrAuthResult.OK, FdrAuthResult.NOT_CONFIGURED].includes(status.result)) {
+    if (status.result !== FdrAuthResult.OK && status.result !== FdrAuthResult.NOT_CONFIGURED) {
       throw fdrAuthenticationError(status.result)
     }
     if (status.configured && /^0+$/.test(status.nonce)) {
@@ -306,6 +374,7 @@ export class UsbFdrClient {
     return status
   }
 
+  /** @param {string} proof */
   async authenticateUsbSession(proof) {
     const proofBytes = hexToBytes(proof)
     const payload = new Uint8Array(2 + proofBytes.length)
@@ -318,12 +387,26 @@ export class UsbFdrClient {
     return status
   }
 
+  /**
+   * @param {number} type
+   * @param {Uint8Array} payload
+   * @param {number[]} expectedTypes
+   * @param {{ timeoutMs?: number }} [options]
+   * @returns {Promise<UsbFrame>}
+   */
   request(type, payload, expectedTypes, { timeoutMs = USB_REQUEST_TIMEOUT_MS } = {}) {
     const operation = this.requestTail.then(() => this.performRequest(type, payload, expectedTypes, { timeoutMs }))
     this.requestTail = operation.catch(() => {})
     return operation
   }
 
+  /**
+   * @param {number} type
+   * @param {Uint8Array} payload
+   * @param {number[]} expectedTypes
+   * @param {{ timeoutMs: number }} options
+   * @returns {Promise<UsbFrame>}
+   */
   async performRequest(type, payload, expectedTypes, { timeoutMs }) {
     if (!this.writer || !this.frameReader) throw usbConnectionError()
 
@@ -349,12 +432,22 @@ export class UsbFdrClient {
     }
   }
 
+  /**
+   * @param {number} type
+   * @param {Uint8Array} payload
+   * @param {number[]} expectedTypes
+   * @returns {Promise<UsbFrame>}
+   */
   async exchangeFrame(type, payload, expectedTypes) {
+    const writer = this.writer
+    const frameReader = this.frameReader
+    if (!writer || !frameReader) throw usbConnectionError()
+
     const sequence = this.sequence++ >>> 0
     try {
-      await this.writer.write(encodeFrame(type, sequence, payload))
+      await writer.write(encodeFrame(type, sequence, payload))
       while (true) {
-        const frame = await this.frameReader.read()
+        const frame = await frameReader.read()
         if (frame.sequence !== sequence) continue
         if (frame.type === UsbMessage.ERROR) throw parseUsbDeviceError(frame.payload)
         if (!expectedTypes.includes(frame.type)) throw new Error(`Unexpected EXS1 response ${frame.type}.`)
@@ -390,11 +483,15 @@ export class UsbFdrClient {
 }
 
 function usbConnectionError() {
-  const error = new Error(USB_CONNECTION_CLOSED_MESSAGE)
+  const error = /** @type {FdrProtocolError} */ (new Error(USB_CONNECTION_CLOSED_MESSAGE))
   error.usbConnectionLost = true
   return error
 }
 
+/**
+ * @param {number} type
+ * @param {number} timeoutMs
+ */
 function usbRequestTimeoutError(type, timeoutMs) {
   const seconds = Math.ceil(timeoutMs / 1000)
   let message
@@ -405,7 +502,7 @@ function usbRequestTimeoutError(type, timeoutMs) {
   } else {
     message = `The recorder stopped responding over USB-C (${seconds}s timeout). Reconnect it and try again.`
   }
-  const error = new Error(message)
+  const error = /** @type {FdrProtocolError} */ (new Error(message))
   error.usbConnectionLost = true
   error.usbRequestTimedOut = true
   error.usbRequestType = type
@@ -413,12 +510,19 @@ function usbRequestTimeoutError(type, timeoutMs) {
   return error
 }
 
+/** @param {unknown} error */
 function isUsbTransportError(error) {
-  return error?.name === "NetworkError"
-    || error?.name === "InvalidStateError"
-    || error?.message === "The recorder disconnected during synchronization."
+  return error instanceof Error && (
+    error.name === "NetworkError"
+    || error.name === "InvalidStateError"
+    || error.message === "The recorder disconnected during synchronization."
+  )
 }
 
+/**
+ * @param {UsbPortLockState} port
+ * @param {{ timeoutMs?: number }} [options]
+ */
 export async function waitForUsbPortAvailability(port, { timeoutMs = USB_PORT_RELEASE_TIMEOUT_MS } = {}) {
   const deadline = Date.now() + timeoutMs
   while (port.readable?.locked || port.writable?.locked) {
@@ -428,11 +532,13 @@ export async function waitForUsbPortAvailability(port, { timeoutMs = USB_PORT_RE
 }
 
 export class FrameReader {
+  /** @param {ReadableStreamDefaultReader<Uint8Array>} reader */
   constructor(reader) {
     this.reader = reader
     this.buffer = new Uint8Array()
   }
 
+  /** @returns {Promise<UsbFrame>} */
   async read() {
     while (true) {
       const frame = this.extractFrame()
@@ -443,6 +549,7 @@ export class FrameReader {
     }
   }
 
+  /** @returns {UsbFrame | null} */
   extractFrame() {
     const magicOffset = findMagic(this.buffer)
     if (magicOffset < 0) {
@@ -471,6 +578,11 @@ export class FrameReader {
   }
 }
 
+/**
+ * @param {number} type
+ * @param {number} sequence
+ * @param {BinaryValue} [payload]
+ */
 export function encodeFrame(type, sequence, payload = new Uint8Array()) {
   const bytes = exactBytes(payload)
   const frame = new Uint8Array(FRAME_HEADER_SIZE + bytes.length)
@@ -486,6 +598,7 @@ export function encodeFrame(type, sequence, payload = new Uint8Array()) {
   return frame
 }
 
+/** @param {BinaryValue} bytes */
 export function crc32(bytes) {
   let crc = 0xffffffff
   for (const value of exactBytes(bytes)) {
@@ -495,6 +608,7 @@ export function crc32(bytes) {
   return (crc ^ 0xffffffff) >>> 0
 }
 
+/** @param {BinaryValue} value */
 export function parseBleStatus(value) {
   const view = dataView(value, 20, "BLE status")
   if (view.getUint8(0) !== 1) throw new Error("Unsupported BLE status version.")
@@ -512,12 +626,17 @@ export function parseBleStatus(value) {
   }
 }
 
+/**
+ * @param {number} freeMiB
+ * @param {number} totalMiB
+ */
 export function formatStorageCapacity(freeMiB, totalMiB) {
   if (totalMiB < 1024) return `${freeMiB} MiB free of ${totalMiB} MiB`
 
   return `${(freeMiB / 1024).toFixed(1)} GiB free of ${(totalMiB / 1024).toFixed(1)} GiB`
 }
 
+/** @param {BinaryValue} value */
 export function parseBleDiagnostics(value) {
   const view = dataView(value, 20, "BLE diagnostics")
   return {
@@ -529,6 +648,7 @@ export function parseBleDiagnostics(value) {
   }
 }
 
+/** @param {BinaryValue} value */
 export function parseBleConfig(value) {
   const view = dataView(value, 8, "BLE configuration")
   if (view.getUint8(0) !== 1) throw new Error("Unsupported BLE configuration version.")
@@ -540,6 +660,7 @@ export function parseBleConfig(value) {
   }
 }
 
+/** @param {number} statusIntervalSeconds */
 export function encodeBleConfig(statusIntervalSeconds) {
   const payload = new Uint8Array(8)
   payload[0] = 1
@@ -548,6 +669,7 @@ export function encodeBleConfig(statusIntervalSeconds) {
   return payload
 }
 
+/** @param {BinaryValue} value */
 export function parseBleDeviceInfo(value) {
   const bytes = exactBytes(value)
   const view = dataView(bytes, 64, "BLE device information")
@@ -562,6 +684,10 @@ export function parseBleDeviceInfo(value) {
   }
 }
 
+/**
+ * @param {number} command
+ * @param {number} [index]
+ */
 export function encodeWifiCommand(command, index) {
   const payload = new Uint8Array(index === undefined ? 2 : 3)
   payload[0] = 1
@@ -570,6 +696,7 @@ export function encodeWifiCommand(command, index) {
   return payload
 }
 
+/** @param {WifiProfileInput} profile */
 export function encodeWifiStageProfile({ position, ssid, security, enabled, password = "", preservePassword = false }) {
   const ssidBytes = new TextEncoder().encode(ssid)
   const passwordBytes = new TextEncoder().encode(password)
@@ -593,6 +720,7 @@ export function encodeWifiStageProfile({ position, ssid, security, enabled, pass
   return payload
 }
 
+/** @param {WifiSillageInput} sillage */
 export function encodeWifiSillage({ heartbeatUrl }) {
   const url = heartbeatUrl
   const urlBytes = new TextEncoder().encode(url)
@@ -607,6 +735,7 @@ export function encodeWifiSillage({ heartbeatUrl }) {
   return payload
 }
 
+/** @param {BinaryValue} value */
 export function parseWifiResponse(value) {
   const bytes = exactBytes(value)
   if (bytes.length < 3 || bytes[0] !== 1) throw new Error("Invalid Wi-Fi provisioning response.")
@@ -614,7 +743,7 @@ export function parseWifiResponse(value) {
   const result = bytes[2]
   if (type === WifiResponse.ERROR || result !== 0) {
     const command = bytes[3] || 0
-    const error = new Error(WIFI_ERROR_MESSAGES[result] || "The recorder reported an unknown Wi-Fi error. Reconnect it and try again.")
+    const error = /** @type {FdrProtocolError} */ (new Error(WIFI_ERROR_MESSAGES[result] || "The recorder reported an unknown Wi-Fi error. Reconnect it and try again."))
     error.recorderWifiResult = result
     error.recorderWifiCommand = command
     throw error
@@ -683,6 +812,7 @@ export function parseWifiResponse(value) {
 }
 
 export class BleAuthenticationClient {
+  /** @param {GattCharacteristicLike} characteristic */
   constructor(characteristic) {
     this.characteristic = characteristic
   }
@@ -691,6 +821,7 @@ export class BleAuthenticationClient {
     return parseBleAuthenticationStatus(await this.characteristic.readValue())
   }
 
+  /** @param {string} proof */
   async authenticate(proof) {
     const proofBytes = hexToBytes(proof)
     if (proofBytes.length !== 32) throw new Error("Sillage returned an invalid BLE authentication proof.")
@@ -706,14 +837,21 @@ export class BleAuthenticationClient {
 }
 
 export class BleWifiClient {
+  /** @param {GattCharacteristicLike | null} characteristic */
   constructor(characteristic) {
     this.characteristic = characteristic
   }
 
+  /**
+   * @param {Uint8Array} payload
+   * @param {number} expectedType
+   */
   async request(payload, expectedType) {
-    if (this.characteristic.writeValueWithResponse) await this.characteristic.writeValueWithResponse(payload)
-    else await this.characteristic.writeValue(payload)
-    const response = parseWifiResponse(await this.characteristic.readValue())
+    const characteristic = this.characteristic
+    if (!characteristic) throw new Error("A BLE characteristic is required for this Wi-Fi client.")
+    if (characteristic.writeValueWithResponse) await characteristic.writeValueWithResponse(payload)
+    else await characteristic.writeValue(payload)
+    const response = parseWifiResponse(await characteristic.readValue())
     if (response.type !== expectedType) throw new Error(`Unexpected Wi-Fi provisioning response ${response.type}.`)
     return response
   }
@@ -722,6 +860,7 @@ export class BleWifiClient {
     return this.request(encodeWifiCommand(WifiCommand.GET_STATUS), WifiResponse.STATUS)
   }
 
+  /** @param {number} index */
   profile(index) {
     return this.request(encodeWifiCommand(WifiCommand.GET_PROFILE, index), WifiResponse.PROFILE)
   }
@@ -730,14 +869,17 @@ export class BleWifiClient {
     return this.request(encodeWifiCommand(WifiCommand.START_SCAN), WifiResponse.ACK)
   }
 
+  /** @param {number} index */
   scanResult(index) {
     return this.request(encodeWifiCommand(WifiCommand.GET_SCAN_RESULT, index), WifiResponse.SCAN_RESULT)
   }
 
+  /** @param {number} count */
   beginUpdate(count) {
     return this.request(encodeWifiCommand(WifiCommand.BEGIN_UPDATE, count), WifiResponse.ACK)
   }
 
+  /** @param {WifiProfileInput} profile */
   stageProfile(profile) {
     return this.request(encodeWifiStageProfile(profile), WifiResponse.ACK)
   }
@@ -750,6 +892,7 @@ export class BleWifiClient {
     return this.request(encodeWifiCommand(WifiCommand.CANCEL_UPDATE), WifiResponse.ACK)
   }
 
+  /** @param {WifiSillageInput} sillage */
   configureSillage(sillage) {
     return this.request(encodeWifiSillage(sillage), WifiResponse.ACK)
   }
@@ -760,11 +903,16 @@ export class BleWifiClient {
 }
 
 export class UsbWifiClient extends BleWifiClient {
+  /** @param {UsbWifiTransport} client */
   constructor(client) {
     super(null)
     this.client = client
   }
 
+  /**
+   * @param {Uint8Array} payload
+   * @param {number} expectedType
+   */
   async request(payload, expectedType) {
     const response = parseWifiResponse(await this.client.wifi(payload))
     if (response.type !== expectedType) throw new Error(`Unexpected Wi-Fi provisioning response ${response.type}.`)
@@ -772,6 +920,7 @@ export class UsbWifiClient extends BleWifiClient {
   }
 }
 
+/** @param {BinaryValue} value */
 export function parseBleAuthenticationStatus(value) {
   const bytes = exactBytes(value)
   const view = dataView(bytes, 20, "BLE authentication status")
@@ -785,6 +934,7 @@ export function parseBleAuthenticationStatus(value) {
   }
 }
 
+/** @param {BinaryValue} payload */
 export function parseUsbSecurityStatus(payload) {
   const bytes = exactBytes(payload)
   const view = dataView(bytes, 20, "USB authentication status")
@@ -798,6 +948,7 @@ export function parseUsbSecurityStatus(payload) {
   }
 }
 
+/** @param {BinaryValue} payload */
 export function parseEraseRecordingsResult(payload) {
   const view = dataView(payload, 16, "erase-recordings result")
   if (view.getUint8(0) !== 1) throw new Error("Unsupported erase-recordings result version.")
@@ -813,12 +964,14 @@ export function parseEraseRecordingsResult(payload) {
   }
 }
 
+/** @param {number} result */
 function fdrAuthenticationError(result) {
-  const error = new Error(FDR_AUTH_ERROR_MESSAGES[result] || "The recorder returned an unknown Sillage authentication error.")
+  const error = /** @type {FdrProtocolError} */ (new Error(FDR_AUTH_ERROR_MESSAGES[result] || "The recorder returned an unknown Sillage authentication error."))
   error.fdrAuthResult = result
   return error
 }
 
+/** @param {Uint8Array} payload */
 function parseDeviceInfo(payload) {
   const view = dataView(payload, 64, "device information")
   return {
@@ -830,6 +983,7 @@ function parseDeviceInfo(payload) {
   }
 }
 
+/** @param {Uint8Array} payload */
 function parseFileManifest(payload) {
   const view = dataView(payload, 72, "file manifest")
   return {
@@ -842,6 +996,11 @@ function parseFileManifest(payload) {
   }
 }
 
+/**
+ * @param {Uint8Array} payload
+ * @param {number} expectedFileIndex
+ * @param {number} expectedOffset
+ */
 function parseFileChunk(payload, expectedFileIndex, expectedOffset) {
   if (payload.length < 16) throw new Error("Truncated EXS1 file chunk.")
   const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength)
@@ -855,17 +1014,19 @@ function parseFileChunk(payload, expectedFileIndex, expectedOffset) {
   return bytes
 }
 
+/** @param {BinaryValue} payload */
 export function parseUsbDeviceError(payload) {
   const view = dataView(payload, 8, "device error")
   const code = view.getUint16(0, true)
   const requestType = view.getUint8(2)
-  const error = new Error(USB_ERROR_MESSAGES[code] || "The recorder reported an unknown USB error. Disconnect and reconnect it, then try again.")
+  const error = /** @type {FdrProtocolError} */ (new Error(USB_ERROR_MESSAGES[code] || "The recorder reported an unknown USB error. Disconnect and reconnect it, then try again."))
   error.recorderCode = code
   error.recorderRequestType = requestType
   if (code === UsbErrorCode.BAD_SEQUENCE) error.usbConnectionLost = true
   return error
 }
 
+/** @param {FdrProtocolError} error */
 export function formatUsbErrorDetails(error) {
   if (!Number.isInteger(error?.recorderCode)) return ""
   const errorName = enumName(UsbErrorCode, error.recorderCode) || "UNKNOWN_ERROR"
@@ -873,28 +1034,42 @@ export function formatUsbErrorDetails(error) {
   return `EXS1 · error ${errorName} (${error.recorderCode}) · request ${requestName} (${error.recorderRequestType})`
 }
 
+/**
+ * @param {Readonly<Record<string, number>>} values
+ * @param {number | undefined} code
+ */
 function enumName(values, code) {
   return Object.entries(values).find(([, value]) => value === code)?.[0]
 }
 
+/**
+ * @param {BinaryValue} value
+ * @param {number} expectedLength
+ * @param {string} label
+ */
 function dataView(value, expectedLength, label) {
   const bytes = exactBytes(value)
   if (bytes.byteLength !== expectedLength) throw new Error(`Invalid ${label} payload.`)
   return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
 }
 
+/** @param {BinaryValue} value */
 function exactBytes(value) {
   if (value instanceof Uint8Array) return value
   if (value instanceof DataView) return new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
   if (value instanceof ArrayBuffer) return new Uint8Array(value)
-  return new Uint8Array(value || 0)
+  if (typeof value === "number") return new Uint8Array(value)
+  if (!value) return new Uint8Array()
+  return new Uint8Array(value)
 }
 
+/** @param {Uint8Array} bytes */
 function decodeFixedString(bytes) {
   const end = bytes.indexOf(0)
   return new TextDecoder().decode(end < 0 ? bytes : bytes.slice(0, end))
 }
 
+/** @param {string} value */
 function decodeBase64Url(value) {
   if (!/^[A-Za-z0-9_-]+$/.test(value)) throw new Error("The Sillage authentication key is invalid.")
   const padding = "=".repeat((4 - (value.length % 4)) % 4)
@@ -902,15 +1077,20 @@ function decodeBase64Url(value) {
   return Uint8Array.from(binary, (character) => character.charCodeAt(0))
 }
 
+/** @param {string} hex */
 function hexToBytes(hex) {
   if (!/^[0-9a-f]{64}$/i.test(hex)) throw new Error("Invalid SHA-256.")
-  return Uint8Array.from(hex.match(/../g), (byte) => Number.parseInt(byte, 16))
+  const pairs = hex.match(/../g)
+  if (!pairs) throw new Error("Invalid SHA-256.")
+  return Uint8Array.from(pairs, (byte) => Number.parseInt(byte, 16))
 }
 
+/** @param {Uint8Array} bytes */
 function bytesToHex(bytes) {
   return [...bytes].map((value) => value.toString(16).padStart(2, "0")).join("")
 }
 
+/** @param {Uint8Array} bytes */
 function findMagic(bytes) {
   for (let offset = 0; offset <= bytes.length - FRAME_MAGIC.length; offset += 1) {
     if (FRAME_MAGIC.every((value, index) => bytes[offset + index] === value)) return offset
@@ -918,6 +1098,10 @@ function findMagic(bytes) {
   return -1
 }
 
+/**
+ * @param {Uint8Array} left
+ * @param {Uint8Array} right
+ */
 function joinBytes(left, right) {
   const result = new Uint8Array(left.length + right.length)
   result.set(left)

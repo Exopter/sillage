@@ -1,0 +1,10 @@
+{
+  "name": "sillage",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --project tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}
