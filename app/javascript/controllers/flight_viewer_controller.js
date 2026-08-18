@@ -7,8 +7,8 @@ import {
   median,
   sampleFlightPoint,
   sampleSensorValue
-} from "../lib/flight_geometry"
-import { pressureAltitudeFromPascals } from "../lib/pressure_altitude"
+} from "flight_geometry"
+import { pressureAltitudeFromPascals } from "pressure_altitude"
 
 const CESIUM_TILE_PROVIDER = "CESIUM_ION"
 

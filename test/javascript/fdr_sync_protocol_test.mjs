@@ -1,8 +1,17 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 
-const protocol = await import(new URL("../../app/javascript/lib/fdr_sync_protocol.js", import.meta.url))
-const contract = await import(new URL("../../app/javascript/lib/exs1_contract.js", import.meta.url))
+const contractSource = await readFile(
+  new URL("../../app/javascript/lib/exs1_contract.js", import.meta.url),
+  "utf8"
+)
+const contractUrl = `data:text/javascript;base64,${Buffer.from(contractSource).toString("base64")}`
+const protocolSource = (await readFile(
+  new URL("../../app/javascript/lib/fdr_sync_protocol.js", import.meta.url),
+  "utf8"
+)).replaceAll('from "exs1_contract"', `from "${contractUrl}"`)
+const protocol = await import(`data:text/javascript;base64,${Buffer.from(protocolSource).toString("base64")}`)
+const contract = await import(contractUrl)
 const connectivitySource = await readFile(
   new URL("../../app/javascript/controllers/fdr_connectivity_controller.js", import.meta.url),
   "utf8"

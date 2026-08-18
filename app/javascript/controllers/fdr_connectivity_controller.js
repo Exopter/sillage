@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
-import { PartialFdrFile } from "../lib/fdr_partial_file"
+import { PartialFdrFile } from "fdr_partial_file"
 import {
   BleUuid,
   BleAuthenticationClient,

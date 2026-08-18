@@ -10,6 +10,7 @@ CI.run do
   step "Style: No unused CSS selectors", "ruby script/check_unused_css_selectors"
   step "Style: Documentation boundary", "ruby script/check_documentation_boundary"
   step "Style: JavaScript type safety", "npm run typecheck"
+  step "Tests: Browser module graph", "node test/javascript/importmap_modules_test.mjs"
   step "Tests: Cesium ion tile provider", "node test/javascript/flight_viewer_cesium_ion_test.mjs"
   step "Tests: Pressure altitude", "node test/javascript/pressure_altitude_test.mjs"
   step "Tests: Flight geometry", "node test/javascript/flight_geometry_test.mjs"

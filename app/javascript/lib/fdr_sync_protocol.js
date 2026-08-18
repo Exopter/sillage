@@ -8,7 +8,7 @@ import {
   UsbCapability,
   UsbErrorCode,
   UsbMessage
-} from "./exs1_contract.js"
+} from "exs1_contract"
 
 export {
   EraseRecordingsResult,
@@ -17,7 +17,7 @@ export {
   UsbCapability,
   UsbErrorCode,
   UsbMessage
-} from "./exs1_contract.js"
+} from "exs1_contract"
 
 export const USB_CONNECTION_TIMEOUT_MS = 10_000
 export const USB_REQUEST_TIMEOUT_MS = 30_000

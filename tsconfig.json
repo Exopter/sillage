@@ -6,6 +6,9 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noEmit": true,
+    "paths": {
+      "exs1_contract": ["./app/javascript/lib/exs1_contract.js"]
+    },
     "strict": true,
     "target": "ES2022",
     "useUnknownInCatchVariables": false

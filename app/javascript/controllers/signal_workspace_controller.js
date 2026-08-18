@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
-import { clamp, signalLayoutPreset } from "../lib/signal_layout"
+import { clamp, signalLayoutPreset } from "signal_layout"
 
 const DATABASE_NAME = "sillage-signal-v1"
 const DATABASE_VERSION = 1
@@ -713,7 +713,6 @@ function samePort(info, saved) {
   if (!saved || (saved.usbVendorId == null && saved.usbProductId == null)) return false
   return info.usbVendorId === saved.usbVendorId && info.usbProductId === saved.usbProductId
 }
-function clamp(value, minimum, maximum) { return Math.min(Math.max(value, minimum), Math.max(minimum, maximum)) }
 function formatBytes(value) { return value < 1024 * 1024 ? `${Math.round(value / 1024)} KB` : `${(value / 1024 / 1024).toFixed(1)} MB` }
 function ageInSeconds(records) { return Math.max(1, Math.round((Date.now() - Math.min(...records.map((record) => record.queuedAt))) / 1000)) }
 function outboxOrder(left, right) {
