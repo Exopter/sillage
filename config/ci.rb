@@ -16,6 +16,7 @@ CI.run do
   step "Tests: Flight geometry", "node test/javascript/flight_geometry_test.mjs"
   step "Tests: Signal layout", "node test/javascript/signal_layout_test.mjs"
   step "Tests: FDR synchronization protocol", "node test/javascript/fdr_sync_protocol_test.mjs"
+  step "Tests: FDR Wi-Fi provisioning contract", "node test/javascript/fdr_wifi_provisioning_test.mjs"
   step "Tests: Aircraft connection identity", "node test/javascript/aircraft_connection_test.mjs"
   step "Tests: Signal worker", "node test/javascript/signal_serial_worker_test.mjs"
 

@@ -57,8 +57,8 @@ export const USB_PORT_RELEASE_TIMEOUT_MS = 2_000
 /**
  * @typedef {Object} GattCharacteristicLike
  * @property {() => Promise<DataView>} readValue
- * @property {(payload: Uint8Array) => Promise<void>} writeValue
- * @property {(payload: Uint8Array) => Promise<void>} [writeValueWithResponse]
+ * @property {(payload: BufferSource) => Promise<void>} writeValue
+ * @property {(payload: BufferSource) => Promise<void>} [writeValueWithResponse]
  */
 /**
  * @typedef {Object} WifiProfileInput
@@ -805,7 +805,7 @@ export class BleWifiClient {
   }
 
   /**
-   * @param {Uint8Array} payload
+   * @param {Uint8Array<ArrayBuffer>} payload
    * @param {number} expectedType
    */
   async request(payload, expectedType) {

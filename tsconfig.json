@@ -7,13 +7,17 @@
     "moduleResolution": "Bundler",
     "noEmit": true,
     "paths": {
-      "exs1_contract": ["./app/javascript/lib/exs1_contract.js"]
+      "exs1_contract": ["./app/javascript/lib/exs1_contract.js"],
+      "fdr_sync_protocol": ["./app/javascript/lib/fdr_sync_protocol.js"],
+      "fdr_wifi_provisioning": ["./app/javascript/lib/fdr_wifi_provisioning.js"]
     },
     "strict": true,
     "target": "ES2022",
+    "types": ["w3c-web-serial", "web-bluetooth"],
     "useUnknownInCatchVariables": false
   },
   "include": [
-    "app/javascript/lib/**/*.js"
+    "app/javascript/lib/**/*.js",
+    "app/javascript/controllers/fdr_wifi_configuration_controller.js"
   ]
 }

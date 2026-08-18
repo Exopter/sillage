@@ -6,6 +6,9 @@
     "typecheck": "tsc --project tsconfig.json"
   },
   "devDependencies": {
+    "@hotwired/stimulus": "3.2.2",
+    "@types/w3c-web-serial": "1.0.8",
+    "@types/web-bluetooth": "0.0.21",
     "typescript": "7.0.2"
   }
 }
