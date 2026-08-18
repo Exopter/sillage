@@ -128,12 +128,6 @@
             <% end %>
 
             <%= yield %>
-
-            <% unless sillage_fdr_connectivity_visible? || sillage_fdr_connectivity_managed_by_page? %>
-              <div class="sillage-persistent-fdr-connectivity" hidden aria-hidden="true">
-                <%= render "forge/fdrs/connection_manager" %>
-              </div>
-            <% end %>
           </div>
         </main>
       </div>

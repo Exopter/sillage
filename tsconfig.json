@@ -9,7 +9,8 @@
     "paths": {
       "exs1_contract": ["./app/javascript/lib/exs1_contract.js"],
       "fdr_sync_protocol": ["./app/javascript/lib/fdr_sync_protocol.js"],
-      "fdr_wifi_provisioning": ["./app/javascript/lib/fdr_wifi_provisioning.js"]
+      "fdr_wifi_provisioning": ["./app/javascript/lib/fdr_wifi_provisioning.js"],
+      "usb_page_lifecycle": ["./app/javascript/lib/usb_page_lifecycle.js"]
     },
     "strict": true,
     "target": "ES2022",

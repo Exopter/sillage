@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
 import { clamp, signalLayoutPreset } from "signal_layout"
+import { registerUsbPageRelease } from "usb_page_lifecycle"
 
 const DATABASE_NAME = "sillage-signal-v1"
 const DATABASE_VERSION = 1
@@ -35,6 +36,7 @@ export default class extends Controller {
     this.mavlinkComponentId = null
     this.syncing = false
     this.ended = false
+    this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.stopSerial())
     this.layoutStorageKey = `signal-layout:${this.sessionValue}`
     this.db = await openDatabase()
     this.nextSequence = Number(await readMetadata(this.db, `${this.sessionValue}:next-sequence`)) || 0
@@ -65,6 +67,8 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.unregisterUsbPageRelease?.()
+    this.unregisterUsbPageRelease = null
     window.clearInterval(this.batchTimer)
     window.removeEventListener("online", this.boundOnline)
     window.removeEventListener("offline", this.boundOffline)

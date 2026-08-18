@@ -15,6 +15,7 @@ import {
   parseFdrAuthenticationProof,
   parseFdrWifiProvisioningBundle
 } from "fdr_wifi_provisioning"
+import { registerUsbPageRelease } from "usb_page_lifecycle"
 
 const BLE_DEVICE_STORAGE_KEY = "sillage:fdr-ble-device"
 const USB_PORT_STORAGE_KEY = "sillage:fdr-usb-port"
@@ -76,6 +77,7 @@ const SECURITY_LABELS = new Map([
  * @property {"USB-C" | "BLE" | null} activeTransport
  * @property {boolean} bleAuthenticated
  * @property {string} initialDeviceLabel
+ * @property {(() => void) | null} unregisterUsbPageRelease
  */
 
 /**
@@ -124,6 +126,7 @@ export default class extends TypedController {
     this.activeTransport = null
     this.bleAuthenticated = false
     this.initialDeviceLabel = this.bleDeviceTarget.textContent || ""
+    this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.disconnectUsb())
     this.handleDisconnect = this.handleDisconnect.bind(this)
     this.handleSerialDisconnect = this.handleSerialDisconnect.bind(this)
     navigator.serial?.addEventListener("disconnect", this.handleSerialDisconnect)
@@ -133,9 +136,11 @@ export default class extends TypedController {
   }
 
   disconnect() {
+    this.unregisterUsbPageRelease?.()
+    this.unregisterUsbPageRelease = null
     navigator.serial?.removeEventListener("disconnect", this.handleSerialDisconnect)
     window.clearInterval(this.usbKeepaliveTimer)
-    this.usbClient?.close()
+    void this.disconnectUsb()
     this.device?.removeEventListener("gattserverdisconnected", this.handleDisconnect)
     this.server?.disconnect()
   }

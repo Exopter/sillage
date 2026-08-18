@@ -152,14 +152,6 @@ module ApplicationHelper
     classes.join(" ")
   end
 
-  def sillage_fdr_connectivity_visible?
-    controller_path == "forge/fdrs" && action_name == "index"
-  end
-
-  def sillage_fdr_connectivity_managed_by_page?
-    controller_path == "forge/fdrs" && action_name == "connectivity"
-  end
-
   def sillage_user_initials(user)
     return "--" unless user
 

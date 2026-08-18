@@ -163,7 +163,8 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "#aircraft-connection-indicator[data-turbo='false']", count: 0
     assert_select "[data-aircraft-connection-indicator-target='label']", text: "No aircraft connected"
     assert_select "[data-aircraft-connection-indicator-target='icon'][hidden]", count: 4
-    assert_select "#sillage-fdr-connectivity[data-turbo-permanent][data-controller='fdr-connectivity'][data-fdr-connectivity-registration-url-value='#{api_v1_fdr_registration_path}'][data-fdr-connectivity-authentication-url-value='#{api_v1_fdr_authentication_path}'][data-fdr-connectivity-sillage-heartbeat-url-value='#{api_v1_fdr_sillage_heartbeats_path}']"
+    assert_select "#sillage-fdr-connectivity[data-controller='fdr-connectivity'][data-fdr-connectivity-registration-url-value='#{api_v1_fdr_registration_path}'][data-fdr-connectivity-authentication-url-value='#{api_v1_fdr_authentication_path}'][data-fdr-connectivity-sillage-heartbeat-url-value='#{api_v1_fdr_sillage_heartbeats_path}']"
+    assert_select "#sillage-fdr-connectivity[data-turbo-permanent]", count: 0
     assert_select "#sillage-fdr-connectivity[data-fdr-connectivity-expected-device-id-value]", count: 0
     assert_select ".sillage-persistent-fdr-connectivity", count: 0
     assert_select ".signal-fdr-transport", count: 3
@@ -236,16 +237,14 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".signal-home #sillage-fdr-connectivity", count: 0
-    assert_select ".sillage-persistent-fdr-connectivity[hidden][aria-hidden='true'] #sillage-fdr-connectivity", count: 1
+    assert_select "#sillage-fdr-connectivity", count: 0
   end
 
-  test "keeps the recorder connection manager in the application shell outside Signal" do
+  test "does not keep the recorder connection manager outside Forge" do
     get flights_path
 
     assert_response :success
     assert_select "#aircraft-connection-indicator[data-turbo-permanent]"
-    assert_select ".sillage-persistent-fdr-connectivity[hidden][aria-hidden='true']", count: 1 do
-      assert_select "#sillage-fdr-connectivity[data-turbo-permanent][data-controller='fdr-connectivity']", count: 1
-    end
+    assert_select "#sillage-fdr-connectivity", count: 0
   end
 end

@@ -20,6 +20,14 @@ const connectivityViewSource = await readFile(
   new URL("../../app/views/forge/fdrs/_connection_manager.html.erb", import.meta.url),
   "utf8"
 )
+const wifiConnectivitySource = await readFile(
+  new URL("../../app/javascript/controllers/fdr_wifi_configuration_controller.js", import.meta.url),
+  "utf8"
+)
+const signalWorkspaceSource = await readFile(
+  new URL("../../app/javascript/controllers/signal_workspace_controller.js", import.meta.url),
+  "utf8"
+)
 
 const synchronizeUsbStart = connectivitySource.indexOf("  async synchronizeUsb(port")
 assert.ok(synchronizeUsbStart >= 0)
@@ -54,6 +62,10 @@ assert.match(connectivitySource, /All sealed recordings synchronized/)
 assert.match(connectivityViewSource, /Automatic resumable recording upload/)
 assert.match(connectivityViewSource, /fdr-connectivity#interruptUsbSync/)
 assert.match(connectivityViewSource, /fdr-connectivity#eraseSdRecordings/)
+assert.doesNotMatch(connectivityViewSource, /data-turbo-permanent/)
+assert.match(connectivitySource, /registerUsbPageRelease\(\(\) => this\.disconnectUsb\(\)\)/)
+assert.match(wifiConnectivitySource, /registerUsbPageRelease\(\(\) => this\.disconnectUsb\(\)\)/)
+assert.match(signalWorkspaceSource, /registerUsbPageRelease\(\(\) => this\.stopSerial\(\)\)/)
 
 const payload = new TextEncoder().encode("abc")
 assert.equal(protocol.crc32(payload), 0x352441c2)

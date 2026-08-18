@@ -16,6 +16,7 @@ import {
   parseBleDiagnostics,
   parseBleStatus
 } from "fdr_sync_protocol"
+import { registerUsbPageRelease } from "usb_page_lifecycle"
 
 const USB_PORT_STORAGE_KEY = "sillage:fdr-usb-port"
 const BLE_DEVICE_STORAGE_KEY = "sillage:fdr-ble-device"
@@ -81,6 +82,7 @@ export default class extends Controller {
       href: this.wifiLinkTarget.href,
       label: this.wifiLinkLabelTarget.textContent
     }
+    this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.disconnectUsb())
     this.handleSerialConnect = this.handleSerialConnect.bind(this)
     this.handleSerialDisconnect = this.handleSerialDisconnect.bind(this)
     this.handleBleDisconnect = this.handleBleDisconnect.bind(this)
@@ -92,12 +94,12 @@ export default class extends Controller {
   }
 
   disconnect() {
-    queueMicrotask(() => {
-      if (!this.element.isConnected) this.teardown()
-    })
+    this.unregisterUsbPageRelease?.()
+    this.unregisterUsbPageRelease = null
+    void this.teardown()
   }
 
-  teardown() {
+  async teardown() {
     if (!this.initialized) return
 
     this.initialized = false
@@ -108,7 +110,7 @@ export default class extends Controller {
     navigator.serial?.removeEventListener("disconnect", this.handleSerialDisconnect)
     window.clearInterval(this.usbPollTimer)
     window.clearInterval(this.wifiPollTimer)
-    this.usbClient?.close()
+    await this.disconnectUsb()
     this.bleDevice?.removeEventListener("gattserverdisconnected", this.handleBleDisconnect)
     this.bleServer?.disconnect()
   }
