@@ -9,10 +9,13 @@ module FdrSync
     FILENAME_PATTERN = /\AFDR\d{6}\.BIN\z/i
     SHA256_PATTERN = /\A[0-9a-f]{64}\z/
 
-    def initialize(user:, upload:, metadata:)
+    TRANSPORTS = %w[usb_cdc wifi_https].freeze
+
+    def initialize(user:, upload:, metadata:, transport: "usb_cdc")
       @user = user
       @upload = upload
       @metadata = metadata.to_h.stringify_keys
+      @transport = transport.to_s
     end
 
     def call
@@ -47,6 +50,7 @@ module FdrSync
       raise Error, "The uploaded file is empty." unless @upload.size.positive?
       raise Error, "The uploaded file exceeds 512 MB." if @upload.size > MAX_FILE_SIZE
       raise Error, "The uploaded file size does not match the manifest." unless @upload.size == declared_size
+      raise Error, "Unsupported FDR synchronization transport." unless @transport.in?(TRANSPORTS)
     end
 
     def decode_file
@@ -84,7 +88,7 @@ module FdrSync
         firmware_version: header.fetch("firmware"),
         details: {
           "sync" => {
-            "transport" => "usb_cdc",
+            "transport" => @transport,
             "protocol" => "EXS1",
             "boot_id" => declared_boot_id,
             "format_version" => declared_format_version,

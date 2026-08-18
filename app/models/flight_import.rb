@@ -5,6 +5,7 @@ class FlightImport < ApplicationRecord
   belongs_to :aircraft, optional: true
   belongs_to :target_flight, class_name: "Flight", optional: true
   has_many :flights, dependent: :destroy, inverse_of: :flight_import
+  has_many :fdr_wifi_uploads, dependent: :nullify
   has_many_attached :source_files
 
   validates :status, inclusion: { in: STATUSES }

@@ -11,6 +11,7 @@ module Api
         version device_id firmware model sent_at uptime_ms state_flags
         sensor_validity alert_flags storage_free_mib storage_total_mib
         last_sync_result active_file_index last_synced_file_index diagnostics
+        wifi_upload
       ].freeze
 
       allow_unauthenticated_access only: :create

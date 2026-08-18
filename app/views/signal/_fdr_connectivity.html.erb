@@ -28,7 +28,7 @@
           <button type="button" class="signal-tool-button is-danger" hidden
                   data-action="fdr-connectivity#eraseSdRecordings"
                   data-fdr-connectivity-target="eraseSdButton">Erase recordings</button>
-          <button type="button" class="signal-tool-button is-primary"
+          <button type="button" class="signal-tool-button"
                   data-action="fdr-connectivity#connectUsb"
                   data-fdr-connectivity-target="usbButton">Connect USB-C</button>
         </div>
@@ -116,6 +116,7 @@
               <span>Capabilities</span>
               <ul>
                 <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Signed live status and diagnostics</span></li>
+                <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Automatic resumable recording upload</span></li>
               </ul>
             </div>
           </div>

@@ -31,18 +31,27 @@ assert.ok(
     > synchronizeUsbSource.indexOf("await this.synchronizeUsbFiles(client, device)")
 )
 assert.doesNotMatch(synchronizeUsbSource, /this\.usbButtonTarget\.disabled = true/)
+assert.doesNotMatch(synchronizeUsbSource, /this\.syncProgressTarget\.hidden = false/)
+const synchronizeUsbFilesSource = connectivitySource.split("  async synchronizeUsbFiles(client, device) {", 2)[1]
+  .split("\n  ensureUsbSyncContinues(", 1)[0]
+assert.match(synchronizeUsbFilesSource, /this\.syncProgressTarget\.hidden = false/)
 const serialDisconnectSource = connectivitySource.split("  handleSerialDisconnect(event) {", 2)[1]
   .split("\n  }", 1)[0]
 assert.match(serialDisconnectSource, /void this\.disconnectUsb\(\)/)
 const disconnectUsbSource = connectivitySource.split("  async disconnectUsb() {", 2)[1]
   .split("\n  }", 1)[0]
 assert.match(disconnectUsbSource, /await client\?\.close\(\)/)
+assert.match(disconnectUsbSource, /this\.syncProgressTarget\.hidden = true/)
 assert.match(connectivitySource, /interruptUsbSync\(\)/)
 assert.match(connectivitySource, /usbSyncInterruptedError\(\)/)
 assert.match(connectivitySource, /skipFileSynchronization: true/)
 assert.match(connectivitySource, /await this\.disconnectUsb\(\)/)
 assert.match(connectivitySource, /window\.confirm\("Erase all FDR recordings/)
 assert.match(connectivitySource, /Stop the transfer before erasing recordings\./)
+assert.match(connectivitySource, /describeWifiUpload\(status\.wifiUpload\)/)
+assert.match(connectivitySource, /Uploading \$\{filename\} · \$\{percent\}%/)
+assert.match(connectivitySource, /All sealed recordings synchronized/)
+assert.match(connectivityViewSource, /Automatic resumable recording upload/)
 assert.match(connectivityViewSource, /fdr-connectivity#interruptUsbSync/)
 assert.match(connectivityViewSource, /fdr-connectivity#eraseSdRecordings/)
 

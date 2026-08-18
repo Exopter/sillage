@@ -16,6 +16,7 @@ class Assembly < ApplicationRecord
   has_many :builds, dependent: :restrict_with_error
   has_many :installations, as: :installable, dependent: :restrict_with_error
   has_many :fdr_wifi_profiles, -> { ordered }, dependent: :destroy
+  has_many :fdr_wifi_uploads, dependent: :restrict_with_error
   has_many :wifi_credentials, through: :fdr_wifi_profiles
 
   normalizes :internal_number, with: ->(number) { number.to_s.strip.upcase.presence }
@@ -136,6 +137,7 @@ class Assembly < ApplicationRecord
       blockers << "subassemblies" if children.exists?
       blockers << "build history" if builds.exists?
       blockers << "installation history" if installations.exists?
+      blockers << "Wi-Fi upload history" if fdr_wifi_uploads.exists?
     end
   end
 

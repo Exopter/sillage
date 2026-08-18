@@ -88,6 +88,12 @@ Rails.application.routes.draw do
       resource :fdr_registration, only: %i[show create], path: "fdr-registration"
       resource :fdr_sillage_heartbeat, only: :create, path: "fdr-sillage-heartbeat"
       resources :fdr_sillage_heartbeats, only: :index, path: "fdr-sillage-heartbeats"
+      resources :fdr_wifi_uploads, only: :create, param: :token, path: "fdr-wifi-uploads" do
+        member do
+          patch :chunk
+          post :complete
+        end
+      end
       resource :fdr_authentication, only: :create, path: "fdr-authentication"
       resources :assemblies, only: [] do
         resource :fdr_initialization, only: %i[create update], path: "fdr-initialization"

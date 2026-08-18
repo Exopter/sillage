@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_17_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_18_103000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -116,6 +116,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_120000) do
     t.index ["assembly_id", "wifi_credential_id"], name: "index_fdr_wifi_profiles_on_assembly_id_and_wifi_credential_id", unique: true
     t.index ["assembly_id"], name: "index_fdr_wifi_profiles_on_assembly_id"
     t.index ["wifi_credential_id"], name: "index_fdr_wifi_profiles_on_wifi_credential_id"
+  end
+
+  create_table "fdr_wifi_uploads", force: :cascade do |t|
+    t.integer "assembly_id", null: false
+    t.integer "boot_id", null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.text "error_message"
+    t.integer "file_index", null: false
+    t.string "filename", null: false
+    t.integer "flight_import_id"
+    t.integer "format_version", null: false
+    t.integer "received_bytes", default: 0, null: false
+    t.string "sha256", null: false
+    t.integer "size_bytes", null: false
+    t.string "status", default: "receiving", null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.index ["assembly_id", "boot_id", "file_index"], name: "index_fdr_wifi_uploads_on_recorder_file", unique: true
+    t.index ["assembly_id"], name: "index_fdr_wifi_uploads_on_assembly_id"
+    t.index ["flight_import_id"], name: "index_fdr_wifi_uploads_on_flight_import_id"
+    t.index ["token"], name: "index_fdr_wifi_uploads_on_token", unique: true
   end
 
   create_table "flight_imports", force: :cascade do |t|
@@ -391,6 +413,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_120000) do
   add_foreign_key "builds", "users", column: "created_by_id"
   add_foreign_key "fdr_wifi_profiles", "assemblies"
   add_foreign_key "fdr_wifi_profiles", "wifi_credentials"
+  add_foreign_key "fdr_wifi_uploads", "assemblies"
+  add_foreign_key "fdr_wifi_uploads", "flight_imports"
   add_foreign_key "flight_imports", "aircraft"
   add_foreign_key "flight_imports", "flights", column: "target_flight_id"
   add_foreign_key "flight_imports", "users"

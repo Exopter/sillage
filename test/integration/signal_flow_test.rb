@@ -165,7 +165,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select ".signal-fdr-transport", count: 3
     assert_select ".signal-fdr-channel-head.signal-fdr-channel-head--usb", count: 1
     assert_select ".signal-fdr-channel-identity .signal-k", text: /\AUSB-C\z/, count: 1
-    assert_select "button[data-action='fdr-connectivity#connectUsb']", text: "Connect USB-C"
+    assert_select "button.signal-tool-button:not(.is-primary)[data-action='fdr-connectivity#connectUsb']", text: "Connect USB-C"
     assert_select "button[data-action='fdr-connectivity#connectBle']", text: "Connect BLE"
     assert_select ".signal-tool-button.signal-fdr-auto-label[data-fdr-connectivity-target='wifiAutoLabel'][aria-label='Automatic Wi-Fi connection: waiting for signed Sillage heartbeat']", text: "Automatic"
     assert_select "[data-fdr-connectivity-target='wifiStatus']", text: "Not connected"
@@ -175,7 +175,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select ".signal-fdr-capabilities-trigger[aria-describedby]", count: 3
     assert_select ".signal-fdr-capabilities-tooltip[role='tooltip']", count: 3
     assert_select ".signal-fdr-capabilities-tooltip > span", text: "Capabilities", count: 3
-    assert_select ".signal-fdr-capabilities-tooltip li", count: 4
+    assert_select ".signal-fdr-capabilities-tooltip li", count: 5
     assert_select ".signal-fdr-capabilities-tooltip", text: /Telemetry synchronization/, count: 1
     assert_select ".signal-fdr-capabilities-trigger[aria-label='USB-C capabilities'][aria-describedby='usb-capabilities-tooltip']"
     assert_select "#usb-capabilities-tooltip[role='tooltip']"
@@ -222,7 +222,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
       assert_select "button[data-action='fdr-connectivity#onboardRecorder'][data-fdr-connectivity-target='wifiRegisterButton']", text: /Add and initialize recorder/
       assert_select "[data-fdr-connectivity-target='wifiRegistrationStatus']"
     end
-    assert_select "progress[data-fdr-connectivity-target='syncProgress']"
+    assert_select "progress[data-fdr-connectivity-target='syncProgress'][hidden]"
     assert_select "[data-fdr-connectivity-target='syncTechnical'][hidden]"
     assert_select "details[data-fdr-connectivity-target='recorderTools']:not([open])"
   end

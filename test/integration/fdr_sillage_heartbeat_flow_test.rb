@@ -25,6 +25,8 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
     assert_in_delta Time.current, @recorder.last_sillage_seen_at, 2.seconds
     assert_equal "fdr_integrated/26", @recorder.last_seen_firmware
     assert_equal 0x80, @recorder.last_sillage_status.fetch("state_flags")
+    assert_equal "uploading", @recorder.last_sillage_status.dig("wifi_upload", "state")
+    assert_equal 65_536, @recorder.last_sillage_status.dig("wifi_upload", "offset")
   end
 
   test "rejects unsigned, tampered, and stale Sillage heartbeats" do
@@ -106,6 +108,13 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
       last_sync_result: 0,
       active_file_index: 0,
       last_synced_file_index: 0,
+      wifi_upload: {
+        state: "uploading",
+        file_index: 1,
+        offset: 65_536,
+        size_bytes: 131_072,
+        last_http_status: 200
+      },
       diagnostics: {
         gps_errors: 0,
         imu_errors: 0,

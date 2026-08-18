@@ -212,7 +212,9 @@ export default class extends Controller {
     this.usbSyncInterrupted = false
     this.usbEraseActive = false
     this.usbDeviceTarget.textContent = "Identifying recorder"
-    this.syncProgressTarget.hidden = false
+    this.syncProgressTarget.hidden = true
+    this.syncProgressTarget.value = 0
+    this.syncProgressTarget.max = 1
     this.showUsbNotice(skipFileSynchronization
       ? "Restoring the authenticated USB-C control session without restarting synchronization"
       : "Preparing sealed recordings and verifying checksums")
@@ -326,10 +328,13 @@ export default class extends Controller {
       const manifest = await client.nextFile()
       this.ensureUsbSyncContinues()
       if (!manifest) break
-      this.syncDetailTarget.textContent = `${manifest.filename} · ${formatBytes(manifest.sizeBytes)}`
       const partial = await PartialFdrFile.open(device.deviceId, manifest)
       try {
         let offset = partial.size
+        this.syncProgressTarget.value = offset
+        this.syncProgressTarget.max = manifest.sizeBytes
+        this.syncProgressTarget.hidden = false
+        this.syncDetailTarget.textContent = `${manifest.filename} · ${formatBytes(manifest.sizeBytes)}`
         while (offset < manifest.sizeBytes) {
           this.ensureUsbSyncContinues()
           const chunk = await client.readChunk(
@@ -487,6 +492,9 @@ export default class extends Controller {
     this.usbSyncActive = false
     this.usbUploadController = null
     this.usbEraseActive = false
+    this.syncProgressTarget.hidden = true
+    this.syncProgressTarget.value = 0
+    this.syncProgressTarget.max = 1
     setAircraftConnection(AircraftConnectionTransport.USB_C, false)
     this.usbButtonTarget.textContent = "Connect USB-C"
     this.usbButtonTarget.disabled = false
@@ -651,18 +659,21 @@ export default class extends Controller {
   }
 
   renderSillageHeartbeat(heartbeat) {
+    const status = normalizeSillageHeartbeatStatus(heartbeat.status)
     this.wifiIdentity = sillageHeartbeatIdentity(heartbeat)
     this.wifiIdentities = [this.wifiIdentity]
     this.wifiDeviceTarget.textContent = this.wifiIdentity.deviceId
     this.wifiDeviceTarget.removeAttribute("title")
     this.setTransportStatus(this.wifiStatusTarget, "Connected", "ready")
-    this.setWifiAutomaticDetail(`Signed Sillage heartbeat ${formatSeenAt(heartbeat.seen_at)}`)
+    this.setWifiAutomaticDetail(
+      `${describeWifiUpload(status.wifiUpload)} · signed heartbeat ${formatSeenAt(heartbeat.seen_at)}`
+    )
     this.hideWifiNotice()
     setAircraftConnection(AircraftConnectionTransport.WIFI, true, {
       deviceId: this.wifiIdentity.deviceId,
       aircraftRegistration: heartbeat.aircraft?.registration
     })
-    this.renderStatus(normalizeSillageHeartbeatStatus(heartbeat.status), "wifi")
+    this.renderStatus(status, "wifi")
     this.renderDiagnostics(normalizeSillageHeartbeatDiagnostics(heartbeat.status?.diagnostics), "wifi")
     this.refreshRecorderRegistration()
     this.renderRecorderInformation()
@@ -745,6 +756,7 @@ export default class extends Controller {
       this.bleFacts = facts
       this.setTransportStatus(this.bleStatusTarget, recording ? "Recording" : "Connected", "ready")
     } else {
+      facts.synchronization = describeWifiUpload(status.wifiUpload)
       this.wifiFacts = facts
       this.setTransportStatus(this.wifiStatusTarget, recording ? "Recording" : "Connected", "ready")
     }
@@ -1349,6 +1361,7 @@ function describeAlerts(flags) {
 }
 
 function normalizeSillageHeartbeatStatus(status = {}) {
+  const upload = status.wifi_upload || {}
   return {
     stateFlags: Number(status.state_flags || 0),
     sensorValidity: Number(status.sensor_validity || 0),
@@ -1358,7 +1371,50 @@ function normalizeSillageHeartbeatStatus(status = {}) {
     lastSyncResult: Number(status.last_sync_result || 0),
     securityState: 2,
     activeFileIndex: Number(status.active_file_index || 0),
-    lastSyncedFileIndex: Number(status.last_synced_file_index || 0)
+    lastSyncedFileIndex: Number(status.last_synced_file_index || 0),
+    wifiUpload: {
+      state: String(upload.state || "disconnected"),
+      fileIndex: Number(upload.file_index || 0),
+      offset: Number(upload.offset || 0),
+      sizeBytes: Number(upload.size_bytes || 0),
+      lastHttpStatus: Number(upload.last_http_status || 0)
+    }
+  }
+}
+
+function describeWifiUpload(upload = {}) {
+  const filename = upload.fileIndex
+    ? `FDR${String(upload.fileIndex).padStart(6, "0")}.BIN`
+    : "recordings"
+  const size = Math.max(0, Number(upload.sizeBytes) || 0)
+  const offset = Math.max(0, Number(upload.offset) || 0)
+  const percent = size > 0
+    ? Math.min(100, Math.round(offset / size * 100))
+    : 0
+  switch (upload.state) {
+    case "waiting_stable":
+      return "Waiting for stable Wi-Fi before upload"
+    case "preparing":
+    case "requesting":
+      return `Preparing ${filename} for automatic upload`
+    case "uploading":
+      return `Uploading ${filename} · ${percent}%`
+    case "finalizing":
+      return `Finalizing ${filename}`
+    case "verifying":
+      return `Verifying ${filename} in Sillage`
+    case "complete":
+      return "All sealed recordings synchronized"
+    case "paused":
+      return size > 0
+        ? `Automatic upload paused · ${filename} · ${percent}%`
+        : "Automatic upload paused"
+    case "error":
+      return upload.lastHttpStatus
+        ? `Automatic upload retrying · HTTP ${upload.lastHttpStatus}`
+        : "Automatic upload retrying"
+    default:
+      return "Automatic upload waiting"
   }
 }
 
