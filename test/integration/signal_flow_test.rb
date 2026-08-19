@@ -226,9 +226,14 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-fdr-connectivity-target='recorderSource'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderAlert'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderAlertTechnical'][hidden]"
-    assert_select ".signal-fdr-status-list > div", count: 5
-    assert_equal %w[Recorder Synchronization Firmware Health Storage], css_select(".signal-fdr-status-list dt").map(&:text)
+    assert_select ".signal-fdr-status-list > div", count: 4
+    assert_equal %w[Recorder Synchronization Health Storage], css_select(".signal-fdr-status-list dt").map(&:text)
     assert_select ".signal-fdr-status-list dt", text: "Security", count: 0
+    assert_select ".signal-fdr-status-list > div:first-child" do
+      assert_select "[data-fdr-connectivity-target='recorderDevice']", text: "No recorder identified"
+      assert_select ".signal-fdr-firmware-label", text: "Firmware"
+      assert_select "[data-fdr-connectivity-target='recorderFirmware']", text: "—"
+    end
     assert_select ".signal-fdr-overview-head .signal-fdr-recording-control[data-fdr-connectivity-target='recordingControl'][data-state='unavailable'][role='group']", count: 1 do
       assert_select "strong#recording-title", text: "Recording"
       assert_select ".signal-k", count: 0
@@ -240,7 +245,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
       end
       assert_select "[data-fdr-connectivity-target='recordingResult'][role='status'][hidden]", text: ""
     end
-    assert_select ".signal-fdr-status-list .signal-fdr-status-sync dd.signal-fdr-synchronization" do
+    assert_select ".signal-fdr-status-list dd.signal-fdr-synchronization" do
       synchronization_children = css_select(".signal-fdr-status-list dd.signal-fdr-synchronization > *")
       assert_equal %w[lastSync syncProgress syncNotice], synchronization_children.map { |node| node["data-fdr-connectivity-target"] }
       assert_select "[data-fdr-connectivity-target='lastSync']", text: "—"

@@ -957,7 +957,7 @@
 
 .signal-fdr-status-list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin: 10px 0 0;
   gap: 1px;
   overflow: hidden;
@@ -1096,14 +1096,6 @@
   background: var(--surface-card);
 }
 
-.signal-fdr-status-list > div:not(:nth-child(3n + 1)) {
-  border-left: 0;
-}
-
-.signal-fdr-status-list > div:nth-child(n + 4) {
-  border-top: 0;
-}
-
 .signal-fdr-status-list dd {
   overflow: hidden;
   margin: 4px 0 0;
@@ -1112,15 +1104,47 @@
   text-overflow: ellipsis;
 }
 
+.signal-fdr-recorder-identification {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.signal-fdr-recorder-identification > [data-fdr-connectivity-target="recorderDevice"] {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+.signal-fdr-firmware {
+  display: inline-flex;
+  min-width: 0;
+  flex: 0 1 auto;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.signal-fdr-firmware-label {
+  color: var(--text-muted);
+  font: 600 9px/1.2 var(--font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.signal-fdr-firmware > [data-fdr-connectivity-target="recorderFirmware"] {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
 .signal-fdr-status-list dd.signal-fdr-synchronization {
   display: grid;
   gap: 6px;
   overflow: visible;
   text-overflow: clip;
-}
-
-.signal-fdr-status-sync {
-  grid-column: span 2;
 }
 
 .signal-fdr-tools {

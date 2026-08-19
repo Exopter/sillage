@@ -211,8 +211,17 @@
       </button>
     </div>
     <dl class="signal-fdr-status-list">
-      <div><dt>Recorder</dt><dd data-fdr-connectivity-target="recorderDevice">No recorder identified</dd></div>
-      <div class="signal-fdr-status-sync">
+      <div>
+        <dt>Recorder</dt>
+        <dd class="signal-fdr-recorder-identification">
+          <span data-fdr-connectivity-target="recorderDevice">No recorder identified</span>
+          <span class="signal-fdr-firmware">
+            <span class="signal-fdr-firmware-label">Firmware</span>
+            <span data-fdr-connectivity-target="recorderFirmware">—</span>
+          </span>
+        </dd>
+      </div>
+      <div>
         <dt>Synchronization</dt>
         <dd class="signal-fdr-synchronization">
           <span data-fdr-connectivity-target="lastSync">—</span>
@@ -224,7 +233,6 @@
           </div>
         </dd>
       </div>
-      <div><dt>Firmware</dt><dd data-fdr-connectivity-target="recorderFirmware">—</dd></div>
       <div><dt>Health</dt><dd data-fdr-connectivity-target="health">—</dd></div>
       <div><dt>Storage</dt><dd data-fdr-connectivity-target="storage">—</dd></div>
     </dl>
