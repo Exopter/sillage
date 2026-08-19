@@ -221,7 +221,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-fdr-connectivity-target='bleDetail'][hidden]"
     assert_select "[data-fdr-connectivity-target='wifiNotice'][data-state='status'][role='status'][hidden]"
     assert_select "[data-fdr-connectivity-target='wifiDetail'][hidden]", text: ""
-    assert_select ".signal-fdr-overview [data-fdr-connectivity-target='recorderDevice']", text: "No recorder identified"
+    assert_select ".signal-fdr-overview [data-fdr-connectivity-target='recorderDevice']", text: "—"
     assert_select "span[data-fdr-connectivity-target='recorderStatus'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderSource'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderAlert'][hidden]"
@@ -230,8 +230,8 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_equal %w[Recorder Synchronization Health Storage], css_select(".signal-fdr-status-list dt").map(&:text)
     assert_select ".signal-fdr-status-list dt", text: "Security", count: 0
     assert_select ".signal-fdr-status-list > div:first-child" do
-      assert_select "[data-fdr-connectivity-target='recorderDevice']", text: "No recorder identified"
-      assert_select ".signal-fdr-firmware-label", text: "Firmware"
+      assert_select "[data-fdr-connectivity-target='recorderDevice']", text: "—"
+      assert_select ".signal-fdr-firmware[data-fdr-connectivity-target='recorderFirmwareGroup'][hidden]", text: "(—)"
       assert_select "[data-fdr-connectivity-target='recorderFirmware']", text: "—"
     end
     assert_select ".signal-fdr-overview-head .signal-fdr-recording-control[data-fdr-connectivity-target='recordingControl'][data-state='unavailable'][role='group']", count: 1 do

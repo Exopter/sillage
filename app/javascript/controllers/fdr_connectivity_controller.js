@@ -57,7 +57,7 @@ export default class extends Controller {
     "bleButton", "bleStatus", "bleDevice", "bleDetail",
     "bleNotice", "bleNoticeLabel", "wifiStatus", "wifiDevice", "wifiAutoLabel", "wifiDetail",
     "wifiNotice", "wifiNoticeLabel", "recorderStatus",
-    "recorderSource", "recorderDevice", "recorderFirmware", "health", "storage",
+    "recorderSource", "recorderDevice", "recorderFirmwareGroup", "recorderFirmware", "health", "storage",
     "lastSync", "recordingControl", "recordingButton", "recordingButtonLabel", "recordingResult",
     "debugButton", "debug", "recorderTools", "recorderToolsHint", "recorderAlert",
     "recorderAlertMessage", "recorderAlertTechnical", "recorderOnboarding",
@@ -1532,9 +1532,10 @@ export default class extends Controller {
         this.recorderSourceTarget.textContent = ""
         this.recorderSourceTarget.dataset.state = "disconnected"
         this.recorderSourceTarget.hidden = true
-        this.recorderDeviceTarget.textContent = "No recorder identified"
+        this.recorderDeviceTarget.textContent = "—"
       }
       this.recorderFirmwareTarget.textContent = "—"
+      this.recorderFirmwareGroupTarget.hidden = true
       this.healthTarget.textContent = "—"
       this.storageTarget.textContent = "—"
       this.lastSyncTarget.textContent = "—"
@@ -1546,7 +1547,8 @@ export default class extends Controller {
     const mismatch = new Set(identities.map(({ deviceId }) => deviceId)).size > 1 ||
       new Set(identities.map(({ firmware }) => firmware).filter(Boolean)).size > 1
     this.recorderDeviceTarget.textContent = identity.deviceId
-    this.recorderFirmwareTarget.textContent = identity.firmware
+    this.recorderFirmwareTarget.textContent = identity.firmware || "—"
+    this.recorderFirmwareGroupTarget.hidden = !identity.firmware
 
     if (mismatch) {
       this.setTransportStatus(this.recorderStatusTarget, "Recorder mismatch", "error")
