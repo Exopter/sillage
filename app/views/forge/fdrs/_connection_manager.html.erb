@@ -49,11 +49,10 @@
             </div>
           </div>
         </div>
-        <progress class="signal-fdr-progress" value="0" max="1" data-fdr-connectivity-target="syncProgress" hidden></progress>
         <div class="signal-fdr-transport-notice" data-fdr-connectivity-target="usbNotice" data-state="status" role="status" hidden>
-          <span class="signal-fdr-transport-notice-label" data-fdr-connectivity-target="usbNoticeLabel">Synchronization</span>
-          <small class="signal-fdr-transport-message" data-fdr-connectivity-target="syncDetail" hidden></small>
-          <small class="signal-fdr-technical" data-fdr-connectivity-target="syncTechnical" hidden></small>
+          <span class="signal-fdr-transport-notice-label" data-fdr-connectivity-target="usbNoticeLabel">Connection status</span>
+          <small class="signal-fdr-transport-message" data-fdr-connectivity-target="usbDetail" hidden></small>
+          <small class="signal-fdr-technical" data-fdr-connectivity-target="usbTechnical" hidden></small>
         </div>
       </div>
     </article>
@@ -161,7 +160,18 @@
       <div><dt>Firmware</dt><dd data-fdr-connectivity-target="recorderFirmware">—</dd></div>
       <div><dt>Health</dt><dd data-fdr-connectivity-target="health">—</dd></div>
       <div><dt>Storage</dt><dd data-fdr-connectivity-target="storage">—</dd></div>
-      <div><dt>Synchronization</dt><dd data-fdr-connectivity-target="lastSync">—</dd></div>
+      <div>
+        <dt>Synchronization</dt>
+        <dd class="signal-fdr-synchronization">
+          <span data-fdr-connectivity-target="lastSync">—</span>
+          <progress class="signal-fdr-progress" value="0" max="1" data-fdr-connectivity-target="syncProgress" hidden></progress>
+          <div class="signal-fdr-transport-notice" data-fdr-connectivity-target="syncNotice" data-state="status" role="status" hidden>
+            <span class="signal-fdr-transport-notice-label" data-fdr-connectivity-target="syncNoticeLabel">Synchronization</span>
+            <small class="signal-fdr-transport-message" data-fdr-connectivity-target="syncDetail" hidden></small>
+            <small class="signal-fdr-technical" data-fdr-connectivity-target="syncTechnical" hidden></small>
+          </div>
+        </dd>
+      </div>
       <div><dt>Security</dt><dd data-fdr-connectivity-target="security">—</dd></div>
     </dl>
   </section>

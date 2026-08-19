@@ -5,9 +5,12 @@ import {
   BleUuid,
   BleAuthenticationClient,
   USB_CHUNK_SIZE,
+  USB_CONNECTION_ATTEMPTS,
+  USB_CONNECTION_RETRY_DELAY_MS,
   UsbCapability,
   UsbErrorCode,
   UsbFdrClient,
+  UsbMessage,
   encodeBleConfig,
   formatStorageCapacity,
   formatUsbErrorDetails,
@@ -20,6 +23,18 @@ import { registerUsbPageRelease } from "usb_page_lifecycle"
 
 const USB_PORT_STORAGE_KEY = "sillage:fdr-usb-port"
 const BLE_DEVICE_STORAGE_KEY = "sillage:fdr-ble-device"
+const USB_TRANSFER_RECOVERY_ATTEMPTS = 3
+const USB_TRANSFER_RECOVERY_DELAY_MS = 500
+const USB_TRANSFER_REQUEST_TYPES = new Set([
+  UsbMessage.NEXT_FILE,
+  UsbMessage.READ_CHUNK,
+  UsbMessage.ACK_FILE
+])
+const ConnectionStatus = Object.freeze({
+  NOT_CONNECTED: ["Not connected", "disconnected"],
+  CONNECTED: ["Connected", "ready"],
+  ERROR: ["Error", "error"]
+})
 
 export default class extends Controller {
   static values = {
@@ -29,8 +44,9 @@ export default class extends Controller {
     sillageHeartbeatUrl: String
   }
   static targets = [
-    "usbButton", "stopSyncButton", "eraseSdButton", "usbStatus", "usbDevice", "syncProgress", "syncDetail", "syncTechnical",
-    "usbNotice", "usbNoticeLabel", "bleButton", "bleStatus", "bleDevice", "bleDetail",
+    "usbButton", "stopSyncButton", "eraseSdButton", "usbStatus", "usbDevice", "usbDetail", "usbTechnical",
+    "usbNotice", "usbNoticeLabel", "syncProgress", "syncNotice", "syncNoticeLabel", "syncDetail", "syncTechnical",
+    "bleButton", "bleStatus", "bleDevice", "bleDetail",
     "bleNotice", "bleNoticeLabel", "wifiStatus", "wifiDevice", "wifiAutoLabel", "wifiDetail",
     "wifiNotice", "wifiNoticeLabel", "recorderStatus",
     "recorderSource", "recorderDevice", "recorderFirmware", "health", "storage",
@@ -196,10 +212,15 @@ export default class extends Controller {
     if (port === this.usbPort) void this.disconnectUsb()
   }
 
-  async synchronizeUsb(port, { skipFileSynchronization = false } = {}) {
+  async synchronizeUsb(port, {
+    skipFileSynchronization = false,
+    transferRecoveryAttempt = 0
+  } = {}) {
     if (this.usbBusy || this.usbClient) return
     const session = Symbol("usb-session")
-    const client = new UsbFdrClient(port)
+    let client = new UsbFdrClient(port)
+    let recoverTransfer = false
+    let nextTransferRecoveryAttempt = transferRecoveryAttempt
     this.usbBusy = true
     this.usbSession = session
     this.usbClient = client
@@ -217,13 +238,17 @@ export default class extends Controller {
     this.syncProgressTarget.hidden = true
     this.syncProgressTarget.value = 0
     this.syncProgressTarget.max = 1
-    this.showUsbNotice(skipFileSynchronization
+    this.hideUsbConnectionNotice()
+    this.showSynchronizationNotice(skipFileSynchronization
       ? "Restoring the authenticated USB-C control session without restarting synchronization"
       : "Preparing sealed recordings and verifying checksums")
     this.renderRecorderInformation()
-    this.setTransportStatus(this.usbStatusTarget, "Connecting", "connecting")
+    this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.NOT_CONNECTED)
     try {
-      const device = await client.connect()
+      const device = await this.connectUsbClient(port, session, client)
+      if (!device) return
+      client = this.usbClient
+      if (!client) return
       if (!this.usbSessionActive(session, client)) return
       let authenticationNotice = null
       const challenge = await client.usbAuthenticationChallenge()
@@ -250,6 +275,7 @@ export default class extends Controller {
       this.usbIdentity = device
       this.refreshRecorderRegistration()
       setAircraftConnection(AircraftConnectionTransport.USB_C, true, { deviceId: device.deviceId })
+      this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.CONNECTED)
       this.usbDeviceTarget.textContent = device.deviceId
       this.usbButtonTarget.textContent = "Disconnect USB-C"
       await this.refreshUsbControlData()
@@ -259,19 +285,18 @@ export default class extends Controller {
       if (this.usbAuthenticated && skipFileSynchronization) {
         this.usbSynchronization = "Interrupted by operator"
         this.usbFacts.synchronization = this.usbSynchronization
-        this.showUsbNotice("Transfer interrupted. The recordings and partial transfer are preserved.", {
+        this.showSynchronizationNotice("Transfer interrupted. The recordings and partial transfer are preserved.", {
           state: "caution",
           label: "Synchronization stopped"
         })
       } else if (this.usbAuthenticated) {
-        this.setTransportStatus(this.usbStatusTarget, "Synchronizing", "connecting")
         this.usbSyncActive = true
         this.usbSyncInterrupted = false
         this.updateUsbActions()
         try {
           const synchronization = await this.synchronizeUsbFiles(client, device)
           if (!this.usbSessionActive(session, client)) return
-          this.showUsbNotice(synchronization)
+          this.showSynchronizationNotice(synchronization)
           this.usbSynchronization = synchronization
           this.usbFacts.synchronization = synchronization
         } catch (error) {
@@ -279,7 +304,7 @@ export default class extends Controller {
           if (error?.usbSyncInterrupted) {
             this.usbSynchronization = "Interrupted by operator"
             this.usbFacts.synchronization = this.usbSynchronization
-            this.showUsbNotice("Transfer interrupted. The recordings and partial transfer are preserved.", {
+            this.showSynchronizationNotice("Transfer interrupted. The recordings and partial transfer are preserved.", {
               state: "caution",
               label: "Synchronization stopped"
             })
@@ -292,23 +317,35 @@ export default class extends Controller {
           this.updateUsbActions()
         }
       } else {
-        this.showUsbNotice(authenticationNotice.message, authenticationNotice)
+        this.hideSynchronizationNotice()
+        this.showUsbConnectionNotice(authenticationNotice.message, authenticationNotice)
       }
       this.syncProgressTarget.hidden = true
-      this.setTransportStatus(
-        this.usbStatusTarget,
-        this.usbAuthenticated ? "Authenticated" : "Connected read-only",
-        "ready"
-      )
+      this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.CONNECTED)
       this.startUsbPolling()
       this.renderRecorderInformation()
     } catch (error) {
       if (!this.usbSessionActive(session, client)) return
+      nextTransferRecoveryAttempt = transferRecoveryAttempt + 1
+      recoverTransfer = this.initialized
+        && !this.usbSyncInterrupted
+        && error?.usbRequestTimedOut
+        && USB_TRANSFER_REQUEST_TYPES.has(error.usbRequestType)
+        && nextTransferRecoveryAttempt <= USB_TRANSFER_RECOVERY_ATTEMPTS
       this.usbClient = null
       this.usbAuthenticated = false
       this.usbPort = null
       await client.close()
-      this.showUsbConnectionError(error)
+      if (recoverTransfer) {
+        setAircraftConnection(AircraftConnectionTransport.USB_C, false)
+        this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.NOT_CONNECTED)
+        this.showSynchronizationNotice(
+          `The USB-C stream paused. Reconnecting automatically and resuming the partial transfer (${nextTransferRecoveryAttempt}/${USB_TRANSFER_RECOVERY_ATTEMPTS})…`,
+          { state: "caution", label: "Recovering synchronization" }
+        )
+      } else {
+        this.showUsbConnectionError(error)
+      }
     } finally {
       if (this.usbSession === session) {
         this.usbSession = null
@@ -317,10 +354,40 @@ export default class extends Controller {
         this.updateUsbActions()
       }
     }
+    if (recoverTransfer) {
+      await new Promise((resolve) => window.setTimeout(resolve, USB_TRANSFER_RECOVERY_DELAY_MS))
+      if (this.initialized && !this.usbBusy && !this.usbClient) {
+        await this.synchronizeUsb(port, {
+          transferRecoveryAttempt: nextTransferRecoveryAttempt
+        })
+      }
+    }
   }
 
   usbSessionActive(session, client) {
     return this.usbSession === session && this.usbClient === client
+  }
+
+  async connectUsbClient(port, session, initialClient) {
+    let client = initialClient
+    for (let attempt = 1; attempt <= USB_CONNECTION_ATTEMPTS; attempt += 1) {
+      try {
+        return await client.connect({ attempt, attempts: USB_CONNECTION_ATTEMPTS })
+      } catch (error) {
+        const retryable = error?.usbConnectionTimedOut
+          && error.usbConnectionStage === "handshake"
+          && attempt < USB_CONNECTION_ATTEMPTS
+        if (!retryable) throw error
+
+        await client.close()
+        if (!this.usbSessionActive(session, client)) return null
+        await new Promise((resolve) => window.setTimeout(resolve, USB_CONNECTION_RETRY_DELAY_MS))
+        if (!this.usbSessionActive(session, client)) return null
+        client = new UsbFdrClient(port)
+        this.usbClient = client
+      }
+    }
+    return null
   }
 
   async synchronizeUsbFiles(client, device) {
@@ -361,7 +428,13 @@ export default class extends Controller {
         this.usbUploadController = null
         this.ensureUsbSyncContinues()
         await client.acknowledge(manifest.fileIndex, manifest.sha256)
-        await partial.remove()
+        // Chrome can keep an OPFS removal pending while the uploaded File is
+        // still referenced. The verified upload and recorder acknowledgement
+        // are already complete, so cleanup must not block the synchronization
+        // queue or the live USB-C control session.
+        void partial.remove().catch((error) => {
+          console.warn(`Could not remove the partial transfer for ${manifest.filename}.`, error)
+        })
         synchronizedFiles += 1
       } catch (error) {
         this.usbUploadController = null
@@ -383,7 +456,7 @@ export default class extends Controller {
     this.usbUploadController?.abort()
     this.stopSyncButtonTarget.disabled = true
     this.stopSyncButtonTarget.textContent = "Stopping…"
-    this.showUsbNotice("Closing the transfer and preserving the partial file…", {
+    this.showSynchronizationNotice("Closing the transfer and preserving the partial file…", {
       state: "caution",
       label: "Stopping synchronization"
     })
@@ -398,19 +471,19 @@ export default class extends Controller {
   async eraseSdRecordings() {
     const client = this.usbClient
     if (!client || !this.usbAuthenticated) {
-      return this.showUsbNotice("Connect and authenticate the recorder over USB-C first.", {
+      return this.showSynchronizationNotice("Connect and authenticate the recorder over USB-C first.", {
         state: "error",
         label: "Erase unavailable"
       })
     }
     if (this.usbSyncActive) {
-      return this.showUsbNotice("Stop the transfer before erasing recordings.", {
+      return this.showSynchronizationNotice("Stop the transfer before erasing recordings.", {
         state: "caution",
         label: "Erase unavailable"
       })
     }
     if ((this.usbIdentity?.capabilities & UsbCapability.ERASE_RECORDINGS) === 0) {
-      return this.showUsbNotice("Update the recorder firmware before erasing recordings from Sillage.", {
+      return this.showSynchronizationNotice("Update the recorder firmware before erasing recordings from Sillage.", {
         state: "caution",
         label: "Erase unavailable"
       })
@@ -421,8 +494,8 @@ export default class extends Controller {
     this.usbPollTimer = null
     this.usbEraseActive = true
     this.updateUsbActions()
-    this.setTransportStatus(this.usbStatusTarget, "Erasing recordings", "connecting")
-    this.showUsbNotice("Closing the active recording and erasing FDR files…", {
+    this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.CONNECTED)
+    this.showSynchronizationNotice("Closing the active recording and erasing FDR files…", {
       state: "caution",
       label: "Erasing microSD recordings"
     })
@@ -432,7 +505,7 @@ export default class extends Controller {
       this.usbSynchronization = "Recordings erased"
       if (this.usbFacts) this.usbFacts.synchronization = this.usbSynchronization
       await this.refreshUsbControlData()
-      this.showUsbNotice(`${result.deletedFiles} recording${result.deletedFiles === 1 ? "" : "s"} erased · ${formatBytes(result.deletedBytes)} freed. Recording resumed in a new file.`, {
+      this.showSynchronizationNotice(`${result.deletedFiles} recording${result.deletedFiles === 1 ? "" : "s"} erased · ${formatBytes(result.deletedBytes)} freed. Recording resumed in a new file.`, {
         label: "microSD recordings erased"
       })
     } catch (error) {
@@ -440,12 +513,12 @@ export default class extends Controller {
         await this.disconnectUsb()
         this.showUsbConnectionError(error)
       } else {
-        this.showUsbNotice(error.message, { state: "error", label: "Erase failed" })
+        this.showSynchronizationNotice(error.message, { state: "error", label: "Erase failed" })
       }
     } finally {
       this.usbEraseActive = false
       if (client === this.usbClient) {
-        this.setTransportStatus(this.usbStatusTarget, "Authenticated", "ready")
+        this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.CONNECTED)
         this.startUsbPolling()
       }
       this.updateUsbActions()
@@ -453,11 +526,11 @@ export default class extends Controller {
     }
   }
 
-  async refreshUsbControlData() {
-    if (!this.usbClient) return
-    const status = await this.usbClient.status()
-    const diagnostics = await this.usbClient.diagnostics()
-    const config = await this.usbClient.config()
+  async refreshUsbControlData(client = this.usbClient) {
+    if (!client) return
+    const status = await client.status()
+    const diagnostics = await client.diagnostics()
+    const config = await client.config()
     this.renderStatus(status, "usb")
     this.renderDiagnostics(diagnostics, "usb")
     this.renderConfig(config)
@@ -465,12 +538,20 @@ export default class extends Controller {
 
   startUsbPolling() {
     window.clearInterval(this.usbPollTimer)
+    const client = this.usbClient
+    if (!client) return
+    let pollInFlight = false
     this.usbPollTimer = window.setInterval(async () => {
+      if (pollInFlight || client !== this.usbClient) return
+      pollInFlight = true
       try {
-        await this.refreshUsbControlData()
+        await this.refreshUsbControlData(client)
       } catch (error) {
+        if (client !== this.usbClient) return
         await this.disconnectUsb()
         this.showUsbConnectionError(error)
+      } finally {
+        pollInFlight = false
       }
     }, 2000)
   }
@@ -501,8 +582,9 @@ export default class extends Controller {
     this.usbButtonTarget.textContent = "Connect USB-C"
     this.usbButtonTarget.disabled = false
     this.usbDeviceTarget.textContent = "No recorder selected"
-    this.hideUsbNotice()
-    this.setTransportStatus(this.usbStatusTarget, "Not connected", "disconnected")
+    this.hideUsbConnectionNotice()
+    this.hideSynchronizationNotice()
+    this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.NOT_CONNECTED)
     this.refreshRecorderRegistration()
     this.updateToolsAvailability()
     this.renderRecorderInformation()
@@ -557,7 +639,7 @@ export default class extends Controller {
     this.bleDeviceTarget.textContent = "Identifying recorder"
     this.hideBleNotice()
     this.renderRecorderInformation()
-    this.setTransportStatus(this.bleStatusTarget, "Connecting", "connecting")
+    this.setConnectionStatus(this.bleStatusTarget, ConnectionStatus.NOT_CONNECTED)
     this.bleButtonTarget.disabled = true
     this.bleDevice = device
     device.addEventListener("gattserverdisconnected", this.handleBleDisconnect)
@@ -597,13 +679,10 @@ export default class extends Controller {
     }
     this.refreshRecorderRegistration()
     setAircraftConnection(AircraftConnectionTransport.BLE, true, { deviceId: this.bleIdentity.deviceId })
+    this.setConnectionStatus(this.bleStatusTarget, ConnectionStatus.CONNECTED)
     this.bleDeviceTarget.textContent = this.bleIdentity.deviceId
     if (this.bleAuthenticated) this.hideBleNotice()
-    this.setTransportStatus(
-      this.bleStatusTarget,
-      this.bleAuthenticated ? "Authenticated" : "Connected read-only",
-      "ready"
-    )
+    this.setConnectionStatus(this.bleStatusTarget, ConnectionStatus.CONNECTED)
     this.renderStatus(parseBleStatus(statusValue), "ble")
     this.renderDiagnostics(parseBleDiagnostics(diagnosticsValue), "ble")
     this.renderConfig(parseBleConfig(configValue))
@@ -613,7 +692,7 @@ export default class extends Controller {
 
   handleBleDisconnect() {
     setAircraftConnection(AircraftConnectionTransport.BLE, false)
-    this.setTransportStatus(this.bleStatusTarget, "Disconnected", "disconnected")
+    this.setConnectionStatus(this.bleStatusTarget, ConnectionStatus.NOT_CONNECTED)
     this.bleDeviceTarget.textContent = "No recorder selected"
     this.showBleNotice("Connection closed. Recorder information is no longer live over BLE.")
     this.bleCharacteristics = {}
@@ -666,7 +745,7 @@ export default class extends Controller {
     this.wifiIdentities = [this.wifiIdentity]
     this.wifiDeviceTarget.textContent = this.wifiIdentity.deviceId
     this.wifiDeviceTarget.removeAttribute("title")
-    this.setTransportStatus(this.wifiStatusTarget, "Connected", "ready")
+    this.setConnectionStatus(this.wifiStatusTarget, ConnectionStatus.CONNECTED)
     this.setWifiAutomaticDetail(
       `${describeWifiUpload(status.wifiUpload)} · signed heartbeat ${formatSeenAt(heartbeat.seen_at)}`
     )
@@ -689,7 +768,7 @@ export default class extends Controller {
     const deviceList = deviceIds.join(" · ")
     this.wifiDeviceTarget.textContent = deviceList
     this.wifiDeviceTarget.title = deviceList
-    this.setTransportStatus(this.wifiStatusTarget, `${deviceIds.length} connected`, "connecting")
+    this.setConnectionStatus(this.wifiStatusTarget, ConnectionStatus.CONNECTED)
     this.setWifiAutomaticDetail(`${deviceIds.length} signed Sillage heartbeats: ${deviceIds.join(", ")}`)
     this.hideWifiNotice()
     setAircraftConnection(AircraftConnectionTransport.WIFI, true, { deviceIds })
@@ -704,10 +783,9 @@ export default class extends Controller {
     this.wifiFacts = null
     this.wifiDeviceTarget.textContent = "No recorder detected"
     this.wifiDeviceTarget.removeAttribute("title")
-    this.setTransportStatus(
+    this.setConnectionStatus(
       this.wifiStatusTarget,
-      error ? "Status unavailable" : "Not connected",
-      error ? "error" : "disconnected"
+      error ? ConnectionStatus.ERROR : ConnectionStatus.NOT_CONNECTED
     )
     this.setWifiAutomaticDetail(error || detail)
     if (error) {
@@ -720,7 +798,6 @@ export default class extends Controller {
   }
 
   renderStatus(status, transport) {
-    const recording = (status.stateFlags & 0x01) !== 0
     const storageReady = (status.stateFlags & 0x02) !== 0
     const facts = {
       health: describeAlerts(status.alertFlags),
@@ -752,15 +829,15 @@ export default class extends Controller {
       if (this.usbSynchronization) facts.synchronization = this.usbSynchronization
       this.usbFacts = facts
       if (!this.usbBusy) {
-        this.setTransportStatus(this.usbStatusTarget, recording ? "Recording" : "Connected", "ready")
+        this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.CONNECTED)
       }
     } else if (transport === "ble") {
       this.bleFacts = facts
-      this.setTransportStatus(this.bleStatusTarget, recording ? "Recording" : "Connected", "ready")
+      this.setConnectionStatus(this.bleStatusTarget, ConnectionStatus.CONNECTED)
     } else {
       facts.synchronization = describeWifiUpload(status.wifiUpload)
       this.wifiFacts = facts
-      this.setTransportStatus(this.wifiStatusTarget, recording ? "Recording" : "Connected", "ready")
+      this.setConnectionStatus(this.wifiStatusTarget, ConnectionStatus.CONNECTED)
     }
     this.renderRecorderInformation()
   }
@@ -792,9 +869,9 @@ export default class extends Controller {
     this.syncProgressTarget.hidden = true
     if (recorderError) {
       this.usbRecorderError = { message, technical: technicalDetails }
-      this.hideUsbNotice()
+      this.hideSynchronizationNotice()
     } else {
-      this.showUsbNotice(message, {
+      this.showSynchronizationNotice(message, {
         state: "error",
         label: "Synchronization error",
         technical: technicalDetails
@@ -812,10 +889,11 @@ export default class extends Controller {
   showUsbConnectionError(error) {
     setAircraftConnection(AircraftConnectionTransport.USB_C, false)
     this.usbRecorderError = null
-    this.setTransportStatus(this.usbStatusTarget, "Connection error", "error")
+    this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.ERROR)
     this.syncProgressTarget.hidden = true
+    this.hideSynchronizationNotice()
     const technicalDetails = formatUsbErrorDetails(error)
-    this.showUsbNotice(error instanceof Error ? error.message : String(error), {
+    this.showUsbConnectionNotice(error instanceof Error ? error.message : String(error), {
       state: "error",
       label: "Connection error",
       technical: technicalDetails
@@ -831,7 +909,7 @@ export default class extends Controller {
 
   showBleConnectionError(message) {
     setAircraftConnection(AircraftConnectionTransport.BLE, false)
-    this.setTransportStatus(this.bleStatusTarget, "Connection error", "error")
+    this.setConnectionStatus(this.bleStatusTarget, ConnectionStatus.ERROR)
     this.showBleNotice(message, { state: "error", label: "Connection error" })
     this.bleDeviceTarget.textContent = "No recorder selected"
     this.bleIdentity = null
@@ -846,19 +924,34 @@ export default class extends Controller {
     this.configResultTarget.textContent = message
   }
 
-  showUsbNotice(message, { state = "status", label = "Synchronization", technical = "" } = {}) {
+  showUsbConnectionNotice(message, { state = "status", label = "Connection status", technical = "" } = {}) {
     this.usbNoticeTarget.dataset.state = state
     this.usbNoticeTarget.setAttribute("role", state === "error" ? "alert" : "status")
     this.usbNoticeLabelTarget.textContent = label
+    this.usbDetailTarget.textContent = message
+    this.usbDetailTarget.hidden = !message
+    this.usbTechnicalTarget.textContent = technical
+    this.usbTechnicalTarget.hidden = !technical
+    this.usbNoticeTarget.hidden = !message && !technical
+  }
+
+  hideUsbConnectionNotice() {
+    this.showUsbConnectionNotice("")
+  }
+
+  showSynchronizationNotice(message, { state = "status", label = "Synchronization", technical = "" } = {}) {
+    this.syncNoticeTarget.dataset.state = state
+    this.syncNoticeTarget.setAttribute("role", state === "error" ? "alert" : "status")
+    this.syncNoticeLabelTarget.textContent = label
     this.syncDetailTarget.textContent = message
     this.syncDetailTarget.hidden = !message
     this.syncTechnicalTarget.textContent = technical
     this.syncTechnicalTarget.hidden = !technical
-    this.usbNoticeTarget.hidden = !message && !technical
+    this.syncNoticeTarget.hidden = !message && !technical
   }
 
-  hideUsbNotice() {
-    this.showUsbNotice("")
+  hideSynchronizationNotice() {
+    this.showSynchronizationNotice("")
   }
 
   showBleNotice(message, { state = "status", label = "Connection status" } = {}) {
@@ -938,6 +1031,10 @@ export default class extends Controller {
   setTransportStatus(target, label, state) {
     target.textContent = label
     target.dataset.state = state
+  }
+
+  setConnectionStatus(target, [label, state]) {
+    this.setTransportStatus(target, label, state)
   }
 
   async refreshRecorderRegistration() {

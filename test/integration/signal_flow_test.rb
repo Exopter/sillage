@@ -173,6 +173,8 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "button.signal-tool-button:not(.is-primary)[data-action='fdr-connectivity#connectUsb']", text: "Connect USB-C"
     assert_select "button[data-action='fdr-connectivity#connectBle']", text: "Connect BLE"
     assert_select "button.signal-tool-button.signal-fdr-auto-label[data-fdr-connectivity-target='wifiAutoLabel'][aria-label='Automatic Wi-Fi connection: waiting for signed Sillage heartbeat'][disabled]", text: "Automatic"
+    assert_select "[data-fdr-connectivity-target='usbStatus']", text: "Not connected"
+    assert_select "[data-fdr-connectivity-target='bleStatus']", text: "Not connected"
     assert_select "[data-fdr-connectivity-target='wifiStatus']", text: "Not connected"
     assert_select "[data-fdr-connectivity-target='wifiDevice']", text: "No recorder detected"
     assert_select ".signal-fdr-transport-meta", count: 0
@@ -191,7 +193,6 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     usb_feedback_children = css_select(".signal-fdr-transport:first-of-type .signal-fdr-transport-feedback > *")
     assert_equal [
       "signal-fdr-device-row",
-      "syncProgress",
       "usbNotice"
     ], usb_feedback_children.map { |node| node["data-fdr-connectivity-target"] || node["class"] }
     ble_feedback_children = css_select(".signal-fdr-transport:nth-of-type(2) .signal-fdr-transport-feedback > *")
@@ -205,8 +206,9 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
       "wifiNotice"
     ], wifi_feedback_children.map { |node| node["data-fdr-connectivity-target"] || node["class"] }
     assert_select "[data-fdr-connectivity-target='usbNotice'][data-state='status'][role='status'][hidden]"
+    assert_select "[data-fdr-connectivity-target='usbDetail'][hidden]"
+    assert_select "[data-fdr-connectivity-target='usbTechnical'][hidden]"
     assert_select "[data-fdr-connectivity-target='bleNotice'][data-state='status'][role='status'][hidden]"
-    assert_select "[data-fdr-connectivity-target='syncDetail'][hidden]"
     assert_select "[data-fdr-connectivity-target='bleDetail'][hidden]"
     assert_select "[data-fdr-connectivity-target='wifiNotice'][data-state='status'][role='status'][hidden]"
     assert_select "[data-fdr-connectivity-target='wifiDetail'][hidden]", text: ""
@@ -216,6 +218,15 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-fdr-connectivity-target='recorderAlert'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderAlertTechnical'][hidden]"
     assert_select ".signal-fdr-status-list > div", count: 6
+    assert_select ".signal-fdr-status-list dd.signal-fdr-synchronization" do
+      synchronization_children = css_select(".signal-fdr-status-list dd.signal-fdr-synchronization > *")
+      assert_equal %w[lastSync syncProgress syncNotice], synchronization_children.map { |node| node["data-fdr-connectivity-target"] }
+      assert_select "[data-fdr-connectivity-target='lastSync']", text: "—"
+      assert_select "progress[data-fdr-connectivity-target='syncProgress'][hidden]"
+      assert_select "[data-fdr-connectivity-target='syncNotice'][data-state='status'][role='status'][hidden]"
+      assert_select "[data-fdr-connectivity-target='syncDetail'][hidden]"
+      assert_select "[data-fdr-connectivity-target='syncTechnical'][hidden]"
+    end
     assert_select ".signal-fdr-tools", count: 1
     assert_select "select[data-fdr-connectivity-target='configInterval'][disabled]"
     assert_select "button[data-fdr-connectivity-target='configButton'][disabled]"
@@ -227,8 +238,6 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
       assert_select "button[data-action='fdr-connectivity#onboardRecorder'][data-fdr-connectivity-target='wifiRegisterButton']", text: /Add and initialize recorder/
       assert_select "[data-fdr-connectivity-target='wifiRegistrationStatus']"
     end
-    assert_select "progress[data-fdr-connectivity-target='syncProgress'][hidden]"
-    assert_select "[data-fdr-connectivity-target='syncTechnical'][hidden]"
     assert_select "details[data-fdr-connectivity-target='recorderTools']:not([open])"
   end
 

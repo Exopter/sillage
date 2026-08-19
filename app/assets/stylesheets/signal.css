@@ -954,6 +954,13 @@
   text-overflow: ellipsis;
 }
 
+.signal-fdr-status-list dd.signal-fdr-synchronization {
+  display: grid;
+  gap: 6px;
+  overflow: visible;
+  text-overflow: clip;
+}
+
 .signal-fdr-tools {
   border-top: 1px solid var(--border-strong);
   background: var(--ds-panel-2);

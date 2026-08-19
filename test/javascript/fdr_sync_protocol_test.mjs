@@ -62,8 +62,26 @@ assert.match(connectivitySource, /All sealed recordings synchronized/)
 assert.match(connectivityViewSource, /Automatic resumable recording upload/)
 assert.match(connectivityViewSource, /fdr-connectivity#interruptUsbSync/)
 assert.match(connectivityViewSource, /fdr-connectivity#eraseSdRecordings/)
+assert.match(connectivityViewSource, /class="signal-fdr-synchronization"/)
+assert.match(connectivityViewSource, /data-fdr-connectivity-target="syncProgress"/)
+assert.match(connectivityViewSource, /data-fdr-connectivity-target="syncNotice"/)
 assert.doesNotMatch(connectivityViewSource, /data-turbo-permanent/)
+assert.match(connectivitySource, /NOT_CONNECTED: \["Not connected", "disconnected"\]/)
+assert.match(connectivitySource, /CONNECTED: \["Connected", "ready"\]/)
+assert.match(connectivitySource, /ERROR: \["Error", "error"\]/)
+assert.doesNotMatch(connectivitySource, /setTransportStatus\(this\.(?:usb|ble|wifi)StatusTarget/)
 assert.match(connectivitySource, /registerUsbPageRelease\(\(\) => this\.disconnectUsb\(\)\)/)
+assert.match(connectivitySource, /connectUsbClient\(port, session, client\)/)
+assert.match(connectivitySource, /error\?\.usbConnectionTimedOut/)
+assert.match(connectivitySource, /client !== this\.usbClient/)
+assert.match(connectivitySource, /pollInFlight/)
+assert.match(connectivitySource, /USB_TRANSFER_RECOVERY_ATTEMPTS = 3/)
+assert.match(connectivitySource, /UsbMessage\.NEXT_FILE/)
+assert.match(connectivitySource, /UsbMessage\.READ_CHUNK/)
+assert.match(connectivitySource, /UsbMessage\.ACK_FILE/)
+assert.match(connectivitySource, /USB_TRANSFER_REQUEST_TYPES\.has\(error\.usbRequestType\)/)
+assert.match(connectivitySource, /transferRecoveryAttempt: nextTransferRecoveryAttempt/)
+assert.match(connectivitySource, /void partial\.remove\(\)\.catch/)
 assert.match(wifiConnectivitySource, /registerUsbPageRelease\(\(\) => this\.disconnectUsb\(\)\)/)
 assert.match(signalWorkspaceSource, /registerUsbPageRelease\(\(\) => this\.stopSerial\(\)\)/)
 
@@ -85,6 +103,9 @@ assert.equal(protocol.UsbMessage.ERASE_RECORDINGS_DATA, 32)
 assert.equal(protocol.UsbCapability.ERASE_RECORDINGS, 1 << 10)
 assert.equal(protocol.USB_CHUNK_SIZE, 4096)
 assert.equal(protocol.USB_CONNECTION_TIMEOUT_MS, 10_000)
+assert.equal(protocol.USB_CONNECTION_ATTEMPTS, 2)
+assert.equal(protocol.USB_CONNECTION_RETRY_DELAY_MS, 250)
+assert.equal(protocol.USB_SERIAL_BUFFER_SIZE, 64 * 1024)
 assert.equal(protocol.USB_REQUEST_TIMEOUT_MS, 30_000)
 assert.equal(protocol.USB_FILE_PREPARATION_TIMEOUT_MS, 120_000)
 assert.equal(protocol.USB_ERASE_RECORDINGS_TIMEOUT_MS, 120_000)
@@ -96,6 +117,24 @@ setTimeout(() => {
   releasedPort.writable.locked = false
 }, 5)
 await protocol.waitForUsbPortAvailability(releasedPort, { timeoutMs: 100 })
+
+let openedSerialOptions
+const bufferedReader = { async cancel() {}, releaseLock() {} }
+const bufferedWriter = { releaseLock() {} }
+const bufferedPort = {
+  readable: null,
+  writable: null,
+  async open(options) {
+    openedSerialOptions = options
+    this.readable = { getReader: () => bufferedReader }
+    this.writable = { getWriter: () => bufferedWriter }
+  },
+  async close() {}
+}
+const bufferedClient = new protocol.UsbFdrClient(bufferedPort)
+await bufferedClient.open()
+assert.deepEqual(openedSerialOptions, { baudRate: 115200, bufferSize: 64 * 1024 })
+await bufferedClient.close()
 
 await assert.rejects(
   protocol.waitForUsbPortAvailability(
@@ -125,7 +164,12 @@ const latePort = {
 const lateClient = new protocol.UsbFdrClient(latePort)
 await assert.rejects(
   lateClient.connect({ timeoutMs: 5 }),
-  { message: "USB connection timed out after 10 seconds. Disconnect and reconnect the recorder, then try again." }
+  (error) => error.message === "Chrome could not open the USB-C port within 1 second. Close other Sillage pages, then reconnect the recorder and try again."
+    && error.timeoutMs === 5
+    && error.usbConnectionAttempt === 1
+    && error.usbConnectionAttempts === 1
+    && error.usbConnectionStage === "opening"
+    && error.usbConnectionTimedOut === true
 )
 releaseUsbOpen()
 await new Promise((resolve) => setTimeout(resolve, 0))
@@ -142,12 +186,24 @@ stalledHelloClient.performClose = async () => {
 }
 await assert.rejects(
   stalledHelloClient.connect({ timeoutMs: 5 }),
-  { message: "USB connection timed out after 10 seconds. Disconnect and reconnect the recorder, then try again." }
+  (error) => error.message === "The recorder did not answer over USB-C within 1 second. Keep it connected and try again."
+    && error.usbConnectionStage === "handshake"
+    && error.usbConnectionTimedOut === true
 )
 const repeatedClose = stalledHelloClient.close()
 assert.equal(stalledHelloCloseCount, 1)
 finishStalledHelloClose()
 await repeatedClose
+
+assert.equal(
+  protocol.formatUsbErrorDetails(Object.assign(new Error(), {
+    usbConnectionAttempt: 2,
+    usbConnectionAttempts: 2,
+    usbConnectionStage: "handshake",
+    usbConnectionTimedOut: true
+  })),
+  "Web Serial · handshake · attempt 2/2"
+)
 
 let unopenedPortCloseCount = 0
 const unopenedPortClient = new protocol.UsbFdrClient({

@@ -20,6 +20,9 @@ export {
 } from "exs1_contract"
 
 export const USB_CONNECTION_TIMEOUT_MS = 10_000
+export const USB_CONNECTION_ATTEMPTS = 2
+export const USB_CONNECTION_RETRY_DELAY_MS = 250
+export const USB_SERIAL_BUFFER_SIZE = 64 * 1024
 export const USB_REQUEST_TIMEOUT_MS = 30_000
 export const USB_FILE_PREPARATION_TIMEOUT_MS = 120_000
 export const USB_ERASE_RECORDINGS_TIMEOUT_MS = 120_000
@@ -34,8 +37,12 @@ export const USB_PORT_RELEASE_TIMEOUT_MS = 2_000
  *   recorderRequestType?: number,
  *   recorderWifiCommand?: number,
  *   recorderWifiResult?: number,
+ *   usbConnectionAttempt?: number,
+ *   usbConnectionAttempts?: number,
  *   timeoutMs?: number,
+ *   usbConnectionStage?: "opening" | "handshake",
  *   usbConnectionLost?: boolean,
+ *   usbConnectionTimedOut?: boolean,
  *   usbRequestTimedOut?: boolean,
  *   usbRequestType?: number
  * }} FdrProtocolError
@@ -46,7 +53,7 @@ export const USB_PORT_RELEASE_TIMEOUT_MS = 2_000
  * @typedef {Object} UsbSerialPort
  * @property {ReadableStream<Uint8Array> | null} readable
  * @property {WritableStream<Uint8Array> | null} writable
- * @property {(options: { baudRate: number }) => Promise<void>} open
+ * @property {(options: { baudRate: number, bufferSize: number }) => Promise<void>} open
  * @property {() => Promise<void>} close
  */
 /**
@@ -72,7 +79,6 @@ export const USB_PORT_RELEASE_TIMEOUT_MS = 2_000
 /** @typedef {{ heartbeatUrl: string }} WifiSillageInput */
 /** @typedef {{ wifi: (payload: Uint8Array) => Promise<Uint8Array> }} UsbWifiTransport */
 
-const USB_CONNECTION_TIMEOUT_MESSAGE = "USB connection timed out after 10 seconds. Disconnect and reconnect the recorder, then try again."
 const USB_PORT_BUSY_MESSAGE = "USB-C is still in use by another Sillage page. Wait a moment, then try again."
 const USB_CONNECTION_CLOSED_MESSAGE = "The recorder disconnected during synchronization. The source recording and any partial transfer are preserved; reconnect it to resume."
 
@@ -187,7 +193,9 @@ export class UsbFdrClient {
 
   async open() {
     await waitForUsbPortAvailability(this.port)
-    if (!this.port.readable || !this.port.writable) await this.port.open({ baudRate: 115200 })
+    if (!this.port.readable || !this.port.writable) {
+      await this.port.open({ baudRate: 115200, bufferSize: USB_SERIAL_BUFFER_SIZE })
+    }
     await waitForUsbPortAvailability(this.port)
     const readable = this.port.readable
     const writable = this.port.writable
@@ -197,22 +205,29 @@ export class UsbFdrClient {
     this.frameReader = new FrameReader(this.reader)
   }
 
-  async connect({ timeoutMs = USB_CONNECTION_TIMEOUT_MS } = {}) {
+  async connect({
+    timeoutMs = USB_CONNECTION_TIMEOUT_MS,
+    attempt = 1,
+    attempts = 1
+  } = {}) {
     let timedOut = false
     let timeoutId
+    /** @type {"opening" | "handshake"} */
+    let stage = "opening"
     const connection = (async () => {
       await this.open()
       if (timedOut) {
         await this.close()
-        throw new Error(USB_CONNECTION_TIMEOUT_MESSAGE)
+        throw usbConnectionTimeoutError(stage, timeoutMs, attempt, attempts)
       }
+      stage = "handshake"
       return this.hello()
     })()
     const timeout = new Promise((_, reject) => {
       timeoutId = globalThis.setTimeout(() => {
         timedOut = true
         void this.close()
-        reject(new Error(USB_CONNECTION_TIMEOUT_MESSAGE))
+        reject(usbConnectionTimeoutError(stage, timeoutMs, attempt, attempts))
       }, timeoutMs)
     })
 
@@ -447,6 +462,29 @@ export class UsbFdrClient {
 function usbConnectionError() {
   const error = /** @type {FdrProtocolError} */ (new Error(USB_CONNECTION_CLOSED_MESSAGE))
   error.usbConnectionLost = true
+  return error
+}
+
+/**
+ * @param {"opening" | "handshake"} stage
+ * @param {number} timeoutMs
+ * @param {number} attempt
+ * @param {number} attempts
+ */
+function usbConnectionTimeoutError(stage, timeoutMs, attempt, attempts) {
+  const seconds = Math.ceil(timeoutMs / 1000)
+  const duration = `${seconds} second${seconds === 1 ? "" : "s"}`
+  const message = stage === "opening"
+    ? `Chrome could not open the USB-C port within ${duration}. Close other Sillage pages, then reconnect the recorder and try again.`
+    : attempts > 1
+      ? `The recorder did not answer after ${attempts} USB connection attempts. Keep it connected and try again.`
+      : `The recorder did not answer over USB-C within ${duration}. Keep it connected and try again.`
+  const error = /** @type {FdrProtocolError} */ (new Error(message))
+  error.timeoutMs = timeoutMs
+  error.usbConnectionAttempt = attempt
+  error.usbConnectionAttempts = attempts
+  error.usbConnectionStage = stage
+  error.usbConnectionTimedOut = true
   return error
 }
 
@@ -990,6 +1028,9 @@ export function parseUsbDeviceError(payload) {
 
 /** @param {FdrProtocolError} error */
 export function formatUsbErrorDetails(error) {
+  if (error?.usbConnectionTimedOut) {
+    return `Web Serial · ${error.usbConnectionStage} · attempt ${error.usbConnectionAttempt}/${error.usbConnectionAttempts}`
+  }
   if (!Number.isInteger(error?.recorderCode)) return ""
   const errorName = enumName(UsbErrorCode, error.recorderCode) || "UNKNOWN_ERROR"
   const requestName = enumName(UsbMessage, error.recorderRequestType) || "UNKNOWN_REQUEST"
