@@ -10,6 +10,7 @@ class DeviceActivity < ApplicationRecord
     "wifi_profiles_reordered" => "Wi-Fi priority changed",
     "wifi_credential_updated" => "Wi-Fi credential updated",
     "connectivity_provisioned" => "Connectivity applied to FDR",
+    "recording_mode_requested" => "Persistent recording mode requested",
     "mavlink_identity_observed" => "MAVLink identity observed",
     "installed_in_aircraft" => "Physical asset installed",
     "removed_from_aircraft" => "Physical asset removed",
@@ -54,6 +55,9 @@ class DeviceActivity < ApplicationRecord
       "#{details["ssid"]} moved to priority #{details["position"].to_i + 1}."
     when "connectivity_provisioned"
       "#{details["profile_count"]} Wi-Fi profiles applied to #{details["device_id"]}."
+    when "recording_mode_requested"
+      state = ActiveModel::Type::Boolean.new.cast(details["requested_enabled"]) ? "on" : "off"
+      "Recording mode #{state} requested over #{details["transport"].to_s.upcase}."
     when "mavlink_identity_observed"
       [ details["mavlink_system_id"] && "System #{details["mavlink_system_id"]}",
         details["mavlink_component_id"] && "component #{details["mavlink_component_id"]}" ].compact.join(" · ")

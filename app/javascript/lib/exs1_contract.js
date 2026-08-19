@@ -63,7 +63,8 @@ export const EraseRecordingsResult = Object.freeze({
 export const RecordingControlResult = Object.freeze({
   OK: 0,
   STORAGE_ERROR: 1,
-  INVALID_DATA: 2
+  INVALID_DATA: 2,
+  UNAUTHORIZED: 3
 })
 export const UsbErrorCode = Object.freeze({
   BAD_FRAME: 1,

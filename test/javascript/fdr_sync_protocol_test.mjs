@@ -72,6 +72,12 @@ assert.match(connectivitySource, /Saved choice: on\. Recording is paused while U
 assert.match(connectivitySource, /Saved choice: off\. Recording remains off after disconnection and restart until you turn it on here\./)
 assert.match(connectivitySource, /this\.recordingActionError = error\.message/)
 assert.match(connectivitySource, /if \(this\.recordingActionError\)/)
+const recordingControlSource = connectivitySource.split("  renderRecordingControl() {", 2)[1]
+  .split("\n  showUsbSyncError(", 1)[0]
+assert.doesNotMatch(recordingControlSource, /this\.usbBusy/)
+assert.doesNotMatch(recordingControlSource, /this\.usbSyncActive/)
+assert.match(connectivitySource, /new BleRecordingClient\(characteristic\)\.set/)
+assert.match(connectivitySource, /this\.recordingCommandUrlValue/)
 assert.match(connectivityViewSource, /class="signal-fdr-synchronization"/)
 assert.match(connectivityViewSource, /data-fdr-connectivity-target="syncProgress"/)
 assert.match(connectivityViewSource, /data-fdr-connectivity-target="syncNotice"/)
@@ -115,6 +121,8 @@ assert.equal(protocol.UsbMessage.RECORDING_DATA, 34)
 assert.equal(protocol.UsbMessage.SET_RECORDING, 35)
 assert.equal(protocol.UsbCapability.ERASE_RECORDINGS, 1 << 10)
 assert.equal(protocol.UsbCapability.RECORDING_CONTROL, 1 << 11)
+assert.equal(protocol.BleCapability.RECORDING_CONTROL, 1 << 3)
+assert.equal(protocol.BleUuid.recording, "4f58a109-7b6d-4d0c-9f2a-5f4452440001")
 assert.equal(protocol.USB_CHUNK_SIZE, 4096)
 assert.equal(protocol.USB_CONNECTION_TIMEOUT_MS, 10_000)
 assert.equal(protocol.USB_CONNECTION_ATTEMPTS, 2)
@@ -328,6 +336,24 @@ assert.deepEqual(recordingRequests, [
     expectedTypes: [protocol.UsbMessage.RECORDING_DATA]
   }
 ])
+
+let bleRecordingValue = recordingPayload
+const bleRecordingWrites = []
+const bleRecordingClient = new protocol.BleRecordingClient({
+  async readValue() { return new DataView(bleRecordingValue.buffer) },
+  async writeValueWithResponse(value) {
+    bleRecordingWrites.push([...new Uint8Array(value)])
+    bleRecordingValue = Uint8Array.from([1, value[1], value[1], 0])
+  }
+})
+assert.equal((await bleRecordingClient.read()).requestedEnabled, true)
+assert.deepEqual(await bleRecordingClient.set(false), {
+  version: 1,
+  requestedEnabled: false,
+  effectiveEnabled: false,
+  result: protocol.RecordingControlResult.OK
+})
+assert.deepEqual(bleRecordingWrites, [[1, 0, 0, 0]])
 const failedRecordingPayload = Uint8Array.from([1, 1, 0, protocol.RecordingControlResult.STORAGE_ERROR])
 assert.throws(
   () => protocol.parseRecordingControl(failedRecordingPayload),

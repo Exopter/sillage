@@ -3,6 +3,7 @@ require "openssl"
 
 class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
   SIGNATURE_DOMAIN = "exopter/fdr/sillage-heartbeat/v1\0".b
+  COMMAND_SIGNATURE_DOMAIN = "exopter/fdr/sillage-command/v1\0".b
   BLE_SESSION_DOMAIN = "exopter/fdr/ble-session/v1\0".b
 
   setup do
@@ -11,6 +12,7 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
       device_id: "EXOFDR-A172E0"
     )
     @key = @recorder.ensure_fdr_auth_key!
+    @recorder.update!(fdr_auth_key_installed_at: Time.current)
   end
 
   test "recorder publishes a signed Sillage heartbeat without a browser session" do
@@ -91,6 +93,89 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
     assert_equal [ @recorder.device_id, second_recorder.device_id ].sort, device_ids.sort
   end
 
+  test "operator sends a signed Wi-Fi recording choice and receives the recorder acknowledgement" do
+    publish_recording_heartbeat
+    sign_in_as users(:operator)
+
+    post api_v1_fdr_recording_commands_path,
+      params: { device_id: @recorder.device_id, enabled: false },
+      as: :json
+
+    assert_response :accepted
+    sequence = response.parsed_body.fetch("sequence")
+    command = @recorder.fdr_recording_commands.find(sequence)
+    assert_not command.requested_enabled
+    assert_equal "pending", command.status
+
+    delivery = heartbeat_payload.merge(
+      recording_control: recording_control_payload
+    ).to_json
+    post api_v1_fdr_sillage_heartbeat_path,
+      params: delivery,
+      headers: heartbeat_headers(delivery)
+
+    assert_response :accepted
+    assert_equal sequence.to_s, response.headers["X-FDR-Command-Sequence"]
+    assert_equal "0", response.headers["X-FDR-Recording-Enabled"]
+    canonical = [ sequence, 0 ].pack("Q<C")
+    assert_equal OpenSSL::HMAC.hexdigest(
+      "SHA256", @key, COMMAND_SIGNATURE_DOMAIN + canonical
+    ), response.headers["X-FDR-Command-Signature"]
+
+    acknowledgement = heartbeat_payload.merge(
+      recording_control: recording_control_payload(
+        requested_enabled: false,
+        effective_enabled: false,
+        last_command_sequence: sequence,
+        last_command_result: 0
+      )
+    ).to_json
+    post api_v1_fdr_sillage_heartbeat_path,
+      params: acknowledgement,
+      headers: heartbeat_headers(acknowledgement)
+
+    assert_response :accepted
+    assert_nil response.headers["X-FDR-Command-Sequence"]
+    assert_equal "acknowledged", command.reload.status
+    assert_equal 0, command.result
+    assert command.acknowledged_at
+
+    get api_v1_fdr_sillage_heartbeats_path, as: :json
+    exposed = response.parsed_body.fetch("heartbeats").sole.fetch("recording_command")
+    assert_equal sequence, exposed.fetch("sequence")
+    assert_equal "acknowledged", exposed.fetch("status")
+  end
+
+  test "new manual Wi-Fi choice supersedes an unacknowledged choice" do
+    publish_recording_heartbeat
+    sign_in_as users(:operator)
+
+    post api_v1_fdr_recording_commands_path,
+      params: { device_id: @recorder.device_id, enabled: false }, as: :json
+    first = @recorder.fdr_recording_commands.find(response.parsed_body.fetch("sequence"))
+
+    post api_v1_fdr_recording_commands_path,
+      params: { device_id: @recorder.device_id, enabled: true }, as: :json
+    second = @recorder.fdr_recording_commands.find(response.parsed_body.fetch("sequence"))
+
+    assert_equal "superseded", first.reload.status
+    assert_equal "pending", second.status
+    assert second.requested_enabled
+  end
+
+  test "Wi-Fi recording command requires a fresh capable recorder and a boolean choice" do
+    sign_in_as users(:operator)
+
+    post api_v1_fdr_recording_commands_path,
+      params: { device_id: @recorder.device_id, enabled: false }, as: :json
+    assert_response :conflict
+
+    publish_recording_heartbeat
+    post api_v1_fdr_recording_commands_path,
+      params: { device_id: @recorder.device_id, enabled: "off" }, as: :json
+    assert_response :unprocessable_entity
+  end
+
   private
 
   def heartbeat_payload(recorder = @recorder)
@@ -130,6 +215,28 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
     {
       "CONTENT_TYPE" => "application/json",
       "X-FDR-Signature" => OpenSSL::HMAC.hexdigest("SHA256", key, SIGNATURE_DOMAIN + payload)
+    }
+  end
+
+  def publish_recording_heartbeat
+    payload = heartbeat_payload.merge(
+      recording_control: recording_control_payload
+    ).to_json
+    post api_v1_fdr_sillage_heartbeat_path,
+      params: payload,
+      headers: heartbeat_headers(payload)
+    assert_response :accepted
+  end
+
+  def recording_control_payload(requested_enabled: true,
+                                effective_enabled: true,
+                                last_command_sequence: 0,
+                                last_command_result: 0)
+    {
+      requested_enabled:,
+      effective_enabled:,
+      last_command_sequence:,
+      last_command_result:
     }
   end
 end

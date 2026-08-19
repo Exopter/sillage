@@ -4,6 +4,7 @@
          data-fdr-connectivity-upload-url-value="<%= api_v1_fdr_syncs_path %>"
          data-fdr-connectivity-registration-url-value="<%= api_v1_fdr_registration_path %>"
          data-fdr-connectivity-authentication-url-value="<%= api_v1_fdr_authentication_path %>"
+         data-fdr-connectivity-recording-command-url-value="<%= api_v1_fdr_recording_commands_path %>"
          data-fdr-connectivity-sillage-heartbeat-url-value="<%= api_v1_fdr_sillage_heartbeats_path %>">
   <header class="signal-fdr-head">
     <div>
@@ -44,6 +45,7 @@
               <span>Capabilities</span>
               <ul>
                 <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Live status, settings and diagnostics</span></li>
+                <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Authenticated persistent recording control</span></li>
                 <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Telemetry synchronization, persistent recording control and authenticated recording erasure</span></li>
               </ul>
             </div>
@@ -116,6 +118,7 @@
               <ul>
                 <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Signed live status and diagnostics</span></li>
                 <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Automatic resumable recording upload</span></li>
+                <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Authenticated persistent recording control</span></li>
               </ul>
             </div>
           </div>
@@ -173,7 +176,6 @@
           </div>
         </dd>
       </div>
-      <div><dt>Security</dt><dd data-fdr-connectivity-target="security">—</dd></div>
     </dl>
   </section>
 
@@ -202,7 +204,7 @@
                   data-action="fdr-connectivity#toggleRecording"
                   data-fdr-connectivity-target="recordingButton">Turn recording off</button>
         </div>
-        <small class="signal-fdr-config-result" data-fdr-connectivity-target="recordingResult">Connect over USB-C to inspect or change the persistent recording mode.</small>
+        <small class="signal-fdr-config-result" data-fdr-connectivity-target="recordingResult">Connect over USB-C, BLE, or Wi-Fi to inspect or change the persistent recording mode.</small>
       </div>
 
       <div class="signal-fdr-diagnostics">

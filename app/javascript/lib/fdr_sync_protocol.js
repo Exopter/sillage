@@ -98,7 +98,15 @@ export const BleUuid = Object.freeze({
   debug: "4f58a104-7b6d-4d0c-9f2a-5f4452440001",
   device: "4f58a105-7b6d-4d0c-9f2a-5f4452440001",
   wifi: "4f58a106-7b6d-4d0c-9f2a-5f4452440001",
-  authentication: "4f58a107-7b6d-4d0c-9f2a-5f4452440001"
+  authentication: "4f58a107-7b6d-4d0c-9f2a-5f4452440001",
+  recording: "4f58a109-7b6d-4d0c-9f2a-5f4452440001"
+})
+
+export const BleCapability = Object.freeze({
+  WIFI_PROFILES: 1,
+  WIFI_SCAN: 2,
+  SILLAGE_AUTH: 4,
+  RECORDING_CONTROL: 8
 })
 
 export const WifiCommand = Object.freeze({
@@ -858,6 +866,27 @@ export class BleAuthenticationClient {
   }
 }
 
+export class BleRecordingClient {
+  /** @param {GattCharacteristicLike} characteristic */
+  constructor(characteristic) {
+    this.characteristic = characteristic
+  }
+
+  async read() {
+    return parseRecordingControl(await this.characteristic.readValue())
+  }
+
+  /** @param {boolean} enabled */
+  async set(enabled) {
+    const payload = new Uint8Array(Exs1Layout.RECORDING_CONTROL)
+    payload[0] = 1
+    payload[1] = enabled ? 1 : 0
+    if (this.characteristic.writeValueWithResponse) await this.characteristic.writeValueWithResponse(payload)
+    else await this.characteristic.writeValue(payload)
+    return this.read()
+  }
+}
+
 export class BleWifiClient {
   /** @param {GattCharacteristicLike | null} characteristic */
   constructor(characteristic) {
@@ -993,6 +1022,9 @@ export function parseRecordingControl(payload) {
   const result = view.getUint8(3)
   if (result === RecordingControlResult.STORAGE_ERROR) {
     throw new Error("The recorder could not save the persistent recording mode. The previous choice remains active.")
+  }
+  if (result === RecordingControlResult.UNAUTHORIZED) {
+    throw new Error("Sillage has not authenticated this recorder session. Reconnect it and try again.")
   }
   if (result !== RecordingControlResult.OK) {
     throw new Error("The recorder rejected the recording mode. Update Sillage and the recorder firmware to compatible versions.")

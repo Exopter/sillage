@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_18_170000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -120,6 +120,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_18_170000) do
     t.datetime "updated_at", null: false
     t.index ["assembly_id"], name: "index_embedded_devices_on_assembly_id", unique: true
     t.index ["device_id"], name: "index_embedded_devices_on_device_id", unique: true, where: "device_id IS NOT NULL AND device_id != ''"
+  end
+
+  create_table "fdr_recording_commands", force: :cascade do |t|
+    t.datetime "acknowledged_at"
+    t.datetime "created_at", null: false
+    t.integer "embedded_device_id", null: false
+    t.integer "requested_by_id", null: false
+    t.boolean "requested_enabled", null: false
+    t.integer "result"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.index ["embedded_device_id", "status"], name: "index_fdr_recording_commands_on_embedded_device_id_and_status"
+    t.index ["embedded_device_id"], name: "index_fdr_recording_commands_on_embedded_device_id"
+    t.index ["requested_by_id"], name: "index_fdr_recording_commands_on_requested_by_id"
   end
 
   create_table "fdr_wifi_profiles", force: :cascade do |t|
@@ -443,6 +457,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_18_170000) do
   add_foreign_key "device_activities", "embedded_devices"
   add_foreign_key "device_activities", "users", column: "actor_id"
   add_foreign_key "embedded_devices", "assemblies"
+  add_foreign_key "fdr_recording_commands", "embedded_devices"
+  add_foreign_key "fdr_recording_commands", "users", column: "requested_by_id"
   add_foreign_key "fdr_wifi_profiles", "embedded_devices"
   add_foreign_key "fdr_wifi_profiles", "wifi_credentials"
   add_foreign_key "fdr_wifi_uploads", "embedded_devices"

@@ -182,7 +182,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select ".signal-fdr-capabilities-trigger[aria-describedby]", count: 3
     assert_select ".signal-fdr-capabilities-tooltip[role='tooltip']", count: 3
     assert_select ".signal-fdr-capabilities-tooltip > span", text: "Capabilities", count: 3
-    assert_select ".signal-fdr-capabilities-tooltip li", count: 5
+    assert_select ".signal-fdr-capabilities-tooltip li", count: 7
     assert_select ".signal-fdr-capabilities-tooltip", text: /Telemetry synchronization/, count: 1
     assert_select ".signal-fdr-capabilities-trigger[aria-label='USB-C capabilities'][aria-describedby='usb-capabilities-tooltip']"
     assert_select "#usb-capabilities-tooltip[role='tooltip']"
@@ -217,7 +217,8 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-fdr-connectivity-target='recorderSource'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderAlert'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderAlertTechnical'][hidden]"
-    assert_select ".signal-fdr-status-list > div", count: 7
+    assert_select ".signal-fdr-status-list > div", count: 6
+    assert_select ".signal-fdr-status-list dt", text: "Security", count: 0
     assert_select ".signal-fdr-status-list [data-fdr-connectivity-target='recording']", text: "—"
     assert_select ".signal-fdr-status-list dd.signal-fdr-synchronization" do
       synchronization_children = css_select(".signal-fdr-status-list dd.signal-fdr-synchronization > *")

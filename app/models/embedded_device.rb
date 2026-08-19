@@ -11,6 +11,7 @@ class EmbeddedDevice < ApplicationRecord
   has_one :signal_presence, dependent: :destroy
   has_many :fdr_wifi_profiles, -> { ordered }, dependent: :destroy
   has_many :fdr_wifi_uploads, dependent: :restrict_with_error
+  has_many :fdr_recording_commands, dependent: :restrict_with_error
   has_many :wifi_credentials, through: :fdr_wifi_profiles
   has_many :device_activities, -> { recent }, dependent: :restrict_with_error
 
