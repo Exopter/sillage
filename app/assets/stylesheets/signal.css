@@ -1082,6 +1082,36 @@
   transform: translateX(18px);
 }
 
+.signal-fdr-recording-control[data-state="on"] .signal-fdr-recording-switch-track::after {
+  position: absolute;
+  inset: -3px;
+  border: 1px solid var(--ds-teal);
+  border-radius: inherit;
+  animation: signal-fdr-recording-pulse 1.8s var(--ease-out) infinite;
+  content: "";
+  pointer-events: none;
+}
+
+@keyframes signal-fdr-recording-pulse {
+  0% {
+    opacity: .5;
+    transform: scale(.94);
+  }
+
+  72%,
+  100% {
+    opacity: 0;
+    transform: scale(1.16);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signal-fdr-recording-control[data-state="on"] .signal-fdr-recording-switch-track::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
 .signal-fdr-recording-switch-label {
   min-width: 29px;
   font: 700 10px/1 var(--font-mono);
