@@ -3,7 +3,7 @@ import { aircraftConnectionLabel, currentAircraftConnections } from "aircraft_co
 
 const TRANSPORT_LABELS = {
   "usb-c": "USB-C",
-  ble: "Bluetooth Low Energy",
+  ble: "Bluetooth",
   wifi: "Wi-Fi",
   "ground-radio": "ground radio"
 }

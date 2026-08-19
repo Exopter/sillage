@@ -170,15 +170,24 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select ".signal-fdr-transport", count: 3
     assert_select ".signal-fdr-channel-head.signal-fdr-channel-head--usb", count: 1
     assert_select ".signal-fdr-channel-identity .signal-k", text: /\AUSB-C\z/, count: 1
+    assert_select ".signal-fdr-channel-identity .signal-k", text: /\ABluetooth\z/, count: 1
+    assert_select ".signal-fdr-channel-identity .signal-k", text: /\AWi-Fi\z/, count: 1
     assert_select "button.signal-tool-button:not(.is-primary)[data-action='fdr-connectivity#connectUsb']", text: "Connect USB-C"
     assert_select "button[data-action='fdr-connectivity#connectBle']", text: "Connect BLE"
     assert_select "button.signal-tool-button.signal-fdr-auto-label[data-fdr-connectivity-target='wifiAutoLabel'][aria-label='Automatic Wi-Fi connection: waiting for signed Sillage heartbeat'][disabled]", text: "Automatic"
+    wifi_configuration_label = "Configure Wi-Fi for #{@fdr.technical_reference}"
+    assert_select ".signal-fdr-transport:nth-of-type(3) a.signal-fdr-wifi-settings-link[data-fdr-connectivity-target='wifiLink'][href='#{connectivity_forge_fdr_path(@fdr)}'][aria-label='#{wifi_configuration_label}'][title='#{wifi_configuration_label}']" do
+      assert_select "svg"
+      assert_select ".sr-only[data-fdr-connectivity-target='wifiLinkLabel']", text: wifi_configuration_label
+    end
     assert_select "[data-fdr-connectivity-target='usbStatus']", text: "Not connected"
     assert_select "[data-fdr-connectivity-target='bleStatus']", text: "Not connected"
     assert_select "[data-fdr-connectivity-target='wifiStatus']", text: "Not connected"
     assert_select "[data-fdr-connectivity-target='wifiDevice']", text: "No recorder detected"
     assert_select ".signal-fdr-transport-meta", count: 0
     assert_select ".signal-fdr-capabilities", count: 3
+    assert_select ".signal-fdr-channel-name > .signal-fdr-capabilities", count: 3
+    assert_select ".signal-fdr-device-row .signal-fdr-capabilities", count: 0
     assert_select ".signal-fdr-capabilities-trigger[aria-describedby]", count: 3
     assert_select ".signal-fdr-capabilities-tooltip[role='tooltip']", count: 3
     assert_select ".signal-fdr-capabilities-tooltip > span", text: "Capabilities", count: 3
@@ -186,7 +195,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select ".signal-fdr-capabilities-tooltip", text: /Telemetry synchronization/, count: 1
     assert_select ".signal-fdr-capabilities-trigger[aria-label='USB-C capabilities'][aria-describedby='usb-capabilities-tooltip']"
     assert_select "#usb-capabilities-tooltip[role='tooltip']"
-    assert_select ".signal-fdr-capabilities-trigger[aria-label='Bluetooth Low Energy capabilities'][aria-describedby='ble-capabilities-tooltip']"
+    assert_select ".signal-fdr-capabilities-trigger[aria-label='Bluetooth capabilities'][aria-describedby='ble-capabilities-tooltip']"
     assert_select "#ble-capabilities-tooltip[role='tooltip']"
     assert_select ".signal-fdr-capabilities-trigger[aria-label='Wi-Fi capabilities'][aria-describedby='wifi-capabilities-tooltip']"
     assert_select "#wifi-capabilities-tooltip[role='tooltip']"
@@ -217,10 +226,21 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-fdr-connectivity-target='recorderSource'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderAlert'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderAlertTechnical'][hidden]"
-    assert_select ".signal-fdr-status-list > div", count: 6
+    assert_select ".signal-fdr-status-list > div", count: 5
+    assert_equal %w[Recorder Synchronization Firmware Health Storage], css_select(".signal-fdr-status-list dt").map(&:text)
     assert_select ".signal-fdr-status-list dt", text: "Security", count: 0
-    assert_select ".signal-fdr-status-list [data-fdr-connectivity-target='recording']", text: "—"
-    assert_select ".signal-fdr-status-list dd.signal-fdr-synchronization" do
+    assert_select ".signal-fdr-overview-head .signal-fdr-recording-control[data-fdr-connectivity-target='recordingControl'][data-state='unavailable'][role='group']", count: 1 do
+      assert_select "strong#recording-title", text: "Recording"
+      assert_select ".signal-k", count: 0
+      assert_select "[data-fdr-connectivity-target='recording']", count: 0
+      assert_select "button.signal-fdr-recording-switch[role='switch'][aria-checked='false'][aria-label='Recording mode unavailable'][data-action='fdr-connectivity#toggleRecording'][data-fdr-connectivity-target='recordingButton'][disabled]" do
+        assert_select ".signal-fdr-recording-switch-track"
+        assert_select ".signal-fdr-recording-switch-thumb"
+        assert_select "[data-fdr-connectivity-target='recordingButtonLabel']", text: "Unavailable"
+      end
+      assert_select "[data-fdr-connectivity-target='recordingResult'][role='status'][hidden]", text: ""
+    end
+    assert_select ".signal-fdr-status-list .signal-fdr-status-sync dd.signal-fdr-synchronization" do
       synchronization_children = css_select(".signal-fdr-status-list dd.signal-fdr-synchronization > *")
       assert_equal %w[lastSync syncProgress syncNotice], synchronization_children.map { |node| node["data-fdr-connectivity-target"] }
       assert_select "[data-fdr-connectivity-target='lastSync']", text: "—"
@@ -230,19 +250,33 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
       assert_select "[data-fdr-connectivity-target='syncTechnical'][hidden]"
     end
     assert_select ".signal-fdr-tools", count: 1
-    assert_select "select[data-fdr-connectivity-target='configInterval'][disabled]"
-    assert_select "button[data-fdr-connectivity-target='configButton'][disabled]"
-    assert_select "button[data-action='fdr-connectivity#toggleRecording'][data-fdr-connectivity-target='recordingButton'][disabled]", text: "Turn recording off"
-    assert_select "[data-fdr-connectivity-target='recordingResult']", text: /persistent recording mode/
+    assert_select ".signal-fdr-tools-summary", text: /Advanced diagnostics/
+    assert_select ".signal-fdr-tools-body--diagnostics h3", text: "Engineering log"
+    assert_select "select[data-fdr-connectivity-target='configInterval']", count: 0
+    assert_select "button[data-fdr-connectivity-target='configButton']", count: 0
+    assert_select "[data-action='fdr-connectivity#saveConfig']", count: 0
+    assert_select ".signal-fdr-wifi-entry", count: 0
+    assert_select "[data-fdr-connectivity-target='wifiDescription']", count: 0
     assert_select "button[data-fdr-connectivity-target='debugButton'][disabled]"
-    assert_select ".signal-fdr-wifi-entry a[data-fdr-connectivity-target='wifiLink'][href='#{forge_fdrs_path}']", text: /Select recorder/
-    assert_select "[data-fdr-connectivity-target='wifiDescription']", text: /Manage saved networks/
     assert_select "[data-fdr-connectivity-target='recorderOnboarding'][hidden]" do
       assert_select "[data-fdr-connectivity-target='recorderOnboardingTitle']", text: "New recorder detected"
       assert_select "button[data-action='fdr-connectivity#onboardRecorder'][data-fdr-connectivity-target='wifiRegisterButton']", text: /Add and initialize recorder/
       assert_select "[data-fdr-connectivity-target='wifiRegistrationStatus']"
     end
     assert_select "details[data-fdr-connectivity-target='recorderTools']:not([open])"
+    assert_select "#registered-recorders"
+  end
+
+  test "Wi-Fi settings shortcut opens the only recorder connectivity page" do
+    get forge_fdrs_path
+
+    shortcut = css_select("a.signal-fdr-wifi-settings-link").sole
+    assert_equal connectivity_forge_fdr_path(@fdr), shortcut["href"]
+
+    get shortcut["href"]
+
+    assert_response :success
+    assert_select "a.is-active[aria-current='page'][href='#{connectivity_forge_fdr_path(@fdr)}']", text: "Connectivity"
   end
 
   test "Signal home excludes the visible FDR configuration manager" do

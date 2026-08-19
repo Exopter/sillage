@@ -2,7 +2,11 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 
 const source = await readFile(new URL("../../app/javascript/lib/aircraft_connection.js", import.meta.url), "utf8")
+const indicatorSource = await readFile(new URL("../../app/javascript/controllers/aircraft_connection_indicator_controller.js", import.meta.url), "utf8")
 const connection = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`)
+
+assert.match(indicatorSource, /ble: "Bluetooth"/)
+assert.doesNotMatch(indicatorSource, /Bluetooth Low Energy/)
 
 globalThis.window = { dispatchEvent() {} }
 globalThis.CustomEvent = class CustomEvent {

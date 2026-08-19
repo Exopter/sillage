@@ -4,7 +4,7 @@ module Api
   module V1
     class FdrWifiUploadsController < ApplicationController
       MAX_MANIFEST_BYTES = 4.kilobytes
-      MAX_CHUNK_BYTES = 64.kilobytes
+      MAX_CHUNK_BYTES = 256.kilobytes
 
       rescue_from FdrWifiUpload::OffsetMismatch, with: :render_offset_mismatch
 

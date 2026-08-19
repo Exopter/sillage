@@ -124,6 +124,32 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
   end
 
+  test "accepts 256 KiB performance chunks and rejects larger request bodies" do
+    oversized = "x".b * (Api::V1::FdrWifiUploadsController::MAX_CHUNK_BYTES + 1)
+    manifest_body = @manifest.merge(
+      file_index: 2,
+      size_bytes: oversized.bytesize,
+      sha256: Digest::SHA256.hexdigest(oversized)
+    ).to_json
+    post api_v1_fdr_wifi_uploads_path,
+      params: manifest_body,
+      headers: signed_headers(manifest_body, "create", content_type: "application/json")
+    assert_response :created
+    token = response.headers.fetch("X-FDR-Upload-Token")
+
+    patch chunk_api_v1_fdr_wifi_upload_path(token),
+      params: oversized,
+      headers: signed_headers(oversized, "chunk:#{token}:0", offset: 0)
+    assert_response :payload_too_large
+
+    chunk = oversized.byteslice(0, Api::V1::FdrWifiUploadsController::MAX_CHUNK_BYTES)
+    patch chunk_api_v1_fdr_wifi_upload_path(token),
+      params: chunk,
+      headers: signed_headers(chunk, "chunk:#{token}:0", offset: 0)
+    assert_response :success
+    assert_equal chunk.bytesize.to_s, response.headers.fetch("X-FDR-Upload-Offset")
+  end
+
   test "keeps a staged recording unacknowledged when final SHA verification fails" do
     manifest = @manifest.merge(sha256: "0" * 64)
     manifest_body = manifest.to_json

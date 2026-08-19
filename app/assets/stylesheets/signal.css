@@ -523,8 +523,7 @@
   line-height: 1.5;
 }
 
-.signal-fdr-transport small,
-.signal-fdr-config-result {
+.signal-fdr-transport small {
   margin: 0;
   color: var(--text-muted);
   font-size: 11px;
@@ -565,6 +564,7 @@
 }
 
 .signal-fdr-channel-head {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -581,6 +581,27 @@
 
 .signal-fdr-channel-actions [hidden] {
   display: none;
+}
+
+.signal-fdr-wifi-settings-link {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.signal-fdr-wifi-settings-link:hover,
+.signal-fdr-wifi-settings-link:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--surface-panel);
+  color: var(--ds-teal);
+  outline: 0;
 }
 
 .signal-fdr-channel-head--usb:has(
@@ -608,6 +629,16 @@
 
 .signal-fdr-channel-identity > div {
   min-width: 0;
+}
+
+.signal-fdr-channel-name {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.signal-fdr-channel-name > .signal-k {
+  margin-bottom: 0;
 }
 
 .signal-fdr-channel-icon {
@@ -667,15 +698,17 @@
 }
 
 .signal-fdr-capabilities {
-  position: relative;
+  position: static;
   z-index: 10;
+  display: flex;
   flex: 0 0 auto;
+  align-items: center;
 }
 
 .signal-fdr-capabilities-trigger {
   display: inline-flex;
-  width: 24px;
-  height: 24px;
+  width: 16px;
+  height: 16px;
   align-items: center;
   justify-content: center;
   padding: 0;
@@ -695,9 +728,11 @@
 
 .signal-fdr-capabilities-tooltip {
   position: absolute;
-  top: calc(100% + 7px);
-  right: 0;
-  width: min(260px, calc(100vw - 36px));
+  z-index: 20;
+  top: calc(100% + 3px);
+  right: auto;
+  left: 38px;
+  width: min(260px, calc(100% - 38px));
   padding: 10px 11px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
@@ -711,16 +746,7 @@
 }
 
 .signal-fdr-capabilities-tooltip::before {
-  position: absolute;
-  top: -5px;
-  right: 7px;
-  width: 8px;
-  height: 8px;
-  border-top: 1px solid var(--border-rule);
-  border-left: 1px solid var(--border-rule);
-  background: var(--surface-card);
-  content: "";
-  transform: rotate(45deg);
+  content: none;
 }
 
 .signal-fdr-capabilities:hover .signal-fdr-capabilities-tooltip,
@@ -860,6 +886,14 @@
   gap: 12px;
 }
 
+.signal-fdr-overview-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .signal-fdr-recorder-status {
   margin: 0;
   padding: 0 0 1px;
@@ -932,6 +966,130 @@
   background: var(--border-rule);
 }
 
+.signal-fdr-recording-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 6px 7px 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-card);
+  transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+}
+
+.signal-fdr-recording-control[data-state="on"] {
+  border-left-color: var(--ds-teal);
+  background: color-mix(in srgb, var(--ex-state-live-bg) 70%, var(--surface-card));
+}
+
+.signal-fdr-recording-control[data-state="paused"],
+.signal-fdr-recording-control[data-state="pending"] {
+  border-left-color: var(--ex-amber-500);
+  background: color-mix(in srgb, var(--ex-state-caution-bg) 72%, var(--surface-card));
+}
+
+.signal-fdr-recording-control[data-state="error"] {
+  border-left-color: var(--ex-red-600);
+  background: color-mix(in srgb, var(--ex-state-fault-bg) 72%, var(--surface-card));
+}
+
+.signal-fdr-recording-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.signal-fdr-recording-copy > strong {
+  margin: 0;
+  color: var(--text-strong);
+  font: 700 11px/1.2 var(--font-data);
+}
+
+.signal-fdr-recording-copy > small {
+  color: var(--text-muted);
+  font: 500 10px/1.45 var(--font-data);
+}
+
+.signal-fdr-recording-copy > small[hidden] {
+  display: none;
+}
+
+.signal-fdr-recording-copy > small[data-state="error"] {
+  color: var(--ex-state-fault-text);
+}
+
+.signal-fdr-recording-switch {
+  display: inline-flex;
+  min-width: 86px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-card);
+  color: var(--text-body);
+  cursor: pointer;
+}
+
+.signal-fdr-recording-switch:hover:not(:disabled) {
+  border-color: var(--ds-teal);
+}
+
+.signal-fdr-recording-switch:focus-visible {
+  outline: 2px solid var(--ex-aqua-500);
+  outline-offset: 2px;
+}
+
+.signal-fdr-recording-switch:disabled {
+  cursor: not-allowed;
+  opacity: .62;
+}
+
+.signal-fdr-recording-switch-track {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  flex: 0 0 40px;
+  border: 2px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-panel);
+  transition: background var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+}
+
+.signal-fdr-recording-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+}
+
+.signal-fdr-recording-switch[aria-checked="true"] .signal-fdr-recording-switch-track {
+  border-color: var(--ds-teal);
+  background: var(--ds-teal);
+}
+
+.signal-fdr-recording-switch[aria-checked="true"] .signal-fdr-recording-switch-thumb {
+  background: var(--surface-card);
+  transform: translateX(18px);
+}
+
+.signal-fdr-recording-switch-label {
+  min-width: 29px;
+  font: 700 10px/1 var(--font-mono);
+  letter-spacing: .05em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
 .signal-fdr-status-list > div {
   min-width: 0;
   padding: 11px 12px;
@@ -959,6 +1117,10 @@
   gap: 6px;
   overflow: visible;
   text-overflow: clip;
+}
+
+.signal-fdr-status-sync {
+  grid-column: span 2;
 }
 
 .signal-fdr-tools {
@@ -1010,52 +1172,25 @@
   background: var(--surface-card);
 }
 
-.signal-fdr-controls,
-.signal-fdr-diagnostics,
-.signal-fdr-wifi-entry {
+.signal-fdr-tools-body--diagnostics {
+  grid-template-columns: 1fr;
+}
+
+.signal-fdr-diagnostics {
   min-width: 0;
 }
 
-.signal-fdr-controls h3,
-.signal-fdr-diagnostics h3,
-.signal-fdr-wifi-entry h3 {
+.signal-fdr-diagnostics h3 {
   margin: 0;
   color: var(--text-strong);
   font-size: 13px;
 }
 
-.signal-fdr-wifi-entry {
-  display: flex;
-  grid-column: 1 / -1;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  padding-top: 13px;
-  border-top: 1px solid var(--border-rule);
-}
-
-.signal-fdr-wifi-entry h3 {
-  margin: 3px 0 2px;
-}
-
-.signal-fdr-wifi-entry small {
+.signal-fdr-diagnostics .signal-fdr-section-head small {
   color: var(--text-muted);
   font: 500 10px/1.4 var(--font-data);
 }
 
-.signal-fdr-wifi-entry .signal-tool-button {
-  flex: 0 0 auto;
-  text-decoration: none;
-}
-
-.signal-fdr-wifi-actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 8px;
-}
-
-.signal-fdr-wifi-actions [hidden],
 .signal-fdr-wifi-status[hidden] {
   display: none;
 }
@@ -1071,29 +1206,6 @@
 
 .signal-fdr-wifi-status[data-state="success"] {
   color: var(--ex-state-ready-text);
-}
-
-.signal-fdr-config {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 12px 0 7px;
-}
-
-.signal-fdr-config label {
-  flex: 1;
-  color: var(--text-muted);
-  font: 600 9px/1.2 var(--font-mono);
-  text-transform: uppercase;
-}
-
-.signal-fdr-config select {
-  height: 32px;
-  border: 1px solid var(--border-strong);
-  border-radius: 4px;
-  background: var(--surface-card);
-  color: var(--text-body);
-  font: 500 10px/1 var(--font-mono);
 }
 
 .signal-fdr-debug-button {
@@ -1173,6 +1285,33 @@
     flex-direction: column;
   }
 
+  .signal-fdr-channel-actions--wifi {
+    flex-direction: row;
+  }
+
+  .signal-fdr-channel-actions--wifi .signal-fdr-auto-label {
+    flex: 1;
+  }
+
+  .signal-fdr-recording-control {
+    flex: 1 1 220px;
+  }
+
+  .signal-fdr-recording-switch {
+    margin-left: auto;
+  }
+
+  .signal-fdr-overview-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .signal-fdr-overview-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    margin-left: 0;
+  }
+
   .signal-fdr-onboarding {
     align-items: stretch;
     flex-direction: column;
@@ -1182,15 +1321,6 @@
     width: 100%;
   }
 
-  .signal-fdr-wifi-entry {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .signal-fdr-wifi-actions,
-  .signal-fdr-wifi-actions .signal-tool-button {
-    width: 100%;
-  }
 }
 
 .signal-launch-card {

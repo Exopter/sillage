@@ -13,10 +13,8 @@ import {
   UsbErrorCode,
   UsbFdrClient,
   UsbMessage,
-  encodeBleConfig,
   formatStorageCapacity,
   formatUsbErrorDetails,
-  parseBleConfig,
   parseBleDeviceInfo,
   parseBleDiagnostics,
   parseBleStatus
@@ -59,12 +57,11 @@ export default class extends Controller {
     "bleButton", "bleStatus", "bleDevice", "bleDetail",
     "bleNotice", "bleNoticeLabel", "wifiStatus", "wifiDevice", "wifiAutoLabel", "wifiDetail",
     "wifiNotice", "wifiNoticeLabel", "recorderStatus",
-    "recorderSource", "recorderDevice", "recorderFirmware", "recording", "health", "storage",
-    "lastSync", "configInterval", "configButton", "configResult",
-    "recordingButton", "recordingResult",
+    "recorderSource", "recorderDevice", "recorderFirmware", "health", "storage",
+    "lastSync", "recordingControl", "recordingButton", "recordingButtonLabel", "recordingResult",
     "debugButton", "debug", "recorderTools", "recorderToolsHint", "recorderAlert",
     "recorderAlertMessage", "recorderAlertTechnical", "recorderOnboarding",
-    "recorderOnboardingTitle", "wifiDescription", "wifiLink",
+    "recorderOnboardingTitle", "wifiLink",
     "wifiLinkLabel", "wifiRegisterButton", "wifiRegisterLabel", "wifiRegistrationStatus"
   ]
 
@@ -112,7 +109,6 @@ export default class extends Controller {
     this.registeredRecorder = null
     this.registeredAircraft = null
     this.defaultWifiState = {
-      description: this.wifiDescriptionTarget.textContent,
       href: this.wifiLinkTarget.href,
       label: this.wifiLinkLabelTarget.textContent
     }
@@ -174,35 +170,15 @@ export default class extends Controller {
     }
   }
 
-  async saveConfig() {
-    const characteristic = this.bleCharacteristics.config
-    if (!this.usbClient && !characteristic) return this.showControlActionError("Connect the recorder first.")
-    const seconds = Number.parseInt(this.configIntervalTarget.value, 10)
-    try {
-      let config
-      if (this.usbClient) {
-        config = await this.usbClient.writeConfig(seconds)
-      } else {
-        const payload = encodeBleConfig(seconds)
-        if (characteristic.writeValueWithResponse) await characteristic.writeValueWithResponse(payload)
-        else await characteristic.writeValue(payload)
-        config = parseBleConfig(await characteristic.readValue())
-      }
-      this.renderConfig(config)
-    } catch (error) {
-      this.showControlActionError(error.message)
-    }
-  }
-
   async refreshDebug() {
     const characteristic = this.bleCharacteristics.debug
-    if (!this.usbClient && !characteristic) return this.showControlActionError("Connect the recorder first.")
+    if (!this.usbClient && !characteristic) return this.showDiagnosticsError("Connect the recorder first.")
     try {
       this.debugTarget.textContent = this.usbClient
         ? await this.usbClient.debug()
         : new TextDecoder().decode(await characteristic.readValue())
     } catch (error) {
-      this.showControlActionError(error.message)
+      this.showDiagnosticsError(error.message)
     }
   }
 
@@ -555,7 +531,8 @@ export default class extends Controller {
       && this.wifiRecordingControlSupported
       && this.hasRecordingCommandUrlValue
     if (!usbAvailable && !bleAvailable && !wifiAvailable) {
-      this.recordingResultTarget.textContent = "Connect and authenticate the recorder over USB-C, BLE, or Wi-Fi to change its persistent recording mode."
+      this.recordingResultTarget.textContent = "Recording control unavailable."
+      this.recordingResultTarget.hidden = false
       return
     }
     if (!this.recordingIdentitiesMatch()) {
@@ -627,13 +604,11 @@ export default class extends Controller {
     if (!client) return
     const status = await client.status()
     const diagnostics = await client.diagnostics()
-    const config = await client.config()
     const recording = (this.usbIdentity?.capabilities & UsbCapability.RECORDING_CONTROL) !== 0
       ? await client.recording()
       : null
     this.renderStatus(status, "usb")
     this.renderDiagnostics(diagnostics, "usb")
-    this.renderConfig(config)
     if (recording) {
       this.applyRecordingState(recording)
       if (this.usbFacts) this.usbFacts.recording = recording.effectiveEnabled
@@ -756,20 +731,19 @@ export default class extends Controller {
     device.addEventListener("gattserverdisconnected", this.handleBleDisconnect)
     this.bleServer = await device.gatt.connect()
     const service = await this.bleServer.getPrimaryService(BleUuid.service)
-    const [status, diagnostics, config, debug, deviceInformation, authenticationCharacteristic, recording] = await Promise.all([
+    const [status, diagnostics, debug, deviceInformation, authenticationCharacteristic, recording] = await Promise.all([
       service.getCharacteristic(BleUuid.status),
       service.getCharacteristic(BleUuid.diagnostics),
-      service.getCharacteristic(BleUuid.config),
       service.getCharacteristic(BleUuid.debug),
       service.getCharacteristic(BleUuid.device),
       service.getCharacteristic(BleUuid.authentication),
       service.getCharacteristic(BleUuid.recording).catch(() => null)
     ])
-    this.bleCharacteristics = { status, diagnostics, config, debug, recording }
+    this.bleCharacteristics = { status, diagnostics, debug, recording }
     await status.startNotifications()
     status.addEventListener("characteristicvaluechanged", ({ target }) => this.renderStatus(parseBleStatus(target.value), "ble"))
-    const [statusValue, diagnosticsValue, configValue, deviceValue] = await Promise.all([
-      status.readValue(), diagnostics.readValue(), config.readValue(), deviceInformation.readValue()
+    const [statusValue, diagnosticsValue, deviceValue] = await Promise.all([
+      status.readValue(), diagnostics.readValue(), deviceInformation.readValue()
     ])
     this.bleIdentity = parseBleDeviceInfo(deviceValue)
     this.bleAuthenticated = false
@@ -797,7 +771,6 @@ export default class extends Controller {
     this.setConnectionStatus(this.bleStatusTarget, ConnectionStatus.CONNECTED)
     this.renderStatus(parseBleStatus(statusValue), "ble")
     this.renderDiagnostics(parseBleDiagnostics(diagnosticsValue), "ble")
-    this.renderConfig(parseBleConfig(configValue))
     if (this.bleAuthenticated
         && recording
         && (this.bleIdentity.capabilities & BleCapability.RECORDING_CONTROL) !== 0) {
@@ -1001,16 +974,6 @@ export default class extends Controller {
     }
   }
 
-  renderConfig(config) {
-    this.configIntervalTarget.value = String(config.statusIntervalSeconds)
-    this.configResultTarget.textContent = {
-      0: "No pending change",
-      1: "Configuration saved",
-      2: "The recorder rejected this configuration.",
-      3: "The recorder could not save this configuration."
-    }[config.writeResult] || "The recorder returned an unknown configuration result."
-  }
-
   renderRecordingControl() {
     const usbSupported = (this.usbIdentity?.capabilities & UsbCapability.RECORDING_CONTROL) !== 0
     const usbAvailable = Boolean(this.usbClient) && this.usbAuthenticated && usbSupported
@@ -1020,40 +983,58 @@ export default class extends Controller {
       && this.wifiRecordingControlSupported
       && this.hasRecordingCommandUrlValue
     const available = usbAvailable || bleAvailable || wifiAvailable
-    this.recordingButtonTarget.disabled = !available
-      || !this.recordingIdentitiesMatch()
+    const identitiesMatch = this.recordingIdentitiesMatch()
+    const disabled = !available
+      || !identitiesMatch
       || this.usbEraseActive
       || this.recordingBusy
       || this.recordingPendingSequence !== null
       || this.recordingRequestedEnabled === null
-    this.recordingButtonTarget.textContent = this.recordingBusy
+    const requestedOn = this.recordingRequestedEnabled === true
+    this.recordingButtonTarget.disabled = disabled
+    this.recordingButtonTarget.setAttribute("aria-checked", requestedOn ? "true" : "false")
+    this.recordingButtonLabelTarget.textContent = this.recordingBusy
       ? "Saving…"
       : this.recordingPendingSequence !== null
-        ? "Awaiting recorder…"
-      : this.recordingRequestedEnabled === false
-        ? "Turn recording on"
-        : "Turn recording off"
+        ? "Pending…"
+        : this.recordingRequestedEnabled === null
+          ? "Unavailable"
+          : requestedOn ? "On" : "Off"
+    const actionLabel = this.recordingBusy
+      ? "Saving recording mode"
+      : this.recordingPendingSequence !== null
+        ? "Waiting for the recorder to confirm recording mode"
+        : this.recordingRequestedEnabled === null
+          ? "Recording mode unavailable"
+          : requestedOn ? "Turn recording off" : "Turn recording on"
+    this.recordingButtonTarget.setAttribute("aria-label", actionLabel)
+    this.recordingButtonTarget.title = actionLabel
+    this.recordingControlTarget.dataset.state = this.recordingActionError || !identitiesMatch
+      ? "error"
+      : this.recordingBusy || this.recordingPendingSequence !== null
+        ? "pending"
+        : this.recordingRequestedEnabled === null || !available
+          ? "unavailable"
+          : requestedOn && this.recordingEffectiveEnabled === false
+            ? "paused"
+            : requestedOn ? "on" : "off"
 
+    let result = ""
+    let resultState = "status"
     if (this.recordingActionError) {
-      this.recordingResultTarget.textContent = this.recordingActionError
-    } else if (!this.recordingIdentitiesMatch()) {
-      this.recordingResultTarget.textContent = "Connected transports identify different recorders. Disconnect the unrelated recorder before changing recording mode."
+      result = this.recordingActionError
+      resultState = "error"
+    } else if (!identitiesMatch) {
+      result = "Different recorders are connected."
+      resultState = "error"
     } else if (this.recordingPendingSequence !== null) {
-      this.recordingResultTarget.textContent = `Choice sent over Wi-Fi: ${this.recordingPendingEnabled ? "on" : "off"}. Waiting for the recorder's signed acknowledgement.`
-    } else if (!available) {
-      const connected = this.usbClient || this.bleIdentity || this.wifiIdentity
-      this.recordingResultTarget.textContent = connected
-        ? "Update the recorder firmware or authenticate the connection to control its persistent recording mode."
-        : "Connect over USB-C, BLE, or Wi-Fi to inspect or change the persistent recording mode."
-    } else if (this.recordingRequestedEnabled === true && this.recordingEffectiveEnabled === false) {
-      this.recordingResultTarget.textContent = "Saved choice: on. Recording is paused while USB-C is connected and will start automatically after disconnection."
-    } else if (this.recordingRequestedEnabled === true) {
-      this.recordingResultTarget.textContent = "Saved choice: on. Recording remains enabled after disconnection and restart."
-    } else if (this.recordingRequestedEnabled === false) {
-      this.recordingResultTarget.textContent = "Saved choice: off. Recording remains off after disconnection and restart until you turn it on here."
-    } else {
-      this.recordingResultTarget.textContent = "Reading the persistent recording mode…"
+      result = "Waiting for recorder confirmation…"
+    } else if (requestedOn && this.recordingEffectiveEnabled === false) {
+      result = "Paused while USB-C is connected."
     }
+    this.recordingResultTarget.textContent = result
+    this.recordingResultTarget.dataset.state = resultState
+    this.recordingResultTarget.hidden = !result
   }
 
   showUsbSyncError(error) {
@@ -1115,8 +1096,8 @@ export default class extends Controller {
     this.renderRecorderInformation()
   }
 
-  showControlActionError(message) {
-    this.configResultTarget.textContent = message
+  showDiagnosticsError(message) {
+    this.debugTarget.textContent = `Unable to load the engineering log: ${message}`
   }
 
   showUsbConnectionNotice(message, { state = "status", label = "Connection status", technical = "" } = {}) {
@@ -1182,23 +1163,12 @@ export default class extends Controller {
 
   updateToolsAvailability() {
     const usb = Boolean(this.usbClient) && this.usbAuthenticated
-    const ble = Boolean(this.bleCharacteristics.config) && this.bleAuthenticated
+    const ble = Boolean(this.bleCharacteristics.debug) && this.bleAuthenticated
     const localToolsAvailable = usb || ble
-    const recordingAvailable = (usb
-      && (this.usbIdentity?.capabilities & UsbCapability.RECORDING_CONTROL) !== 0)
-      || (ble
-        && Boolean(this.bleCharacteristics.recording)
-        && (this.bleIdentity?.capabilities & BleCapability.RECORDING_CONTROL) !== 0)
-      || (Boolean(this.wifiIdentity) && this.wifiRecordingControlSupported)
-    this.configIntervalTarget.disabled = !localToolsAvailable
-    this.configButtonTarget.disabled = !localToolsAvailable
     this.debugButtonTarget.disabled = !localToolsAvailable
-    if (!localToolsAvailable && !recordingAvailable) this.recorderToolsTarget.open = false
     this.recorderToolsHintTarget.textContent = localToolsAvailable
-      ? "Available"
-      : recordingAvailable
-        ? "Recording control available"
-        : "Connect USB-C, BLE, or Wi-Fi to access"
+      ? `Available over ${usb ? "USB-C" : "Bluetooth"}`
+      : "USB-C or Bluetooth required"
     this.renderRecordingControl()
     this.updateUsbActions()
   }
@@ -1251,7 +1221,6 @@ export default class extends Controller {
       this.registrationLookupDeviceId = null
       this.registrationIdentity = null
       this.registrationState = "mismatch"
-      this.wifiDescriptionTarget.textContent = "Several recorders are reporting connectivity. Keep only the intended recorder online before configuring Forge."
       this.wifiLinkTarget.hidden = true
       this.recorderOnboardingTarget.hidden = true
       this.setWifiRegistrationStatus("Multiple recorders detected", "error")
@@ -1270,7 +1239,6 @@ export default class extends Controller {
 
     this.registrationLookupDeviceId = identity.deviceId
     const requestToken = ++this.registrationRequestToken
-    this.wifiDescriptionTarget.textContent = `Checking ${identity.deviceId} in Forge…`
     this.wifiLinkTarget.hidden = true
     this.recorderOnboardingTarget.hidden = true
     this.setWifiRegistrationStatus("")
@@ -1300,7 +1268,6 @@ export default class extends Controller {
       }
     } catch (error) {
       if (requestToken !== this.registrationRequestToken) return
-      this.wifiDescriptionTarget.textContent = `Recorder ${identity.deviceId} is connected.`
       this.wifiLinkTarget.hidden = false
       this.recorderOnboardingTarget.hidden = true
       this.registrationState = "error"
@@ -1450,11 +1417,8 @@ export default class extends Controller {
     this.registrationState = "registered"
     this.registrationSubmitting = false
     this.updateResolvedConnections(recorder.device_id, aircraft)
-    this.wifiDescriptionTarget.textContent = recorder.internal_number
-      ? `${recorder.device_id} is registered in Forge and linked to ${recorder.internal_number}.`
-      : `${recorder.device_id} is registered in Forge without a physical asset assignment.`
     this.wifiLinkTarget.href = recorder.connectivity_url
-    this.wifiLinkLabelTarget.textContent = "Open connectivity"
+    this.setWifiLinkLabel(`Configure Wi-Fi for ${recorder.device_id}`)
     this.wifiLinkTarget.hidden = false
     this.recorderOnboardingTarget.hidden = true
     this.wifiRegisterButtonTarget.disabled = false
@@ -1469,7 +1433,6 @@ export default class extends Controller {
     this.registrationState = this.usbAuthenticationConfigured ? "authentication_error" : "initialization_required"
     this.registrationSubmitting = false
     this.updateResolvedConnections(recorder.device_id, aircraft)
-    this.wifiDescriptionTarget.textContent = `${recorder.device_id} is registered in Forge but requires secure USB-C initialization.`
     this.wifiLinkTarget.hidden = true
     this.recorderOnboardingTitleTarget.textContent = this.usbAuthenticationConfigured
       ? "Recorder authentication needs attention"
@@ -1492,7 +1455,6 @@ export default class extends Controller {
     this.registrationState = "unregistered"
     this.registrationSubmitting = false
     this.updateResolvedConnections(identity.deviceId, null)
-    this.wifiDescriptionTarget.textContent = `${identity.deviceId} is connected but not registered in Forge.`
     this.wifiLinkTarget.hidden = true
     this.recorderOnboardingTitleTarget.textContent = "New recorder detected"
     this.recorderOnboardingTarget.hidden = false
@@ -1529,14 +1491,19 @@ export default class extends Controller {
     this.registrationSubmitting = false
     this.registeredRecorder = null
     this.registeredAircraft = null
-    this.wifiDescriptionTarget.textContent = this.defaultWifiState.description
     this.wifiLinkTarget.href = this.defaultWifiState.href
-    this.wifiLinkLabelTarget.textContent = this.defaultWifiState.label
+    this.setWifiLinkLabel(this.defaultWifiState.label)
     this.wifiLinkTarget.hidden = false
     this.recorderOnboardingTarget.hidden = true
     this.wifiRegisterButtonTarget.disabled = false
     this.wifiRegisterLabelTarget.textContent = "Add and initialize recorder"
     this.setWifiRegistrationStatus("")
+  }
+
+  setWifiLinkLabel(label) {
+    this.wifiLinkLabelTarget.textContent = label
+    this.wifiLinkTarget.setAttribute("aria-label", label)
+    this.wifiLinkTarget.title = label
   }
 
   setWifiRegistrationStatus(message, state = "status") {
@@ -1568,7 +1535,6 @@ export default class extends Controller {
         this.recorderDeviceTarget.textContent = "No recorder identified"
       }
       this.recorderFirmwareTarget.textContent = "—"
-      this.recordingTarget.textContent = "—"
       this.healthTarget.textContent = "—"
       this.storageTarget.textContent = "—"
       this.lastSyncTarget.textContent = "—"
@@ -1611,17 +1577,9 @@ export default class extends Controller {
     }
 
     const health = this.usbFacts?.health || this.bleFacts?.health || this.wifiFacts?.health || "Waiting for status"
-    const effectiveRecording = this.usbFacts?.recording ?? this.bleFacts?.recording ?? this.wifiFacts?.recording
     const storage = this.usbFacts?.storage || this.bleFacts?.storage || this.wifiFacts?.storage || "Not reported"
     const synchronization = this.usbFacts?.synchronization || this.bleFacts?.synchronization || this.wifiFacts?.synchronization || "Not reported"
     this.healthTarget.textContent = health
-    this.recordingTarget.textContent = effectiveRecording === true
-      ? "On"
-      : this.recordingRequestedEnabled === true
-        ? "Paused while USB-C is connected"
-        : effectiveRecording === false
-          ? "Off"
-          : "Not reported"
     this.storageTarget.textContent = storage
     this.lastSyncTarget.textContent = synchronization
     this.renderRecorderAlert(this.usbRecorderError || this.usbFacts?.issue || this.bleFacts?.issue || this.wifiFacts?.issue)
