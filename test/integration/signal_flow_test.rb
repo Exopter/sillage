@@ -217,12 +217,13 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-fdr-connectivity-target='recorderSource'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderAlert'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderAlertTechnical'][hidden]"
-    assert_select ".signal-fdr-status-list > div", count: 6
+    assert_select ".signal-fdr-status-list > div", count: 7
+    assert_select ".signal-fdr-status-list [data-fdr-connectivity-target='recording']", text: "—"
     assert_select ".signal-fdr-status-list dd.signal-fdr-synchronization" do
       synchronization_children = css_select(".signal-fdr-status-list dd.signal-fdr-synchronization > *")
       assert_equal %w[lastSync syncProgress syncNotice], synchronization_children.map { |node| node["data-fdr-connectivity-target"] }
       assert_select "[data-fdr-connectivity-target='lastSync']", text: "—"
-      assert_select "progress[data-fdr-connectivity-target='syncProgress'][hidden]"
+      assert_select "progress[data-fdr-connectivity-target='syncProgress'][aria-label='Synchronization progress'][hidden]"
       assert_select "[data-fdr-connectivity-target='syncNotice'][data-state='status'][role='status'][hidden]"
       assert_select "[data-fdr-connectivity-target='syncDetail'][hidden]"
       assert_select "[data-fdr-connectivity-target='syncTechnical'][hidden]"
@@ -230,6 +231,8 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select ".signal-fdr-tools", count: 1
     assert_select "select[data-fdr-connectivity-target='configInterval'][disabled]"
     assert_select "button[data-fdr-connectivity-target='configButton'][disabled]"
+    assert_select "button[data-action='fdr-connectivity#toggleRecording'][data-fdr-connectivity-target='recordingButton'][disabled]", text: "Turn recording off"
+    assert_select "[data-fdr-connectivity-target='recordingResult']", text: /persistent recording mode/
     assert_select "button[data-fdr-connectivity-target='debugButton'][disabled]"
     assert_select ".signal-fdr-wifi-entry a[data-fdr-connectivity-target='wifiLink'][href='#{forge_fdrs_path}']", text: /Select recorder/
     assert_select "[data-fdr-connectivity-target='wifiDescription']", text: /Manage saved networks/

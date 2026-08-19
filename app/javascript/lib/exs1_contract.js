@@ -37,6 +37,9 @@ export const UsbMessage = Object.freeze({
   STORAGE_PERFORMANCE_DATA: 30,
   ERASE_RECORDINGS: 31,
   ERASE_RECORDINGS_DATA: 32,
+  RECORDING: 33,
+  RECORDING_DATA: 34,
+  SET_RECORDING: 35,
   ERROR: 255
 })
 export const UsbCapability = Object.freeze({
@@ -50,11 +53,17 @@ export const UsbCapability = Object.freeze({
   MEMORY: 128,
   RATE_STATUS: 256,
   STORAGE_PERFORMANCE: 512,
-  ERASE_RECORDINGS: 1024
+  ERASE_RECORDINGS: 1024,
+  RECORDING_CONTROL: 2048
 })
 export const EraseRecordingsResult = Object.freeze({
   OK: 0,
   STORAGE_ERROR: 1
+})
+export const RecordingControlResult = Object.freeze({
+  OK: 0,
+  STORAGE_ERROR: 1,
+  INVALID_DATA: 2
 })
 export const UsbErrorCode = Object.freeze({
   BAD_FRAME: 1,
@@ -82,6 +91,7 @@ export const Exs1Layout = Object.freeze({
   MEMORY_STATUS: 82,
   RATE_STATUS: 20,
   STORAGE_PERFORMANCE: 76,
-  ERASE_RECORDINGS_RESULT: 16
+  ERASE_RECORDINGS_RESULT: 16,
+  RECORDING_CONTROL: 4
 })
 export const EXS1_GOLDEN_FRAME_HEX = "455853310101000040302010040000001386b98b00010203"

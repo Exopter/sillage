@@ -44,7 +44,7 @@
               <span>Capabilities</span>
               <ul>
                 <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Live status, settings and diagnostics</span></li>
-                <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Telemetry synchronization, interruption and authenticated recording erasure</span></li>
+                <li><%= sillage_icon "check", size: 11, stroke_width: 2.5 %><span>Telemetry synchronization, persistent recording control and authenticated recording erasure</span></li>
               </ul>
             </div>
           </div>
@@ -158,13 +158,14 @@
     <dl class="signal-fdr-status-list">
       <div><dt>Recorder</dt><dd data-fdr-connectivity-target="recorderDevice">No recorder identified</dd></div>
       <div><dt>Firmware</dt><dd data-fdr-connectivity-target="recorderFirmware">—</dd></div>
+      <div><dt>Recording</dt><dd data-fdr-connectivity-target="recording">—</dd></div>
       <div><dt>Health</dt><dd data-fdr-connectivity-target="health">—</dd></div>
       <div><dt>Storage</dt><dd data-fdr-connectivity-target="storage">—</dd></div>
       <div>
         <dt>Synchronization</dt>
         <dd class="signal-fdr-synchronization">
           <span data-fdr-connectivity-target="lastSync">—</span>
-          <progress class="signal-fdr-progress" value="0" max="1" data-fdr-connectivity-target="syncProgress" hidden></progress>
+          <progress class="signal-fdr-progress" value="0" max="1" aria-label="Synchronization progress" data-fdr-connectivity-target="syncProgress" hidden></progress>
           <div class="signal-fdr-transport-notice" data-fdr-connectivity-target="syncNotice" data-state="status" role="status" hidden>
             <span class="signal-fdr-transport-notice-label" data-fdr-connectivity-target="syncNoticeLabel">Synchronization</span>
             <small class="signal-fdr-transport-message" data-fdr-connectivity-target="syncDetail" hidden></small>
@@ -195,6 +196,13 @@
           <button type="button" class="signal-tool-button" disabled data-action="fdr-connectivity#saveConfig" data-fdr-connectivity-target="configButton">Save</button>
         </div>
         <small class="signal-fdr-config-result" data-fdr-connectivity-target="configResult">Connect over USB-C or BLE to change recorder settings.</small>
+        <div class="signal-fdr-config">
+          <label>Persistent recording mode</label>
+          <button type="button" class="signal-tool-button" disabled
+                  data-action="fdr-connectivity#toggleRecording"
+                  data-fdr-connectivity-target="recordingButton">Turn recording off</button>
+        </div>
+        <small class="signal-fdr-config-result" data-fdr-connectivity-target="recordingResult">Connect over USB-C to inspect or change the persistent recording mode.</small>
       </div>
 
       <div class="signal-fdr-diagnostics">

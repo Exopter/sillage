@@ -57,11 +57,21 @@ assert.match(connectivitySource, /await this\.disconnectUsb\(\)/)
 assert.match(connectivitySource, /window\.confirm\("Erase all FDR recordings/)
 assert.match(connectivitySource, /Stop the transfer before erasing recordings\./)
 assert.match(connectivitySource, /describeWifiUpload\(status\.wifiUpload\)/)
+assert.match(connectivitySource, /renderWifiSynchronizationProgress\(status\.wifiUpload\)/)
+assert.match(connectivitySource, /WIFI_SYNCHRONIZATION_IN_PROGRESS\.has\(state\)/)
+assert.match(connectivitySource, /syncProgressTarget\.value = Math\.min\(offset, size\)/)
+assert.match(connectivitySource, /syncProgressTarget\.removeAttribute\("value"\)/)
 assert.match(connectivitySource, /Uploading \$\{filename\} · \$\{percent\}%/)
 assert.match(connectivitySource, /All sealed recordings synchronized/)
 assert.match(connectivityViewSource, /Automatic resumable recording upload/)
 assert.match(connectivityViewSource, /fdr-connectivity#interruptUsbSync/)
 assert.match(connectivityViewSource, /fdr-connectivity#eraseSdRecordings/)
+assert.match(connectivityViewSource, /fdr-connectivity#toggleRecording/)
+assert.match(connectivityViewSource, /Persistent recording mode/)
+assert.match(connectivitySource, /Saved choice: on\. Recording is paused while USB-C is connected and will start automatically after disconnection\./)
+assert.match(connectivitySource, /Saved choice: off\. Recording remains off after disconnection and restart until you turn it on here\./)
+assert.match(connectivitySource, /this\.recordingActionError = error\.message/)
+assert.match(connectivitySource, /if \(this\.recordingActionError\)/)
 assert.match(connectivityViewSource, /class="signal-fdr-synchronization"/)
 assert.match(connectivityViewSource, /data-fdr-connectivity-target="syncProgress"/)
 assert.match(connectivityViewSource, /data-fdr-connectivity-target="syncNotice"/)
@@ -100,7 +110,11 @@ assert.equal(protocol.UsbMessage.WIFI, 21)
 assert.equal(protocol.UsbMessage.SECURITY, 23)
 assert.equal(protocol.UsbMessage.ERASE_RECORDINGS, 31)
 assert.equal(protocol.UsbMessage.ERASE_RECORDINGS_DATA, 32)
+assert.equal(protocol.UsbMessage.RECORDING, 33)
+assert.equal(protocol.UsbMessage.RECORDING_DATA, 34)
+assert.equal(protocol.UsbMessage.SET_RECORDING, 35)
 assert.equal(protocol.UsbCapability.ERASE_RECORDINGS, 1 << 10)
+assert.equal(protocol.UsbCapability.RECORDING_CONTROL, 1 << 11)
 assert.equal(protocol.USB_CHUNK_SIZE, 4096)
 assert.equal(protocol.USB_CONNECTION_TIMEOUT_MS, 10_000)
 assert.equal(protocol.USB_CONNECTION_ATTEMPTS, 2)
@@ -280,6 +294,44 @@ failedErasePayload[1] = protocol.EraseRecordingsResult.STORAGE_ERROR
 assert.throws(
   () => protocol.parseEraseRecordingsResult(failedErasePayload),
   { message: "The recorder could not erase all recordings or restart logging. Check storage diagnostics before trying again." }
+)
+
+const recordingPayload = Uint8Array.from([1, 1, 0, protocol.RecordingControlResult.OK])
+assert.deepEqual(protocol.parseRecordingControl(recordingPayload), {
+  version: 1,
+  requestedEnabled: true,
+  effectiveEnabled: false,
+  result: protocol.RecordingControlResult.OK
+})
+const recordingRequests = []
+const recordingClient = new protocol.UsbFdrClient({})
+recordingClient.request = async (type, requestPayload, expectedTypes) => {
+  recordingRequests.push({ type, requestPayload: [...requestPayload], expectedTypes })
+  return { payload: type === protocol.UsbMessage.SET_RECORDING ? Uint8Array.from([1, 0, 0, 0]) : recordingPayload }
+}
+assert.equal((await recordingClient.recording()).requestedEnabled, true)
+assert.deepEqual(await recordingClient.setRecording(false), {
+  version: 1,
+  requestedEnabled: false,
+  effectiveEnabled: false,
+  result: protocol.RecordingControlResult.OK
+})
+assert.deepEqual(recordingRequests, [
+  {
+    type: protocol.UsbMessage.RECORDING,
+    requestPayload: [],
+    expectedTypes: [protocol.UsbMessage.RECORDING_DATA]
+  },
+  {
+    type: protocol.UsbMessage.SET_RECORDING,
+    requestPayload: [1, 0, 0, 0],
+    expectedTypes: [protocol.UsbMessage.RECORDING_DATA]
+  }
+])
+const failedRecordingPayload = Uint8Array.from([1, 1, 0, protocol.RecordingControlResult.STORAGE_ERROR])
+assert.throws(
+  () => protocol.parseRecordingControl(failedRecordingPayload),
+  { message: "The recorder could not save the persistent recording mode. The previous choice remains active." }
 )
 
 const frame = protocol.encodeFrame(protocol.UsbMessage.HELLO, 42, payload)

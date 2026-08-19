@@ -5,6 +5,7 @@ import {
   FRAME_MAGIC,
   USB_CHUNK_SIZE,
   USB_PROTOCOL_VERSION,
+  RecordingControlResult,
   UsbCapability,
   UsbErrorCode,
   UsbMessage
@@ -12,6 +13,7 @@ import {
 
 export {
   EraseRecordingsResult,
+  RecordingControlResult,
   USB_CHUNK_SIZE,
   USB_PROTOCOL_VERSION,
   UsbCapability,
@@ -292,6 +294,26 @@ export class UsbFdrClient {
   async status() {
     const frame = await this.request(UsbMessage.STATUS, new Uint8Array(), [UsbMessage.STATUS_DATA])
     return parseBleStatus(frame.payload)
+  }
+
+  async recording() {
+    const frame = await this.request(
+      UsbMessage.RECORDING,
+      new Uint8Array(),
+      [UsbMessage.RECORDING_DATA]
+    )
+    return parseRecordingControl(frame.payload)
+  }
+
+  /** @param {boolean} enabled */
+  async setRecording(enabled) {
+    const payload = Uint8Array.from([1, enabled ? 1 : 0, 0, 0])
+    const frame = await this.request(
+      UsbMessage.SET_RECORDING,
+      payload,
+      [UsbMessage.RECORDING_DATA]
+    )
+    return parseRecordingControl(frame.payload)
   }
 
   async diagnostics() {
@@ -961,6 +983,25 @@ export function parseEraseRecordingsResult(payload) {
     result,
     deletedFiles: view.getUint32(4, true),
     deletedBytes: Number(view.getBigUint64(8, true))
+  }
+}
+
+/** @param {BinaryValue} payload */
+export function parseRecordingControl(payload) {
+  const view = dataView(payload, Exs1Layout.RECORDING_CONTROL, "recording control")
+  if (view.getUint8(0) !== 1) throw new Error("Unsupported recording-control version.")
+  const result = view.getUint8(3)
+  if (result === RecordingControlResult.STORAGE_ERROR) {
+    throw new Error("The recorder could not save the persistent recording mode. The previous choice remains active.")
+  }
+  if (result !== RecordingControlResult.OK) {
+    throw new Error("The recorder rejected the recording mode. Update Sillage and the recorder firmware to compatible versions.")
+  }
+  return {
+    version: 1,
+    requestedEnabled: view.getUint8(1) === 1,
+    effectiveEnabled: view.getUint8(2) === 1,
+    result
   }
 }
 
