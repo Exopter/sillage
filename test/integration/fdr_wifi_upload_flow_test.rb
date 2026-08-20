@@ -16,7 +16,7 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
     @manifest = {
       filename: "FDR000001.BIN",
       file_index: 1,
-      boot_id: 1_234,
+      boot_id: 4_110_214_648,
       format_version: 3,
       size_bytes: @binary.bytesize,
       sha256: Digest::SHA256.hexdigest(@binary)
@@ -78,6 +78,7 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
 
     upload = FdrWifiUpload.find_by!(token:)
     assert_equal "complete", upload.status
+    assert_equal 4_110_214_648, upload.boot_id
     assert_equal @binary.bytesize, upload.received_bytes
     assert_not File.exist?(upload.staged_path)
     assert_equal "wifi_https", upload.flight_import.details.dig("sync", "transport")
@@ -195,7 +196,7 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
   end
 
   def valid_file
-    header_body = [ "EXOFDR1\0", 3, 64, 1_234, 777_000, "fdr-test", "" ].pack("a8vvVQ<a24a12")
+    header_body = [ "EXOFDR1\0", 3, 64, 4_110_214_648, 777_000, "fdr-test", "" ].pack("a8vvVQ<a24a12")
     header = header_body + [ Zlib.crc32(header_body) ].pack("V")
     payload = [ 40, 6, "Storage ready" ].pack("vCa48")
     header + record(payload:, sequence: 0, timestamp_us: 1_000_000) +
