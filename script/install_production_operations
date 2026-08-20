@@ -9,7 +9,7 @@ CONFIRMATION = "INSTALL_AND_ENABLE"
 ROOT = File.expand_path("..", __dir__)
 ENV_PATH = File.join(ROOT, ".env.deploy.local")
 REQUIRED = %w[
-  KAMAL_DEPLOY_HOST R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BACKUP_BUCKET
+  R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BACKUP_BUCKET
   PGBACKREST_REPOSITORY_PASSWORD RESTIC_REPOSITORY_PASSWORD
   HEALTHCHECKS_READY_PING_URL HEALTHCHECKS_POSTGRESQL_ARCHIVE_PING_URL
   HEALTHCHECKS_POSTGRESQL_BACKUP_PING_URL HEALTHCHECKS_STORAGE_BACKUP_PING_URL
@@ -42,7 +42,7 @@ def run!(*command)
   abort "Command failed: #{command.first}"
 end
 
-host = ENV.fetch("KAMAL_DEPLOY_HOST")
+host = ENV.fetch("KAMAL_DEPLOY_HOST", "157.90.155.63")
 ssh = [ "ssh", "-i", File.expand_path("~/.ssh/kamal_deploy"), "-o", "BatchMode=yes", "root@#{host}" ]
 scp = [ "scp", "-i", File.expand_path("~/.ssh/kamal_deploy"), "-o", "BatchMode=yes" ]
 stage = "/tmp/sillage-operations-install-#{Process.pid}"
@@ -85,6 +85,7 @@ install_command = <<~SHELL
   done
   docker volume create sillage_restic_cache >/dev/null
   docker pull restic/restic:0.18.0@sha256:28f29bcc3d38a061e09f825600244cf9854f09dd59443e9cd1dfa038c22b43d2 >/dev/null
+  /usr/local/libexec/sillage-operations storage-init
   systemctl daemon-reload
   systemctl enable --now \
     sillage-ready-monitor.timer \

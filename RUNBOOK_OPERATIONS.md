@@ -41,15 +41,13 @@ backup before enabling recurring units:
 bin/kamal accessory remove postgres
 bin/kamal accessory boot postgres
 bin/kamal accessory exec postgres \
-  "pgbackrest --stanza=sillage stanza-create"
+  "runuser -u postgres -- pgbackrest --stanza=sillage stanza-create"
 bin/kamal accessory exec postgres \
-  "pgbackrest --stanza=sillage check"
+  "runuser -u postgres -- pgbackrest --stanza=sillage check"
 bin/kamal accessory exec postgres \
-  "pgbackrest --stanza=sillage --type=full backup"
+  "runuser -u postgres -- pgbackrest --stanza=sillage --type=full backup"
 PRODUCTION_OPERATIONS_CONFIRM=INSTALL_AND_ENABLE \
   ruby script/install_production_operations
-ssh -i ~/.ssh/kamal_deploy root@157.90.155.63 \
-  "/usr/local/libexec/sillage-operations storage-init"
 ```
 
 Deploy the application with `BACKUPS_ENABLED=true` and
