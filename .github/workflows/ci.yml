@@ -8,10 +8,28 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.10-bookworm@sha256:9b18b78397054fce88a9552e9d5a3ad5bb7fd258c5b3cc1c5028e46373d6ea8f
+        env:
+          POSTGRES_DB: sillage_development
+          POSTGRES_USER: sillage
+          POSTGRES_PASSWORD: sillage
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sillage -d sillage_development"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
     env:
       EXOPTER_DESIGN_SYSTEM_PATH: ${{ github.workspace }}/design-system
       EXOPTER_FDR_PATH: ${{ github.workspace }}/fdr
       RUBOCOP_CACHE_ROOT: tmp/rubocop
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: sillage
+      POSTGRES_PASSWORD: sillage
 
     steps:
       - name: Checkout Sillage

@@ -1,6 +1,6 @@
 # Sillage Rails application
 
-Rails 8 application using ERB, Turbo, Stimulus, SQLite, Active Storage, and
+Rails 8 application using ERB, Turbo, Stimulus, PostgreSQL, Active Storage, and
 Solid Queue.
 
 ## Setup
@@ -9,6 +9,9 @@ Solid Queue.
 bin/setup
 bin/dev
 ```
+
+`bin/setup` starts the pinned PostgreSQL container from `compose.yml` unless
+`POSTGRES_HOST` points to an existing server.
 
 Open `http://localhost:3000`.
 
@@ -48,3 +51,7 @@ variables. Keep real secrets out of Git.
 Kamal is configured in `config/deploy.yml`. Copy
 `.env.deploy.local.example` to `.env.deploy.local`, then use `bin/kamal` for
 deployment commands from the application root.
+
+The guarded SQLite-to-PostgreSQL cutover procedure is documented in
+`RUNBOOK_POSTGRESQL_MIGRATION.md`. It must not be executed without a separate,
+explicit production approval.

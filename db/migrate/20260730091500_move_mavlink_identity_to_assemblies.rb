@@ -5,43 +5,8 @@ class MoveMavlinkIdentityToAssemblies < ActiveRecord::Migration[8.1]
     add_column :signal_sessions, :mavlink_system_id, :integer
     add_column :signal_sessions, :mavlink_component_id, :integer
 
-    execute <<~SQL
-      UPDATE assemblies
-      SET mavlink_system_id = (
-        SELECT CAST(aircraft.telemetry_system_id AS INTEGER)
-        FROM installations
-        INNER JOIN aircraft ON aircraft.id = installations.aircraft_id
-        WHERE installations.installable_type = 'Assembly'
-          AND installations.installable_id = assemblies.id
-          AND installations.removed_at IS NULL
-        LIMIT 1
-      )
-      WHERE assemblies.id IN (
-        SELECT installations.installable_id
-        FROM installations
-        INNER JOIN aircraft ON aircraft.id = installations.aircraft_id
-        WHERE installations.installable_type = 'Assembly'
-          AND installations.removed_at IS NULL
-          AND aircraft.telemetry_system_id GLOB '[0-9]*'
-          AND aircraft.telemetry_system_id NOT GLOB '*[^0-9]*'
-          AND CAST(aircraft.telemetry_system_id AS INTEGER) BETWEEN 1 AND 255
-          AND (
-            SELECT COUNT(*)
-            FROM installations AS sibling_installations
-            WHERE sibling_installations.aircraft_id = installations.aircraft_id
-              AND sibling_installations.installable_type = 'Assembly'
-              AND sibling_installations.removed_at IS NULL
-          ) = 1
-      )
-    SQL
-
-    execute <<~SQL
-      UPDATE signal_sessions
-      SET mavlink_system_id = CAST(json_extract(station_metadata, '$.telemetry_system_id') AS INTEGER)
-      WHERE json_valid(station_metadata)
-        AND json_extract(station_metadata, '$.telemetry_system_id') IS NOT NULL
-        AND CAST(json_extract(station_metadata, '$.telemetry_system_id') AS INTEGER) BETWEEN 1 AND 255
-    SQL
+    migrate_aircraft_identity_to_assemblies
+    migrate_signal_session_identity
 
     remove_index :aircraft, name: "index_aircraft_on_telemetry_system_id"
     remove_column :aircraft, :telemetry_system_id
@@ -50,46 +15,7 @@ class MoveMavlinkIdentityToAssemblies < ActiveRecord::Migration[8.1]
   def down
     add_column :aircraft, :telemetry_system_id, :string
 
-    execute <<~SQL
-      UPDATE aircraft
-      SET telemetry_system_id = CAST((
-        SELECT assemblies.mavlink_system_id
-        FROM installations
-        INNER JOIN assemblies ON assemblies.id = installations.installable_id
-        WHERE installations.aircraft_id = aircraft.id
-          AND installations.installable_type = 'Assembly'
-          AND installations.removed_at IS NULL
-          AND assemblies.mavlink_system_id IS NOT NULL
-        LIMIT 1
-      ) AS TEXT)
-      WHERE (
-        SELECT COUNT(*)
-        FROM installations
-        INNER JOIN assemblies ON assemblies.id = installations.installable_id
-        WHERE installations.aircraft_id = aircraft.id
-          AND installations.installable_type = 'Assembly'
-          AND installations.removed_at IS NULL
-          AND assemblies.mavlink_system_id IS NOT NULL
-      ) = 1
-        AND (
-          SELECT COUNT(DISTINCT duplicate_installations.aircraft_id)
-          FROM installations AS duplicate_installations
-          INNER JOIN assemblies AS duplicate_assemblies
-            ON duplicate_assemblies.id = duplicate_installations.installable_id
-          WHERE duplicate_installations.installable_type = 'Assembly'
-            AND duplicate_installations.removed_at IS NULL
-            AND duplicate_assemblies.mavlink_system_id = (
-              SELECT assemblies.mavlink_system_id
-              FROM installations
-              INNER JOIN assemblies ON assemblies.id = installations.installable_id
-              WHERE installations.aircraft_id = aircraft.id
-                AND installations.installable_type = 'Assembly'
-                AND installations.removed_at IS NULL
-                AND assemblies.mavlink_system_id IS NOT NULL
-              LIMIT 1
-            )
-        ) = 1
-    SQL
+    migrate_assembly_identity_to_aircraft
 
     add_index :aircraft, :telemetry_system_id, unique: true,
       where: "telemetry_system_id IS NOT NULL AND telemetry_system_id != ''"
@@ -97,5 +23,79 @@ class MoveMavlinkIdentityToAssemblies < ActiveRecord::Migration[8.1]
     remove_column :signal_sessions, :mavlink_system_id
     remove_column :assemblies, :mavlink_component_id
     remove_column :assemblies, :mavlink_system_id
+  end
+
+  private
+
+  def migrate_aircraft_identity_to_assemblies
+    installation_class = migration_model("installations")
+    aircraft_class = migration_model("aircraft")
+    assembly_class = migration_model("assemblies")
+
+    installation_class
+      .where(installable_type: "Assembly", removed_at: nil)
+      .pluck(:aircraft_id, :installable_id)
+      .group_by(&:first)
+      .each do |aircraft_id, installations|
+        next unless installations.one?
+
+        telemetry_system_id = aircraft_class.where(id: aircraft_id).pick(:telemetry_system_id)
+        numeric_id = strict_mavlink_system_id(telemetry_system_id)
+        next unless numeric_id
+
+        assembly_class.where(id: installations.first.last).update_all(mavlink_system_id: numeric_id)
+      end
+  end
+
+  def migrate_signal_session_identity
+    signal_session_class = migration_model("signal_sessions")
+
+    signal_session_class.find_each do |signal_session|
+      metadata = signal_session.station_metadata
+      metadata = JSON.parse(metadata) if metadata.is_a?(String)
+      next unless metadata.is_a?(Hash)
+
+      numeric_id = strict_mavlink_system_id(metadata["telemetry_system_id"])
+      signal_session.update_columns(mavlink_system_id: numeric_id) if numeric_id
+    rescue JSON::ParserError
+      next
+    end
+  end
+
+  def migrate_assembly_identity_to_aircraft
+    installation_class = migration_model("installations")
+    assembly_class = migration_model("assemblies")
+    aircraft_class = migration_model("aircraft")
+
+    candidates = installation_class
+      .where(installable_type: "Assembly", removed_at: nil)
+      .pluck(:aircraft_id, :installable_id)
+      .group_by(&:first)
+      .filter_map do |aircraft_id, installations|
+        system_ids = assembly_class.where(id: installations.map(&:last)).where.not(mavlink_system_id: nil).pluck(:mavlink_system_id)
+        [ aircraft_id, system_ids.first ] if system_ids.one?
+      end
+
+    duplicate_counts = candidates.map(&:last).tally
+    candidates.each do |aircraft_id, system_id|
+      next unless duplicate_counts.fetch(system_id) == 1
+
+      aircraft_class.where(id: aircraft_id).update_all(telemetry_system_id: system_id.to_s)
+    end
+  end
+
+  def strict_mavlink_system_id(value)
+    string = value.to_s
+    return unless string.match?(/\A[0-9]+\z/)
+
+    integer = string.to_i
+    integer if integer.between?(1, 255)
+  end
+
+  def migration_model(table_name)
+    Class.new(ActiveRecord::Base) do
+      self.table_name = table_name
+      self.inheritance_column = :_type_disabled
+    end
   end
 end

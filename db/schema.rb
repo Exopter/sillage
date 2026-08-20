@@ -10,7 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_20_090000) do
+  # These are extensions that must be enabled in order to support this database
+  enable_extension "pg_catalog.plpgsql"
+
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -54,7 +57,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
     t.string "internal_number"
     t.string "name", null: false
     t.text "notes"
-    t.integer "parent_id"
+    t.bigint "parent_id"
     t.datetime "updated_at", null: false
     t.index ["internal_number"], name: "index_assemblies_on_internal_number", unique: true
     t.index ["parent_id"], name: "index_assemblies_on_parent_id"
@@ -70,16 +73,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
 
   create_table "builds", force: :cascade do |t|
     t.string "arduino_core_version", default: "3.3.10", null: false
-    t.integer "assembly_id", null: false
+    t.bigint "assembly_id", null: false
     t.json "assembly_snapshot", default: {}, null: false
     t.string "code", null: false
     t.datetime "created_at", null: false
-    t.integer "created_by_id", null: false
+    t.bigint "created_by_id", null: false
     t.string "firmware_sha256"
     t.datetime "locked_at"
     t.text "notes"
     t.json "notion_references", default: [], null: false
-    t.integer "previous_build_id"
+    t.bigint "previous_build_id"
     t.text "source_diff"
     t.string "source_diff_sha256"
     t.boolean "source_dirty", default: false, null: false
@@ -92,10 +95,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
   end
 
   create_table "device_activities", force: :cascade do |t|
-    t.integer "actor_id"
+    t.bigint "actor_id"
     t.datetime "created_at", null: false
     t.json "details", default: {}, null: false
-    t.integer "embedded_device_id", null: false
+    t.bigint "embedded_device_id", null: false
     t.string "event_type", null: false
     t.datetime "occurred_at", null: false
     t.string "source", null: false
@@ -107,7 +110,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
   end
 
   create_table "embedded_devices", force: :cascade do |t|
-    t.integer "assembly_id"
+    t.bigint "assembly_id"
     t.datetime "created_at", null: false
     t.string "device_id"
     t.string "device_model"
@@ -119,14 +122,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
     t.integer "mavlink_system_id"
     t.datetime "updated_at", null: false
     t.index ["assembly_id"], name: "index_embedded_devices_on_assembly_id", unique: true
-    t.index ["device_id"], name: "index_embedded_devices_on_device_id", unique: true, where: "device_id IS NOT NULL AND device_id != ''"
+    t.index ["device_id"], name: "index_embedded_devices_on_device_id", unique: true, where: "((device_id IS NOT NULL) AND ((device_id)::text <> ''::text))"
   end
 
   create_table "fdr_recording_commands", force: :cascade do |t|
     t.datetime "acknowledged_at"
     t.datetime "created_at", null: false
-    t.integer "embedded_device_id", null: false
-    t.integer "requested_by_id", null: false
+    t.bigint "embedded_device_id", null: false
+    t.bigint "requested_by_id", null: false
     t.boolean "requested_enabled", null: false
     t.integer "result"
     t.string "status", default: "pending", null: false
@@ -138,13 +141,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
 
   create_table "fdr_wifi_profiles", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.integer "embedded_device_id", null: false
+    t.bigint "embedded_device_id", null: false
     t.boolean "enabled", default: true, null: false
     t.datetime "last_provisioned_at"
     t.string "last_provisioned_device_id"
     t.integer "position", null: false
     t.datetime "updated_at", null: false
-    t.integer "wifi_credential_id", null: false
+    t.bigint "wifi_credential_id", null: false
     t.index ["embedded_device_id", "position"], name: "index_fdr_wifi_profiles_on_device_and_position", unique: true
     t.index ["embedded_device_id", "wifi_credential_id"], name: "index_fdr_wifi_profiles_on_device_and_credential", unique: true
     t.index ["embedded_device_id"], name: "index_fdr_wifi_profiles_on_embedded_device_id"
@@ -155,11 +158,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
     t.integer "boot_id", null: false
     t.datetime "completed_at"
     t.datetime "created_at", null: false
-    t.integer "embedded_device_id", null: false
+    t.bigint "embedded_device_id", null: false
     t.text "error_message"
     t.integer "file_index", null: false
     t.string "filename", null: false
-    t.integer "flight_import_id"
+    t.bigint "flight_import_id"
     t.integer "format_version", null: false
     t.integer "received_bytes", default: 0, null: false
     t.string "sha256", null: false
@@ -174,7 +177,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
   end
 
   create_table "flight_imports", force: :cascade do |t|
-    t.integer "aircraft_id"
+    t.bigint "aircraft_id"
     t.datetime "created_at", null: false
     t.json "details"
     t.string "device_id"
@@ -186,20 +189,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
     t.string "source_filename"
     t.string "source_sha256"
     t.string "status", default: "pending", null: false
-    t.integer "target_flight_id"
+    t.bigint "target_flight_id"
     t.datetime "updated_at", null: false
-    t.integer "user_id", null: false
+    t.bigint "user_id", null: false
     t.index ["aircraft_id"], name: "index_flight_imports_on_aircraft_id"
     t.index ["log_started_at"], name: "index_flight_imports_on_log_started_at"
     t.index ["session_id"], name: "index_flight_imports_on_session_id"
     t.index ["status"], name: "index_flight_imports_on_status"
     t.index ["target_flight_id"], name: "index_flight_imports_on_target_flight_id"
-    t.index ["user_id", "source_sha256"], name: "index_flight_imports_on_user_and_source_sha256", unique: true, where: "source_sha256 IS NOT NULL"
+    t.index ["user_id", "source_sha256"], name: "index_flight_imports_on_user_and_source_sha256", unique: true, where: "(source_sha256 IS NOT NULL)"
     t.index ["user_id"], name: "index_flight_imports_on_user_id"
   end
 
   create_table "flights", force: :cascade do |t|
-    t.integer "aircraft_id"
+    t.bigint "aircraft_id"
     t.float "altitude_loss_m"
     t.float "avg_glide_ratio"
     t.string "code", null: false
@@ -209,7 +212,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
     t.float "duration_seconds"
     t.datetime "ended_at"
     t.datetime "exit_at"
-    t.integer "flight_import_id"
+    t.bigint "flight_import_id"
     t.datetime "landing_at"
     t.string "location"
     t.float "max_altitude_m"
@@ -224,7 +227,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
     t.datetime "started_at"
     t.string "status", default: "preparation", null: false
     t.datetime "updated_at", null: false
-    t.integer "user_id", null: false
+    t.bigint "user_id", null: false
     t.float "video_duration_seconds"
     t.float "video_exit_offset_seconds"
     t.text "video_processing_error"
@@ -249,9 +252,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
   end
 
   create_table "installations", force: :cascade do |t|
-    t.integer "aircraft_id", null: false
+    t.bigint "aircraft_id", null: false
     t.datetime "created_at", null: false
-    t.integer "installable_id", null: false
+    t.bigint "installable_id", null: false
     t.string "installable_type", null: false
     t.datetime "installed_at", null: false
     t.text "notes"
@@ -259,18 +262,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
     t.datetime "updated_at", null: false
     t.index ["aircraft_id", "removed_at"], name: "index_installations_on_aircraft_id_and_removed_at"
     t.index ["aircraft_id"], name: "index_installations_on_aircraft_id"
-    t.index ["installable_type", "installable_id"], name: "index_active_installation_per_asset", unique: true, where: "removed_at IS NULL"
+    t.index ["installable_type", "installable_id"], name: "index_active_installation_per_asset", unique: true, where: "(removed_at IS NULL)"
     t.index ["installable_type", "installable_id"], name: "index_installations_on_installable"
   end
 
   create_table "operator_events", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "event_type", default: "marker", null: false
-    t.integer "flight_id", null: false
+    t.bigint "flight_id", null: false
     t.string "label"
     t.json "metadata", default: {}, null: false
     t.datetime "occurred_at", null: false
-    t.integer "signal_session_id", null: false
+    t.bigint "signal_session_id", null: false
     t.datetime "updated_at", null: false
     t.string "uuid", null: false
     t.index ["flight_id"], name: "index_operator_events_on_flight_id"
@@ -279,9 +282,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
   end
 
   create_table "parts", force: :cascade do |t|
-    t.integer "assembly_id"
+    t.bigint "assembly_id"
     t.datetime "created_at", null: false
-    t.integer "function_id", null: false
+    t.bigint "function_id", null: false
     t.string "internal_number"
     t.string "manufacturer"
     t.string "model", null: false
@@ -292,13 +295,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
     t.index ["assembly_id"], name: "index_parts_on_assembly_id"
     t.index ["function_id"], name: "index_parts_on_function_id"
     t.index ["internal_number"], name: "index_parts_on_internal_number", unique: true
-    t.index ["manufacturer", "serial_number"], name: "index_parts_on_manufacturer_and_serial_number", unique: true, where: "serial_number IS NOT NULL AND serial_number != ''"
+    t.index ["manufacturer", "serial_number"], name: "index_parts_on_manufacturer_and_serial_number", unique: true, where: "((serial_number IS NOT NULL) AND ((serial_number)::text <> ''::text))"
   end
 
   create_table "sensor_samples", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.float "elapsed_seconds"
-    t.integer "flight_id", null: false
+    t.bigint "flight_id", null: false
     t.json "readings"
     t.datetime "recorded_at"
     t.string "sensor_type"
@@ -314,7 +317,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
     t.datetime "otp_verified_at"
     t.datetime "updated_at", null: false
     t.string "user_agent"
-    t.integer "user_id", null: false
+    t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
@@ -325,7 +328,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
     t.datetime "last_received_at"
     t.json "payload", default: {}, null: false
     t.integer "sequence", null: false
-    t.integer "signal_session_id", null: false
+    t.bigint "signal_session_id", null: false
     t.datetime "updated_at", null: false
     t.index ["signal_session_id", "sequence"], name: "index_signal_batches_on_signal_session_id_and_sequence", unique: true
     t.index ["signal_session_id"], name: "index_signal_batches_on_signal_session_id"
@@ -333,7 +336,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
 
   create_table "signal_presences", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.integer "embedded_device_id", null: false
+    t.bigint "embedded_device_id", null: false
     t.datetime "last_seen_at"
     t.json "status", default: {}, null: false
     t.datetime "updated_at", null: false
@@ -344,7 +347,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
   create_table "signal_sessions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "ended_at"
-    t.integer "flight_id", null: false
+    t.bigint "flight_id", null: false
     t.integer "last_acknowledged_sequence", default: -1, null: false
     t.integer "mavlink_component_id"
     t.integer "mavlink_system_id"
@@ -352,7 +355,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
     t.json "station_metadata", default: {}, null: false
     t.string "status", default: "live", null: false
     t.datetime "updated_at", null: false
-    t.integer "user_id", null: false
+    t.bigint "user_id", null: false
     t.string "uuid", null: false
     t.index ["flight_id"], name: "index_signal_sessions_on_flight_id"
     t.index ["status"], name: "index_signal_sessions_on_status"
@@ -360,16 +363,158 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
     t.index ["uuid"], name: "index_signal_sessions_on_uuid", unique: true
   end
 
+  create_table "solid_cable_messages", force: :cascade do |t|
+    t.binary "channel", null: false
+    t.bigint "channel_hash", null: false
+    t.datetime "created_at", null: false
+    t.binary "payload", null: false
+    t.index ["channel"], name: "index_solid_cable_messages_on_channel"
+    t.index ["channel_hash"], name: "index_solid_cable_messages_on_channel_hash"
+    t.index ["created_at"], name: "index_solid_cable_messages_on_created_at"
+  end
+
+  create_table "solid_cache_entries", force: :cascade do |t|
+    t.integer "byte_size", null: false
+    t.datetime "created_at", null: false
+    t.binary "key", null: false
+    t.bigint "key_hash", null: false
+    t.binary "value", null: false
+    t.index ["byte_size"], name: "index_solid_cache_entries_on_byte_size"
+    t.index ["key_hash", "byte_size"], name: "index_solid_cache_entries_on_key_hash_and_byte_size"
+    t.index ["key_hash"], name: "index_solid_cache_entries_on_key_hash", unique: true
+  end
+
+  create_table "solid_queue_blocked_executions", force: :cascade do |t|
+    t.string "concurrency_key", null: false
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "job_id", null: false
+    t.integer "priority", default: 0, null: false
+    t.string "queue_name", null: false
+    t.index ["concurrency_key", "priority", "job_id"], name: "index_solid_queue_blocked_executions_for_release"
+    t.index ["expires_at", "concurrency_key"], name: "index_solid_queue_blocked_executions_for_maintenance"
+    t.index ["job_id"], name: "index_solid_queue_blocked_executions_on_job_id", unique: true
+  end
+
+  create_table "solid_queue_claimed_executions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "job_id", null: false
+    t.bigint "process_id"
+    t.index ["job_id"], name: "index_solid_queue_claimed_executions_on_job_id", unique: true
+    t.index ["process_id", "job_id"], name: "index_solid_queue_claimed_executions_on_process_id_and_job_id"
+  end
+
+  create_table "solid_queue_failed_executions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "error"
+    t.bigint "job_id", null: false
+    t.index ["job_id"], name: "index_solid_queue_failed_executions_on_job_id", unique: true
+  end
+
+  create_table "solid_queue_jobs", force: :cascade do |t|
+    t.string "active_job_id"
+    t.text "arguments"
+    t.string "class_name", null: false
+    t.string "concurrency_key"
+    t.datetime "created_at", null: false
+    t.datetime "finished_at"
+    t.integer "priority", default: 0, null: false
+    t.string "queue_name", null: false
+    t.datetime "scheduled_at"
+    t.datetime "updated_at", null: false
+    t.index ["active_job_id"], name: "index_solid_queue_jobs_on_active_job_id"
+    t.index ["class_name"], name: "index_solid_queue_jobs_on_class_name"
+    t.index ["finished_at"], name: "index_solid_queue_jobs_on_finished_at"
+    t.index ["queue_name", "finished_at"], name: "index_solid_queue_jobs_for_filtering"
+    t.index ["scheduled_at", "finished_at"], name: "index_solid_queue_jobs_for_alerting"
+  end
+
+  create_table "solid_queue_pauses", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "queue_name", null: false
+    t.index ["queue_name"], name: "index_solid_queue_pauses_on_queue_name", unique: true
+  end
+
+  create_table "solid_queue_processes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "hostname"
+    t.string "kind", null: false
+    t.datetime "last_heartbeat_at", null: false
+    t.text "metadata"
+    t.string "name", null: false
+    t.integer "pid", null: false
+    t.bigint "supervisor_id"
+    t.index ["last_heartbeat_at"], name: "index_solid_queue_processes_on_last_heartbeat_at"
+    t.index ["name", "supervisor_id"], name: "index_solid_queue_processes_on_name_and_supervisor_id", unique: true
+    t.index ["supervisor_id"], name: "index_solid_queue_processes_on_supervisor_id"
+  end
+
+  create_table "solid_queue_ready_executions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "job_id", null: false
+    t.integer "priority", default: 0, null: false
+    t.string "queue_name", null: false
+    t.index ["job_id"], name: "index_solid_queue_ready_executions_on_job_id", unique: true
+    t.index ["priority", "job_id"], name: "index_solid_queue_poll_all"
+    t.index ["queue_name", "priority", "job_id"], name: "index_solid_queue_poll_by_queue"
+  end
+
+  create_table "solid_queue_recurring_executions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "job_id", null: false
+    t.datetime "run_at", null: false
+    t.string "task_key", null: false
+    t.index ["job_id"], name: "index_solid_queue_recurring_executions_on_job_id", unique: true
+    t.index ["task_key", "run_at"], name: "index_solid_queue_recurring_executions_on_task_key_and_run_at", unique: true
+  end
+
+  create_table "solid_queue_recurring_tasks", force: :cascade do |t|
+    t.text "arguments"
+    t.string "class_name"
+    t.string "command", limit: 2048
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "key", null: false
+    t.integer "priority", default: 0
+    t.string "queue_name"
+    t.string "schedule", null: false
+    t.boolean "static", default: true, null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_solid_queue_recurring_tasks_on_key", unique: true
+    t.index ["static"], name: "index_solid_queue_recurring_tasks_on_static"
+  end
+
+  create_table "solid_queue_scheduled_executions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "job_id", null: false
+    t.integer "priority", default: 0, null: false
+    t.string "queue_name", null: false
+    t.datetime "scheduled_at", null: false
+    t.index ["job_id"], name: "index_solid_queue_scheduled_executions_on_job_id", unique: true
+    t.index ["scheduled_at", "priority", "job_id"], name: "index_solid_queue_dispatch_all"
+  end
+
+  create_table "solid_queue_semaphores", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "key", null: false
+    t.datetime "updated_at", null: false
+    t.integer "value", default: 1, null: false
+    t.index ["expires_at"], name: "index_solid_queue_semaphores_on_expires_at"
+    t.index ["key", "value"], name: "index_solid_queue_semaphores_on_key_and_value"
+    t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
+  end
+
   create_table "test_runs", force: :cascade do |t|
     t.json "artifact_manifest", default: [], null: false
-    t.integer "build_id", null: false
+    t.bigint "build_id", null: false
     t.datetime "created_at", null: false
     t.string "ingestion_sha256", null: false
     t.json "measurements", default: {}, null: false
     t.text "notes"
-    t.integer "operator_id", null: false
+    t.bigint "operator_id", null: false
     t.string "outcome", null: false
-    t.integer "part_id"
+    t.bigint "part_id"
     t.datetime "ran_at", null: false
     t.string "recipe_id", null: false
     t.string "recipe_sha256", null: false
@@ -377,7 +522,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
     t.datetime "updated_at", null: false
     t.string "uuid", null: false
     t.datetime "validated_at"
-    t.integer "validated_by_id"
+    t.bigint "validated_by_id"
     t.text "validation_note"
     t.index ["build_id"], name: "index_test_runs_on_build_id"
     t.index ["operator_id"], name: "index_test_runs_on_operator_id"
@@ -394,7 +539,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
     t.datetime "created_at", null: false
     t.float "distance_from_start_m"
     t.float "elapsed_seconds"
-    t.integer "flight_id", null: false
+    t.bigint "flight_id", null: false
     t.float "glide_ratio"
     t.integer "gps_fix"
     t.float "heading_deg"
@@ -438,7 +583,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
 
   create_table "wifi_credentials", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.integer "created_by_id", null: false
+    t.bigint "created_by_id", null: false
     t.datetime "last_used_at"
     t.text "password_ciphertext", null: false
     t.string "security", null: false
@@ -480,6 +625,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_180000) do
   add_foreign_key "signal_presences", "embedded_devices"
   add_foreign_key "signal_sessions", "flights"
   add_foreign_key "signal_sessions", "users"
+  add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "test_runs", "builds"
   add_foreign_key "test_runs", "parts"
   add_foreign_key "test_runs", "users", column: "operator_id"

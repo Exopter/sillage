@@ -1,0 +1,62 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "digest"
+require "json"
+require "pathname"
+
+CONFIRMATION = "DELETE_ALL_VERIFIED_SQLITE_ARTIFACTS"
+DATABASE_FILES = %w[
+  production.sqlite3
+  production_cache.sqlite3
+  production_queue.sqlite3
+  production_cable.sqlite3
+].freeze
+SIDECAR_SUFFIXES = [ "", "-wal", "-shm" ].freeze
+
+abort "SQLITE_CLEANUP_CONFIRM must equal #{CONFIRMATION}" unless ENV["SQLITE_CLEANUP_CONFIRM"] == CONFIRMATION
+
+verification_path = Pathname(ENV.fetch("POSTGRESQL_RESTORE_VERIFICATION")).expand_path
+verification = JSON.parse(verification_path.read)
+abort "PostgreSQL restore verification is missing" unless verification.fetch("verified") == true
+source_database = verification.fetch("source_database")
+restored_database = verification.fetch("database")
+abort "Verification must come from a separate restored database" if source_database == restored_database
+abort "Invalid migration manifest digest" unless verification.fetch("manifest_sha256").match?(/\A[0-9a-f]{64}\z/)
+abort "Invalid SQLite source digest" unless verification.fetch("source_sqlite_sha256").match?(/\A[0-9a-f]{64}\z/)
+
+storage_root = Pathname(ENV.fetch("SQLITE_STORAGE_ROOT", "/rails/storage")).expand_path
+abort "Storage root does not exist: #{storage_root}" unless storage_root.directory?
+
+targets = DATABASE_FILES.product(SIDECAR_SUFFIXES).map do |filename, suffix|
+  storage_root.join("#{filename}#{suffix}")
+end
+
+unexpected_storage_artifacts = storage_root.glob("*sqlite3*").reject { |path| targets.include?(path) }
+if unexpected_storage_artifacts.any?
+  abort "Unexpected SQLite artifacts require explicit review: #{unexpected_storage_artifacts.join(', ')}"
+end
+
+snapshot_path = Pathname(ENV.fetch("SQLITE_SNAPSHOT_PATH")).expand_path
+abort "SQLite migration snapshot does not exist: #{snapshot_path}" unless snapshot_path.file?
+actual_source_sha256 = Digest::SHA256.file(snapshot_path).hexdigest
+unless actual_source_sha256 == verification.fetch("source_sqlite_sha256")
+  abort "SQLite migration snapshot digest does not match the verified source"
+end
+targets << snapshot_path
+targets.select!(&:exist?)
+abort "No SQLite artifacts found; refusing a no-op cleanup" if targets.empty?
+
+targets.each do |target|
+  unless target.to_s.start_with?("#{storage_root}/") || target == snapshot_path
+    abort "Refusing unexpected cleanup target: #{target}"
+  end
+end
+
+targets.each do |target|
+  target.delete
+  puts "Deleted #{target}"
+end
+
+remaining_storage_artifacts = storage_root.glob("*sqlite3*")
+abort "SQLite artifacts remain in storage: #{remaining_storage_artifacts.join(', ')}" if remaining_storage_artifacts.any?

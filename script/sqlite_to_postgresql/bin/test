@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+unset RUBYOPT RUBYLIB BUNDLE_BIN_PATH BUNDLE_GEMFILE BUNDLE_LOCKFILE BUNDLER_SETUP BUNDLER_VERSION
+cd "$(dirname "$0")/.."
+export BUNDLE_GEMFILE="$PWD/Gemfile"
+bundle check >/dev/null 2>&1 || bundle install
+bundle exec ruby -Itest -e 'Dir["test/**/*_test.rb"].sort.each { |file| require File.expand_path(file) }'

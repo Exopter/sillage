@@ -5,15 +5,8 @@ class ReadinessCheck
     supervisor: ->(kind) { kind.start_with?("Supervisor(") }
   }.freeze
 
-  DATABASES = {
-    primary_database: ActiveRecord::Base,
-    cache_database: SolidCache::Record,
-    queue_database: SolidQueue::Record,
-    cable_database: SolidCable::Record
-  }.freeze
-
   def self.call(queue_processes: SolidQueue::Process.all, now: Time.current)
-    checks = DATABASES.transform_values { |record_class| database_check(record_class) }
+    checks = { database: database_check(ActiveRecord::Base) }
     checks[:queue_processes] = queue_process_check(queue_processes:, now:)
     checks[:object_storage] = storage_check
 

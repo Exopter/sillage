@@ -15,7 +15,7 @@ class ReadinessCheckTest < ActiveSupport::TestCase
     )
 
     assert_equal "ok", result.fetch(:status)
-    assert_equal %i[primary_database cache_database queue_database cable_database queue_processes object_storage], result.fetch(:checks).keys
+    assert_equal %i[database queue_processes object_storage], result.fetch(:checks).keys
     assert result.fetch(:checks).values.all? { |check| check == { status: "ok" } }
   end
 

@@ -1,5 +1,5 @@
 class FlySightImportJob < ApplicationJob
-  queue_as :default
+  queue_as :imports
 
   discard_on ActiveJob::DeserializationError
 

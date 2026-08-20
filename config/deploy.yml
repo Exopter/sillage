@@ -21,6 +21,10 @@
   backups_enabled = boolean.call(ENV.fetch("BACKUPS_ENABLED", "false"))
   monitoring_enabled = boolean.call(ENV.fetch("MONITORING_ENABLED", "false"))
 
+  if ENV["POSTGRES_PASSWORD"].to_s.strip.empty?
+    raise "POSTGRES_PASSWORD is required for the Sillage PostgreSQL service"
+  end
+
   if boolean.call(ENV.fetch("EMAIL_ENABLED", "false"))
     required_mail = %w[MAIL_FROM POSTMARK_SERVER_TOKEN POSTMARK_MESSAGE_STREAM]
     missing_mail = required_mail.select { |key| ENV[key].to_s.strip.empty? }
@@ -42,8 +46,8 @@
     missing_backup = required_backup.select { |key| ENV[key].to_s.strip.empty? }
     raise "BACKUPS_ENABLED=true requires #{missing_backup.join(', ')}" if missing_backup.any?
 
-    raise "BACKUPS_ENABLED=true is not supported yet. Keep it false until Litestream replication, " \
-      "R2 lifecycle rules, restore commands, and monitored backup freshness are implemented " \
+    raise "BACKUPS_ENABLED=true is not supported yet. Keep it false until PostgreSQL dumps, " \
+      "R2 retention, restore commands, and monitored backup freshness are implemented " \
       "and linked from BACKUP_PLAN_URL."
   end
 %>
@@ -89,6 +93,11 @@ env:
   clear:
     SOLID_QUEUE_IN_PUMA: true
     RAILS_LOG_LEVEL: info
+    POSTGRES_HOST: sillage-postgres
+    POSTGRES_PORT: 5432
+    POSTGRES_DB: sillage_production
+    POSTGRES_USER: sillage
+    DB_POOL: 10
     SILLAGE_LANDING_HOSTS: exopter.com
     SILLAGE_HOSTS: sillage.exopter.com
     EMAIL_ENABLED: "<%= ENV.fetch("EMAIL_ENABLED", "false") %>"
@@ -105,10 +114,26 @@ env:
     - SILLAGE_LANDING_BASIC_AUTH_USERNAME
     - SILLAGE_LANDING_BASIC_AUTH_PASSWORD
     - POSTMARK_SERVER_TOKEN
+    - POSTGRES_PASSWORD
 
-# Persist SQLite databases and local Active Storage uploads across deploys.
+# Persist local Active Storage uploads across deploys.
 volumes:
   - "sillage_storage:/rails/storage"
+
+# Keep the project-local PostgreSQL server on the same private Kamal network.
+accessories:
+  postgres:
+    image: postgres:17.10-bookworm@sha256:9b18b78397054fce88a9552e9d5a3ad5bb7fd258c5b3cc1c5028e46373d6ea8f
+    host: <%= deploy_host %>
+    port: "127.0.0.1:5432:5432"
+    env:
+      clear:
+        POSTGRES_DB: sillage_production
+        POSTGRES_USER: sillage
+      secret:
+        - POSTGRES_PASSWORD
+    volumes:
+      - "sillage_postgres_data:/var/lib/postgresql/data"
 
 # Bridge fingerprinted assets between versions during deploys.
 asset_path: /rails/public/assets
