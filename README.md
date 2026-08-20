@@ -51,7 +51,3 @@ variables. Keep real secrets out of Git.
 Kamal is configured in `config/deploy.yml`. Copy
 `.env.deploy.local.example` to `.env.deploy.local`, then use `bin/kamal` for
 deployment commands from the application root.
-
-The guarded SQLite-to-PostgreSQL cutover procedure is documented in
-`RUNBOOK_POSTGRESQL_MIGRATION.md`. It must not be executed without a separate,
-explicit production approval.

@@ -20,8 +20,6 @@ CI.run do
   step "Tests: Aircraft connection identity", "node test/javascript/aircraft_connection_test.mjs"
   step "Tests: Signal worker", "node test/javascript/signal_serial_worker_test.mjs"
   step "Tests: USB page lifecycle", "node test/javascript/usb_page_lifecycle_test.mjs"
-  step "Tests: SQLite to PostgreSQL migration guard", "script/sqlite_to_postgresql/bin/test"
-
   step "Security: Gem audit", "bin/bundler-audit"
   step "Security: Importmap vulnerability audit", "bin/importmap audit"
   step "Security: Brakeman code analysis", "bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error"

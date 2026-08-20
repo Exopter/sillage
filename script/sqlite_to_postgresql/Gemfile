@@ -1,6 +1,0 @@
-source "https://rubygems.org"
-
-gem "csv"
-gem "minitest", "~> 6.0"
-gem "pg", "~> 1.6"
-gem "sqlite3", "~> 2.9"
