@@ -1,0 +1,10 @@
+[Unit]
+Description=Prune Sillage Active Storage backup retention daily
+
+[Timer]
+OnCalendar=*-*-* 03:41:00 UTC
+AccuracySec=30s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

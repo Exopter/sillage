@@ -35,20 +35,21 @@
   end
 
   if monitoring_enabled
-    missing_monitoring = %w[MONITORING_PLAN_URL].select { |key| ENV[key].to_s.strip.empty? }
+    required_monitoring = %w[
+      MONITORING_PLAN_URL HEALTHCHECKS_READY_PING_URL HEALTHCHECKS_POSTGRESQL_ARCHIVE_PING_URL
+    ]
+    missing_monitoring = required_monitoring.select { |key| ENV[key].to_s.strip.empty? }
     raise "MONITORING_ENABLED=true requires #{missing_monitoring.join(', ')}" if missing_monitoring.any?
   end
 
   if backups_enabled
     required_backup = %w[
       BACKUP_PLAN_URL R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BACKUP_BUCKET
+      PGBACKREST_REPOSITORY_PASSWORD RESTIC_REPOSITORY_PASSWORD
+      HEALTHCHECKS_POSTGRESQL_BACKUP_PING_URL HEALTHCHECKS_STORAGE_BACKUP_PING_URL
     ]
     missing_backup = required_backup.select { |key| ENV[key].to_s.strip.empty? }
     raise "BACKUPS_ENABLED=true requires #{missing_backup.join(', ')}" if missing_backup.any?
-
-    raise "BACKUPS_ENABLED=true is not supported yet. Keep it false until PostgreSQL dumps, " \
-      "R2 retention, restore commands, and monitored backup freshness are implemented " \
-      "and linked from BACKUP_PLAN_URL."
   end
 %>
 
@@ -123,17 +124,33 @@ volumes:
 # Keep the project-local PostgreSQL server on the same private Kamal network.
 accessories:
   postgres:
-    image: postgres:17.10-bookworm@sha256:9b18b78397054fce88a9552e9d5a3ad5bb7fd258c5b3cc1c5028e46373d6ea8f
+    image: 127.0.0.1:5555/sillage-postgres:17.10-pgbackrest-2.59.1
     host: <%= deploy_host %>
     port: "127.0.0.1:5432:5432"
+    cmd: >-
+      postgres
+      -c archive_mode=on
+      -c archive_timeout=15min
+      -c "archive_command=pgbackrest --stanza=sillage archive-push %p"
     env:
       clear:
         POSTGRES_DB: sillage_production
         POSTGRES_USER: sillage
+        PGBACKREST_REPO1_TYPE: s3
+        PGBACKREST_REPO1_S3_BUCKET: "<%= ENV.fetch("R2_BACKUP_BUCKET", "") %>"
+        PGBACKREST_REPO1_S3_ENDPOINT: "<%= ENV.fetch("R2_ACCOUNT_ID", "") %>.r2.cloudflarestorage.com"
+        PGBACKREST_REPO1_S3_REGION: auto
+        PGBACKREST_REPO1_S3_URI_STYLE: path
       secret:
         - POSTGRES_PASSWORD
+        - PGBACKREST_REPO1_S3_KEY
+        - PGBACKREST_REPO1_S3_KEY_SECRET
+        - PGBACKREST_REPO1_CIPHER_PASS
+    files:
+      - ops/postgresql/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro
     volumes:
       - "sillage_postgres_data:/var/lib/postgresql/data"
+      - "sillage_pgbackrest_spool:/var/spool/pgbackrest"
 
 # Bridge fingerprinted assets between versions during deploys.
 asset_path: /rails/public/assets

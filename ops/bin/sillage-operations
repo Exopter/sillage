@@ -1,0 +1,171 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+readonly POSTGRES_CONTAINER="sillage-postgres"
+readonly STATE_DIRECTORY="/var/lib/sillage-operations"
+readonly RESTIC_IMAGE="restic/restic:0.18.0@sha256:28f29bcc3d38a061e09f825600244cf9854f09dd59443e9cd1dfa038c22b43d2"
+readonly POSTGRES_BACKUP_STAMP="${STATE_DIRECTORY}/postgresql-backup.success"
+
+require_variable() {
+  local name="$1"
+  if [[ -z "${!name:-}" ]]; then
+    echo "Required environment variable is missing: ${name}" >&2
+    return 1
+  fi
+}
+
+ping_healthcheck() {
+  local url="$1"
+  local suffix="${2:-}"
+  local message="${3:-}"
+
+  curl --fail --silent --show-error --max-time 10 --retry 2 \
+    --request POST --data-binary "$message" "${url}${suffix}" >/dev/null || true
+}
+
+run_monitored() {
+  local url="$1"
+  local send_start="$2"
+  shift 2
+
+  [[ "$send_start" == "yes" ]] && ping_healthcheck "$url" "/start" "started"
+
+  local output
+  if output=$("$@" 2>&1); then
+    ping_healthcheck "$url" "" "${output:-ok}"
+    [[ -n "$output" ]] && printf '%s\n' "$output"
+  else
+    local status=$?
+    ping_healthcheck "$url" "/fail" "${output:-failed}"
+    [[ -n "$output" ]] && printf '%s\n' "$output" >&2
+    return "$status"
+  fi
+}
+
+acquire_lock() {
+  local name="$1"
+  exec 9>"/run/lock/sillage-${name}.lock"
+  flock --nonblock 9
+}
+
+check_ready() {
+  local response
+  response=$(curl --fail --silent --show-error --max-time 30 https://sillage.exopter.com/ready)
+  grep --quiet --extended-regexp '"status"[[:space:]]*:[[:space:]]*"ok"' <<<"$response"
+  echo "Sillage readiness is healthy."
+}
+
+check_postgresql_archive() {
+  local stats archive_age active_failure archived_count backup_age now backup_time
+  stats=$(docker exec "$POSTGRES_CONTAINER" psql -U sillage -d sillage_production --no-align --tuples-only --field-separator='|' --command \
+    "SELECT COALESCE(EXTRACT(EPOCH FROM clock_timestamp() - last_archived_time)::bigint, -1), CASE WHEN last_failed_time IS NOT NULL AND (last_archived_time IS NULL OR last_failed_time > last_archived_time) THEN 1 ELSE 0 END, archived_count FROM pg_stat_archiver;")
+  IFS='|' read -r archive_age active_failure archived_count <<<"$stats"
+
+  [[ "$archive_age" =~ ^[0-9]+$ ]] && (( archive_age <= 1200 ))
+  [[ "$active_failure" == "0" ]]
+  docker exec "$POSTGRES_CONTAINER" sh -ec \
+    '! find /var/spool/pgbackrest -type f -name "*.error" -size +0c -print -quit | grep -q .'
+
+  [[ -f "$POSTGRES_BACKUP_STAMP" ]]
+  now=$(date +%s)
+  backup_time=$(stat --format='%Y' "$POSTGRES_BACKUP_STAMP")
+  backup_age=$((now - backup_time))
+  (( backup_age <= 93600 ))
+
+  echo "PostgreSQL archive age=${archive_age}s archived=${archived_count}; base backup age=${backup_age}s."
+}
+
+backup_postgresql() {
+  docker exec --user postgres "$POSTGRES_CONTAINER" \
+    pgbackrest --stanza=sillage --type=full backup
+  touch "$POSTGRES_BACKUP_STAMP"
+  echo "PostgreSQL full backup completed."
+}
+
+run_restic() {
+  require_variable R2_ACCOUNT_ID
+  require_variable R2_ACCESS_KEY_ID
+  require_variable R2_SECRET_ACCESS_KEY
+  require_variable R2_BACKUP_BUCKET
+  require_variable RESTIC_REPOSITORY_PASSWORD
+
+  docker run --rm \
+    --cpu-shares 2 \
+    --cpus 0.50 \
+    --memory 512m \
+    --pids-limit 128 \
+    --security-opt no-new-privileges \
+    --tmpfs /tmp:rw,noexec,nosuid,size=256m \
+    --volume sillage_storage:/data:ro \
+    --volume sillage_restic_cache:/cache \
+    --env AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
+    --env AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
+    --env RESTIC_CACHE_DIR=/cache \
+    --env RESTIC_PASSWORD="$RESTIC_REPOSITORY_PASSWORD" \
+    --env RESTIC_REPOSITORY="s3:https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${R2_BACKUP_BUCKET}/restic/active-storage" \
+    "$RESTIC_IMAGE" "$@"
+}
+
+initialize_storage_repository() {
+  run_restic snapshots >/dev/null 2>&1 || run_restic init
+  echo "Active Storage backup repository is initialized."
+}
+
+backup_storage() {
+  run_restic backup /data --host sillage-production --tag active-storage
+  echo "Active Storage incremental backup completed."
+}
+
+prune_storage() {
+  run_restic forget \
+    --host sillage-production \
+    --tag active-storage \
+    --keep-within 24h \
+    --keep-hourly 168 \
+    --keep-daily 30 \
+    --prune
+  echo "Active Storage retention pruning completed."
+}
+
+mkdir -p "$STATE_DIRECTORY"
+
+case "${1:-}" in
+  ready)
+    require_variable HEALTHCHECKS_READY_PING_URL
+    acquire_lock ready
+    run_monitored "$HEALTHCHECKS_READY_PING_URL" no check_ready
+    ;;
+  postgresql-monitor)
+    require_variable HEALTHCHECKS_POSTGRESQL_ARCHIVE_PING_URL
+    acquire_lock postgresql-monitor
+    run_monitored "$HEALTHCHECKS_POSTGRESQL_ARCHIVE_PING_URL" no check_postgresql_archive
+    ;;
+  postgresql-backup)
+    require_variable HEALTHCHECKS_POSTGRESQL_BACKUP_PING_URL
+    acquire_lock postgresql-backup
+    run_monitored "$HEALTHCHECKS_POSTGRESQL_BACKUP_PING_URL" yes backup_postgresql
+    ;;
+  storage-init)
+    acquire_lock active-storage
+    initialize_storage_repository
+    ;;
+  storage-backup)
+    require_variable HEALTHCHECKS_STORAGE_BACKUP_PING_URL
+    acquire_lock active-storage
+    run_monitored "$HEALTHCHECKS_STORAGE_BACKUP_PING_URL" yes backup_storage
+    ;;
+  storage-prune)
+    require_variable HEALTHCHECKS_STORAGE_BACKUP_PING_URL
+    acquire_lock active-storage
+    if ! output=$(prune_storage 2>&1); then
+      ping_healthcheck "$HEALTHCHECKS_STORAGE_BACKUP_PING_URL" "/fail" "$output"
+      printf '%s\n' "$output" >&2
+      exit 1
+    fi
+    printf '%s\n' "$output"
+    ;;
+  *)
+    echo "Usage: $0 {ready|postgresql-monitor|postgresql-backup|storage-init|storage-backup|storage-prune}" >&2
+    exit 64
+    ;;
+esac

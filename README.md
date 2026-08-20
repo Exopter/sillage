@@ -51,3 +51,6 @@ variables. Keep real secrets out of Git.
 Kamal is configured in `config/deploy.yml`. Copy
 `.env.deploy.local.example` to `.env.deploy.local`, then use `bin/kamal` for
 deployment commands from the application root.
+
+Production backup, monitoring, restore, and recovery procedures are in
+[`RUNBOOK_OPERATIONS.md`](RUNBOOK_OPERATIONS.md).

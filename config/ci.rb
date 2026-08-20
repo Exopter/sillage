@@ -9,6 +9,7 @@ CI.run do
   step "Style: Design system contract", "ruby script/check_design_system_contract"
   step "Style: No unused CSS selectors", "ruby script/check_unused_css_selectors"
   step "Style: Documentation boundary", "ruby script/check_documentation_boundary"
+  step "Style: Production operations scripts", "bash -n ops/bin/sillage-operations"
   step "Style: JavaScript type safety", "npm run typecheck"
   step "Tests: Browser module graph", "node test/javascript/importmap_modules_test.mjs"
   step "Tests: Cesium ion tile provider", "node test/javascript/flight_viewer_cesium_ion_test.mjs"

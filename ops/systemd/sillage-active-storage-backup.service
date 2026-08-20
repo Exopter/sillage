@@ -1,0 +1,18 @@
+[Unit]
+Description=Sillage Active Storage incremental backup
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/sillage/operations.env
+ExecStart=/usr/local/libexec/sillage-operations storage-backup
+Nice=19
+IOSchedulingClass=idle
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/run/lock /var/lib/sillage-operations
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+TimeoutStartSec=45m
