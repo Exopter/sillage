@@ -45,7 +45,10 @@ run_monitored() {
 acquire_lock() {
   local name="$1"
   exec 9>"/run/lock/sillage-${name}.lock"
-  flock --nonblock 9
+  if ! flock --nonblock 9; then
+    echo "Another Sillage ${name} operation is already running." >&2
+    return 75
+  fi
 }
 
 check_ready() {

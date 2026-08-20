@@ -38,6 +38,7 @@ def run!(*command)
   stdout, stderr, status = Open3.capture3(*command)
   return stdout if status.success?
 
+  warn stdout
   warn stderr
   abort "Command failed: #{command.first}"
 end
@@ -77,6 +78,7 @@ run!(*scp, *files, "root@#{host}:#{stage}/")
 
 install_command = <<~SHELL
   set -eu
+  trap 'rm -r #{Shellwords.escape(stage)} 2>/dev/null || true' EXIT
   install -d -m 0755 /etc/sillage /usr/local/libexec /var/lib/sillage-operations
   install -m 0600 #{Shellwords.escape(stage)}/operations.env /etc/sillage/operations.env
   install -m 0755 #{Shellwords.escape(stage)}/sillage-operations /usr/local/libexec/sillage-operations
@@ -85,6 +87,10 @@ install_command = <<~SHELL
   done
   docker volume create sillage_restic_cache >/dev/null
   docker pull restic/restic:0.18.0@sha256:28f29bcc3d38a061e09f825600244cf9854f09dd59443e9cd1dfa038c22b43d2 >/dev/null
+  systemctl stop sillage-active-storage-backup.timer 2>/dev/null || true
+  set -a
+  . /etc/sillage/operations.env
+  set +a
   /usr/local/libexec/sillage-operations storage-init
   systemctl daemon-reload
   systemctl enable --now \
@@ -93,7 +99,6 @@ install_command = <<~SHELL
     sillage-postgresql-backup.timer \
     sillage-active-storage-backup.timer \
     sillage-active-storage-prune.timer
-  rm -r #{Shellwords.escape(stage)}
 SHELL
 run!(*ssh, install_command)
 puts "Production backup and monitoring units are installed and enabled on #{host}."

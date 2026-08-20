@@ -81,8 +81,10 @@ set -a
 . /etc/sillage/operations.env
 set +a
 docker volume create sillage_postgresql_restore_drill
-docker run --rm --volume sillage_postgresql_restore_drill:/restore \
-  alpine:3.22 chown 999:999 /restore
+docker run --rm --entrypoint sh \
+  --volume sillage_postgresql_restore_drill:/var/lib/postgresql/data \
+  127.0.0.1:5555/sillage-postgres:17.10-pgbackrest-2.59.1 \
+  -c "chown -R postgres:postgres /var/lib/postgresql/data"
 docker run --rm --user 999:999 \
   --env-file /etc/sillage/operations.env \
   --env PGBACKREST_REPO1_TYPE=s3 \
@@ -98,9 +100,11 @@ docker run --rm --user 999:999 \
   pgbackrest --stanza=sillage --type=immediate restore
 ```
 
-Start that volume on an isolated Docker network and an unused local port, then
-compare table counts and application invariants. Remove only the disposable
-container and volume after verification.
+Start that volume without publishing a port and outside the Kamal network.
+The recovery container still needs outbound DNS/network access to R2 and the
+same `PGBACKREST_REPO1_*` variables so PostgreSQL can retrieve the required
+WAL. Compare table counts and application invariants. Remove only the
+disposable container and volume after verification.
 
 ## Active Storage restore drill
 
