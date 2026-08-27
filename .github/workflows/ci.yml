@@ -44,8 +44,9 @@ jobs:
       - name: Checkout canonical FDR firmware
         uses: actions/checkout@v6
         with:
-          repository: Exopter/fdr
+          repository: Exopter/flight-data-recorder
           path: fdr
+          ssh-key: ${{ secrets.FDR_CI_DEPLOY_KEY }}
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
