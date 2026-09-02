@@ -71,15 +71,14 @@ module ExoFdr
 
     def records_to_samples(records)
       origin_us = records.first&.fetch("timestamp_us", 0).to_i
-      gps_time = records.filter_map { |record| gps_recorded_at(record) }.first
+      recording_started_at = recording_started_at(records, origin_us)
       points = []
       sensors = []
       records.each do |record|
         elapsed = (record.fetch("timestamp_us").to_i - origin_us) / 1_000_000.0
-        recorded_at = gps_time ? gps_time + elapsed : nil
+        recorded_at = recording_started_at ? recording_started_at + elapsed : nil
         case record["type"]
         when "gps_pvt"
-          recorded_at = gps_recorded_at(record) || recorded_at
           points << {
             recorded_at:,
             elapsed_seconds: elapsed,
@@ -132,7 +131,20 @@ module ExoFdr
     end
 
     def started_at_for(records)
-      records.filter_map { |record| gps_recorded_at(record) }.first
+      origin_us = records.first&.fetch("timestamp_us", 0).to_i
+      recording_started_at(records, origin_us)
+    end
+
+    def recording_started_at(records, origin_us)
+      records.each do |record|
+        anchor_at = gps_recorded_at(record)
+        next unless anchor_at
+
+        anchor_elapsed = (record.fetch("timestamp_us").to_i - origin_us) / 1_000_000.0
+        return anchor_at - anchor_elapsed
+      end
+
+      nil
     end
   end
 end
