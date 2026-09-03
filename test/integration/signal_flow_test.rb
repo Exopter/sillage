@@ -268,7 +268,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
       assert_select "button[data-action='fdr-connectivity#onboardRecorder'][data-fdr-connectivity-target='wifiRegisterButton']", text: /Add and initialize recorder/
       assert_select "[data-fdr-connectivity-target='wifiRegistrationStatus']"
     end
-    assert_select "details[data-fdr-connectivity-target='recorderTools']:not([open])"
+    assert_select "details.signal-fdr-tools:not([open])"
     assert_select "#registered-recorders"
   end
 

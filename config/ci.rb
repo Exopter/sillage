@@ -13,6 +13,7 @@ CI.run do
   step "Style: JavaScript type safety", "npm run typecheck"
   step "Tests: Browser module graph", "node test/javascript/importmap_modules_test.mjs"
   step "Tests: Cesium ion tile provider", "node test/javascript/flight_viewer_cesium_ion_test.mjs"
+  step "Tests: Unified flight analysis", "node test/javascript/flight_viewer_unified_analysis_test.mjs"
   step "Tests: Pressure altitude", "node test/javascript/pressure_altitude_test.mjs"
   step "Tests: Flight geometry", "node test/javascript/flight_geometry_test.mjs"
   step "Tests: Signal layout", "node test/javascript/signal_layout_test.mjs"

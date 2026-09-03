@@ -155,6 +155,7 @@ en:
       success: "Flight deleted."
     form:
       name: "Name"
+      aircraft: "Aircraft"
       location: "Location"
       exit_at: "Exit"
       opening_at: "Opening"

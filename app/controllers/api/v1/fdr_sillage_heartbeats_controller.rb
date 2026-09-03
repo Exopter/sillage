@@ -29,7 +29,7 @@ module Api
 
       def create
         raw_body = request.raw_post
-        return head :payload_too_large if raw_body.bytesize > MAX_BODY_BYTES
+        return head :content_too_large if raw_body.bytesize > MAX_BODY_BYTES
 
         payload = JSON.parse(raw_body)
         recorder = EmbeddedDevice.find_by(device_id: normalize_device_id(payload.fetch("device_id")))

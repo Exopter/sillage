@@ -22,8 +22,7 @@ export default class extends Controller {
     flightCode: String,
     batchUrl: String,
     eventUrl: String,
-    completeUrl: String,
-    mapImageUrl: String
+    completeUrl: String
   }
 
   async connect() {

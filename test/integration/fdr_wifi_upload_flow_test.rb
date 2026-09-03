@@ -141,7 +141,7 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
     patch chunk_api_v1_fdr_wifi_upload_path(token),
       params: oversized,
       headers: signed_headers(oversized, "chunk:#{token}:0", offset: 0)
-    assert_response :payload_too_large
+    assert_response :content_too_large
 
     chunk = oversized.byteslice(0, Api::V1::FdrWifiUploadsController::MAX_CHUNK_BYTES)
     patch chunk_api_v1_fdr_wifi_upload_path(token),

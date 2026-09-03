@@ -5,6 +5,7 @@ require "set"
 
 ROOT = File.expand_path("..", __dir__)
 STYLESHEET_GLOB = File.join(ROOT, "app/assets/stylesheets/**/*.css")
+CANONICAL_TOKEN_STYLESHEET = File.join(ROOT, "app/assets/stylesheets/exopter_design_system.css")
 CONSUMER_GLOBS = %w[
   app/components/**/*.{erb,rb}
   app/helpers/**/*.rb
@@ -14,11 +15,13 @@ CONSUMER_GLOBS = %w[
 
 # These selectors belong to markup created by Rails or third-party JavaScript.
 RUNTIME_CLASSES = Set.new(%w[
-  cesium-button
-  cesium-viewer
+  cesium-credit-expand-link
+  cesium-credit-logoContainer
+  cesium-credit-textContainer
   cesium-widget
-  field_with_errors
+  cesium-widget-credits
   is-available
+  is-caution
   is-failed
   is-fault
   is-installed
@@ -26,17 +29,18 @@ RUNTIME_CLASSES = Set.new(%w[
   is-level-2
   is-level-3
   is-quarantined
+  is-ready
   is-retired
   notice
-  turbo-progress-bar
 ]).freeze
 
 stylesheets = Dir[STYLESHEET_GLOB].sort
 consumers = CONSUMER_GLOBS.flat_map { |glob| Dir[File.join(ROOT, glob)] }.uniq.sort
 consumer_source = consumers.map { |path| File.read(path) }.join("\n")
+stylesheet_sources = stylesheets.to_h { |path| [ path, File.read(path) ] }
 
-defined_classes = stylesheets.flat_map do |path|
-  File.read(path).scan(/([^{}]+)\{/).flat_map do |selector|
+defined_classes = stylesheet_sources.values.flat_map do |source|
+  source.scan(/([^{}]+)\{/).flat_map do |selector|
     selector.first.scan(/\.([A-Za-z_][A-Za-z0-9_-]*)/).flatten
   end
 end.to_set
@@ -45,12 +49,30 @@ unused_classes = defined_classes.reject do |name|
   RUNTIME_CLASSES.include?(name) || consumer_source.match?(/(?<![A-Za-z0-9_-])#{Regexp.escape(name)}(?![A-Za-z0-9_-])/)
 end.sort
 
-if unused_classes.empty?
-  puts "Unused CSS selector guard passed: every declared class has a consumer."
+local_custom_properties = stylesheet_sources.reject { |path, _source| path == CANONICAL_TOKEN_STYLESHEET }.values.flat_map do |source|
+  source.scan(/^\s*(--[A-Za-z0-9_-]+)\s*:/).flatten
+end.uniq.sort
+stylesheet_usage_source = stylesheet_sources.values.join("\n").gsub(/^\s*--[A-Za-z0-9_-]+\s*:/, "")
+custom_property_consumer_source = "#{stylesheet_usage_source}\n#{consumer_source}"
+unused_custom_properties = local_custom_properties.reject do |name|
+  custom_property_consumer_source.match?(/(?<![A-Za-z0-9_-])#{Regexp.escape(name)}(?![A-Za-z0-9_-])/)
+end
+
+if unused_classes.empty? && unused_custom_properties.empty?
+  puts "Unused CSS guard passed: every declared class and local custom property has a consumer."
   exit 0
 end
 
-warn "CSS classes without a consumer:"
-unused_classes.each { |name| warn "  .#{name}" }
-warn "Remove the selector or document a runtime-generated consumer in RUNTIME_CLASSES."
+unless unused_classes.empty?
+  warn "CSS classes without a consumer:"
+  unused_classes.each { |name| warn "  .#{name}" }
+  warn "Remove the selector or document a runtime-generated consumer in RUNTIME_CLASSES."
+end
+
+unless unused_custom_properties.empty?
+  warn "Local CSS custom properties without a consumer:"
+  unused_custom_properties.each { |name| warn "  #{name}" }
+  warn "Remove the property or consume the canonical design-system token directly."
+end
+
 exit 1

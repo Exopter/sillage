@@ -37,14 +37,43 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     get flight_path(flight)
     assert_response :success
     assert_select "h1", flight.name
-    assert_select ".replay-kit-screen"
-    assert_select ".replay-kit-id", text: /\AFLT-\d{4}-\d{3}\z/
+    assert_select ".flight-replay-page"
+    assert_select ".flight-replay-title span", text: flight.name
+    assert_select ".flight-replay-title", text: /FLT-\d{4}-\d{3}/, count: 0
+    assert_select ".flight-recorded-at", count: 0
     assert_select ".mode-badge", text: "Replay"
-    assert_select ".replay-kit-metrics span", text: "Altitude"
+    assert_select ".flight-phase-button", count: 4
+    assert_select ".flight-phase-button[data-phase='all']", text: "All"
+    assert_select ".flight-phase-button[data-phase='plane']", text: "Plane"
+    assert_select ".flight-phase-button[data-phase='jump']", text: "Jump"
+    assert_select ".flight-phase-button[data-phase='canopy']", text: "Canopy"
+    assert_select ".flight-phase-button", text: /Freefall/, count: 0
+    assert_select ".flight-metric-toggle", count: 8
+    assert_select "canvas[data-flight-viewer-target='unifiedChart']", count: 1
+    assert_select ".flight-analysis-visuals .trajectory-compact", count: 1
+    assert_select ".flight-stat-card", count: 3
+    assert_select ".flight-statistics .flight-section-kicker", count: 0
+    assert_select ".flight-stat-card header small", text: "Avg / max", count: 1
+    assert_select ".flight-stat-card dt", text: "Start altitude", count: 0
+    assert_select ".flight-stat-card dt", text: "End altitude", count: 0
+    assert_select ".flight-stat-card dt", text: "Altitude change", count: 0
+    assert_select ".flight-stat-card dt", text: "GPS samples", count: 1
+    assert_select ".flight-stat-card dt", text: "Airspeed samples", count: 1
+    assert_select ".flight-stat-card dt", text: "Accelerometer samples (IMU)", count: 1
+    assert_select ".flight-stat-card dt", text: "Gyroscope samples (IMU)", count: 1
+    assert_select ".flight-stat-card dt", text: "Magnetometer samples (IMU)", count: 1
+    assert_select ".flight-stat-card dt", text: "Orientation samples (IMU)", count: 1
+    assert_select ".flight-stat-card dt", text: "IMU samples", count: 0
+    assert_select ".flight-source-grid > div", count: 6
+    assert_select ".flight-stat-card dd", text: "8 (0.2 Hz)", count: 1
+    assert_select ".flight-stat-card dd", text: "3 (0.1 Hz)", count: 2
+    assert_select ".flight-stat-card dd", text: "0 (0 Hz)", count: 3
+    assert_select ".flight-speed-pill.is-average", count: 4
+    assert_select ".flight-speed-pill.is-maximum", count: 4
     assert_select ".trajectory-scene"
     assert_select ".video-sync"
-    assert_select "canvas[data-flight-viewer-target='motionChart']"
-    assert_select "canvas.analysis-chart", minimum: 6
+    assert_select ".flight-support-grid .flight-instrument-panel", count: 2
+    assert_select ".flight-support-grid", text: /Acquisition/, count: 0
 
     viewer = css_select("[data-controller='flight-viewer']").first
     points = JSON.parse(viewer["data-flight-viewer-points-value"])
@@ -53,7 +82,9 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_in_delta 0.0, points.last["height"]
     assert_equal "gps", analysis["mode"]
     assert_equal "gps", analysis["altitude_source"]
-    assert points.all? { |point| point["t"] >= analysis["replay_start"] && point["t"] <= analysis["replay_end"] }
+    assert points.all? { |point| point["t"] >= analysis["timeline_start"] && point["t"] <= analysis["timeline_end"] }
+    assert_in_delta analysis["timeline_start"], points.first["t"]
+    assert_in_delta analysis["timeline_end"], points.last["t"]
   ensure
     clear_enqueued_jobs
     clear_performed_jobs
@@ -99,7 +130,46 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_equal "preparation", flight.status
     assert_equal aircraft(:pilatus), flight.aircraft
     assert_equal "Tournon", flight.location
+    assert_equal "manual", flight.location_source
     assert_equal aircraft(:pilatus).configuration_snapshot, flight.configuration_snapshot
+  end
+
+  test "keeps manual location edits authoritative" do
+    flight = flights(:one)
+    flight.update!(location: "Arcachon-La Teste aerodrome", location_source: "openstreetmap")
+
+    patch flight_path(flight), params: { flight: { location: "Operator landing area" } }
+
+    assert_redirected_to flight_path(flight)
+    assert_equal "Operator landing area", flight.reload.location
+    assert_equal "manual", flight.location_source
+  end
+
+  test "selects another aircraft from the flight details" do
+    flight = flights(:one)
+    previous_aircraft = flight.aircraft
+    selected_aircraft = aircraft(:exowing)
+    previous_aircraft.update!(active: false)
+
+    get flight_path(flight)
+
+    assert_response :success
+    assert_select "label[for='flight_aircraft_id']", text: "Aircraft"
+    assert_select "select#flight_aircraft_id[name='flight[aircraft_id]']" do
+      assert_select "option[value='#{previous_aircraft.id}'][selected]", text: previous_aircraft.display_name
+      assert_select "option[value='#{selected_aircraft.id}']", text: selected_aircraft.display_name
+    end
+
+    patch flight_path(flight), params: { flight: { aircraft_id: selected_aircraft.id } }
+
+    assert_redirected_to flight_path(flight)
+    assert_equal selected_aircraft, flight.reload.aircraft
+    assert_equal selected_aircraft.configuration_snapshot, flight.configuration_snapshot
+    follow_redirect!
+    assert_select ".sillage-flashes[aria-label='Notifications']"
+    assert_select ".flash.notice[role='status'][data-controller='flash'][data-flash-timeout-value='5000']",
+      text: "Flight updated."
+    assert_select ".flash-dismiss[aria-label='Dismiss notification'][data-action='flash#dismiss']"
   end
 
   test "rejects a manually prepared flight without an aircraft" do
@@ -123,7 +193,8 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to root_path
     follow_redirect!
-    assert_select ".flash.alert", text: "Select an ExoFDR binary file."
+    assert_select ".flash.alert[role='alert'][data-controller='flash'][data-flash-timeout-value='0']",
+      text: "Select an ExoFDR binary file."
   end
 
   test "dashboard renders the Sillage logbook" do

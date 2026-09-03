@@ -37,4 +37,17 @@ module MetricsHelper
 
     number_with_precision(value, precision: 2)
   end
+
+  def sample_count_with_rate(count, duration_seconds)
+    count = count.to_i
+    duration_seconds = duration_seconds.to_f
+    rate = count / duration_seconds if duration_seconds.positive?
+    rate_label = if rate
+      number_with_precision(rate, precision: rate >= 10 ? 0 : 1, strip_insignificant_zeros: true)
+    else
+      "—"
+    end
+
+    "#{number_with_delimiter(count)} (#{rate_label} Hz)"
+  end
 end

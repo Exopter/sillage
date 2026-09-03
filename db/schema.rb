@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_20_112000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_03_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -215,6 +215,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_20_112000) do
     t.bigint "flight_import_id"
     t.datetime "landing_at"
     t.string "location"
+    t.string "location_source"
     t.float "max_altitude_m"
     t.float "max_horizontal_speed_mps"
     t.float "max_vertical_speed_mps"

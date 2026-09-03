@@ -2,6 +2,7 @@ class Flight < ApplicationRecord
   STATUSES = %w[preparation live processing analysed review].freeze
   VIDEO_PROCESSING_STATUSES = %w[empty processing ready failed].freeze
   VIDEO_UPLOAD_EXTENSIONS = %w[.avi .m4v .mkv .mov .mp4 .webm].freeze
+  LOCATION_SOURCES = %w[manual openstreetmap].freeze
 
   belongs_to :user
   belongs_to :flight_import, optional: true, inverse_of: :flights
@@ -19,6 +20,7 @@ class Flight < ApplicationRecord
   validates :code, uniqueness: true
   validates :status, inclusion: { in: STATUSES }
   validates :video_processing_status, inclusion: { in: VIDEO_PROCESSING_STATUSES }
+  validates :location_source, inclusion: { in: LOCATION_SOURCES }, allow_nil: true
   validates :video_exit_offset_seconds, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :video_duration_seconds, numericality: { greater_than: 0 }, allow_nil: true
   validate :video_upload_must_be_video

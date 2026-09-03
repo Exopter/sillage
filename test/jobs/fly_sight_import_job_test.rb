@@ -1,6 +1,8 @@
 require "test_helper"
 
 class FlySightImportJobTest < ActiveJob::TestCase
+  include ActiveJob::TestHelper
+
   UploadedFile = Struct.new(:path, :original_filename, :content_type, keyword_init: true) do
     def read(*args)
       file.read(*args)
@@ -26,10 +28,15 @@ class FlySightImportJobTest < ActiveJob::TestCase
       user: users(:julien)
     )
 
-    FlySightImportJob.perform_now(flight_import)
+    assert_enqueued_with(job: DetectFlightLocationJob) do
+      FlySightImportJob.perform_now(flight_import)
+    end
 
     assert_equal "imported", flight_import.reload.status
     assert_equal 1, flight_import.flights.count
+  ensure
+    clear_enqueued_jobs
+    clear_performed_jobs
   end
 
   private

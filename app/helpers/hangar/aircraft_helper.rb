@@ -46,12 +46,4 @@ module Hangar::AircraftHelper
   def hangar_assembly_aircraft(assembly)
     Installation.active.find_by(installable: hangar_root_assembly(assembly))&.aircraft
   end
-
-  def hangar_build_status(build)
-    validated = build.test_runs.any?(&:validated?)
-    return [ "ready", "Qualified" ] if validated
-    return [ "caution", "Tests in progress" ] if build.test_runs.any?
-
-    [ "unknown", "Draft" ]
-  end
 end

@@ -18,7 +18,7 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body>
+  <body class="<%= content_for(:body_class) %>">
     <div class="sillage-workbench">
       <aside class="sillage-rail" aria-label="Sillage rooms">
         <nav class="sillage-room-nav" aria-label="Primary rooms">
@@ -121,12 +121,28 @@
           </nav>
         <% end %>
 
+        <% if flash.any? %>
+          <div class="sillage-flashes" aria-label="Notifications">
+            <% flash.each do |type, message| %>
+              <% alert = type.to_s == "alert" %>
+              <div
+                class="flash <%= type %>"
+                role="<%= alert ? "alert" : "status" %>"
+                data-controller="flash"
+                data-flash-timeout-value="<%= alert ? 0 : 5000 %>"
+              >
+                <span class="flash-icon"><%= sillage_icon(alert ? "triangle-alert" : "circle-check", size: 17) %></span>
+                <span class="flash-message"><%= message %></span>
+                <button type="button" class="flash-dismiss" aria-label="Dismiss notification" data-action="flash#dismiss">
+                  <%= sillage_icon "x", size: 15 %>
+                </button>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
         <main class="sillage-content">
           <div class="<%= sillage_content_shell_class %>">
-            <% flash.each do |type, message| %>
-              <div class="flash <%= type %>"><%= message %></div>
-            <% end %>
-
             <%= yield %>
           </div>
         </main>

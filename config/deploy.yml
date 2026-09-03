@@ -101,6 +101,10 @@ env:
     DB_POOL: 10
     SILLAGE_LANDING_HOSTS: exopter.com
     SILLAGE_HOSTS: sillage.exopter.com
+    NOMINATIM_URL: "<%= ENV.fetch("NOMINATIM_URL", "https://nominatim.openstreetmap.org/reverse") %>"
+    NOMINATIM_SEARCH_URL: "<%= ENV.fetch("NOMINATIM_SEARCH_URL", "https://nominatim.openstreetmap.org/search") %>"
+    NOMINATIM_USER_AGENT: "<%= ENV.fetch("NOMINATIM_USER_AGENT", "Sillage/1.0 (https://sillage.exopter.com)") %>"
+    NOMINATIM_LANGUAGE: "<%= ENV.fetch("NOMINATIM_LANGUAGE", "en") %>"
     EMAIL_ENABLED: "<%= ENV.fetch("EMAIL_ENABLED", "false") %>"
     BACKUPS_ENABLED: "<%= ENV.fetch("BACKUPS_ENABLED", "false") %>"
     MONITORING_ENABLED: "<%= ENV.fetch("MONITORING_ENABLED", "false") %>"

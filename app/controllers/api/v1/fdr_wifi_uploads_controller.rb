@@ -15,7 +15,7 @@ module Api
       before_action :set_upload, only: %i[chunk complete]
 
       def create
-        return head :payload_too_large if @body.bytesize > MAX_MANIFEST_BYTES
+        return head :content_too_large if @body.bytesize > MAX_MANIFEST_BYTES
 
         manifest = JSON.parse(@body).symbolize_keys.slice(
           :filename, :file_index, :boot_id, :format_version, :size_bytes, :sha256
@@ -38,7 +38,7 @@ module Api
       end
 
       def chunk
-        return head :payload_too_large if @body.bytesize > MAX_CHUNK_BYTES
+        return head :content_too_large if @body.bytesize > MAX_CHUNK_BYTES
         return render json: { error: "Upload chunks cannot be empty." }, status: :unprocessable_entity if @body.empty?
 
         @upload.append_chunk!(offset: Integer(request.headers.fetch("X-FDR-Upload-Offset")), bytes: @body)
@@ -60,7 +60,7 @@ module Api
       def read_body
         limit = action_name == "create" ? MAX_MANIFEST_BYTES : MAX_CHUNK_BYTES
         if request.content_length.to_i > limit
-          head :payload_too_large
+          head :content_too_large
           return
         end
 

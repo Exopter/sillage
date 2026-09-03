@@ -16,7 +16,9 @@ class FlightsController < ApplicationController
   end
 
   def create
-    @flight = Current.user.flights.new(flight_params.merge(status: "preparation"))
+    attributes = flight_params
+    prepare_manual_location(attributes)
+    @flight = Current.user.flights.new(attributes.merge(status: "preparation"))
     @flight.errors.add(:aircraft, "must be selected") unless @flight.aircraft
 
     if @flight.errors.empty? && @flight.save
@@ -33,8 +35,8 @@ class FlightsController < ApplicationController
   end
 
   def show
+    load_form_options
     if @flight.preparation?
-      load_form_options
       render :preparation
       return
     end
@@ -49,15 +51,15 @@ class FlightsController < ApplicationController
       origin_time: @flight.started_at
     ).call
     @analysis = analysis_payload(@flight_analysis)
-    @replay_elapsed_range = replay_elapsed_range(@flight_analysis)
-    @visualization_points = @track_points.select { |point| in_replay_window?(point.elapsed_seconds) }.map { |point| serialize_point(point) }
-    @visualization_sensors = @sensor_samples.select { |sample| in_replay_window?(sensor_elapsed_seconds(sample)) }.map { |sample| serialize_sensor_sample(sample) }
+    @visualization_points = @track_points.map { |point| serialize_point(point) }
+    @visualization_sensors = @sensor_samples.map { |sample| serialize_sensor_sample(sample) }
     @cesium_ion_token = cesium_ion_token
     @bounds = bounds_payload(@flight_analysis.bounds)
   end
 
   def update
     attributes = flight_params
+    prepare_manual_location(attributes, current_location: @flight.location)
     video_upload = attributes.delete(:video_upload)
 
     if video_upload.present? && !video_upload?(video_upload)
@@ -66,6 +68,7 @@ class FlightsController < ApplicationController
     end
 
     if @flight.update(attributes)
+      @flight.capture_configuration! if @flight.saved_change_to_aircraft_id?
       enqueue_video_processing(video_upload) if video_upload.present?
       respond_to_upload_success(flight_path(@flight), t(".success"))
     else
@@ -104,7 +107,17 @@ class FlightsController < ApplicationController
   end
 
   def load_form_options
-    @aircraft = Aircraft.active.ordered
+    available_aircraft = Aircraft.active
+    available_aircraft = available_aircraft.or(Aircraft.where(id: @flight.aircraft_id)) if @flight&.aircraft_id
+    @aircraft = available_aircraft.ordered
+  end
+
+  def prepare_manual_location(attributes, current_location: nil)
+    return unless attributes.key?(:location)
+
+    location = attributes[:location].to_s.strip.presence
+    attributes[:location] = location
+    attributes[:location_source] = location ? "manual" : nil if location != current_location
   end
 
   def video_upload?(upload)
@@ -228,17 +241,6 @@ class FlightsController < ApplicationController
       altitude_min: analysis.altitude_min&.round(3),
       altitude_max: analysis.altitude_max&.round(3)
     )
-  end
-
-  def replay_elapsed_range(analysis)
-    analysis.replay_start..analysis.replay_end
-  end
-
-  def in_replay_window?(elapsed_seconds)
-    return true unless @replay_elapsed_range
-    return false unless elapsed_seconds
-
-    @replay_elapsed_range.cover?(elapsed_seconds.to_f)
   end
 
   def bounds_payload(bounds)

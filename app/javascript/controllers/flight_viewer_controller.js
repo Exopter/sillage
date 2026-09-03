@@ -2,7 +2,6 @@ import { Controller } from "@hotwired/stimulus"
 import {
   clamp,
   finiteNumber,
-  interpolateFlightPoint,
   lerp,
   median,
   sampleFlightPoint,
@@ -15,13 +14,13 @@ const CESIUM_TILE_PROVIDER = "CESIUM_ION"
 export default class extends Controller {
   static targets = [
     "scene",
-    "profileChart",
-    "groundChart",
-    "performanceChart",
-    "motionChart",
-    "dynamicsChart",
-    "environmentChart",
-    "powerChart",
+    "credits",
+    "unifiedChart",
+    "phaseButton",
+    "phaseName",
+    "phaseRange",
+    "metricToggle",
+    "stat",
     "scrubber",
     "timeLabel",
     "playButton",
@@ -64,6 +63,7 @@ export default class extends Controller {
     this.cesiumVisualPoints = null
     this.timelineStart = this.timelineStartFromData()
     this.flightDuration = this.timelineEndFromData()
+    this.activePhase = "all"
     this.currentElapsed = this.timelineStart
     this.isPlaying = false
     this.playbackFrame = null
@@ -87,6 +87,7 @@ export default class extends Controller {
     this.Chart.register(...chartModule.registerables, OS_BOUNDS_PLUGIN, OS_PLAYBACK_PLUGIN)
 
     this.setupCharts()
+    this.applyPhase("all", { movePlayhead: false })
     this.updatePlayButton()
     this.updateVideoExitLabel()
     if (this.hasSceneTarget && this.points.length >= 2) this.setupScene(cesiumLoad)
@@ -107,7 +108,23 @@ export default class extends Controller {
 
   scrub(event) {
     this.pausePlayback()
-    this.updateScrubbedElapsed(this.timelineStart + ((Number(event.target.value) / 1000) * this.timelineSpan()))
+    this.updateScrubbedElapsed(this.phaseStart() + ((Number(event.target.value) / 1000) * this.phaseSpan()))
+  }
+
+  selectPhase(event) {
+    this.applyPhase(event.currentTarget.dataset.phase)
+  }
+
+  toggleMetric(event) {
+    if (!this.unifiedChart) return
+
+    const metric = event.currentTarget.dataset.metric
+    const datasetIndex = this.unifiedChart.data.datasets.findIndex((dataset) => dataset.metric === metric)
+    if (datasetIndex < 0) return
+
+    this.unifiedChart.setDatasetVisibility(datasetIndex, event.currentTarget.checked)
+    this.refreshUnifiedAxes()
+    this.unifiedChart.update("none")
   }
 
   togglePlayback() {
@@ -121,7 +138,7 @@ export default class extends Controller {
       return
     }
 
-    if (this.currentElapsed >= this.flightDuration) this.updateScrubbedElapsed(this.defaultElapsed())
+    if (this.currentElapsed >= this.phaseEnd()) this.updateScrubbedElapsed(this.phaseStart())
     this.isPlaying = true
     this.playbackStartedAt = performance.now()
     this.playbackStartElapsed = this.currentElapsed
@@ -146,8 +163,8 @@ export default class extends Controller {
     if (!this.isPlaying) return
 
     const elapsed = this.playbackStartElapsed + ((timestamp - this.playbackStartedAt) / 1000)
-    if (elapsed >= this.flightDuration) {
-      this.updateScrubbedElapsed(this.flightDuration)
+    if (elapsed >= this.phaseEnd()) {
+      this.updateScrubbedElapsed(this.phaseEnd())
       this.pausePlayback()
       return
     }
@@ -164,7 +181,7 @@ export default class extends Controller {
   playSyncedVideo() {
     if (!this.videoCanSync()) return
 
-    if (this.currentElapsed >= this.flightDuration) this.updateScrubbedElapsed(this.defaultElapsed())
+    if (this.currentElapsed >= this.phaseEnd()) this.updateScrubbedElapsed(this.phaseStart())
     this.syncVideoFromFlight()
     this.isPlaying = true
     this.videoSyncLastRenderAt = 0
@@ -335,124 +352,280 @@ export default class extends Controller {
   }
 
   setupCharts() {
-    if (this.points.length >= 2 || this.pressureAltitudeRows().length >= 2) {
-      this.setupProfileChart()
+    if (!this.hasUnifiedChartTarget) return
+
+    this.setupUnifiedChart()
+  }
+
+  setupUnifiedChart() {
+    const totalSpeedRows = this.points.map((point) => ({
+      ...point,
+      totalSpeed: this.totalSpeedMetersPerSecond(point)
+    }))
+    const airspeedRows = this.sensorRows("AIRSPEED")
+    const distanceRows = this.integratedDistanceRows(this.points)
+    const loadRows = this.sensorRows("IMU:accelerometer").map((sample) => ({
+      ...sample,
+      load: this.accelerationLoadFactor(sample.readings)
+    }))
+
+    const datasets = [
+      this.metricDataset("altitude", "Altitude", this.points, (point) => point.alt, this.colors.aqua, "altitude", "m", true),
+      this.metricDataset("horizontal-speed", "Horizontal speed", this.points, (point) => this.kilometersPerHour(point.hspeed), this.colors.sky, "speed", "km/h", true),
+      this.metricDataset("vertical-speed", "Vertical speed", this.points, (point) => this.kilometersPerHour(point.vspeed, { absolute: true }), this.colors.amber, "speed", "km/h", true),
+      this.metricDataset("airspeed", "Airspeed", airspeedRows, (sample) => this.kilometersPerHour(sample.readings?.airspeed_m_s, { absolute: true }), this.colors.lime, "speed", "km/h", false),
+      this.metricDataset("total-speed", "Total speed", totalSpeedRows, (point) => this.kilometersPerHour(point.totalSpeed), this.colors.violet, "speed", "km/h", false),
+      this.metricDataset("glide", "Glide ratio", this.points, (point) => point.glide, this.colors.coral, "ratio", "", false),
+      this.metricDataset("distance", "Distance", distanceRows, (point) => point.distance / 1000, this.colors.graphite, "distance", "km", false),
+      this.metricDataset("load", "G-force", loadRows, (sample) => sample.load, this.colors.field, "load", "g", false)
+    ]
+
+    this.unifiedChart = this.createTimeChart(this.unifiedChartTarget, datasets, {
+      altitude: this.axis("left", "Altitude · m"),
+      speed: this.axis("right", "Speed · km/h", false),
+      distance: this.axis("left", "Distance · km", false),
+      ratio: this.axis("right", "Glide ratio", false),
+      load: this.axis("right", "Load · g", false)
+    })
+    this.refreshUnifiedAxes()
+    this.syncMetricControls()
+  }
+
+  applyPhase(requestedPhase, options = {}) {
+    const ranges = this.phaseRanges()
+    const phase = ranges[requestedPhase] ? requestedPhase : "all"
+    this.activePhase = phase
+
+    this.phaseButtonTargets.forEach((button) => {
+      const active = button.dataset.phase === phase
+      button.classList.toggle("is-active", active)
+      button.setAttribute("aria-pressed", active ? "true" : "false")
+    })
+
+    if (this.unifiedChart) {
+      const [ start, end ] = ranges[phase]
+      this.unifiedChart.options.scales.x.min = start
+      this.unifiedChart.options.scales.x.max = end
+      this.unifiedChart.update("none")
     }
 
-    if (this.points.length >= 2) {
-      this.setupGroundChart()
-      this.setupPerformanceChart()
+    this.updatePhaseLabels()
+    this.updatePhaseStatistics()
+    if (options.movePlayhead !== false) this.updateScrubbedElapsed(this.phaseStart(), { followCamera: false })
+  }
+
+  phaseRanges() {
+    const start = this.timelineStart
+    const end = this.flightDuration
+    const exit = this.boundaryWithinTimeline(this.boundsValue?.exit, start)
+    const opening = this.boundaryWithinTimeline(this.boundsValue?.opening, exit)
+    const landing = this.boundaryWithinTimeline(this.boundsValue?.landing, opening, end)
+
+    return {
+      all: [ start, end ],
+      plane: this.validPhaseRange(start, exit, start, end),
+      jump: this.validPhaseRange(exit, opening, start, end),
+      canopy: this.validPhaseRange(opening, landing, start, end)
+    }
+  }
+
+  boundaryWithinTimeline(value, fallback, maximum = this.flightDuration) {
+    const boundary = this.number(value)
+    if (!Number.isFinite(boundary)) return fallback
+
+    return this.clamp(boundary, this.timelineStart, maximum)
+  }
+
+  validPhaseRange(start, end, fallbackStart, fallbackEnd) {
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return [ fallbackStart, fallbackEnd ]
+
+    return [ start, end ]
+  }
+
+  phaseStart() {
+    return this.phaseRanges()[this.activePhase || "all"][0]
+  }
+
+  phaseEnd() {
+    return this.phaseRanges()[this.activePhase || "all"][1]
+  }
+
+  phaseSpan() {
+    return Math.max(this.phaseEnd() - this.phaseStart(), 0.001)
+  }
+
+  updatePhaseLabels() {
+    const name = this.phaseDisplayName()
+    if (this.hasPhaseNameTarget) this.phaseNameTarget.textContent = name
+    if (this.hasPhaseRangeTarget) {
+      this.phaseRangeTarget.textContent = `${this.formatTimer(this.phaseStart())} — ${this.formatTimer(this.phaseEnd())} · ${this.formatDuration(this.phaseSpan())}`
+    }
+  }
+
+  phaseDisplayName() {
+    return {
+      all: "All",
+      plane: "Plane",
+      jump: "Jump",
+      canopy: "Canopy"
+    }[this.activePhase] || "All"
+  }
+
+  updatePhaseStatistics() {
+    const start = this.phaseStart()
+    const end = this.phaseEnd()
+    const points = this.points.filter((point) => this.timeInsideRange(point.t, start, end))
+    const airspeedRows = this.sensorRows("AIRSPEED").filter((sample) => this.timeInsideRange(sample.t, start, end))
+    const loadRows = this.sensorRows("IMU:accelerometer").filter((sample) => this.timeInsideRange(sample.t, start, end))
+    const distance = this.integratedDistance(points)
+    const horizontalSpeeds = this.finiteValues(points, (point) => this.kilometersPerHour(point.hspeed))
+    const verticalSpeeds = this.finiteValues(points, (point) => this.kilometersPerHour(point.vspeed, { absolute: true }))
+    const totalSpeeds = this.finiteValues(points, (point) => this.kilometersPerHour(this.totalSpeedMetersPerSecond(point)))
+    const airspeeds = this.finiteValues(airspeedRows, (sample) => this.kilometersPerHour(sample.readings?.airspeed_m_s, { absolute: true }))
+      .filter((value) => value <= 600)
+    const glideRatios = this.finiteValues(points, (point) => this.number(point.glide))
+      .filter((value) => value > 0 && value <= 100)
+    const loads = this.finiteValues(loadRows, (sample) => this.accelerationLoadFactor(sample.readings))
+      .filter((value) => value <= 20)
+
+    this.setStat("duration", this.formatDuration(end - start))
+    this.setStat("distance", this.formatDistance(distance))
+    this.setAverageMaximumStat("horizontal-speed", horizontalSpeeds, 0)
+    this.setAverageMaximumStat("vertical-speed", verticalSpeeds, 0)
+    this.setAverageMaximumStat("airspeed", airspeeds, 0)
+    this.setStat("glide", this.formatAverage(glideRatios, 1))
+    this.setAverageMaximumStat("total-speed", totalSpeeds, 0)
+    this.setStat("peak-load", loads.length > 0 ? this.formatUnit(Math.max(...loads), "g", 1) : "—")
+  }
+
+  timeInsideRange(value, start, end) {
+    const time = this.number(value)
+    return Number.isFinite(time) && time >= start && time <= end
+  }
+
+  finiteValues(rows, mapper) {
+    return rows.map(mapper).filter((value) => Number.isFinite(value))
+  }
+
+  setStat(key, value) {
+    this.statTargets.filter((target) => target.dataset.stat === key).forEach((target) => {
+      target.textContent = value
+    })
+  }
+
+  setAverageMaximumStat(key, values, digits) {
+    if (values.length === 0) {
+      this.setStat(`${key}-average`, "—")
+      this.setStat(`${key}-maximum`, "—")
+      return
     }
 
-    this.setupMotionChart()
-    this.setupDynamicsChart()
-    this.setupEnvironmentChart()
-    this.setupPowerChart()
+    const average = values.reduce((sum, value) => sum + value, 0) / values.length
+    this.setStat(`${key}-average`, average.toFixed(digits))
+    this.setStat(`${key}-maximum`, Math.max(...values).toFixed(digits))
   }
 
-  setupProfileChart() {
-    const pressureAltitudeRows = this.pressureAltitudeRows()
-    const altitudeDataset = pressureAltitudeRows.length > 0
-      ? this.sensorDataset("pressure_altitude_m", pressureAltitudeRows, this.label("pressure_altitude"), this.colors.violet, "altitude")
-      : this.dataset(this.label("height"), this.points, "height", this.colors.violet, "altitude")
+  formatDuration(value) {
+    const seconds = Math.max(0, Math.round(this.number(value) || 0))
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const remainder = seconds % 60
+    if (hours > 0) return `${hours} h ${minutes} min ${remainder} s`
+    if (minutes > 0) return `${minutes} min ${remainder} s`
 
-    this.createTimeChart(this.profileChartTarget, [
-      altitudeDataset,
-      this.dataset(this.label("horizontal_speed"), this.points, "hspeed", this.colors.teal, "speed"),
-      this.dataset(this.label("vertical_speed"), this.points, "vspeed", this.colors.amber, "speed")
-    ], {
-      altitude: this.axis("left", this.label("meters")),
-      speed: this.axis("right", this.label("meters_per_second"), false)
+    return `${remainder} s`
+  }
+
+  formatDistance(value) {
+    const meters = this.number(value)
+    if (!Number.isFinite(meters)) return "—"
+    if (meters >= 1000) return `${(meters / 1000).toFixed(meters >= 10000 ? 0 : 1)} km`
+
+    return `${Math.round(meters)} m`
+  }
+
+  formatUnit(value, unit, digits) {
+    const number = this.number(value)
+    return Number.isFinite(number) ? `${number.toFixed(digits)} ${unit}` : "—"
+  }
+
+  formatAverage(values, digits) {
+    if (values.length === 0) return "—"
+
+    const average = values.reduce((sum, value) => sum + value, 0) / values.length
+    return `Avg ${average.toFixed(digits)}`
+  }
+
+  accelerationLoadFactor(readings) {
+    const x = this.number(readings?.x ?? readings?.ax)
+    const y = this.number(readings?.y ?? readings?.ay)
+    const z = this.number(readings?.z ?? readings?.az)
+    if (![ x, y, z ].every(Number.isFinite)) return null
+
+    const magnitude = Math.sqrt((x ** 2) + (y ** 2) + (z ** 2))
+    return magnitude > 4 ? magnitude / 9.80665 : magnitude
+  }
+
+  totalSpeedMetersPerSecond(point) {
+    const horizontal = this.number(point?.hspeed)
+    const vertical = this.number(point?.vspeed)
+    if (!Number.isFinite(horizontal) && !Number.isFinite(vertical)) return null
+
+    return Math.sqrt((horizontal || 0) ** 2 + (vertical || 0) ** 2)
+  }
+
+  integratedDistanceRows(points) {
+    let distance = 0
+
+    return points.map((point, index) => {
+      if (index > 0) distance += this.distanceIncrement(points[index - 1], point)
+      return { ...point, distance }
     })
   }
 
-  setupGroundChart() {
-    const data = this.points.map((point) => ({ x: this.number(point.lon), y: this.number(point.lat), t: this.number(point.t) }))
-      .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y))
+  integratedDistance(points) {
+    return points.slice(1).reduce((distance, point, index) => (
+      distance + this.distanceIncrement(points[index], point)
+    ), 0)
+  }
 
-    this.createChart(this.groundChartTarget, {
-      type: "line",
-      data: {
-        datasets: [{
-          label: this.label("ground_track"),
-          data,
-          borderColor: this.colors.aqua,
-          backgroundColor: this.colors.coral,
-          borderWidth: 2,
-          pointRadius: 1.5,
-          pointHoverRadius: 3,
-          tension: 0.1
-        }]
-      },
-      options: this.chartOptions({
-        x: this.axis("bottom", this.label("longitude")),
-        y: this.axis("left", this.label("latitude"))
-      }, false, "track")
+  distanceIncrement(start, finish) {
+    const startTime = this.number(start?.t)
+    const finishTime = this.number(finish?.t)
+    const startSpeed = this.number(start?.hspeed)
+    const finishSpeed = this.number(finish?.hspeed)
+    const elapsed = finishTime - startTime
+    if (![ startTime, finishTime, startSpeed, finishSpeed ].every(Number.isFinite)) return 0
+    if (elapsed <= 0 || elapsed > 15) return 0
+
+    return ((Math.abs(startSpeed) + Math.abs(finishSpeed)) / 2) * elapsed
+  }
+
+  kilometersPerHour(value, options = {}) {
+    const number = this.number(value)
+    if (!Number.isFinite(number)) return null
+
+    return (options.absolute ? Math.abs(number) : number) * 3.6
+  }
+
+  syncMetricControls() {
+    this.metricToggleTargets.forEach((toggle) => {
+      const datasetIndex = this.unifiedChart?.data.datasets.findIndex((dataset) => dataset.metric === toggle.dataset.metric) ?? -1
+      toggle.disabled = datasetIndex < 0
+      toggle.closest("label")?.classList.toggle("is-unavailable", datasetIndex < 0)
     })
   }
 
-  setupPerformanceChart() {
-    this.createTimeChart(this.performanceChartTarget, [
-      this.dataset(this.label("distance"), this.points, "distance", this.colors.lime, "distance"),
-      this.dataset(this.label("glide"), this.points, "glide", this.colors.coral, "glide")
-    ], {
-      distance: this.axis("left", this.label("meters")),
-      glide: this.axis("right", this.label("ratio"), false)
-    })
-  }
+  refreshUnifiedAxes() {
+    if (!this.unifiedChart) return
 
-  setupMotionChart() {
-    if (!this.hasMotionChartTarget) return
+    const visibleAxes = new Set(this.unifiedChart.data.datasets.filter((_dataset, index) =>
+      this.unifiedChart.isDatasetVisible(index)
+    ).map((dataset) => dataset.yAxisID))
 
-    const imu = this.sensorRows("IMU")
-    const trajectorySpeedRows = this.trajectorySpeedRows()
-    this.createTimeChart(this.motionChartTarget, [
-      this.sensorDataset("load_factor", imu, this.label("load_factor"), this.colors.coral, "load"),
-      this.dataset(this.label("trajectory_speed"), trajectorySpeedRows, "trajectory_speed", this.colors.aqua, "speed")
-    ], {
-      load: this.axis("left", this.label("g")),
-      speed: this.axis("right", this.label("meters_per_second"), false)
-    })
-  }
-
-  setupDynamicsChart() {
-    if (!this.hasDynamicsChartTarget) return
-
-    const imu = this.sensorRows("IMU")
-    this.createTimeChart(this.dynamicsChartTarget, [
-      this.sensorDataset("ax", imu, this.label("acceleration_x"), this.colors.coral, "acceleration"),
-      this.sensorDataset("ay", imu, this.label("acceleration_y"), this.colors.amber, "acceleration"),
-      this.sensorDataset("az", imu, this.label("acceleration_z"), this.colors.lime, "acceleration"),
-      this.sensorDataset("wx", imu, this.label("rotation_x"), this.colors.teal, "rotation"),
-      this.sensorDataset("wy", imu, this.label("rotation_y"), this.colors.aqua, "rotation"),
-      this.sensorDataset("wz", imu, this.label("rotation_z"), this.colors.violet, "rotation")
-    ], {
-      acceleration: this.axis("left", this.label("g")),
-      rotation: this.axis("right", this.label("degrees_per_second"), false)
-    })
-  }
-
-  setupEnvironmentChart() {
-    if (!this.hasEnvironmentChartTarget) return
-
-    const baro = this.sensorRows("BARO")
-    this.createTimeChart(this.environmentChartTarget, [
-      this.sensorDataset("pressure", baro, this.label("pressure"), this.colors.violet, "pressure"),
-      this.sensorDataset("temperature", baro, this.label("temperature"), this.colors.amber, "temperature")
-    ], {
-      pressure: this.axis("left", this.label("pascal")),
-      temperature: this.axis("right", this.label("celsius"), false)
-    })
-  }
-
-  setupPowerChart() {
-    if (!this.hasPowerChartTarget) return
-
-    const power = this.sensorRows("VBAT")
-    this.createTimeChart(this.powerChartTarget, [
-      this.sensorDataset("voltage", power, this.label("voltage"), this.colors.coral, "voltage")
-    ], {
-      voltage: this.axis("left", this.label("volt"))
+    Object.entries(this.unifiedChart.options.scales).forEach(([ key, scale ]) => {
+      if (key === "x") return
+      scale.display = visibleAxes.has(key)
     })
   }
 
@@ -495,6 +668,8 @@ export default class extends Controller {
         sceneModePicker: false,
         selectionIndicator: false,
         timeline: false,
+        creditContainer: this.creditsTarget,
+        creditViewport: this.sceneTarget,
         requestRenderMode: true,
         maximumRenderTimeChange: Number.POSITIVE_INFINITY,
         scene3DOnly: true,
@@ -711,23 +886,9 @@ export default class extends Controller {
     return {
       maximumScreenSpaceError: 48,
       skipLevelOfDetail: true,
-      baseScreenSpaceError: 1024,
-      skipScreenSpaceErrorFactor: 16,
-      skipLevels: 1,
-      immediatelyLoadDesiredLevelOfDetail: false,
-      loadSiblings: false,
-      cullWithChildrenBounds: true,
-      dynamicScreenSpaceError: true,
-      dynamicScreenSpaceErrorDensity: 2.0e-4,
-      dynamicScreenSpaceErrorFactor: 24.0,
-      dynamicScreenSpaceErrorHeightFalloff: 0.25,
-      foveatedScreenSpaceError: true,
       foveatedConeSize: 0.35,
       foveatedTimeDelay: 0.4,
-      progressiveResolutionHeightFraction: 0.35,
-      preloadFlightDestinations: true,
-      showCreditsOnScreen: true,
-      enableCollision: false
+      progressiveResolutionHeightFraction: 0.35
     }
   }
 
@@ -1189,12 +1350,9 @@ export default class extends Controller {
 
   createTimeChart(target, datasets, scales) {
     const usableDatasets = datasets.filter((dataset) => dataset.data.length > 0)
-    if (usableDatasets.length === 0) {
-      this.hideChartPanel(target)
-      return
-    }
+    if (usableDatasets.length === 0) return null
 
-    this.createChart(target, {
+    return this.createChart(target, {
       type: "line",
       data: { datasets: usableDatasets },
       options: this.chartOptions({ x: this.timeAxis(), ...scales }, true)
@@ -1202,39 +1360,50 @@ export default class extends Controller {
   }
 
   createChart(target, config) {
-    this.sizeChartCanvas(target)
     const chart = new this.Chart(target, config)
     this.charts.push(chart)
     this.installChartSync(chart)
+    return chart
   }
 
-  chartOptions(scales, showBounds, cursorMode = "time") {
+  chartOptions(scales, showBounds) {
     return {
       animation: false,
       maintainAspectRatio: false,
       normalized: true,
       parsing: false,
-      responsive: false,
       events: [],
-      interaction: { mode: "nearest", axis: "x", intersect: false },
       elements: {
-        line: { borderWidth: 2 },
+        line: { borderWidth: 1.6 },
         point: { radius: 0, hoverRadius: 3 }
       },
       plugins: {
-        legend: { labels: { boxWidth: 10, usePointStyle: true } },
+        legend: { display: false },
         tooltip: {
           position: this.tooltipPosition,
+          padding: 7,
+          boxWidth: 9,
+          boxHeight: 9,
+          boxPadding: 2,
+          caretSize: 4,
+          cornerRadius: 3,
+          titleFont: { size: 11, weight: "600" },
+          bodyFont: { size: 11 },
+          filter: (item) => this.unifiedChart?.isDatasetVisible(item.datasetIndex) ?? true,
           callbacks: {
-            title: (items) => this.formatTimer(this.chartItemElapsed(items[0]))
+            title: (items) => this.formatTimer(this.chartItemElapsed(items[0])),
+            label: (item) => {
+              const value = this.number(item.raw?.y)
+              const unit = item.dataset.unit || ""
+              return `${item.dataset.label}: ${Number.isFinite(value) ? value.toFixed(value >= 100 ? 0 : 1) : "—"}${unit ? ` ${unit}` : ""}`
+            }
           }
         },
         osBounds: showBounds ? { bounds: this.boundsValue, labels: this.labelsValue } : false,
         osPlayback: {
           elapsed: this.currentElapsed,
-          mode: cursorMode,
-          color: this.colors.amber,
-          pointColor: this.colors.coral
+          color: this.colors.night,
+          pointColor: this.colors.night
         }
       },
       scales
@@ -1273,10 +1442,6 @@ export default class extends Controller {
     const position = this.chartEventPosition(chart, event)
     if (!position || !this.positionInsideChartArea(chart, position)) return null
 
-    if (this.chartCursorMode(chart) === "track") {
-      return this.elapsedFromTrackChartPosition(chart, position)
-    }
-
     const elapsed = chart.scales?.x?.getValueForPixel(position.x)
     return Number.isFinite(Number(elapsed)) ? this.clamp(Number(elapsed), this.timelineStart, this.flightDuration || 0) : null
   }
@@ -1298,34 +1463,6 @@ export default class extends Controller {
     return position.x >= area.left && position.x <= area.right && position.y >= area.top && position.y <= area.bottom
   }
 
-  elapsedFromTrackChartPosition(chart, position) {
-    let closestElapsed = null
-    let closestDistance = Number.POSITIVE_INFINITY
-
-    chart.data.datasets.forEach((dataset, datasetIndex) => {
-      const meta = chart.getDatasetMeta(datasetIndex)
-      dataset.data.forEach((point, index) => {
-        const element = meta.data[index]
-        const x = this.number(element?.x)
-        const y = this.number(element?.y)
-        const elapsed = this.dataElapsed(point)
-        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(elapsed)) return
-
-        const distance = ((x - position.x) ** 2) + ((y - position.y) ** 2)
-        if (distance >= closestDistance) return
-
-        closestDistance = distance
-        closestElapsed = elapsed
-      })
-    })
-
-    return closestElapsed
-  }
-
-  chartCursorMode(chart) {
-    return chart.options?.plugins?.osPlayback?.mode || "time"
-  }
-
   chartItemElapsed(item) {
     return this.dataElapsed(item?.raw) ?? this.number(item?.parsed?.x)
   }
@@ -1337,29 +1474,19 @@ export default class extends Controller {
     return this.number(point?.x)
   }
 
-  dataset(label, rows, key, color, axis) {
+  metricDataset(metric, label, rows, valueForRow, color, axis, unit, visible) {
     return {
+      metric,
       label,
-      data: rows.map((row) => ({ x: this.number(row.t), y: this.number(row[key]) }))
+      unit,
+      data: rows.map((row) => ({ x: this.number(row.t), y: this.number(valueForRow(row)) }))
         .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y)),
       borderColor: color,
       backgroundColor: color,
       yAxisID: axis,
+      hidden: !visible,
       spanGaps: true,
-      tension: 0.2
-    }
-  }
-
-  sensorDataset(key, rows, label, color, axis) {
-    return {
-      label,
-      data: rows.map((row) => ({ x: this.number(row.t), y: this.number(row.readings?.[key]) }))
-        .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y)),
-      borderColor: color,
-      backgroundColor: color,
-      yAxisID: axis,
-      spanGaps: true,
-      tension: 0.15
+      tension: 0.16
     }
   }
 
@@ -1371,39 +1498,11 @@ export default class extends Controller {
     return this.sensorRows("BARO").filter((sample) => Number.isFinite(this.number(sample.readings?.pressure_altitude_m)))
   }
 
-  trajectorySpeedRows() {
-    const firstGpsTime = this.number(this.points[0]?.t)
-    const pressureRows = this.pressureAltitudeRows()
-      .filter((sample) => !Number.isFinite(firstGpsTime) || this.number(sample.t) < firstGpsTime)
-      .map((sample) => ({
-        t: this.number(sample.t),
-        trajectory_speed: Math.abs(this.number(sample.readings?.pressure_vertical_speed_mps) || 0)
-      }))
-    const gpsRows = this.points.map((point) => {
-      const horizontalSpeed = this.number(point.hspeed)
-      const verticalSpeed = this.number(point.vspeed)
-      if (!Number.isFinite(horizontalSpeed) && !Number.isFinite(verticalSpeed)) return null
-
-      return {
-        t: this.number(point.t),
-        trajectory_speed: Math.sqrt((horizontalSpeed || 0) ** 2 + (verticalSpeed || 0) ** 2)
-      }
-    }).filter(Boolean)
-
-    return this.cleanTrajectorySpeedRows([ ...pressureRows, ...gpsRows ].filter((row) =>
-      Number.isFinite(row.t) && Number.isFinite(row.trajectory_speed)
-    ).sort((a, b) => a.t - b.t))
-  }
-
   enrichedSensorSamples(samples) {
     const pressureSpeeds = this.pressureSpeedsBySample(samples)
 
     return samples.map((sample) => {
       const readings = { ...(sample.readings || {}) }
-
-      if (sample.type === "IMU") {
-        readings.load_factor = this.loadFactor(readings)
-      }
 
       if (sample.type === "BARO") {
         readings.pressure_vertical_speed_mps = pressureSpeeds.get(sample)
@@ -1455,10 +1554,6 @@ export default class extends Controller {
     return this.cleanTrajectorySpeed(speed)
   }
 
-  cleanTrajectorySpeedRows(rows) {
-    return rows.filter((row) => Number.isFinite(this.cleanTrajectorySpeed(row.trajectory_speed)))
-  }
-
   cleanTrajectorySpeed(speed) {
     const value = this.number(speed)
     if (!Number.isFinite(value)) return null
@@ -1480,23 +1575,18 @@ export default class extends Controller {
     return { ...sample, readings }
   }
 
-  loadFactor(readings) {
-    const ax = this.number(readings.ax)
-    const ay = this.number(readings.ay)
-    const az = this.number(readings.az)
-    if (![ ax, ay, az ].every(Number.isFinite)) return null
-
-    return Math.sqrt((ax ** 2) + (ay ** 2) + (az ** 2))
-  }
-
   timeAxis() {
     return {
       type: "linear",
       position: "bottom",
       min: this.timelineStart,
-      max: this.timelineStart + this.timelineSpan(),
-      title: { display: true, text: this.label("time") },
+      max: this.flightDuration,
+      border: { color: this.colors.carbon },
+      grid: { color: this.colors.grid },
+      title: { display: false, text: this.label("time"), color: this.colors.graphite },
       ticks: {
+        color: this.colors.graphite,
+        font: { family: this.colors.monoFont, size: 11 },
         maxTicksLimit: 8,
         callback: (value) => this.formatTimer(value)
       }
@@ -1507,27 +1597,20 @@ export default class extends Controller {
     return {
       type: "linear",
       position,
-      title: { display: true, text: title },
-      grid: { drawOnChartArea: drawGrid },
-      ticks: { maxTicksLimit: 6 }
+      border: { color: this.colors.carbon },
+      title: { display: true, text: title, color: this.colors.graphite },
+      grid: { drawOnChartArea: drawGrid, color: this.colors.grid },
+      ticks: {
+        color: this.colors.graphite,
+        font: { family: this.colors.monoFont, size: 11 },
+        maxTicksLimit: 6
+      }
     }
   }
 
   addSceneHandler(eventName, handler, target = this.sceneCanvas, options = undefined) {
     target.addEventListener(eventName, handler, options)
     this.boundSceneHandlers.push([eventName, handler, target, options])
-  }
-
-  sizeChartCanvas(target) {
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5)
-    const rect = target.getBoundingClientRect()
-    const width = Math.max(Math.floor(rect.width), 320)
-    const height = Math.max(Math.floor(rect.height), 260)
-
-    target.width = Math.floor(width * pixelRatio)
-    target.height = Math.floor(height * pixelRatio)
-    target.style.width = `${width}px`
-    target.style.height = `${height}px`
   }
 
   webglContext(canvas) {
@@ -1599,14 +1682,14 @@ export default class extends Controller {
   updateScrubbedElapsed(elapsed, options = {}) {
     const followCamera = options.followCamera !== false
     const syncVideo = options.syncVideo !== false
-    const clampedElapsed = this.clamp(elapsed || 0, this.timelineStart, this.flightDuration || 0)
+    const clampedElapsed = this.clamp(elapsed || 0, this.phaseStart(), this.phaseEnd())
     const point = this.telemetryPointAtElapsed(clampedElapsed)
     const visualPoint = this.coordinatePointAtElapsed(clampedElapsed, this.cesiumPoints())
     const coordinate = this.sampleCoordinateAtElapsed(clampedElapsed)
     this.currentElapsed = clampedElapsed
 
-    if (this.hasScrubberTarget && this.timelineSpan() > 0) {
-      this.scrubberTarget.value = Math.round(((clampedElapsed - this.timelineStart) / this.timelineSpan()) * 1000)
+    if (this.hasScrubberTarget && this.phaseSpan() > 0) {
+      this.scrubberTarget.value = Math.round(((clampedElapsed - this.phaseStart()) / this.phaseSpan()) * 1000)
     }
 
     if (visualPoint && this.cesiumMarker && window.Cesium) {
@@ -1777,10 +1860,6 @@ export default class extends Controller {
     this.localCameraHome = null
   }
 
-  hideChartPanel(target) {
-    target.closest(".chart-panel")?.setAttribute("hidden", "")
-  }
-
   telemetryPointAtElapsed(elapsed) {
     const pressurePoint = this.pressureAltitudePointAtElapsed(elapsed)
     const gpsPoint = this.coordinatePointAtElapsed(elapsed, this.points)
@@ -1852,10 +1931,6 @@ export default class extends Controller {
     return this.coordinates[this.coordinates.length - 1]
   }
 
-  interpolatePoint(previous, next, ratio, elapsed) {
-    return interpolateFlightPoint(previous, next, ratio, elapsed)
-  }
-
   lerp(a, b, ratio) {
     return lerp(a, b, ratio)
   }
@@ -1866,11 +1941,16 @@ export default class extends Controller {
       night: styles.getPropertyValue("--ds-night").trim() || "#071817",
       daySky: "#b9dcf2",
       aqua: styles.getPropertyValue("--ds-aqua").trim() || "#28bfb8",
-      teal: styles.getPropertyValue("--ds-teal").trim() || "#007f78",
+      sky: styles.getPropertyValue("--ex-sky-500").trim() || "#2ea8ff",
+      field: styles.getPropertyValue("--ex-field-500").trim() || "#4f7b4e",
       amber: styles.getPropertyValue("--ds-amber").trim() || "#d89122",
       violet: styles.getPropertyValue("--ds-violet").trim() || "#6658c7",
       coral: styles.getPropertyValue("--ds-coral").trim() || "#e85d4f",
-      lime: styles.getPropertyValue("--ds-lime").trim() || "#a7c83f"
+      lime: styles.getPropertyValue("--ds-lime").trim() || "#a7c83f",
+      graphite: styles.getPropertyValue("--ex-graphite-600").trim() || "#5f6c6b",
+      carbon: styles.getPropertyValue("--ex-line-200").trim() || "#d4dfdc",
+      grid: "rgba(95, 108, 107, 0.14)",
+      monoFont: styles.getPropertyValue("--font-mono").trim() || "monospace"
     }
   }
 
@@ -1930,8 +2010,8 @@ export default class extends Controller {
   }
 
   routeDistanceMeters() {
-    const finalDistance = this.number(this.points[this.points.length - 1]?.distance)
-    if (finalDistance) return finalDistance
+    const integratedDistance = this.integratedDistance(this.points)
+    if (integratedDistance > 0) return integratedDistance
 
     const first = this.points[0]
     const last = this.points[this.points.length - 1]
@@ -1957,6 +2037,8 @@ export default class extends Controller {
   }
 
   number(value) {
+    if (value === null || value === undefined || value === "") return null
+
     return finiteNumber(value)
   }
 
@@ -2019,7 +2101,7 @@ export default class extends Controller {
   }
 
   playbackTimeLabel(elapsed) {
-    return `${this.formatTimer(elapsed)} / ${this.formatSeconds(this.flightDurationFromExit())}`
+    return `${this.formatTimer(elapsed)} / ${this.formatSeconds(this.phaseSpan())}`
   }
 
   formatTimer(elapsed) {
@@ -2048,12 +2130,8 @@ export default class extends Controller {
     return Number.isFinite(exit) ? exit : 0
   }
 
-  flightDurationFromExit() {
-    return Math.max(0, (this.flightDuration || 0) - this.exitElapsed())
-  }
-
   timelineStartFromData() {
-    const analyzedStart = this.number(this.analysis?.replay_start) ?? this.number(this.analysis?.timeline_start)
+    const analyzedStart = this.number(this.analysis?.timeline_start)
     if (Number.isFinite(analyzedStart)) return analyzedStart
 
     const values = [
@@ -2065,7 +2143,7 @@ export default class extends Controller {
   }
 
   timelineEndFromData() {
-    const analyzedEnd = this.number(this.analysis?.replay_end) ?? this.number(this.analysis?.timeline_end)
+    const analyzedEnd = this.number(this.analysis?.timeline_end)
     const values = [
       ...this.points.map((point) => this.number(point.t)),
       ...this.sensors.map((sample) => this.number(sample.t))
@@ -2074,10 +2152,6 @@ export default class extends Controller {
     const end = Number.isFinite(analyzedEnd) ? analyzedEnd : fallbackEnd
 
     return Math.max(end, this.timelineStart)
-  }
-
-  timelineSpan() {
-    return Math.max((this.flightDuration || 0) - (this.timelineStart || 0), 0.001)
   }
 
   defaultElapsed() {
@@ -2099,6 +2173,39 @@ function tooltipVerticalAlign(pointY, height, room) {
 
 const OS_BOUNDS_PLUGIN = {
   id: "osBounds",
+  beforeDatasetsDraw(chart, _args, options) {
+    if (!options?.bounds) return
+
+    const area = chart.chartArea
+    const xScale = chart.scales?.x
+    if (!xScale || !area) return
+
+    const phases = [
+      ["Plane", xScale.min, Number(options.bounds.exit), "rgba(46, 168, 255, 0.045)"],
+      ["Jump", Number(options.bounds.exit), Number(options.bounds.opening), "rgba(47, 214, 198, 0.055)"],
+      ["Canopy", Number(options.bounds.opening), Number(options.bounds.landing), "rgba(79, 123, 78, 0.09)"]
+    ].filter(([, start, end]) => Number.isFinite(start) && Number.isFinite(end) && end > start)
+    const ctx = chart.ctx
+
+    ctx.save()
+    ctx.textBaseline = "top"
+    ctx.font = "600 10px ui-monospace, SFMono-Regular, Menlo, monospace"
+    phases.forEach(([ label, start, end, color ]) => {
+      const visibleStart = Math.max(start, xScale.min)
+      const visibleEnd = Math.min(end, xScale.max)
+      if (visibleEnd <= visibleStart) return
+
+      const x = xScale.getPixelForValue(visibleStart)
+      const width = xScale.getPixelForValue(visibleEnd) - x
+      ctx.fillStyle = color
+      ctx.fillRect(x, area.top, width, area.bottom - area.top)
+      if (width > 54) {
+        ctx.fillStyle = "rgba(36, 49, 51, 0.56)"
+        ctx.fillText(label.toUpperCase(), x + 8, area.top + 8)
+      }
+    })
+    ctx.restore()
+  },
   afterDatasetsDraw(chart, _args, options) {
     if (!options?.bounds) return
 
@@ -2128,8 +2235,10 @@ const OS_BOUNDS_PLUGIN = {
       ctx.lineTo(x, area.bottom)
       ctx.stroke()
 
-      ctx.fillStyle = "rgba(22, 35, 32, 0.72)"
-      ctx.fillText(labels[key] || key, x + 4, area.top + 4)
+      const placeAfterLine = key === "landing"
+      ctx.fillStyle = "rgba(36, 49, 51, 0.56)"
+      ctx.textAlign = placeAfterLine ? "left" : "right"
+      ctx.fillText(labels[key] || key, x + (placeAfterLine ? 5 : -5), area.top + 4)
     })
     ctx.restore()
   }
@@ -2149,14 +2258,12 @@ const OS_PLAYBACK_PLUGIN = {
     ctx.save()
     ctx.strokeStyle = options.color || "rgba(216, 145, 34, 0.9)"
     ctx.lineWidth = 2
-    if ((options.mode || "time") !== "track") {
-      const x = xScale.getPixelForValue(elapsed)
-      if (x >= area.left && x <= area.right) {
-        ctx.beginPath()
-        ctx.moveTo(x, area.top)
-        ctx.lineTo(x, area.bottom)
-        ctx.stroke()
-      }
+    const x = xScale.getPixelForValue(elapsed)
+    if (x >= area.left && x <= area.right) {
+      ctx.beginPath()
+      ctx.moveTo(x, area.top)
+      ctx.lineTo(x, area.bottom)
+      ctx.stroke()
     }
 
     ctx.fillStyle = options.pointColor || options.color || "rgba(216, 145, 34, 0.9)"

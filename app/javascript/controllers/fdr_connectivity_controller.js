@@ -59,7 +59,7 @@ export default class extends Controller {
     "wifiNotice", "wifiNoticeLabel", "recorderStatus",
     "recorderSource", "recorderDevice", "recorderFirmwareGroup", "recorderFirmware", "health", "storage",
     "lastSync", "recordingControl", "recordingButton", "recordingButtonLabel", "recordingResult",
-    "debugButton", "debug", "recorderTools", "recorderToolsHint", "recorderAlert",
+    "debugButton", "debug", "recorderToolsHint", "recorderAlert",
     "recorderAlertMessage", "recorderAlertTechnical", "recorderOnboarding",
     "recorderOnboardingTitle", "wifiLink",
     "wifiLinkLabel", "wifiRegisterButton", "wifiRegisterLabel", "wifiRegistrationStatus"

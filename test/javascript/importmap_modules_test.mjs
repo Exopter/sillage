@@ -26,6 +26,24 @@ for (const file of javascriptFiles) {
       assert.ok(importmap[specifier], `${path.relative(projectRoot, file)} imports unpinned module ${JSON.stringify(specifier)}`)
     }
   }
+
+  for (const target of stimulusDeclarations(source, "targets")) {
+    const capitalizedTarget = `${target[0].toUpperCase()}${target.slice(1)}`
+    assert.match(
+      source,
+      new RegExp(`\\b(?:${target}Target|${target}Targets|has${capitalizedTarget}Target)\\b`),
+      `${path.relative(projectRoot, file)} declares unused Stimulus target ${JSON.stringify(target)}`
+    )
+  }
+
+  for (const value of stimulusDeclarations(source, "values")) {
+    const capitalizedValue = `${value[0].toUpperCase()}${value.slice(1)}`
+    assert.match(
+      source,
+      new RegExp(`\\b(?:${value}Value|has${capitalizedValue}Value)\\b`),
+      `${path.relative(projectRoot, file)} declares unused Stimulus value ${JSON.stringify(value)}`
+    )
+  }
 }
 
 async function collectJavascriptFiles(directory) {
@@ -43,4 +61,14 @@ function importSpecifiers(source) {
     ...source.matchAll(/\bimport\s+["']([^"']+)["']/g),
     ...source.matchAll(/\bimport\(\s*["']([^"']+)["']\s*\)/g)
   ].map((match) => match[1])
+}
+
+function stimulusDeclarations(source, kind) {
+  const delimiters = kind === "targets" ? ["\\[", "\\]"] : ["\\{", "\\}"]
+  const block = source.match(new RegExp(`static ${kind}\\s*=\\s*${delimiters[0]}([\\s\\S]*?)${delimiters[1]}`))?.[1]
+  if (!block) return []
+
+  return kind === "targets"
+    ? [...block.matchAll(/["']([^"']+)["']/g)].map((match) => match[1])
+    : [...block.matchAll(/(?:^|,)\\s*([A-Za-z_$][\\w$]*)\\s*:/g)].map((match) => match[1])
 }

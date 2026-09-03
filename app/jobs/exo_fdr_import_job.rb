@@ -4,6 +4,7 @@ class ExoFdrImportJob < ApplicationJob
   discard_on ActiveJob::DeserializationError
 
   def perform(flight_import)
-    ExoFdr::ImportService.new(flight_import).call
+    imported = ExoFdr::ImportService.new(flight_import).call
+    imported.flights.find_each { |flight| DetectFlightLocationJob.perform_later(flight) }
   end
 end
