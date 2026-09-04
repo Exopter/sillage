@@ -37,14 +37,14 @@ module Api
       end
 
       def find_or_register_recorder
-        recorder = EmbeddedDevice.find_by(device_id: device_id)
+        recorder = EmbeddedController.find_by(device_id: device_id)
         return [ recorder, false ] if recorder
 
-        recorder = EmbeddedDevice.create!(device_id: device_id)
+        recorder = EmbeddedController.create!(device_id: device_id)
         recorder.record_activity!("registered", source: "forge", actor: Current.user, details: { device_id: })
         [ recorder, true ]
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
-        recorder = EmbeddedDevice.find_by(device_id: device_id)
+        recorder = EmbeddedController.find_by(device_id: device_id)
         raise unless recorder
 
         [ recorder, false ]
@@ -70,6 +70,9 @@ module Api
           recorder: {
             id: recorder.id,
             internal_number: recorder.assembly&.internal_number,
+            serial_number: recorder.assembly&.serial_number,
+            hardware_definition: recorder.assembly&.hardware_definition&.canonical_identifier,
+            controller_part_internal_number: recorder.part&.internal_number,
             name: recorder.display_name,
             device_id: recorder.device_id,
             model: recorder.device_model,

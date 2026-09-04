@@ -19,7 +19,7 @@ module Api
           @recorder.record_activity!("authentication_prepared", source: "forge", actor: Current.user)
         end
         render json: payload
-      rescue EmbeddedDevice::AuthenticationKeyError => error
+      rescue EmbeddedController::AuthenticationKeyError => error
         render json: { error: error.message }, status: :unprocessable_entity
       end
 
@@ -37,7 +37,7 @@ module Api
       private
 
       def set_recorder
-        @recorder = EmbeddedDevice.find(params[:fdr_id])
+        @recorder = EmbeddedController.find(params[:fdr_id])
       end
 
       def normalized_device_id

@@ -44,7 +44,7 @@ module Hangar
     def record_fdr_activity(installation, event_type, details)
       return unless installation.installable.is_a?(Assembly)
 
-      installation.installable.embedded_device&.record_activity!(
+      installation.installable.embedded_controller&.record_activity!(
         event_type,
         source: "hangar",
         actor: Current.user,

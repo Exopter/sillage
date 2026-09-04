@@ -576,7 +576,7 @@ export default class extends TypedController {
 
   /** @param {"USB-C" | "BLE"} [transport] */
   renderPreview(transport = "BLE") {
-    this.deviceInfo = { deviceId: "EXOFDR-00C012", firmware: "fdr_integrated/8" }
+    this.deviceInfo = { deviceId: "ECU-00C012", firmware: "fdr_integrated/8" }
     this.renderConnection({ alertFlags: 0 }, transport)
     this.renderPreviewScan()
   }

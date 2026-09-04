@@ -11,6 +11,7 @@ class Installation < ApplicationRecord
   validate :asset_is_not_nested
 
   scope :active, -> { where(removed_at: nil) }
+  scope :covering, ->(time) { where("installed_at <= ? AND (removed_at IS NULL OR removed_at > ?)", time, time) }
   scope :recent, -> { order(installed_at: :desc) }
 
   def active?
@@ -43,7 +44,7 @@ class Installation < ApplicationRecord
   def asset_is_not_nested
     return unless active?
 
-    if installable.is_a?(Part) && installable.assembly_id.present?
+    if installable.is_a?(Part) && installable.assembly.present?
       errors.add(:installable, "must be removed from its assembly before direct installation")
     elsif installable.is_a?(Assembly) && installable.parent_id.present?
       errors.add(:installable, "must be detached from its parent assembly before aircraft installation")
@@ -53,7 +54,7 @@ class Installation < ApplicationRecord
   def synchronize_part_state
     return unless installable.is_a?(Part)
 
-    desired_state = installable.assembly_id.present? || installable.installations.active.exists? ? "installed" : "available"
+    desired_state = installable.assembly.present? || installable.installations.active.exists? ? "installed" : "available"
     installable.update_column(:state, desired_state) if installable.state.in?(%w[available installed]) && installable.state != desired_state
   end
 end

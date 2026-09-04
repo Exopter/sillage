@@ -51,7 +51,7 @@ module Forge
     private
 
     def set_fdr
-      @fdr = EmbeddedDevice.find(params[:fdr_id])
+      @fdr = EmbeddedController.find(params[:fdr_id])
     end
 
     def set_profile

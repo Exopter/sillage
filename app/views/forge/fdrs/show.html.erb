@@ -6,9 +6,9 @@
 
   <div class="workspace-grid">
     <section class="workspace-panel">
-      <div class="workspace-panel-header"><h2>Software identity</h2><span>Learned from the FDR</span></div>
+      <div class="workspace-panel-header"><h2>Controller identity</h2><span>Learned from the ECU</span></div>
       <dl class="workspace-details">
-        <div><dt>Device ID</dt><dd class="workspace-mono"><%= @fdr.device_id.presence || "Not identified" %></dd></div>
+        <div><dt>ECU ID</dt><dd class="workspace-mono"><%= @fdr.device_id.presence || "Not identified" %></dd></div>
         <div><dt>Hardware platform</dt><dd><%= @fdr.device_model.presence || "Not reported" %></dd></div>
         <div><dt>Firmware</dt><dd><%= @fdr.last_seen_firmware.presence || "Not reported" %></dd></div>
         <div><dt>Last identified</dt><dd><%= @fdr.last_identified_at ? "#{time_ago_in_words(@fdr.last_identified_at)} ago" : "Never" %></dd></div>
@@ -31,12 +31,12 @@
 
   <div class="workspace-grid">
     <section class="workspace-panel">
-      <div class="workspace-panel-header"><h2>Physical asset</h2><span>Owned by Hangar</span></div>
+      <div class="workspace-panel-header"><h2>Controller part</h2><span>Owned by Hangar</span></div>
       <%= form_with model: @fdr, url: forge_fdr_path(@fdr), class: "workspace-form" do |form| %>
         <% if @fdr.errors.any? %><div class="workspace-errors"><%= @fdr.errors.full_messages.to_sentence %></div><% end %>
         <label>
-          <span>Hangar assembly</span>
-          <%= form.collection_select :assembly_id, @available_assemblies, :id, ->(assembly) { "#{assembly.internal_number} · #{assembly.name}" }, { include_blank: "No physical asset assigned" } %>
+          <span>Controller part</span>
+          <%= form.collection_select :part_id, @available_controller_parts, :id, ->(part) { "#{part.display_name} · #{part.serial_number.presence || part.internal_number}" }, { include_blank: "No controller part assigned" } %>
         </label>
         <div class="workspace-actions"><%= form.submit "Update assignment", class: "button-primary" %></div>
       <% end %>
@@ -56,7 +56,7 @@
       <% elsif @assembly %>
         <div class="workspace-empty">No build exists for this physical configuration yet.</div>
       <% else %>
-        <div class="workspace-empty">Assign a physical asset before creating a build.</div>
+        <div class="workspace-empty">Assign this controller to an installed Controller part before creating an assembly build.</div>
       <% end %>
     </section>
   </div>

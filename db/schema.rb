@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_03_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_04_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -54,11 +54,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_110000) do
 
   create_table "assemblies", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.bigint "hardware_definition_id"
     t.string "internal_number"
     t.string "name", null: false
     t.text "notes"
     t.bigint "parent_id"
+    t.string "serial_number"
+    t.string "serviceability_state", default: "in_preparation", null: false
     t.datetime "updated_at", null: false
+    t.index "lower((serial_number)::text)", name: "index_assemblies_on_lower_serial_number", unique: true, where: "((serial_number IS NOT NULL) AND ((serial_number)::text <> ''::text))"
+    t.index ["hardware_definition_id"], name: "index_assemblies_on_hardware_definition_id"
     t.index ["internal_number"], name: "index_assemblies_on_internal_number", unique: true
     t.index ["parent_id"], name: "index_assemblies_on_parent_id"
   end
@@ -98,19 +103,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_110000) do
     t.bigint "actor_id"
     t.datetime "created_at", null: false
     t.json "details", default: {}, null: false
-    t.bigint "embedded_device_id", null: false
+    t.bigint "embedded_controller_id", null: false
     t.string "event_type", null: false
     t.datetime "occurred_at", null: false
     t.string "source", null: false
     t.datetime "updated_at", null: false
     t.index ["actor_id"], name: "index_device_activities_on_actor_id"
-    t.index ["embedded_device_id", "occurred_at"], name: "index_device_activities_on_embedded_device_id_and_occurred_at"
-    t.index ["embedded_device_id"], name: "index_device_activities_on_embedded_device_id"
+    t.index ["embedded_controller_id", "occurred_at"], name: "idx_on_embedded_controller_id_occurred_at_393a0b301f"
+    t.index ["embedded_controller_id"], name: "index_device_activities_on_embedded_controller_id"
     t.index ["event_type"], name: "index_device_activities_on_event_type"
   end
 
-  create_table "embedded_devices", force: :cascade do |t|
-    t.bigint "assembly_id"
+  create_table "embedded_controllers", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "device_id"
     t.string "device_model"
@@ -120,37 +124,38 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_110000) do
     t.string "last_seen_firmware"
     t.integer "mavlink_component_id"
     t.integer "mavlink_system_id"
+    t.bigint "part_id"
     t.datetime "updated_at", null: false
-    t.index ["assembly_id"], name: "index_embedded_devices_on_assembly_id", unique: true
-    t.index ["device_id"], name: "index_embedded_devices_on_device_id", unique: true, where: "((device_id IS NOT NULL) AND ((device_id)::text <> ''::text))"
+    t.index ["device_id"], name: "index_embedded_controllers_on_device_id", unique: true, where: "((device_id IS NOT NULL) AND ((device_id)::text <> ''::text))"
+    t.index ["part_id"], name: "index_embedded_controllers_on_part_id", unique: true
   end
 
   create_table "fdr_recording_commands", force: :cascade do |t|
     t.datetime "acknowledged_at"
     t.datetime "created_at", null: false
-    t.bigint "embedded_device_id", null: false
+    t.bigint "embedded_controller_id", null: false
     t.bigint "requested_by_id", null: false
     t.boolean "requested_enabled", null: false
     t.integer "result"
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
-    t.index ["embedded_device_id", "status"], name: "index_fdr_recording_commands_on_embedded_device_id_and_status"
-    t.index ["embedded_device_id"], name: "index_fdr_recording_commands_on_embedded_device_id"
+    t.index ["embedded_controller_id", "status"], name: "idx_on_embedded_controller_id_status_4ea14c7edc"
+    t.index ["embedded_controller_id"], name: "index_fdr_recording_commands_on_embedded_controller_id"
     t.index ["requested_by_id"], name: "index_fdr_recording_commands_on_requested_by_id"
   end
 
   create_table "fdr_wifi_profiles", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.bigint "embedded_device_id", null: false
+    t.bigint "embedded_controller_id", null: false
     t.boolean "enabled", default: true, null: false
     t.datetime "last_provisioned_at"
     t.string "last_provisioned_device_id"
     t.integer "position", null: false
     t.datetime "updated_at", null: false
     t.bigint "wifi_credential_id", null: false
-    t.index ["embedded_device_id", "position"], name: "index_fdr_wifi_profiles_on_device_and_position", unique: true
-    t.index ["embedded_device_id", "wifi_credential_id"], name: "index_fdr_wifi_profiles_on_device_and_credential", unique: true
-    t.index ["embedded_device_id"], name: "index_fdr_wifi_profiles_on_embedded_device_id"
+    t.index ["embedded_controller_id", "position"], name: "index_fdr_wifi_profiles_on_device_and_position", unique: true
+    t.index ["embedded_controller_id", "wifi_credential_id"], name: "index_fdr_wifi_profiles_on_device_and_credential", unique: true
+    t.index ["embedded_controller_id"], name: "index_fdr_wifi_profiles_on_embedded_controller_id"
     t.index ["wifi_credential_id"], name: "index_fdr_wifi_profiles_on_wifi_credential_id"
   end
 
@@ -158,7 +163,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_110000) do
     t.bigint "boot_id", null: false
     t.datetime "completed_at"
     t.datetime "created_at", null: false
-    t.bigint "embedded_device_id", null: false
+    t.bigint "embedded_controller_id", null: false
     t.text "error_message"
     t.integer "file_index", null: false
     t.string "filename", null: false
@@ -170,8 +175,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_110000) do
     t.string "status", default: "receiving", null: false
     t.string "token", null: false
     t.datetime "updated_at", null: false
-    t.index ["embedded_device_id", "boot_id", "file_index"], name: "index_fdr_wifi_uploads_on_recorder_file", unique: true
-    t.index ["embedded_device_id"], name: "index_fdr_wifi_uploads_on_embedded_device_id"
+    t.index ["embedded_controller_id", "boot_id", "file_index"], name: "index_fdr_wifi_uploads_on_recorder_file", unique: true
+    t.index ["embedded_controller_id"], name: "index_fdr_wifi_uploads_on_embedded_controller_id"
     t.index ["flight_import_id"], name: "index_fdr_wifi_uploads_on_flight_import_id"
     t.index ["token"], name: "index_fdr_wifi_uploads_on_token", unique: true
   end
@@ -252,6 +257,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_110000) do
     t.index ["code"], name: "index_functions_on_code", unique: true
   end
 
+  create_table "hardware_definitions", force: :cascade do |t|
+    t.string "canonical_identifier", null: false
+    t.datetime "created_at", null: false
+    t.string "family_code", null: false
+    t.integer "functional_version", null: false
+    t.string "implementation_kind", null: false
+    t.string "implementation_revision", null: false
+    t.string "notion_url"
+    t.string "product_name", null: false
+    t.string "qualification_state", default: "prototype", null: false
+    t.datetime "updated_at", null: false
+    t.string "variant"
+    t.index ["canonical_identifier"], name: "index_hardware_definitions_on_canonical_identifier", unique: true
+  end
+
+  create_table "identifier_sequences", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "last_value", default: 0, null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_identifier_sequences_on_name", unique: true
+  end
+
   create_table "installations", force: :cascade do |t|
     t.bigint "aircraft_id", null: false
     t.datetime "created_at", null: false
@@ -282,8 +310,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_110000) do
     t.index ["uuid"], name: "index_operator_events_on_uuid", unique: true
   end
 
+  create_table "part_installations", force: :cascade do |t|
+    t.bigint "assembly_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "installed_at", null: false
+    t.boolean "installed_at_estimated", default: false, null: false
+    t.text "notes"
+    t.bigint "part_id", null: false
+    t.datetime "removed_at"
+    t.datetime "updated_at", null: false
+    t.index ["assembly_id", "removed_at"], name: "index_part_installations_on_assembly_and_removed_at"
+    t.index ["assembly_id"], name: "index_part_installations_on_assembly_id"
+    t.index ["part_id", "removed_at"], name: "index_part_installations_on_part_id_and_removed_at"
+    t.index ["part_id"], name: "index_active_part_installation_per_part", unique: true, where: "(removed_at IS NULL)"
+    t.index ["part_id"], name: "index_part_installations_on_part_id"
+  end
+
   create_table "parts", force: :cascade do |t|
-    t.bigint "assembly_id"
     t.datetime "created_at", null: false
     t.bigint "function_id", null: false
     t.string "internal_number"
@@ -293,7 +336,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_110000) do
     t.string "serial_number"
     t.string "state", default: "available", null: false
     t.datetime "updated_at", null: false
-    t.index ["assembly_id"], name: "index_parts_on_assembly_id"
     t.index ["function_id"], name: "index_parts_on_function_id"
     t.index ["internal_number"], name: "index_parts_on_internal_number", unique: true
     t.index ["manufacturer", "serial_number"], name: "index_parts_on_manufacturer_and_serial_number", unique: true, where: "((serial_number IS NOT NULL) AND ((serial_number)::text <> ''::text))"
@@ -337,11 +379,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_110000) do
 
   create_table "signal_presences", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.bigint "embedded_device_id", null: false
+    t.bigint "embedded_controller_id", null: false
     t.datetime "last_seen_at"
     t.json "status", default: {}, null: false
     t.datetime "updated_at", null: false
-    t.index ["embedded_device_id"], name: "index_signal_presences_on_embedded_device_id", unique: true
+    t.index ["embedded_controller_id"], name: "index_signal_presences_on_embedded_controller_id", unique: true
     t.index ["last_seen_at"], name: "index_signal_presences_on_last_seen_at"
   end
 
@@ -597,17 +639,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_110000) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "assemblies", "assemblies", column: "parent_id"
+  add_foreign_key "assemblies", "hardware_definitions"
   add_foreign_key "builds", "assemblies"
   add_foreign_key "builds", "builds", column: "previous_build_id"
   add_foreign_key "builds", "users", column: "created_by_id"
-  add_foreign_key "device_activities", "embedded_devices"
+  add_foreign_key "device_activities", "embedded_controllers"
   add_foreign_key "device_activities", "users", column: "actor_id"
-  add_foreign_key "embedded_devices", "assemblies"
-  add_foreign_key "fdr_recording_commands", "embedded_devices"
+  add_foreign_key "embedded_controllers", "parts"
+  add_foreign_key "fdr_recording_commands", "embedded_controllers"
   add_foreign_key "fdr_recording_commands", "users", column: "requested_by_id"
-  add_foreign_key "fdr_wifi_profiles", "embedded_devices"
+  add_foreign_key "fdr_wifi_profiles", "embedded_controllers"
   add_foreign_key "fdr_wifi_profiles", "wifi_credentials"
-  add_foreign_key "fdr_wifi_uploads", "embedded_devices"
+  add_foreign_key "fdr_wifi_uploads", "embedded_controllers"
   add_foreign_key "fdr_wifi_uploads", "flight_imports"
   add_foreign_key "flight_imports", "aircraft"
   add_foreign_key "flight_imports", "flights", column: "target_flight_id"
@@ -618,12 +661,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_110000) do
   add_foreign_key "installations", "aircraft"
   add_foreign_key "operator_events", "flights"
   add_foreign_key "operator_events", "signal_sessions"
-  add_foreign_key "parts", "assemblies"
+  add_foreign_key "part_installations", "assemblies"
+  add_foreign_key "part_installations", "parts"
   add_foreign_key "parts", "functions"
   add_foreign_key "sensor_samples", "flights"
   add_foreign_key "sessions", "users"
   add_foreign_key "signal_batches", "signal_sessions"
-  add_foreign_key "signal_presences", "embedded_devices"
+  add_foreign_key "signal_presences", "embedded_controllers"
   add_foreign_key "signal_sessions", "flights"
   add_foreign_key "signal_sessions", "users"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

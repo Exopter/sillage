@@ -8,7 +8,7 @@ class FdrSyncFlowTest < ActionDispatch::IntegrationTest
 
   test "stores, verifies and acknowledges an idempotent USB synchronized file" do
     asset = Assembly.create!(name: "Synchronized recorder")
-    EmbeddedDevice.create!(assembly: asset, device_id: "EXOFDR-ABC123")
+    create_embedded_controller(assembly: asset, device_id: "ECU-ABC123")
     Installation.create!(aircraft: aircraft(:pilatus), installable: asset, installed_at: 1.hour.ago)
 
     with_upload do |upload, binary|
@@ -23,7 +23,7 @@ class FdrSyncFlowTest < ActionDispatch::IntegrationTest
       assert_response :created
       flight_import = Current.user.flight_imports.find(response.parsed_body.fetch("import_id"))
       assert_equal Digest::SHA256.hexdigest(binary), flight_import.source_sha256
-      assert_equal "EXOFDR-ABC123", flight_import.device_id
+      assert_equal "ECU-ABC123", flight_import.device_id
       assert_equal aircraft(:pilatus), flight_import.aircraft
       assert_equal "usb_cdc", flight_import.details.dig("sync", "transport")
       assert flight_import.source_files.attached?
@@ -100,7 +100,7 @@ class FdrSyncFlowTest < ActionDispatch::IntegrationTest
   def sync_params(upload, binary)
     {
       source_file: upload,
-      device_id: "EXOFDR-ABC123",
+      device_id: "ECU-ABC123",
       filename: "FDR000001.BIN",
       file_index: 1,
       boot_id: 1_234,

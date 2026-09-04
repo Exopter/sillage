@@ -33,7 +33,7 @@ module FdrSync
         return result_for(nil, ignored: true, duration_seconds:, sha256: actual_sha256)
       end
 
-      flight_import = create_import!(decoded.header, actual_sha256)
+      flight_import = create_import!(decoded.header, decoded.records, actual_sha256)
       ExoFdrImportJob.perform_later(flight_import)
       result_for(flight_import, duration_seconds:, sha256: actual_sha256)
     rescue ActiveRecord::RecordNotUnique
@@ -76,8 +76,9 @@ module FdrSync
       Result.new(flight_import:, duplicate:, ignored:, duration_seconds:, sha256:)
     end
 
-    def create_import!(header, actual_sha256)
-      resolution = FdrIdentity::Resolve.new(@metadata.fetch("device_id")).call
+    def create_import!(header, records, actual_sha256)
+      recorded_at = ExoFdr::RecordingClock.new(records).started_at
+      resolution = FdrIdentity::Resolve.new(@metadata.fetch("device_id"), at: recorded_at).call
       flight_import = @user.flight_imports.create!(
         source_filename: filename,
         source_sha256: actual_sha256,

@@ -16,16 +16,21 @@ class HangarForgeTest < ActiveSupport::TestCase
     assembly = Assembly.create!(name: "Identified assembly")
     part = Part.create!(function: @gps, model: "Identified part")
 
-    assert_match(/\AEXO-\d{6,}\z/, assembly.internal_number)
-    assert_match(/\AEXO-\d{6,}\z/, part.internal_number)
+    assert_match(/\AEXO-\d{4}\z/, assembly.internal_number)
+    assert_match(/\AEXO-\d{4}\z/, part.internal_number)
     assert_not_equal assembly.internal_number, part.internal_number
     assert_equal assembly.internal_number, assembly.asset_identifier.formatted
     assert_equal part.internal_number, part.asset_identifier.formatted
 
-    assert_not assembly.update(internal_number: "EXO-999999")
+    assert_not assembly.update(internal_number: "EXO-9999")
     assert_includes assembly.errors[:internal_number], "cannot be changed"
-    assert_not part.update(internal_number: "EXO-999998")
+    assert_not part.update(internal_number: "EXO-9998")
     assert_includes part.errors[:internal_number], "cannot be changed"
+  end
+
+  test "the internal Asset ID format is limited to four digits" do
+    assert_equal "EXO-0042", AssetIdentifier.new(id: 42).formatted
+    assert_raises(RangeError) { AssetIdentifier.new(id: 10_000).formatted }
   end
 
   test "asset IDs remain stable when business attributes change" do
@@ -51,33 +56,117 @@ class HangarForgeTest < ActiveSupport::TestCase
     assert_operator replacement.asset_identifier.id, :>, identifier.id
   end
 
-  test "physical recorder IDs are normalized, validated, and unique" do
-    recorder = EmbeddedDevice.create!(assembly: Assembly.create!(name: "Physical recorder"), device_id: " exofdr-a172e0 ")
+  test "a controlled ExoFDR receives a generated unique immutable serial number" do
+    definition = create_hardware_definition
+    first = Assembly.create!(name: "Serialized FDR", hardware_definition: definition)
+    second = Assembly.create!(name: "Another FDR", hardware_definition: definition)
+    first_serial_number = first.serial_number
 
-    assert_equal "EXOFDR-A172E0", recorder.device_id
-    assert_not EmbeddedDevice.new(device_id: "EXOFDR-A172E0").valid?
-    assert_not EmbeddedDevice.new(device_id: "EXOFDR-not-a-chip").valid?
+    assert_match Assembly::EXOFDR_SERIAL_PATTERN, first_serial_number
+    assert_equal first_serial_number.delete_prefix("FDR-").to_i + 1,
+      second.serial_number.delete_prefix("FDR-").to_i
+    assert_not first.update(serial_number: "FDR-9999")
+    assert_includes first.errors[:serial_number], "cannot be changed"
+    assert_equal first_serial_number, first.reload.serial_number
+
+    manual = Assembly.new(name: "Manual serial", hardware_definition: definition, serial_number: "FDR-9999")
+    assert_not manual.valid?
+    assert_includes manual.errors[:serial_number], "is assigned automatically"
   end
 
-  test "device activity is append-only and human-readable" do
-    fdr = EmbeddedDevice.create!(assembly: @assembly, device_id: "EXOFDR-A172E0")
+  test "a generic assembly does not receive an ExoFDR serial number" do
+    assembly = Assembly.create!(name: "Generic equipment")
+
+    assert_nil assembly.serial_number
+    assert_equal "Asset ID #{assembly.internal_number}", assembly.identity_label
+    assert_equal "Generic equipment", assembly.display_name
+  end
+
+  test "a third-party recorder does not consume the ExoFDR serial sequence" do
+    third_party_definition = HardwareDefinition.create!(
+      product_name: "Third-party recorder",
+      family_code: "FDR",
+      functional_version: 0,
+      implementation_kind: "perfboard",
+      implementation_revision: "99",
+      qualification_state: "prototype"
+    )
+    previous_value = IdentifierSequence.find_by(name: Assembly::EXOFDR_SERIAL_SEQUENCE)&.last_value.to_i
+
+    assembly = Assembly.create!(name: "Third-party FDR", hardware_definition: third_party_definition)
+
+    assert_nil assembly.serial_number
+    assert_equal previous_value,
+      IdentifierSequence.find_by(name: Assembly::EXOFDR_SERIAL_SEQUENCE)&.last_value.to_i
+  end
+
+  test "an ExoFDR serial remains stable when its controller is replaced" do
+    @assembly.update!(hardware_definition: create_hardware_definition)
+    serial_number = @assembly.serial_number
+    original = create_embedded_controller(assembly: @assembly, device_id: "ECU-A172E0")
+    replacement_part = Part.create!(function: original.part.function, manufacturer: "Seeed Studio", model: "XIAO ESP32S3")
+    replacement = EmbeddedController.create!(part: replacement_part, device_id: "ECU-F00D01")
+
+    original.part.remove_from_assembly!
+    replacement_part.install_in!(@assembly)
+
+    assert_equal serial_number, @assembly.reload.serial_number
+    assert_equal replacement, @assembly.embedded_controller
+    assert_nil original.reload.assembly
+  end
+
+  test "only Controller parts can be assigned to embedded controllers" do
+    controller = EmbeddedController.new(part: @gps_part, device_id: "ECU-A172E0")
+
+    assert_not controller.valid?
+    assert_includes controller.errors[:part], "must have the Controller function"
+  end
+
+  test "a part assigned to an embedded controller must keep the Controller function" do
+    controller_function = Function.find_or_create_by!(code: "CONTROLLER") do |function|
+      function.name = "Controller"
+    end
+    controller_part = Part.create!(function: controller_function, model: "XIAO ESP32S3")
+    EmbeddedController.create!(part: controller_part, device_id: "ECU-A172E0")
+
+    assert_not controller_part.update(function: @gps)
+    assert_includes controller_part.errors[:function], "must be Controller while an embedded controller is assigned"
+    assert_equal controller_function, controller_part.reload.function
+
+    assert @gps_part.update(function: @imu)
+  end
+
+  test "ECU IDs are normalized, validated, and unique" do
+    recorder = create_embedded_controller(assembly: Assembly.create!(name: "Physical recorder"), device_id: " ecu-a172e0 ")
+
+    assert_equal "ECU-A172E0", recorder.device_id
+    assert_not EmbeddedController.new(device_id: "ECU-A172E0").valid?
+    assert_not EmbeddedController.new(device_id: "ECU-not-a-chip").valid?
+
+    legacy = EmbeddedController.new(device_id: "EXOFDR-F00D01")
+    assert legacy.valid?
+    assert_equal "ECU-F00D01", legacy.device_id
+  end
+
+  test "controller activity is append-only and human-readable" do
+    fdr = create_embedded_controller(assembly: @assembly, device_id: "ECU-A172E0")
     activity = fdr.record_activity!(
-      "assembly_linked",
+      "controller_part_linked",
       source: "forge",
       actor: users(:operator),
-      details: { asset_id: @assembly.internal_number }
+      details: { asset_id: fdr.part.internal_number }
     )
 
-    assert_equal "Physical asset assignment changed", activity.title
-    assert_equal "Linked to physical asset #{@assembly.internal_number}.", activity.description
+    assert_equal "Controller part assignment changed", activity.title
+    assert_equal "Linked to controller part #{fdr.part.internal_number}.", activity.description
     assert_not activity.update(event_type: "registered")
     assert_not activity.destroy
     assert DeviceActivity.exists?(activity.id)
   end
 
-  test "Wi-Fi upload file identity is scoped to one embedded device" do
-    first = EmbeddedDevice.create!(assembly: @assembly, device_id: "EXOFDR-A172E0")
-    second = EmbeddedDevice.create!(device_id: "EXOFDR-ABC123")
+  test "Wi-Fi upload file identity is scoped to one embedded controller" do
+    first = create_embedded_controller(assembly: @assembly, device_id: "ECU-A172E0")
+    second = EmbeddedController.create!(device_id: "ECU-ABC123")
     attributes = {
       filename: "FDR000001.BIN",
       file_index: 1,
@@ -92,7 +181,7 @@ class HangarForgeTest < ActiveSupport::TestCase
   end
 
   test "Signal presence presents recorder status in operator language" do
-    fdr = EmbeddedDevice.create!(assembly: @assembly, device_id: "EXOFDR-A172E0")
+    fdr = create_embedded_controller(assembly: @assembly, device_id: "ECU-A172E0")
     presence = fdr.create_signal_presence!(
       last_seen_at: Time.current,
       status: {
@@ -112,15 +201,25 @@ class HangarForgeTest < ActiveSupport::TestCase
   end
 
   test "part installation keeps one current assembly and state" do
-    @gps_part.install_in!(@assembly)
+    installed_at = 3.hours.ago
+    removed_at = 2.hours.ago
+    replacement_assembly = Assembly.create!(name: "Replacement assembly")
+    @gps_part.install_in!(@assembly, at: installed_at)
 
     assert_equal @assembly, @gps_part.assembly
     assert_equal "installed", @gps_part.state
 
-    @gps_part.remove_from_assembly!
+    @gps_part.remove_from_assembly!(at: removed_at)
 
     assert_nil @gps_part.assembly
     assert_equal "available", @gps_part.state
+
+    @gps_part.install_in!(replacement_assembly, at: 1.hour.ago)
+
+    assert_equal replacement_assembly, @gps_part.assembly
+    assert_equal @assembly, @gps_part.assembly_at(installed_at + 30.minutes)
+    assert_equal replacement_assembly, @gps_part.assembly_at(30.minutes.ago)
+    assert_equal 2, @gps_part.part_installations.count
   end
 
   test "quarantined part cannot be installed" do
@@ -151,7 +250,7 @@ class HangarForgeTest < ActiveSupport::TestCase
   test "cloning captures the current assembly and previous build" do
     @gps_part.install_in!(@assembly)
     original = Build.create!(code: "FDR-DEV-902", assembly: @assembly, created_by: users(:operator))
-    imu_part = Part.create!(function: @imu, model: "BNO085", assembly: @assembly)
+    imu_part = create_installed_part(assembly: @assembly, function: @imu, model: "BNO085")
 
     copy = original.clone_as_next!(by: users(:operator))
     copy.update!(source_revision: "next-revision")

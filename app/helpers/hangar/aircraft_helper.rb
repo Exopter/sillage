@@ -1,18 +1,28 @@
 module Hangar::AircraftHelper
   def hangar_asset_code(asset)
-    asset.internal_number
+    asset.is_a?(Assembly) ? asset.identity_label : (asset.serial_number.presence || asset.internal_number)
   end
 
   def hangar_asset_name(asset)
-    asset.respond_to?(:name) ? asset.name : asset.display_name
+    asset.display_name
   end
 
   def hangar_asset_kind(asset)
-    asset.is_a?(Assembly) ? (asset.parent_id? ? "Subassembly" : "Assembly") : "Part"
+    return "Part" unless asset.is_a?(Assembly)
+    return "ExoFDR" if asset.controlled_fdr?
+
+    asset.parent_id? ? "Subassembly" : "Assembly"
   end
 
   def hangar_asset_status(asset)
-    return [ "ready", "Serviceable" ] if asset.is_a?(Assembly)
+    if asset.is_a?(Assembly)
+      return {
+        "in_preparation" => [ "unknown", "In preparation" ],
+        "serviceable" => [ "ready", "Serviceable" ],
+        "quarantined" => [ "caution", "Quarantined" ],
+        "retired" => [ "fault", "Retired" ]
+      }.fetch(asset.serviceability_state)
+    end
 
     case asset.state
     when "quarantined" then [ "caution", "Review flag" ]

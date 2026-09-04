@@ -30,7 +30,7 @@ module Api
         return unless recorder_binding_available?(device_id)
 
         provisioned_at = Time.current
-        EmbeddedDevice.transaction do
+        EmbeddedController.transaction do
           @fdr.update!(device_id: device_id)
           owned_profiles.update_all(
             last_provisioned_at: provisioned_at,
@@ -53,7 +53,7 @@ module Api
       private
 
       def set_fdr
-        @fdr = EmbeddedDevice.find(params[:fdr_id])
+        @fdr = EmbeddedController.find(params[:fdr_id])
       end
 
       def owned_profiles
@@ -74,7 +74,7 @@ module Api
           }, status: :conflict
           return false
         end
-        if EmbeddedDevice.where(device_id: device_id).where.not(id: @fdr.id).exists?
+        if EmbeddedController.where(device_id: device_id).where.not(id: @fdr.id).exists?
           render json: {
             error: "#{device_id} is already bound to another Forge FDR."
           }, status: :conflict

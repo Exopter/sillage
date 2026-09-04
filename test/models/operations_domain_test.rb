@@ -1,8 +1,8 @@
 require "test_helper"
 
 class OperationsDomainTest < ActiveSupport::TestCase
-  test "MAVLink identity belongs to the embedded device" do
-    fdr = EmbeddedDevice.new(mavlink_system_id: 1, mavlink_component_id: 191)
+  test "MAVLink identity belongs to the embedded controller" do
+    fdr = EmbeddedController.new(mavlink_system_id: 1, mavlink_component_id: 191)
 
     assert fdr.valid?
     assert_equal "System 1 · component 191", fdr.mavlink_identity_label
@@ -27,7 +27,7 @@ class OperationsDomainTest < ActiveSupport::TestCase
   test "a nested asset cannot also be installed directly on an aircraft" do
     function = Function.create!(code: "NAV-DIRECT", name: "Navigation direct")
     assembly = Assembly.create!(name: "Nested FDR")
-    part = Part.create!(function:, model: "M9N", assembly:)
+    part = create_installed_part(assembly:, function:, model: "M9N")
 
     installation = Installation.new(aircraft: aircraft(:pilatus), installable: part, installed_at: Time.current)
 
@@ -41,14 +41,16 @@ class OperationsDomainTest < ActiveSupport::TestCase
     part = Part.create!(function:, model: "M9N")
     Installation.create!(aircraft: aircraft(:pilatus), installable: part, installed_at: Time.current)
 
-    assert_not part.update(assembly:)
-    assert_includes part.errors[:assembly], "cannot be set while the part is installed directly on an aircraft"
+    error = assert_raises(ActiveRecord::RecordInvalid) { part.install_in!(assembly) }
+
+    assert_includes error.record.errors[:base], "Part must be available and outside another assembly or aircraft"
+    assert_nil part.reload.assembly
   end
 
   test "validated test runs are immutable" do
     function = Function.create!(code: "QUAL-IMMUTABLE", name: "Qualification")
     assembly = Assembly.create!(name: "Qualification assembly")
-    Part.create!(function:, model: "Sensor", assembly:)
+    create_installed_part(assembly:, function:, model: "Sensor")
     build = Build.create!(code: "FDR-DEV-991", assembly:, created_by: users(:julien), arduino_core_version: "3.3")
     run = TestRun.create!(uuid: SecureRandom.uuid, build:, operator: users(:julien), recipe_id: "QUAL", recipe_version: "1", recipe_sha256: "a" * 64, ingestion_sha256: "b" * 64, outcome: "passed", ran_at: Time.current)
     run.validate_by!(users(:julien), note: "Reviewed")

@@ -18,28 +18,28 @@ globalThis.CustomEvent = class CustomEvent {
 
 assert.equal(connection.aircraftConnectionLabel([]), "No aircraft connected")
 assert.equal(connection.aircraftConnectionLabel([
-  { transport: "usb-c", deviceId: "EXOFDR-A172E0", aircraftRegistration: null }
-]), "EXOFDR-A172E0 connected")
+  { transport: "usb-c", deviceId: "ECU-A172E0", aircraftRegistration: null }
+]), "ECU-A172E0 connected")
 assert.equal(connection.aircraftConnectionLabel([
-  { transport: "usb-c", deviceId: "EXOFDR-A172E0", aircraftRegistration: "F-GOCC" },
-  { transport: "ble", deviceId: "EXOFDR-A172E0", aircraftRegistration: "F-GOCC" },
-  { transport: "wifi", deviceId: "EXOFDR-A172E0", aircraftRegistration: "F-GOCC" }
+  { transport: "usb-c", deviceId: "ECU-A172E0", aircraftRegistration: "F-GOCC" },
+  { transport: "ble", deviceId: "ECU-A172E0", aircraftRegistration: "F-GOCC" },
+  { transport: "wifi", deviceId: "ECU-A172E0", aircraftRegistration: "F-GOCC" }
 ]), "F-GOCC connected")
 assert.equal(connection.aircraftConnectionLabel([
-  { transport: "usb-c", deviceId: "EXOFDR-A172E0", aircraftRegistration: "F-GOCC" },
-  { transport: "ble", deviceId: "EXOFDR-ABC123", aircraftRegistration: null }
+  { transport: "usb-c", deviceId: "ECU-A172E0", aircraftRegistration: "F-GOCC" },
+  { transport: "ble", deviceId: "ECU-ABC123", aircraftRegistration: null }
 ]), "Multiple recorders connected")
 assert.equal(connection.aircraftConnectionLabel([
-  { transport: "wifi", deviceIds: ["EXOFDR-A172E0", "EXOFDR-ABC123"], aircraftRegistration: null }
+  { transport: "wifi", deviceIds: ["ECU-A172E0", "ECU-ABC123"], aircraftRegistration: null }
 ]), "Multiple recorders connected")
 
 connection.setAircraftConnection(connection.AircraftConnectionTransport.WIFI, true, {
-  deviceIds: ["EXOFDR-A172E0", "EXOFDR-ABC123"]
+  deviceIds: ["ECU-A172E0", "ECU-ABC123"]
 })
 assert.deepEqual(connection.currentAircraftConnections(), [{
   transport: "wifi",
   deviceId: null,
-  deviceIds: ["EXOFDR-A172E0", "EXOFDR-ABC123"],
+  deviceIds: ["ECU-A172E0", "ECU-ABC123"],
   aircraftRegistration: null
 }])
 connection.setAircraftConnection(connection.AircraftConnectionTransport.WIFI, false)

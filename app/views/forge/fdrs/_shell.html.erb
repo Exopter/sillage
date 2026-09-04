@@ -1,18 +1,19 @@
 <nav class="fdr-breadcrumb" aria-label="FDR breadcrumb">
   <%= link_to "Forge", forge_path %>
   <%= sillage_icon "chevron-right", size: 13 %>
-  <%= link_to "Recorders", forge_fdrs_path %>
+  <%= link_to "Embedded controllers", forge_fdrs_path %>
   <%= sillage_icon "chevron-right", size: 13 %>
   <span aria-current="page"><%= @fdr.technical_reference %></span>
 </nav>
 
 <header class="fdr-connectivity-heading">
   <div>
-    <span class="section-eyebrow">Flight data recorder</span>
+    <span class="section-eyebrow">Embedded controller</span>
     <h2><%= @fdr.technical_reference %></h2>
     <p>
       Hardware platform: <%= @fdr.device_model.presence || "not reported" %>
-      <% if @assembly %>· <%= @assembly.internal_number %> · <%= @assembly.name %><% else %>· No physical asset assigned<% end %>
+      <% if @controller_part %>· Part <%= @controller_part.internal_number %><% else %>· No controller part assigned<% end %>
+      <% if @assembly %>· <%= @assembly.display_name %> · <%= @assembly.identity_label %><% end %>
       <% if @aircraft %>· Installed in <%= @aircraft.registration %><% end %>
     </p>
   </div>
@@ -29,7 +30,7 @@
       </button>
     <% elsif @assembly %>
       <%= link_to "Create build", new_forge_build_path(build: { assembly_id: @assembly.id }), class: "button-primary" %>
-      <%= link_to "Open physical asset", hangar_assembly_path(@assembly), class: "button-secondary" %>
+      <%= link_to "Open ExoFDR assembly", hangar_assembly_path(@assembly), class: "button-secondary" %>
     <% end %>
   </div>
 </header>

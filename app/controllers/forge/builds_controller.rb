@@ -92,7 +92,7 @@ module Forge
     end
 
     def record_fdr_activity(build, event_type, details = {})
-      build.assembly.embedded_device&.record_activity!(
+      build.assembly.embedded_controller&.record_activity!(
         event_type,
         source: "forge",
         actor: Current.user,

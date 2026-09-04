@@ -4,8 +4,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
   setup do
     sign_in_as users(:julien)
     @asset = Assembly.create!(name: "Signal FDR")
-    @fdr = EmbeddedDevice.create!(
-      assembly: @asset,
+    @fdr = create_embedded_controller(assembly: @asset,
       mavlink_system_id: 1,
       mavlink_component_id: 191
     )
@@ -91,7 +90,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
 
   test "a prepared flight learns the observed MAVLink identity for its installed FDR" do
     asset = Assembly.create!(name: "Unidentified FDR")
-    fdr = EmbeddedDevice.create!(assembly: asset)
+    fdr = create_embedded_controller(assembly: asset)
     Installation.create!(aircraft: aircraft(:exowing), installable: asset, installed_at: 1.hour.ago)
     flight = flights(:two)
     flight.update!(status: "preparation")
@@ -109,13 +108,15 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_equal 42, fdr.reload.mavlink_system_id
     assert_equal 191, fdr.mavlink_component_id
     assert_equal 42, SignalSession.find_by!(uuid:).mavlink_system_id
-    assert_equal({ "system_id" => 42, "component_id" => 191 }, flight.reload.configuration_snapshot.dig("installations", 0, "asset", "embedded_device", "mavlink"))
+    controller_snapshot = flight.reload.configuration_snapshot
+      .dig("installations", 0, "asset", "parts")
+      .find { |part| part["function_code"] == "CONTROLLER" }
+    assert_equal({ "system_id" => 42, "component_id" => 191 }, controller_snapshot.dig("embedded_controller", "mavlink"))
   end
 
   test "an ambiguous MAVLink system does not select an aircraft" do
     second_asset = Assembly.create!(name: "Second Signal FDR")
-    EmbeddedDevice.create!(
-      assembly: second_asset,
+    create_embedded_controller(assembly: second_asset,
       mavlink_system_id: 1,
       mavlink_component_id: 191
     )
@@ -152,8 +153,8 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
   test "renders uniform recorder connections and combined information in Forge" do
     controller_function = Function.find_or_create_by!(code: "CONTROLLER") { |function| function.name = "Recorder controller" }
     storage_function = Function.find_or_create_by!(code: "STORAGE") { |function| function.name = "Recorder storage" }
-    Part.create!(function: controller_function, manufacturer: "Seeed Studio", model: "XIAO ESP32S3", assembly: @asset)
-    Part.create!(function: storage_function, manufacturer: "SanDisk", model: "High Endurance", assembly: @asset)
+    create_installed_part(assembly: @asset, function: controller_function, manufacturer: "Seeed Studio", model: "XIAO ESP32S3")
+    create_installed_part(assembly: @asset, function: storage_function, manufacturer: "SanDisk", model: "High Endurance")
 
     get forge_fdrs_path
 

@@ -5,7 +5,12 @@ module Hangar
     ]
 
     def index
-      @assemblies = Assembly.includes(:parent, :parts, :children, :embedded_device).ordered.to_a
+      @assemblies = Assembly.includes(
+        :parent,
+        :children,
+        :hardware_definition,
+        active_part_installations: { part: [ :function, :embedded_controller ] }
+      ).ordered.to_a
       @selected_assembly = @assemblies.find { |assembly| assembly.id == params[:assembly_id].to_i } || @assemblies.first
     end
 
@@ -108,10 +113,13 @@ module Hangar
     def load_parent_options
       excluded_ids = @assembly.persisted? ? [ @assembly.id, *@assembly.descendant_ids ] : []
       @parent_options = Assembly.where.not(id: excluded_ids).ordered
+      @hardware_definitions = HardwareDefinition.ordered
     end
 
     def assembly_params
-      params.require(:assembly).permit(:name, :parent_id, :notes)
+      params.require(:assembly).permit(
+        :name, :parent_id, :hardware_definition_id, :serviceability_state, :notes
+      )
     end
 
     def deletion_blocked_message

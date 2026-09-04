@@ -1,13 +1,13 @@
 require "base64"
 
-class EmbeddedDevice < ApplicationRecord
+class EmbeddedController < ApplicationRecord
   DEVICE_ID_PATTERN = FdrIdentity::DeviceId::PATTERN
   FDR_AUTH_KEY_BYTES = 32
   FDR_AUTH_ENCRYPTION_PURPOSE = "sillage fdr authentication key v1"
 
   class AuthenticationKeyError < StandardError; end
 
-  belongs_to :assembly, optional: true, inverse_of: :embedded_device
+  belongs_to :part, optional: true, inverse_of: :embedded_controller
   has_one :signal_presence, dependent: :destroy
   has_many :fdr_wifi_profiles, -> { ordered }, dependent: :destroy
   has_many :fdr_wifi_uploads, dependent: :restrict_with_error
@@ -18,26 +18,39 @@ class EmbeddedDevice < ApplicationRecord
   normalizes :device_id, with: ->(identifier) { FdrIdentity::DeviceId.normalize(identifier) }
   normalizes :device_model, :last_seen_firmware, with: ->(value) { value.to_s.strip.presence }
 
-  validates :assembly_id, uniqueness: true, allow_nil: true
+  validates :part_id, uniqueness: true, allow_nil: true
   validates :device_id, uniqueness: true, allow_nil: true, length: { maximum: 64 }
   validates :device_id, format: { with: DEVICE_ID_PATTERN }, allow_nil: true
   validates :device_model, :last_seen_firmware, length: { maximum: 128 }, allow_nil: true
   validates :mavlink_system_id, :mavlink_component_id,
     inclusion: { in: 1..255 }, allow_nil: true
   validate :mavlink_component_requires_system
+  validate :part_has_controller_function
 
-  scope :ordered, -> { left_joins(:assembly).order(Arel.sql("device_id IS NULL, device_id, assemblies.internal_number")) }
+  scope :ordered, -> { order(Arel.sql("device_id IS NULL, device_id")) }
 
   def display_name
-    assembly&.name.presence || device_id.presence || "Unassigned FDR"
+    part&.display_name.presence || device_id.presence || "Unassigned controller"
   end
 
   def technical_reference
-    device_id.presence || assembly&.internal_number.presence || "Not identified"
+    device_id.presence || part&.internal_number.presence || "Not identified"
+  end
+
+  def assembly
+    part&.assembly
+  end
+
+  def assembly_at(time)
+    part&.assembly_at(time)
   end
 
   def active_installation
-    assembly&.installations&.active&.includes(:aircraft)&.recent&.first
+    installation_at(Time.current)
+  end
+
+  def installation_at(time)
+    assembly_at(time)&.installations&.covering(time)&.includes(:aircraft)&.recent&.first
   end
 
   def aircraft
@@ -115,6 +128,12 @@ class EmbeddedDevice < ApplicationRecord
   end
 
   private
+
+  def part_has_controller_function
+    return if part.nil? || part.function&.code == "CONTROLLER"
+
+    errors.add(:part, "must have the Controller function")
+  end
 
   def mavlink_component_requires_system
     return if mavlink_component_id.nil? || mavlink_system_id.present?

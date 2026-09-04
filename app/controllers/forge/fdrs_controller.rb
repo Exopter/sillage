@@ -4,35 +4,38 @@ module Forge
     before_action :load_fdr_context, only: %i[show connectivity activity]
 
     def index
-      @fdrs = EmbeddedDevice.includes(:assembly, :signal_presence, assembly: { installations: :aircraft }).ordered
+      @fdrs = EmbeddedController.includes(
+        :signal_presence,
+        part: { active_part_installation: { assembly: { installations: :aircraft } } }
+      ).ordered
       live_fdrs = @fdrs.select { |fdr| fdr.signal_presence&.fresh? }
       @default_wifi_configuration_fdr = live_fdrs.one? ? live_fdrs.first : (@fdrs.one? ? @fdrs.first : nil)
     end
 
     def show
-      @available_assemblies = available_assemblies
+      @available_controller_parts = available_controller_parts
       @latest_build = @assembly&.builds&.recent&.first
       @recent_test_runs = @assembly ? TestRun.joins(:build).where(builds: { assembly_id: @assembly.id }).recent.limit(5) : TestRun.none
     end
 
     def update
-      previous_assembly = @fdr.assembly
+      previous_part = @fdr.part
       if @fdr.update(fdr_params)
-        if previous_assembly != @fdr.assembly
+        if previous_part != @fdr.part
           @fdr.record_activity!(
-            "assembly_linked",
+            "controller_part_linked",
             source: "forge",
             actor: Current.user,
             details: {
-              previous_asset_id: previous_assembly&.internal_number,
-              asset_id: @fdr.assembly&.internal_number
+              previous_asset_id: previous_part&.internal_number,
+              asset_id: @fdr.part&.internal_number
             }.compact
           )
         end
-        redirect_to forge_fdr_path(@fdr), notice: "FDR physical asset updated."
+        redirect_to forge_fdr_path(@fdr), notice: "Embedded controller part updated."
       else
         load_fdr_context
-        @available_assemblies = available_assemblies
+        @available_controller_parts = available_controller_parts
         @latest_build = @assembly&.builds&.recent&.first
         @recent_test_runs = TestRun.none
         render :show, status: :unprocessable_entity
@@ -53,23 +56,25 @@ module Forge
     private
 
     def set_fdr
-      @fdr = EmbeddedDevice.find(params[:id])
+      @fdr = EmbeddedController.find(params[:id])
     end
 
     def load_fdr_context
       @assembly = @fdr.assembly
       @aircraft = @fdr.aircraft
-      @controller_part = @assembly&.parts&.joins(:function)&.find_by(functions: { code: "CONTROLLER" })
+      @controller_part = @fdr.part
     end
 
-    def available_assemblies
-      Assembly.left_outer_joins(:embedded_device)
-        .where("embedded_devices.id IS NULL OR assemblies.id = ?", @fdr.assembly_id || -1)
+    def available_controller_parts
+      Part.joins(:function)
+        .left_outer_joins(:embedded_controller)
+        .where(functions: { code: "CONTROLLER" })
+        .where("embedded_controllers.id IS NULL OR parts.id = ?", @fdr.part_id || -1)
         .ordered
     end
 
     def fdr_params
-      params.require(:embedded_device).permit(:assembly_id)
+      params.require(:embedded_controller).permit(:part_id)
     end
   end
 end

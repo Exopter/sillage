@@ -7,9 +7,8 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
   BLE_SESSION_DOMAIN = "exopter/fdr/ble-session/v1\0".b
 
   setup do
-    @recorder = EmbeddedDevice.create!(
-      assembly: Assembly.create!(name: "Connected recorder"),
-      device_id: "EXOFDR-A172E0"
+    @recorder = create_embedded_controller(assembly: Assembly.create!(name: "Connected recorder"),
+      device_id: "ECU-A172E0"
     )
     @key = @recorder.ensure_fdr_auth_key!
     @recorder.update!(fdr_auth_key_installed_at: Time.current)
@@ -47,6 +46,17 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
+  test "normalizes the legacy controller prefix during the firmware transition" do
+    payload = heartbeat_payload.merge(device_id: "EXOFDR-A172E0").to_json
+
+    post api_v1_fdr_sillage_heartbeat_path,
+      params: payload,
+      headers: heartbeat_headers(payload)
+
+    assert_response :accepted
+    assert_equal "ECU-A172E0", @recorder.signal_presence.reload.status.fetch("device_id")
+  end
+
   test "rejects a signature made with the BLE session domain" do
     payload = heartbeat_payload.to_json
     signature = OpenSSL::HMAC.hexdigest("SHA256", @key, BLE_SESSION_DOMAIN + payload)
@@ -75,7 +85,7 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "signed-in operator discovers every recorder emitting a fresh signed heartbeat" do
-    second_recorder = EmbeddedDevice.create!(device_id: "EXOFDR-ABC123")
+    second_recorder = EmbeddedController.create!(device_id: "ECU-ABC123")
     second_key = second_recorder.ensure_fdr_auth_key!
 
     first_payload = heartbeat_payload.to_json

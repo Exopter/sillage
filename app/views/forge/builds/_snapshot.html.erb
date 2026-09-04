@@ -1,9 +1,10 @@
 <article class="build-snapshot-node">
-  <header><strong><%= node["internal_number"] %></strong><span><%= node["name"] %></span></header>
+  <% definition = node["hardware_definition"] || {} %>
+  <header><strong><%= node["serial_number"].present? ? "S/N #{node["serial_number"]}" : "Asset ID #{node["internal_number"]}" %></strong><span><%= [ definition["product_name"].presence || node["name"], definition["canonical_identifier"].presence, ("Asset ID #{node["internal_number"]}" if node["serial_number"].present?) ].compact.join(" · ") %></span></header>
   <% if Array(node["parts"]).any? %>
     <ul>
       <% Array(node["parts"]).each do |part| %>
-        <li><span class="assembly-function"><%= part["function"] %></span><strong><%= part["internal_number"] %></strong><small><%= [ part["manufacturer"], part["model"], part["serial_number"] ].compact_blank.join(" · ") %></small></li>
+        <li><span class="assembly-function"><%= part["function"] %></span><strong><%= [ part["manufacturer"], part["model"] ].compact_blank.join(" ") %></strong><small><%= [ ("S/N #{part["serial_number"]}" if part["serial_number"].present?), "Asset ID #{part["internal_number"]}", ("ECU ID #{part.dig("embedded_controller", "device_id")}" if part.dig("embedded_controller", "device_id").present?) ].compact.join(" · ") %></small></li>
       <% end %>
     </ul>
   <% end %>

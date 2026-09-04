@@ -4,19 +4,19 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
   setup { sign_in_as users(:operator) }
 
   test "reports an unknown physical recorder without creating Forge or Hangar data" do
-    assert_no_difference [ -> { Assembly.count }, -> { EmbeddedDevice.count } ] do
-      get api_v1_fdr_registration_path, params: { device_id: "exofdr-abc123" }, as: :json
+    assert_no_difference [ -> { Assembly.count }, -> { EmbeddedController.count } ] do
+      get api_v1_fdr_registration_path, params: { device_id: "ecu-abc123" }, as: :json
     end
 
     assert_response :success
-    assert_equal({ "registered" => false, "device_id" => "EXOFDR-ABC123" }, response.parsed_body)
+    assert_equal({ "registered" => false, "device_id" => "ECU-ABC123" }, response.parsed_body)
   end
 
   test "registers an identified recorder explicitly and opens its Wi-Fi workspace" do
     assert_no_difference -> { Assembly.count } do
-      assert_difference -> { EmbeddedDevice.count }, 1 do
+      assert_difference -> { EmbeddedController.count }, 1 do
         post api_v1_fdr_registration_path, params: {
-          device_id: "exofdr-abc123",
+          device_id: "ecu-abc123",
           model: "XIAO ESP32S3",
           firmware: "fdr_integrated/26",
           mavlink_system_id: 42,
@@ -26,8 +26,8 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :created
-    recorder = EmbeddedDevice.find_by!(device_id: "EXOFDR-ABC123")
-    assert_equal "EXOFDR-ABC123", recorder.display_name
+    recorder = EmbeddedController.find_by!(device_id: "ECU-ABC123")
+    assert_equal "ECU-ABC123", recorder.display_name
     assert_equal "XIAO ESP32S3", recorder.device_model
     assert_equal "fdr_integrated/26", recorder.last_seen_firmware
     assert_equal 42, recorder.mavlink_system_id
@@ -44,16 +44,16 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
     get connectivity_forge_fdr_path(recorder)
     assert_response :success
     assert_select "h2", text: /#{recorder.device_id}/
-    assert_select ".fdr-connectivity-heading", text: /EXOFDR-ABC123/
+    assert_select ".fdr-connectivity-heading", text: /ECU-ABC123/
     assert_select ".fdr-connectivity-heading", text: /XIAO ESP32S3/
   end
 
   test "registration is idempotent for an already known physical recorder" do
-    recorder = create_fdr(name: "Known recorder", device_id: "EXOFDR-F00D01")
+    recorder = create_fdr(name: "Known recorder", device_id: "ECU-F00D01")
 
-    assert_no_difference -> { EmbeddedDevice.count } do
+    assert_no_difference -> { EmbeddedController.count } do
       post api_v1_fdr_registration_path, params: {
-        device_id: "EXOFDR-F00D01",
+        device_id: "ECU-F00D01",
         model: "XIAO ESP32S3",
         firmware: "fdr_integrated/26"
       }, as: :json
@@ -66,7 +66,7 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "prepares one stable recorder key only for the exact registered device" do
-    recorder = create_fdr(name: "Recorder to initialize", device_id: "EXOFDR-ABC123")
+    recorder = create_fdr(name: "Recorder to initialize", device_id: "ECU-ABC123")
 
     post api_v1_fdr_initialization_path(recorder),
       params: { device_id: recorder.device_id }, as: :json
@@ -103,10 +103,10 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "refuses to prepare a key for a different physical recorder" do
-    recorder = create_fdr(name: "Bound recorder", device_id: "EXOFDR-ABC123")
+    recorder = create_fdr(name: "Bound recorder", device_id: "ECU-ABC123")
 
     post api_v1_fdr_initialization_path(recorder),
-      params: { device_id: "EXOFDR-F00D01" }, as: :json
+      params: { device_id: "ECU-F00D01" }, as: :json
 
     assert_response :conflict
     assert_nil recorder.reload.fdr_auth_key_ciphertext
@@ -114,7 +114,7 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "refuses to confirm initialization before a key is prepared" do
-    recorder = create_fdr(name: "Recorder without a key", device_id: "EXOFDR-ABC123")
+    recorder = create_fdr(name: "Recorder without a key", device_id: "ECU-ABC123")
 
     patch api_v1_fdr_initialization_path(recorder),
       params: { device_id: recorder.device_id }, as: :json
@@ -124,18 +124,24 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "finds the exact registered recorder by its physical identity" do
-    recorder = create_fdr(name: "Known recorder", device_id: "EXOFDR-F00D01")
+    recorder = create_fdr(name: "Known recorder", device_id: "ECU-F00D01")
+    recorder.assembly.update!(
+      hardware_definition: create_hardware_definition
+    )
     installation = Installation.create!(
       aircraft: aircraft(:pilatus),
       installable: recorder.assembly,
       installed_at: 2.hours.ago
     )
 
-    get api_v1_fdr_registration_path, params: { device_id: "exofdr-f00d01" }, as: :json
+    get api_v1_fdr_registration_path, params: { device_id: "ecu-f00d01" }, as: :json
 
     assert_response :success
     assert response.parsed_body.fetch("registered")
     assert_equal recorder.assembly.internal_number, response.parsed_body.dig("recorder", "internal_number")
+    assert_equal recorder.assembly.serial_number, response.parsed_body.dig("recorder", "serial_number")
+    assert_equal "FDR-V0-PERF-01", response.parsed_body.dig("recorder", "hardware_definition")
+    assert_equal recorder.part.internal_number, response.parsed_body.dig("recorder", "controller_part_internal_number")
     assert_equal connectivity_forge_fdr_path(recorder), response.parsed_body.dig("recorder", "connectivity_url")
     assert_equal aircraft(:pilatus).registration, response.parsed_body.dig("aircraft", "registration")
     assert_equal aircraft(:pilatus).display_name, response.parsed_body.dig("aircraft", "display_name")
@@ -143,18 +149,18 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "keeps the recorder identity when no active aircraft installation exists" do
-    EmbeddedDevice.create!(device_id: "EXOFDR-BE0C01")
+    EmbeddedController.create!(device_id: "ECU-BE0C01")
 
-    get api_v1_fdr_registration_path, params: { device_id: "EXOFDR-BE0C01" }, as: :json
+    get api_v1_fdr_registration_path, params: { device_id: "ECU-BE0C01" }, as: :json
 
     assert_response :success
     assert response.parsed_body.fetch("registered")
-    assert_equal "EXOFDR-BE0C01", response.parsed_body.dig("recorder", "device_id")
+    assert_equal "ECU-BE0C01", response.parsed_body.dig("recorder", "device_id")
     assert_nil response.parsed_body["aircraft"]
   end
 
   test "rejects registration without a physical identity" do
-    assert_no_difference -> { EmbeddedDevice.count } do
+    assert_no_difference -> { EmbeddedController.count } do
       post api_v1_fdr_registration_path, params: { device_id: "" }, as: :json
     end
 
@@ -164,6 +170,6 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
   private
 
   def create_fdr(name:, device_id:)
-    EmbeddedDevice.create!(assembly: Assembly.create!(name:), device_id:)
+    create_embedded_controller(assembly: Assembly.create!(name:), device_id:)
   end
 end

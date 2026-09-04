@@ -3,13 +3,16 @@ require "test_helper"
 class HangarForgeFlowTest < ActionDispatch::IntegrationTest
   setup do
     @function = Function.create!(code: "GPS_FLOW", name: "GPS")
-    @assembly = Assembly.create!(name: "Flow FDR")
-    @fdr = EmbeddedDevice.create!(assembly: @assembly, device_id: "EXOFDR-F10A01")
-    @part = Part.create!(
+    @assembly = Assembly.create!(
+      name: "Flow FDR",
+      hardware_definition: create_hardware_definition
+    )
+    @fdr = create_embedded_controller(assembly: @assembly, device_id: "ECU-F10A01")
+    @part = create_installed_part(
+      assembly: @assembly,
       function: @function,
       manufacturer: "Holybro",
-      model: "M9N",
-      assembly: @assembly
+      model: "M9N"
     )
     @build = Build.create!(code: "FDR-DEV-801", assembly: @assembly, created_by: users(:operator))
   end
@@ -40,38 +43,46 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "Hangar"
     assert_select "h2", "Parts"
-    assert_select "a", text: @part.internal_number
+    assert_select "a", text: @part.display_name
+    assert_select ".workspace-muted", text: /Asset ID #{@part.internal_number}/
 
     get hangar_parts_path(q: "Holybro", state: "installed")
     assert_response :success
-    assert_select "a", text: @part.internal_number
+    assert_select "a", text: @part.display_name
 
     get hangar_parts_path(q: "No matching serial")
     assert_response :success
-    assert_select "a", text: @part.internal_number, count: 0
+    assert_select ".workspace-muted", text: /Asset ID #{@part.internal_number}/, count: 0
 
     get new_hangar_part_path
     assert_response :success
-    assert_select "label", text: /Exopter Asset ID/
+    assert_select "label", text: /Internal Asset ID/
     assert_select "input[name='part[internal_number]']", count: 0
 
     get new_hangar_assembly_path
     assert_response :success
-    assert_select "label", text: /Exopter Asset ID/
+    assert_select "label", text: /Internal Asset ID/
     assert_select "input[name='assembly[code]'], input[name='assembly[internal_number]']", count: 0
+    assert_select "input[name='assembly[serial_number]']", count: 0
+    assert_select "input[disabled][value='Generated automatically for an ExoFDR']", count: 1
     assert_select "input[name='assembly[device_id]']", count: 0
 
     get hangar_assembly_path(@assembly)
     assert_response :success
-    assert_select "h2", @assembly.internal_number
+    assert_select "h2", @assembly.product_name
+    assert_select ".workspace-header", text: /S\/N #{@assembly.serial_number}/
+    assert_select ".workspace-details", text: /Hardware definition.*FDR-V0-PERF-01/m
+    assert_select ".workspace-details", text: /Qualification/, count: 0
+    assert_select ".workspace-details", text: /Internal Asset ID.*#{@assembly.internal_number}/m
+    assert_select ".workspace-details", text: /ECU ID.*#{@fdr.device_id}/m
     assert_select ".assembly-function", "GPS"
     assert_select "h2", text: "Signal identity", count: 0
-    assert_select "a[href='#{forge_fdr_path(@fdr)}']", text: "Open FDR in Forge"
+    assert_select "a[href='#{forge_fdr_path(@fdr)}']", text: "Open controller in Forge"
 
     get forge_fdr_path(@fdr)
     assert_response :success
     assert_select ".fdr-recorder-tabs", text: /Overview.*Connectivity.*Activity/
-    assert_select ".workspace-panel", text: /Software identity/
+    assert_select ".workspace-panel", text: /Controller identity/
     assert_select ".workspace-details dt", text: "Hardware platform", count: 1
 
     get new_hangar_aircraft_path
@@ -91,7 +102,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
 
     get new_forge_build_path(build: { assembly_id: @assembly.id })
     assert_response :success
-    assert_select "select[name='build[assembly_id]'] option[selected]", /#{@assembly.internal_number}/
+    assert_select "select[name='build[assembly_id]'] option[selected]", /#{Regexp.escape(@assembly.serial_label)}/
   end
 
   test "bench token accepts an idempotent test result and freezes the build" do

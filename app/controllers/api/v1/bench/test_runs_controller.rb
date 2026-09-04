@@ -22,7 +22,7 @@ module Api
           ))
           test_run.artifacts.attach(Array(params[:files])) if params[:files].present?
           test_run.save!
-          test_run.build.assembly.embedded_device&.record_activity!(
+          test_run.build.assembly.embedded_controller&.record_activity!(
             "test_run_synchronized",
             source: "bench",
             actor: current_bench_user,

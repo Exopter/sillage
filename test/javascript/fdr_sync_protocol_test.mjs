@@ -454,14 +454,14 @@ const deviceInfo = new Uint8Array(64)
 deviceInfo[0] = 1
 deviceInfo[1] = 3
 deviceInfo[2] = 5
-deviceInfo.set(new TextEncoder().encode("EXOFDR-ABC123"), 4)
+deviceInfo.set(new TextEncoder().encode("ECU-ABC123"), 4)
 deviceInfo.set(new TextEncoder().encode("fdr_integrated/8"), 28)
 deviceInfo.set(new TextEncoder().encode("XIAO ESP32S3"), 52)
 assert.deepEqual(protocol.parseBleDeviceInfo(deviceInfo), {
   version: 1,
   capabilities: 3,
   maxWifiProfiles: 5,
-  deviceId: "EXOFDR-ABC123",
+  deviceId: "ECU-ABC123",
   firmware: "fdr_integrated/8",
   model: "XIAO ESP32S3"
 })

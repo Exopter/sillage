@@ -15,7 +15,7 @@
       <div class="workspace-list">
         <% @installations.active.each do |installation| %>
           <div class="workspace-list-row is-static">
-            <span><strong><%= installation.installable.internal_number %> · <%= installation.installable.respond_to?(:name) ? installation.installable.name : installation.installable.display_name %></strong><small><%= installation.installable_type %> · installed <%= l installation.installed_at, format: :short %></small></span>
+            <span><strong><%= hangar_asset_code(installation.installable) %> · <%= hangar_asset_name(installation.installable) %></strong><small><%= installation.installable_type %> · installed <%= l installation.installed_at, format: :short %></small></span>
             <%= button_to "Remove", hangar_installation_path(installation), method: :delete, class: "button-secondary", form: { data: { turbo_confirm: "Close this installation now?" } } %>
           </div>
         <% end %>
@@ -31,7 +31,7 @@
           <%= form.hidden_field :installable_type, value: "Assembly" %>
           <label>
             <span>Assembly</span>
-            <%= form.collection_select :installable_id, @available_assemblies, :id, ->(assembly) { "#{assembly.internal_number} · #{assembly.name}" } %>
+            <%= form.collection_select :installable_id, @available_assemblies, :id, :selection_label %>
           </label>
           <label>
             <span>Installed at</span>
@@ -48,7 +48,7 @@
           <%= form.hidden_field :installable_type, value: "Part" %>
           <label>
             <span>Part</span>
-            <%= form.collection_select :installable_id, @available_parts, :id, ->(part) { "#{part.internal_number} · #{part.display_name}" } %>
+            <%= form.collection_select :installable_id, @available_parts, :id, ->(part) { "#{part.display_name} · #{part.serial_number.presence || part.internal_number}" } %>
           </label>
           <label>
             <span>Installed at</span>

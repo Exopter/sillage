@@ -13,21 +13,24 @@ class FdrDeviceRequestAuthentication
   end
 
   def authenticate
-    recorder = EmbeddedDevice.find_by(device_id: device_id)
+    recorder = EmbeddedController.find_by(device_id: device_id)
     return unless recorder && timestamp_valid? && signature_valid?(recorder)
 
     recorder
-  rescue EmbeddedDevice::AuthenticationKeyError
+  rescue EmbeddedController::AuthenticationKeyError
     nil
   end
 
   private
 
   def device_id
-    value = @request.headers["X-FDR-Device-ID"]
-    return unless FdrIdentity::DeviceId.valid?(value)
+    return unless FdrIdentity::DeviceId.valid?(presented_device_id)
 
-    FdrIdentity::DeviceId.normalize(value)
+    FdrIdentity::DeviceId.normalize(presented_device_id)
+  end
+
+  def presented_device_id
+    @request.headers["X-FDR-Device-ID"].to_s.strip.upcase.presence
   end
 
   def sent_at
@@ -45,9 +48,9 @@ class FdrDeviceRequestAuthentication
     return false unless received.match?(SIGNATURE_PATTERN)
 
     key = recorder.fdr_auth_key
-    return false unless key&.bytesize == EmbeddedDevice::FDR_AUTH_KEY_BYTES
+    return false unless key&.bytesize == EmbeddedController::FDR_AUTH_KEY_BYTES
 
-    canonical = [ device_id, @operation, sent_at, Digest::SHA256.hexdigest(@body) ].join("\n")
+    canonical = [ presented_device_id, @operation, sent_at, Digest::SHA256.hexdigest(@body) ].join("\n")
     expected = OpenSSL::HMAC.hexdigest("SHA256", key, DOMAIN + canonical)
     ActiveSupport::SecurityUtils.secure_compare(received, expected)
   end

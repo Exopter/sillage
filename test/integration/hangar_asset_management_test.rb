@@ -30,6 +30,18 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
     assert_delete_form hangar_aircraft_path(@aircraft)
   end
 
+  test "generic assemblies keep their generic identity in Hangar" do
+    get hangar_assemblies_path(assembly_id: @assembly.id)
+
+    assert_response :success
+    assert_select ".hangar-details-body h3", @assembly.name
+    assert_select ".hangar-details-body", text: /Internal Asset ID.*#{@assembly.internal_number}/m
+    assert_select ".hangar-details-body", text: /S\/N not assigned/, count: 0
+    assert_select ".hangar-details-body", text: /Hardware definition/, count: 0
+    assert_select ".hangar-details-body", text: /Qualification/, count: 0
+    assert_select ".hangar-details-body", text: /ECU ID/, count: 0
+  end
+
   test "unused assets can be deleted" do
     assert_difference -> { Assembly.count }, -1 do
       delete hangar_assembly_path(@assembly)
@@ -48,20 +60,20 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
   end
 
   test "referenced assets are retained with an actionable explanation" do
-    installed_part = Part.create!(function: @function, model: "Installed part", assembly: @assembly)
+    installed_part = create_installed_part(assembly: @assembly, function: @function, model: "Installed part")
     installation = Installation.create!(aircraft: @aircraft, installable: @assembly, installed_at: Time.current)
 
     assert_no_difference -> { Assembly.count } do
       delete hangar_assembly_path(@assembly)
     end
     assert_redirected_to hangar_assembly_path(@assembly)
-    assert_match(/installed parts and installation history/, flash[:alert])
+    assert_match(/part installation history and installation history/, flash[:alert])
 
     assert_no_difference -> { Part.count } do
       delete hangar_part_path(installed_part)
     end
     assert_redirected_to hangar_part_path(installed_part)
-    assert_match(/an assembly assignment/, flash[:alert])
+    assert_match(/assembly installation history/, flash[:alert])
 
     assert_no_difference -> { Aircraft.count } do
       delete hangar_aircraft_path(@aircraft)

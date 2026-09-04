@@ -28,15 +28,14 @@
   <% if @parts.any? %>
     <div class="workspace-table-wrap">
       <table class="workspace-table">
-        <thead><tr><th>Part</th><th>Function</th><th>Manufacturer / model</th><th>Serial</th><th>Assembly</th><th>State</th><th class="workspace-table-actions">Actions</th></tr></thead>
+        <thead><tr><th>Part</th><th>Function</th><th>Serial</th><th>Assembly</th><th>State</th><th class="workspace-table-actions">Actions</th></tr></thead>
         <tbody>
           <% @parts.each do |part| %>
             <tr>
-              <td><%= link_to part.internal_number, hangar_part_path(part), class: "workspace-strong-link" %></td>
+              <td><%= link_to part.display_name, hangar_part_path(part), class: "workspace-strong-link" %><br><small class="workspace-muted">Asset ID <%= part.internal_number %></small></td>
               <td><%= part.function.name %></td>
-              <td><%= part.display_name %></td>
               <td><%= part.serial_number.presence || "—" %></td>
-              <td><%= part.assembly ? link_to(part.assembly.internal_number, hangar_assembly_path(part.assembly)) : "—" %></td>
+              <td><%= part.assembly ? link_to(part.assembly.identity_label, hangar_assembly_path(part.assembly)) : "—" %></td>
               <td><span class="status-dot is-<%= part.state == "quarantined" ? "caution" : part.state == "retired" ? "fault" : part.state == "available" ? "unknown" : "ready" %>"><span></span><%= part.state == "quarantined" ? "Review flag" : part.state.titleize %></span></td>
               <td class="workspace-table-actions">
                 <div class="workspace-actions">

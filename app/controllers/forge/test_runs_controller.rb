@@ -15,7 +15,7 @@ module Forge
       end
 
       @test_run.validate_by!(Current.user, note: params[:validation_note].to_s)
-      @test_run.build.assembly.embedded_device&.record_activity!(
+      @test_run.build.assembly.embedded_controller&.record_activity!(
         "test_run_validated",
         source: "forge",
         actor: Current.user,

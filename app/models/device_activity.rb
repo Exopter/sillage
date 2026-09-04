@@ -3,7 +3,8 @@ class DeviceActivity < ApplicationRecord
     "registered" => "FDR registered",
     "authentication_prepared" => "Authentication prepared",
     "initialized" => "FDR initialized",
-    "assembly_linked" => "Physical asset assignment changed",
+    "assembly_linked" => "Legacy physical asset assignment changed",
+    "controller_part_linked" => "Controller part assignment changed",
     "wifi_profile_added" => "Wi-Fi network added",
     "wifi_profile_updated" => "Wi-Fi network updated",
     "wifi_profile_removed" => "Wi-Fi network removed",
@@ -20,7 +21,7 @@ class DeviceActivity < ApplicationRecord
     "test_run_validated" => "Test run validated"
   }.freeze
 
-  belongs_to :embedded_device
+  belongs_to :embedded_controller
   belongs_to :actor, class_name: "User", optional: true
 
   validates :event_type, :source, :occurred_at, presence: true
@@ -46,6 +47,14 @@ class DeviceActivity < ApplicationRecord
       return "Unlinked from physical asset #{previous}." if previous
 
       "Physical asset assignment cleared."
+    when "controller_part_linked"
+      asset = details["asset_id"].presence
+      previous = details["previous_asset_id"].presence
+      return "Linked to controller part #{asset}." if asset && !previous
+      return "Moved from controller part #{previous} to #{asset}." if asset && previous
+      return "Unlinked from controller part #{previous}." if previous
+
+      "Controller part assignment cleared."
     when "wifi_profile_added", "wifi_profile_removed", "wifi_credential_updated"
       details["ssid"].presence || "Wi-Fi configuration changed."
     when "wifi_profile_updated"

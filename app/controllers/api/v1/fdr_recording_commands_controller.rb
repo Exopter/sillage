@@ -2,7 +2,7 @@ module Api
   module V1
     class FdrRecordingCommandsController < ApplicationController
       def create
-        recorder = EmbeddedDevice.find_by!(device_id: normalized_device_id)
+        recorder = EmbeddedController.find_by!(device_id: normalized_device_id)
         requested_enabled = params.require(:enabled)
         unless [ true, false ].include?(requested_enabled)
           return render json: { error: "Enabled must be a boolean." }, status: :unprocessable_entity
@@ -54,7 +54,7 @@ module Api
       def command_payload(command)
         {
           sequence: command.id,
-          device_id: command.embedded_device.device_id,
+          device_id: command.embedded_controller.device_id,
           requested_enabled: command.requested_enabled,
           status: command.status
         }

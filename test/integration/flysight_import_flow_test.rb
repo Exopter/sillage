@@ -227,8 +227,8 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     get forge_path
 
     assert_response :success
-    assert_select "h1", "Recorder fleet"
-    assert_sillage_header crumb: "Forge", title: "Recorders"
+    assert_select "h1", "Embedded controllers"
+    assert_sillage_header crumb: "Forge", title: "Embedded controllers"
     assert_select ".workspace-panel"
   end
 

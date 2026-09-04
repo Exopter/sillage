@@ -9,7 +9,7 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
 
   setup do
     @asset = Assembly.create!(name: "Wi-Fi upload recorder")
-    @recorder = EmbeddedDevice.create!(assembly: @asset, device_id: "EXOFDR-A172E0")
+    @recorder = create_embedded_controller(assembly: @asset, device_id: "ECU-A172E0")
     @key = @recorder.ensure_fdr_auth_key!
     Installation.create!(aircraft: aircraft(:pilatus), installable: @asset, installed_at: 1.hour.ago)
     @binary = valid_file
@@ -24,7 +24,7 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
-    FdrWifiUpload.where(embedded_device: @recorder).find_each do |upload|
+    FdrWifiUpload.where(embedded_controller: @recorder).find_each do |upload|
       FileUtils.rm_f(upload.staged_path)
     end
   end
@@ -151,6 +151,18 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
     assert_equal chunk.bytesize.to_s, response.headers.fetch("X-FDR-Upload-Offset")
   end
 
+  test "accepts the legacy controller prefix during the firmware transition" do
+    manifest_body = @manifest.to_json
+    legacy_device_id = "EXOFDR-A172E0"
+
+    post api_v1_fdr_wifi_uploads_path,
+      params: manifest_body,
+      headers: signed_headers(manifest_body, "create", device_id: legacy_device_id, content_type: "application/json")
+
+    assert_response :created
+    assert_equal @recorder, FdrWifiUpload.find_by!(token: response.headers.fetch("X-FDR-Upload-Token")).embedded_controller
+  end
+
   test "keeps a staged recording unacknowledged when final SHA verification fails" do
     manifest = @manifest.merge(sha256: "0" * 64)
     manifest_body = manifest.to_json
@@ -179,20 +191,20 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
 
   private
 
-  def signed_headers(body, operation, offset: nil, sent_at: Time.current.to_i, signature: nil, content_type: "application/octet-stream")
-    signature ||= OpenSSL::HMAC.hexdigest("SHA256", @key, SIGNATURE_DOMAIN + canonical(body, operation, sent_at))
+  def signed_headers(body, operation, offset: nil, sent_at: Time.current.to_i, signature: nil, content_type: "application/octet-stream", device_id: @recorder.device_id)
+    signature ||= OpenSSL::HMAC.hexdigest("SHA256", @key, SIGNATURE_DOMAIN + canonical(body, operation, sent_at, device_id:))
     {
       "CONTENT_TYPE" => content_type,
       "ACCEPT" => "application/json",
-      "X-FDR-Device-ID" => @recorder.device_id,
+      "X-FDR-Device-ID" => device_id,
       "X-FDR-Sent-At" => sent_at.to_s,
       "X-FDR-Signature" => signature,
       "X-FDR-Upload-Offset" => offset&.to_s
     }.compact
   end
 
-  def canonical(body, operation, sent_at)
-    [ @recorder.device_id, operation, sent_at, Digest::SHA256.hexdigest(body) ].join("\n")
+  def canonical(body, operation, sent_at, device_id: @recorder.device_id)
+    [ device_id, operation, sent_at, Digest::SHA256.hexdigest(body) ].join("\n")
   end
 
   def valid_file

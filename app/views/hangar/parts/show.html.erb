@@ -1,11 +1,11 @@
-<% content_for :title, @part.internal_number %>
+<% content_for :title, @part.serial_number || @part.internal_number %>
 <%= render "hangar/tabs" %>
 
 <header class="workspace-header">
   <div>
     <span class="section-eyebrow"><%= @part.function.name %></span>
-    <h2><%= @part.internal_number %></h2>
-    <p><%= @part.display_name %></p>
+    <h2><%= @part.display_name %></h2>
+    <p><%= @part.serial_number.present? ? "S/N #{@part.serial_number}" : "Serial number not recorded" %></p>
   </div>
   <div class="workspace-actions">
     <%= link_to "Edit", edit_hangar_part_path(@part), class: "button-secondary" %>
@@ -18,13 +18,14 @@
   <section class="workspace-panel">
     <h2>Identity</h2>
     <dl class="workspace-details">
-      <div><dt>Exopter Asset ID</dt><dd><%= @part.internal_number %></dd></div>
       <div><dt>Function</dt><dd><%= @part.function.name %></dd></div>
       <div><dt>Manufacturer</dt><dd><%= @part.manufacturer.presence || "—" %></dd></div>
       <div><dt>Model</dt><dd><%= @part.model %></dd></div>
       <div><dt>Serial number</dt><dd><%= @part.serial_number.presence || "—" %></dd></div>
       <div><dt>State</dt><dd><span class="workspace-status is-<%= @part.state %>"><%= @part.state.titleize %></span></dd></div>
-      <div><dt>Assembly</dt><dd><%= @part.assembly ? link_to(@part.assembly.internal_number, hangar_assembly_path(@part.assembly)) : "Not installed" %></dd></div>
+      <div><dt>Assembly</dt><dd><%= @part.assembly ? link_to(@part.assembly.identity_label, hangar_assembly_path(@part.assembly)) : "Not installed" %></dd></div>
+      <% if @part.embedded_controller %><div><dt>ECU ID</dt><dd class="workspace-mono"><%= @part.embedded_controller.device_id.presence || "Not identified" %></dd></div><% end %>
+      <div><dt>Internal Asset ID</dt><dd class="workspace-mono"><%= @part.internal_number %></dd></div>
     </dl>
     <% if @part.notes.present? %><p class="workspace-notes"><%= simple_format @part.notes %></p><% end %>
   </section>
@@ -45,3 +46,16 @@
     <% end %>
   </section>
 </div>
+
+<section class="workspace-panel">
+  <div class="workspace-panel-header"><h2>Assembly installation history</h2><span><%= pluralize @part_installations.size, "installation" %></span></div>
+  <% if @part_installations.any? %>
+    <div class="workspace-list">
+      <% @part_installations.each do |installation| %>
+        <div class="workspace-list-row is-static">
+          <span><strong><%= installation.assembly.display_name %> · <%= installation.assembly.identity_label %></strong><small><%= l installation.installed_at, format: :short %><%= " (estimated migration date)" if installation.installed_at_estimated? %> → <%= installation.removed_at ? l(installation.removed_at, format: :short) : "Active" %></small></span>
+        </div>
+      <% end %>
+    </div>
+  <% else %><div class="workspace-empty">This part has never been installed in an assembly.</div><% end %>
+</section>

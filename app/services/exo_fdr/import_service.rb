@@ -71,7 +71,7 @@ module ExoFdr
 
     def records_to_samples(records)
       origin_us = records.first&.fetch("timestamp_us", 0).to_i
-      recording_started_at = recording_started_at(records, origin_us)
+      recording_started_at = started_at_for(records)
       points = []
       sensors = []
       records.each do |record|
@@ -119,32 +119,8 @@ module ExoFdr
       }
     end
 
-    def gps_recorded_at(record)
-      return unless record["type"] == "gps_pvt" && record["utc_valid"].to_i.positive?
-
-      Time.utc(
-        record["year"], record["month"], record["day"], record["hour"], record["minute"], record["second"],
-        record["nano_seconds"].to_i / 1_000
-      )
-    rescue ArgumentError, TypeError
-      nil
-    end
-
     def started_at_for(records)
-      origin_us = records.first&.fetch("timestamp_us", 0).to_i
-      recording_started_at(records, origin_us)
-    end
-
-    def recording_started_at(records, origin_us)
-      records.each do |record|
-        anchor_at = gps_recorded_at(record)
-        next unless anchor_at
-
-        anchor_elapsed = (record.fetch("timestamp_us").to_i - origin_us) / 1_000_000.0
-        return anchor_at - anchor_elapsed
-      end
-
-      nil
+      RecordingClock.new(records).started_at
     end
   end
 end

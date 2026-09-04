@@ -21,7 +21,7 @@ module Api
       def index
         presences = SignalPresence
           .fresh(HEARTBEAT_FRESHNESS.ago)
-          .includes(embedded_device: { assembly: { installations: :aircraft } })
+          .includes(embedded_controller: { part: { active_part_installation: { assembly: { installations: :aircraft } } } })
           .recent
         response.headers["Cache-Control"] = "no-store, max-age=0"
         render json: { heartbeats: presences.map { |presence| heartbeat_payload(presence) } }
@@ -32,7 +32,7 @@ module Api
         return head :content_too_large if raw_body.bytesize > MAX_BODY_BYTES
 
         payload = JSON.parse(raw_body)
-        recorder = EmbeddedDevice.find_by(device_id: normalize_device_id(payload.fetch("device_id")))
+        recorder = EmbeddedController.find_by(device_id: normalize_device_id(payload.fetch("device_id")))
         return head :unauthorized unless recorder
         return head :unauthorized unless valid_signature?(recorder, raw_body)
         return head :unprocessable_entity unless valid_timestamp?(payload["sent_at"])
@@ -47,11 +47,12 @@ module Api
           device_model: payload["model"].to_s.first(128)
         )
         presence = recorder.signal_presence || recorder.build_signal_presence
+        status["device_id"] = recorder.device_id
         presence.update!(last_seen_at: seen_at, status:)
         reconcile_recording_command(recorder, payload["recording_control"], seen_at)
         attach_recording_command(recorder) if payload["recording_control"].is_a?(Hash)
         head :accepted
-      rescue JSON::ParserError, KeyError, EmbeddedDevice::AuthenticationKeyError
+      rescue JSON::ParserError, KeyError, EmbeddedController::AuthenticationKeyError
         head :unauthorized
       rescue ActiveRecord::RecordInvalid
         head :unprocessable_entity
@@ -60,7 +61,7 @@ module Api
       private
 
       def heartbeat_payload(presence)
-        recorder = presence.embedded_device
+        recorder = presence.embedded_controller
         installation = recorder.active_installation
         aircraft = installation&.aircraft
 
@@ -142,7 +143,7 @@ module Api
         return false unless received.match?(/\A[0-9a-f]{64}\z/)
 
         key = recorder.fdr_auth_key
-        return false unless key&.bytesize == EmbeddedDevice::FDR_AUTH_KEY_BYTES
+        return false unless key&.bytesize == EmbeddedController::FDR_AUTH_KEY_BYTES
 
         expected = OpenSSL::HMAC.hexdigest("SHA256", key, SIGNATURE_DOMAIN + body)
         ActiveSupport::SecurityUtils.secure_compare(received, expected)

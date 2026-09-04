@@ -90,7 +90,7 @@ module ApplicationHelper
     elsif controller_path.start_with?("hangar/")
       controller_name.titleize
     elsif controller_path.start_with?("forge/")
-      controller_name == "fdrs" ? "Recorders" : controller_name.titleize
+      controller_name == "fdrs" ? "Embedded controllers" : controller_name.titleize
     else
       "Overview"
     end

@@ -1,12 +1,12 @@
 <article class="assembly-tree-node">
   <header>
-    <%= link_to assembly.internal_number, hangar_assembly_path(assembly) %>
-    <span><%= assembly.name %></span>
+    <%= link_to assembly.controlled_fdr? ? assembly.serial_label : assembly.name, hangar_assembly_path(assembly) %>
+    <span><%= assembly.controlled_fdr? ? "ExoFDR · #{assembly.hardware_label}" : "Asset ID #{assembly.internal_number}" %></span>
   </header>
   <% if assembly.parts.any? %>
     <ul>
       <% assembly.parts.includes(:function).ordered.each do |part| %>
-        <li><span class="assembly-function"><%= part.function.name %></span><%= link_to part.internal_number, hangar_part_path(part) %><small><%= part.display_name %></small></li>
+        <li><span class="assembly-function"><%= part.function.name %></span><%= link_to part.display_name, hangar_part_path(part) %><small><%= part.serial_number.present? ? "S/N #{part.serial_number} · Asset ID #{part.internal_number}" : "Asset ID #{part.internal_number}" %></small></li>
       <% end %>
     </ul>
   <% end %>

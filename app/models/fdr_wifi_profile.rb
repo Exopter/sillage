@@ -1,12 +1,12 @@
 class FdrWifiProfile < ApplicationRecord
   MAX_PROFILES = 5
 
-  belongs_to :embedded_device
+  belongs_to :embedded_controller
   belongs_to :wifi_credential
 
   validates :position, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than: MAX_PROFILES }
-  validates :position, uniqueness: { scope: :embedded_device_id }
-  validates :wifi_credential_id, uniqueness: { scope: :embedded_device_id }
+  validates :position, uniqueness: { scope: :embedded_controller_id }
+  validates :wifi_credential_id, uniqueness: { scope: :embedded_controller_id }
   validate :device_profile_limit, on: :create
 
   scope :ordered, -> { order(:position) }
@@ -22,7 +22,7 @@ class FdrWifiProfile < ApplicationRecord
   private
 
   def device_profile_limit
-    return unless embedded_device&.fdr_wifi_profiles&.count.to_i >= MAX_PROFILES
+    return unless embedded_controller&.fdr_wifi_profiles&.count.to_i >= MAX_PROFILES
 
     errors.add(:base, "A recorder can store at most #{MAX_PROFILES} Wi-Fi networks.")
   end

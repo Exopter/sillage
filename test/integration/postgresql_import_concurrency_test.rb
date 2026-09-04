@@ -7,7 +7,7 @@ class PostgresqlImportConcurrencyTest < ActiveSupport::TestCase
   test "an import transaction does not block an unrelated recorder heartbeat write" do
     user = users(:julien)
     flight_import = FlightImport.create!(user:, import_type: "exofdr", status: "pending")
-    recorder = EmbeddedDevice.create!(device_id: "EXOFDR-C0FFEE")
+    recorder = EmbeddedController.create!(device_id: "ECU-C0FFEE")
     transaction_started = Queue.new
     release_transaction = Queue.new
 
@@ -24,14 +24,14 @@ class PostgresqlImportConcurrencyTest < ActiveSupport::TestCase
 
     Timeout.timeout(2) { transaction_started.pop }
     Timeout.timeout(2) do
-      SignalPresence.create!(embedded_device: recorder, last_seen_at: Time.current, status: {})
+      SignalPresence.create!(embedded_controller: recorder, last_seen_at: Time.current, status: {})
     end
 
     assert recorder.signal_presence.reload.fresh?
   ensure
     release_transaction << true if release_transaction
     import_thread&.join
-    SignalPresence.where(embedded_device: recorder).delete_all if recorder&.persisted?
+    SignalPresence.where(embedded_controller: recorder).delete_all if recorder&.persisted?
     flight_import&.destroy!
     recorder&.destroy!
   end

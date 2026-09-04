@@ -5,21 +5,21 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
     controller_function = Function.find_or_create_by!(code: "CONTROLLER") { |function| function.name = "Recorder controller" }
     storage_function = Function.find_or_create_by!(code: "STORAGE") { |function| function.name = "Recorder storage" }
     @assembly = Assembly.create!(name: "Development Flight Data Recorder")
-    Part.create!(
+    create_installed_part(
+      assembly: @assembly,
       function: controller_function,
       manufacturer: "Seeed Studio",
       model: "XIAO ESP32S3",
-      serial_number: "DEV-CTRL-WIFI",
-      assembly: @assembly
+      serial_number: "DEV-CTRL-WIFI"
     )
-    Part.create!(function: storage_function, manufacturer: "SanDisk", model: "High Endurance", assembly: @assembly)
+    create_installed_part(assembly: @assembly, function: storage_function, manufacturer: "SanDisk", model: "High Endurance")
     @credential = WifiCredential.create!(
       created_by: users(:operator),
       ssid: "EXOPTER-LAB",
       security: "wpa3",
       password: "exopter-lab-secret"
     )
-    @fdr = EmbeddedDevice.create!(assembly: @assembly)
+    @fdr = create_embedded_controller(assembly: @assembly)
     @profile = @fdr.fdr_wifi_profiles.create!(wifi_credential: @credential, position: 0)
   end
 
@@ -29,7 +29,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
     get connectivity_forge_fdr_path(@fdr)
 
     assert_response :success
-    assert_select "h2", text: /#{@assembly.internal_number}/
+    assert_select "h2", text: /#{Regexp.escape(@fdr.technical_reference)}/
     assert_select "#saved-wifi-title", "Saved Wi-Fi networks"
     assert_select "[data-wifi-ssid='EXOPTER-LAB']"
     assert_select "button[data-action='fdr-wifi-configuration#connectUsb']", text: "Connect USB-C"
@@ -51,7 +51,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".fdr-connectivity"
-    assert_select ".fdr-connectivity-heading h2", text: /#{@assembly.internal_number}/
+    assert_select ".fdr-connectivity-heading h2", text: /#{Regexp.escape(@fdr.technical_reference)}/
     assert_select ".fdr-recorder-tabs[aria-label='FDR sections']" do
       assert_select "a.is-active[aria-current='page'][href='#{forge_fdr_path(@fdr)}']", text: "Overview"
       assert_select "a[href='#{connectivity_forge_fdr_path(@fdr)}']", text: "Connectivity"
@@ -60,7 +60,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
     get connectivity_forge_fdr_path(@fdr)
 
     assert_response :success
-    assert_select ".fdr-connectivity-heading h2", text: /#{@assembly.internal_number}/
+    assert_select ".fdr-connectivity-heading h2", text: /#{Regexp.escape(@fdr.technical_reference)}/
     assert_select ".fdr-recorder-tabs[aria-label='FDR sections']" do
       assert_select "a[href='#{forge_fdr_path(@fdr)}']", text: "Overview"
       assert_select "a.is-active[aria-current='page'][href='#{connectivity_forge_fdr_path(@fdr)}']", text: "Connectivity"
@@ -70,9 +70,9 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
   test "operator can assign an already known network to another recorder" do
     replacement = Assembly.create!(name: "Replacement Flight Data Recorder")
     @assembly.parts.includes(:function).each do |part|
-      Part.create!(function: part.function, manufacturer: part.manufacturer, model: part.model, assembly: replacement)
+      create_installed_part(assembly: replacement, function: part.function, manufacturer: part.manufacturer, model: part.model)
     end
-    replacement_fdr = EmbeddedDevice.create!(assembly: replacement)
+    replacement_fdr = create_embedded_controller(assembly: replacement)
     sign_in_as users(:operator)
 
     post forge_fdr_fdr_wifi_profiles_path(replacement_fdr), params: { wifi_credential_id: @credential.id }
@@ -85,7 +85,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
     sign_in_as users(:operator)
 
     post api_v1_fdr_wifi_provisioning_path(@fdr),
-      params: { device_id: "EXOFDR-ABC123" }, as: :json
+      params: { device_id: "ECU-ABC123" }, as: :json
 
     assert_response :success
     assert_match "no-store", response.headers["Cache-Control"]
@@ -96,11 +96,11 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
     assert_nil payload["authentication"]
     assert_nil @fdr.reload.fdr_auth_key_ciphertext
 
-    patch api_v1_fdr_wifi_provisioning_path(@fdr), params: { device_id: "EXOFDR-ABC123" }, as: :json
+    patch api_v1_fdr_wifi_provisioning_path(@fdr), params: { device_id: "ECU-ABC123" }, as: :json
 
     assert_response :success
-    assert_equal "EXOFDR-ABC123", @profile.reload.last_provisioned_device_id
-    assert_equal "EXOFDR-ABC123", @fdr.reload.device_id
+    assert_equal "ECU-ABC123", @profile.reload.last_provisioned_device_id
+    assert_equal "ECU-ABC123", @fdr.reload.device_id
     assert_not @profile.pending?
   end
 
@@ -109,7 +109,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
     sign_in_as users(:operator)
 
     post api_v1_fdr_wifi_provisioning_path(@fdr),
-      params: { device_id: "EXOFDR-ABC123" }, as: :json
+      params: { device_id: "ECU-ABC123" }, as: :json
 
     assert_response :success
     assert_nil response.parsed_body["authentication"]
@@ -117,11 +117,11 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "provisioning refuses to install an assembly key on the wrong recorder" do
-    @fdr.update!(device_id: "EXOFDR-A172E0")
+    @fdr.update!(device_id: "ECU-A172E0")
     sign_in_as users(:operator)
 
     post api_v1_fdr_wifi_provisioning_path(@fdr),
-      params: { device_id: "EXOFDR-ABC123" }, as: :json
+      params: { device_id: "ECU-ABC123" }, as: :json
 
     assert_response :conflict
     assert_nil @fdr.reload.fdr_auth_key_ciphertext
@@ -132,9 +132,9 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
     shared = WifiCredential.create!(created_by: users(:julien), ssid: "PRIVATE", security: "wpa2", password: "private-secret")
     replacement = Assembly.create!(name: "Shared credential recorder")
     @assembly.parts.includes(:function).each do |part|
-      Part.create!(function: part.function, manufacturer: part.manufacturer, model: part.model, assembly: replacement)
+      create_installed_part(assembly: replacement, function: part.function, manufacturer: part.manufacturer, model: part.model)
     end
-    replacement_fdr = EmbeddedDevice.create!(assembly: replacement)
+    replacement_fdr = create_embedded_controller(assembly: replacement)
     sign_in_as users(:operator)
 
     post forge_fdr_fdr_wifi_profiles_path(replacement_fdr), params: { wifi_credential_id: shared.id }

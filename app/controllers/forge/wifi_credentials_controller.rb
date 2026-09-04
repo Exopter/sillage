@@ -7,7 +7,7 @@ module Forge
       credential.password = attributes[:password] if attributes[:password].present? || attributes[:security] == "open"
 
       if credential.save
-        credential.embedded_devices.find_each do |fdr|
+        credential.embedded_controllers.find_each do |fdr|
           fdr.record_activity!(
             "wifi_credential_updated",
             source: "forge",

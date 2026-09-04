@@ -1,15 +1,34 @@
-<% content_for :title, @assembly.internal_number %>
+<% content_for :title, @assembly.controlled_fdr? ? @assembly.serial_label : @assembly.name %>
 <%= render "hangar/tabs" %>
 
 <header class="workspace-header">
-  <div><span class="section-eyebrow">Assembly</span><h2><%= @assembly.internal_number %></h2><p><%= @assembly.name %></p></div>
+  <% if @assembly.controlled_fdr? %>
+    <div><span class="section-eyebrow"><%= @assembly.functional_configuration %></span><h2>ExoFDR</h2><p><%= @assembly.serial_label %> · <%= @assembly.hardware_label %></p></div>
+  <% else %>
+    <div><span class="section-eyebrow">Assembly</span><h2><%= @assembly.name %></h2><p>Asset ID <%= @assembly.internal_number %></p></div>
+  <% end %>
   <div class="workspace-actions">
-    <% if @assembly.embedded_device %><%= link_to "Open FDR in Forge", forge_fdr_path(@assembly.embedded_device), class: "button-primary" %><% end %>
+    <% if @assembly.embedded_controller %><%= link_to "Open controller in Forge", forge_fdr_path(@assembly.embedded_controller), class: "button-primary" %><% end %>
     <%= link_to "Edit", edit_hangar_assembly_path(@assembly), class: "button-secondary" %>
     <%= button_to "Delete", hangar_assembly_path(@assembly), method: :delete, class: "button-danger",
       form: { data: { turbo_confirm: "Delete #{@assembly.internal_number} permanently? This cannot be undone." } } %>
   </div>
 </header>
+
+<section class="workspace-panel">
+  <div class="workspace-panel-header"><h2>Identity</h2><span>Physical assembly</span></div>
+  <dl class="workspace-details">
+    <% if @assembly.controlled_fdr? %>
+      <div><dt>Product</dt><dd>ExoFDR</dd></div>
+      <div><dt>Serial number</dt><dd class="workspace-mono"><%= @assembly.serial_number %></dd></div>
+      <div><dt>Hardware definition</dt><dd class="workspace-mono"><%= @assembly.hardware_label %></dd></div>
+      <div><dt>ECU ID</dt><dd class="workspace-mono"><%= @assembly.embedded_controller&.device_id || "Not identified" %></dd></div>
+    <% end %>
+    <div><dt>Serviceability</dt><dd><%= @assembly.serviceability_label %></dd></div>
+    <div><dt>Internal Asset ID</dt><dd class="workspace-mono"><%= @assembly.internal_number %></dd></div>
+  </dl>
+  <% if @assembly.notes.present? %><p class="workspace-notes"><%= simple_format @assembly.notes %></p><% end %>
+</section>
 
 <div class="workspace-grid is-assembly">
   <section class="workspace-panel is-wide">
@@ -22,7 +41,7 @@
       <h2>Install part</h2>
       <% if @available_parts.any? %>
         <%= form_with url: install_part_hangar_assembly_path(@assembly), class: "workspace-inline-form" do |form| %>
-          <%= form.collection_select :part_id, @available_parts, :id, ->(part) { "#{part.internal_number} · #{part.function.name} · #{part.display_name}" } %>
+          <%= form.collection_select :part_id, @available_parts, :id, ->(part) { "#{part.display_name} · #{part.serial_number.presence || part.internal_number} · #{part.function.name}" } %>
           <%= form.submit "Install", class: "button-primary" %>
         <% end %>
       <% else %><p class="workspace-muted">No available part.</p><% end %>
@@ -32,7 +51,7 @@
       <h2>Attach subassembly</h2>
       <% if @available_assemblies.any? %>
         <%= form_with url: attach_assembly_hangar_assembly_path(@assembly), class: "workspace-inline-form" do |form| %>
-          <%= form.collection_select :child_id, @available_assemblies, :id, ->(assembly) { "#{assembly.internal_number} · #{assembly.name}" } %>
+          <%= form.collection_select :child_id, @available_assemblies, :id, :selection_label %>
           <%= form.submit "Attach", class: "button-primary" %>
         <% end %>
       <% else %><p class="workspace-muted">No root assembly available.</p><% end %>
@@ -46,7 +65,7 @@
     <div class="workspace-list">
       <% @assembly.parts.includes(:function).ordered.each do |part| %>
         <div class="workspace-list-row is-static">
-          <span><strong><%= part.internal_number %> · <%= part.function.name %></strong><small><%= part.display_name %></small></span>
+          <span><strong><%= part.display_name %> · <%= part.function.name %></strong><small><%= part.serial_number.present? ? "S/N #{part.serial_number} · Asset ID #{part.internal_number}" : "Asset ID #{part.internal_number}" %><%= " · ECU ID #{part.embedded_controller.device_id}" if part.embedded_controller&.device_id %></small></span>
           <div class="workspace-actions">
             <% replacements = @available_parts.select { |candidate| candidate.function_id == part.function_id } %>
             <% if replacements.any? %>

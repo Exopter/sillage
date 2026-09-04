@@ -3,12 +3,12 @@
   <% if asset.is_a?(Assembly) %>
     <%= link_to hangar_assembly_path(asset), class: "hangar-tree-primary" do %>
       <span class="hangar-tree-icon"><%= sillage_icon "layers", size: 15 %></span>
-      <span class="hangar-tree-copy"><strong><%= hangar_asset_code asset %> · <%= hangar_asset_name asset %></strong><small><%= pluralize asset.parts.size, "direct part" %></small></span>
+      <span class="hangar-tree-copy"><strong><%= hangar_asset_code asset %> · <%= hangar_asset_name asset %></strong><small><%= [ (asset.hardware_label if asset.controlled_fdr?), pluralize(asset.parts.size, "direct part") ].compact.join(" · ") %></small></span>
     <% end %>
   <% else %>
     <div class="hangar-tree-primary">
       <span class="hangar-tree-icon"><%= sillage_icon asset.is_a?(Assembly) ? "layers" : "settings", size: 15 %></span>
-      <span class="hangar-tree-copy"><strong><%= hangar_asset_code asset %> · <%= hangar_asset_name asset %></strong><small><%= asset.is_a?(Part) ? "SN #{asset.serial_number.presence || "not recorded"}" : "#{pluralize asset.parts.size, "direct part"}" %></small></span>
+      <span class="hangar-tree-copy"><strong><%= hangar_asset_code asset %> · <%= hangar_asset_name asset %></strong><small><%= "Asset ID #{asset.internal_number}" %></small></span>
     </div>
   <% end %>
   <span class="hangar-kind"><%= hangar_asset_kind asset %></span>

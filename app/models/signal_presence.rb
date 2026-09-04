@@ -8,9 +8,9 @@ class SignalPresence < ApplicationRecord
     0x10 => "Recording queue"
   }.freeze
 
-  belongs_to :embedded_device
+  belongs_to :embedded_controller
 
-  validates :embedded_device_id, uniqueness: true
+  validates :embedded_controller_id, uniqueness: true
 
   scope :fresh, ->(since) { where(last_seen_at: since..) }
   scope :recent, -> { order(last_seen_at: :desc) }

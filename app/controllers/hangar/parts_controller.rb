@@ -5,7 +5,7 @@ module Hangar
     def index
       @query = params[:q].to_s.strip
       @state = params[:state].presence_in(Part::STATES)
-      @parts = Part.left_joins(:function).includes(:function, :assembly).ordered
+      @parts = Part.left_joins(:function).includes(:function, active_part_installation: :assembly).ordered
       if @query.present?
         pattern = "%#{Part.sanitize_sql_like(@query)}%"
         @parts = @parts.where(<<~SQL.squish, pattern:)
@@ -18,6 +18,7 @@ module Hangar
 
     def show
       @test_runs = @part.test_runs.includes(:build).recent
+      @part_installations = @part.part_installations.includes(:assembly).recent
     end
 
     def new

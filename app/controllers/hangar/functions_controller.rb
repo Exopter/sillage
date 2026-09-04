@@ -7,7 +7,7 @@ module Hangar
     end
 
     def show
-      @parts = @function.parts.includes(:assembly).ordered
+      @parts = @function.parts.includes(active_part_installation: :assembly).ordered
     end
 
     def new
