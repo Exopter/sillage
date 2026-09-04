@@ -148,6 +148,10 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select ".signal-mode-buttons button", text: "Large", minimum: 3
     assert_select ".signal-telemetry-strip", count: 1
     assert_select ".signal-tabs", count: 0
+    assert_select "#signal-development-status[role='status']", text: "Development in progress", count: 1
+    assert_select ".signal-root button", minimum: 1
+    assert_select ".signal-root button:not([disabled])", count: 0
+    assert_select ".signal-root button[aria-describedby='signal-development-status'][title='Development in progress']", minimum: 1
   end
 
   test "renders uniform recorder connections and combined information in Forge" do
@@ -286,11 +290,19 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "Signal home excludes the visible FDR configuration manager" do
+    flights(:one).update!(status: "preparation")
+
     get signal_path
 
     assert_response :success
     assert_select ".signal-home #sillage-fdr-connectivity", count: 0
     assert_select "#sillage-fdr-connectivity", count: 0
+    assert_select "#signal-development-status[role='status']", text: "Development in progress", count: 1
+    assert_select ".signal-home button", minimum: 1
+    assert_select ".signal-home button:not([disabled])", count: 0
+    assert_select ".signal-home button[aria-describedby='signal-development-status'][title='Development in progress']", minimum: 1
+    assert_select ".signal-prep-row button[disabled]", text: "Open session", count: 1
+    assert_select ".signal-start-direct[disabled]", text: /Start unassigned session/, count: 1
   end
 
   test "does not keep the recorder connection manager outside Forge" do

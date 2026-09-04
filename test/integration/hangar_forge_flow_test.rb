@@ -29,7 +29,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_select ".hangar-fleet-layout"
     assert_select "aside[aria-label='Fleet aircraft'] .hangar-fleet-item", minimum: 1
     assert_select "section[aria-label='Selected aircraft configuration']"
-    assert_select ".hangar-asset-title .status-dot", text: "Ready", count: 1
+    assert_select ".hangar-asset-title .status-dot.is-ready", text: "Ready", count: 1
     assert_select ".hangar-asset-head > .workspace-status", count: 0
     assert_select "main", text: /Operational vehicle/, count: 0
     assert_select ".hangar-config-head", text: /Installed configuration/

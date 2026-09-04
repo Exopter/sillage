@@ -22,20 +22,21 @@
           <div><span>Cloud</span><strong data-signal-workspace-target="cloudStatus">Live</strong></div>
         </div>
         <div class="signal-command-actions">
-          <button type="button" class="signal-tool-button is-primary" aria-label="Connect ground radio" data-action="signal-workspace#connectStation" data-signal-workspace-target="connectButton"><%= sillage_icon "radio", size: 14 %><span>Connect ground radio</span></button>
-          <button type="button" class="signal-tool-button" aria-label="Full screen" data-action="signal-workspace#toggleFullscreen"><%= sillage_icon "arrow-up-right", size: 14 %><span>Full screen</span></button>
-          <button type="button" class="signal-tool-button" aria-label="Reset layout" data-action="signal-workspace#resetLayout"><%= sillage_icon "rotate-ccw", size: 14 %><span>Reset layout</span></button>
-          <button type="button" class="signal-tool-button" aria-label="Mark event" data-action="signal-workspace#markEvent"><%= sillage_icon "plus", size: 14 %><span>Mark event</span></button>
-          <button type="button" class="signal-tool-button is-danger" data-action="signal-workspace#endSession">End session</button>
+          <button type="button" class="signal-tool-button is-primary" aria-label="Connect ground radio" aria-describedby="signal-development-status" title="Development in progress" data-action="signal-workspace#connectStation" data-signal-workspace-target="connectButton" disabled><%= sillage_icon "radio", size: 14 %><span>Connect ground radio</span></button>
+          <button type="button" class="signal-tool-button" aria-label="Full screen" aria-describedby="signal-development-status" title="Development in progress" data-action="signal-workspace#toggleFullscreen" disabled><%= sillage_icon "arrow-up-right", size: 14 %><span>Full screen</span></button>
+          <button type="button" class="signal-tool-button" aria-label="Reset layout" aria-describedby="signal-development-status" title="Development in progress" data-action="signal-workspace#resetLayout" disabled><%= sillage_icon "rotate-ccw", size: 14 %><span>Reset layout</span></button>
+          <button type="button" class="signal-tool-button" aria-label="Mark event" aria-describedby="signal-development-status" title="Development in progress" data-action="signal-workspace#markEvent" disabled><%= sillage_icon "plus", size: 14 %><span>Mark event</span></button>
+          <button type="button" class="signal-tool-button is-danger" aria-describedby="signal-development-status" title="Development in progress" data-action="signal-workspace#endSession" disabled>End session</button>
         </div>
       </header>
 
+      <div id="signal-development-status" class="signal-storage-warning" role="status">Development in progress</div>
       <div class="signal-storage-warning" data-signal-workspace-target="warning" hidden></div>
 
       <main class="signal-dashboard" data-signal-workspace-target="board" aria-label="Movable live Signal widgets">
         <section class="signal-widget" data-signal-workspace-target="widget" data-widget="map" data-mode="large">
           <header class="signal-widget-head">
-            <button type="button" class="signal-drag-handle" aria-label="Move Live map" title="Drag to move · arrow keys to nudge" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget"><%= sillage_icon "menu", size: 13 %></button>
+            <button type="button" class="signal-drag-handle" aria-label="Move Live map" aria-describedby="signal-development-status" title="Development in progress" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget" disabled><%= sillage_icon "menu", size: 13 %></button>
             <span class="signal-head-icon"><%= sillage_icon "map", size: 15 %></span><strong>Live map</strong><span class="signal-widget-subtitle">Flight path and heading</span>
             <span class="signal-live-badge">Live</span>
             <span class="signal-mode-buttons"><%= render "signal/widget_modes" %></span>
@@ -50,7 +51,7 @@
 
         <section class="signal-widget" data-signal-workspace-target="widget" data-widget="instruments" data-mode="mini">
           <header class="signal-widget-head">
-            <button type="button" class="signal-drag-handle" aria-label="Move Instruments" title="Drag to move · arrow keys to nudge" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget"><%= sillage_icon "menu", size: 13 %></button>
+            <button type="button" class="signal-drag-handle" aria-label="Move Instruments" aria-describedby="signal-development-status" title="Development in progress" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget" disabled><%= sillage_icon "menu", size: 13 %></button>
             <span class="signal-head-icon"><%= sillage_icon "gauge", size: 15 %></span><strong>Instruments</strong><span class="signal-widget-subtitle">Ground-reconstructed flight state</span>
             <span class="signal-live-badge">Live</span>
             <span class="signal-mode-buttons"><%= render "signal/widget_modes" %></span>
@@ -60,7 +61,7 @@
 
         <section class="signal-widget" data-signal-workspace-target="widget" data-widget="charts" data-mode="mini">
           <header class="signal-widget-head">
-            <button type="button" class="signal-drag-handle" aria-label="Move Charts" title="Drag to move · arrow keys to nudge" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget"><%= sillage_icon "menu", size: 13 %></button>
+            <button type="button" class="signal-drag-handle" aria-label="Move Charts" aria-describedby="signal-development-status" title="Development in progress" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget" disabled><%= sillage_icon "menu", size: 13 %></button>
             <span class="signal-head-icon"><%= sillage_icon "activity", size: 15 %></span><strong>Charts</strong><span class="signal-widget-subtitle">Aligned telemetry and stream validity</span>
             <span class="signal-live-badge">Live</span>
             <span class="signal-mode-buttons"><%= render "signal/widget_modes" %></span>
@@ -85,13 +86,14 @@
       <header class="signal-home-head">
         <div><span class="signal-k">Sillage Signal</span><h1>Start live acquisition</h1><p>Connect the ground radio, display telemetry and record a durable local capture while the cloud stays synchronized.</p></div>
       </header>
+      <div id="signal-development-status" class="signal-storage-warning" role="status">Development in progress</div>
       <div class="signal-launch-grid">
         <section class="signal-launch-card">
           <div class="signal-launch-body"><span class="signal-k">Prepared flights</span><h2>Attach to an existing flight</h2><p>The aircraft and installed Hangar assets are inherited automatically.</p></div>
           <% @preparation_flights.each do |flight| %>
             <div class="signal-prep-row">
               <div><strong><%= flight.code %></strong><span><%= flight.display_aircraft %></span></div>
-              <%= button_to "Open session", signal_sessions_path(flight_id: flight.id), class: "signal-tool-button is-primary", form: { data: { turbo: false } } %>
+              <%= button_to "Open session", signal_sessions_path(flight_id: flight.id), class: "signal-tool-button is-primary", disabled: true, title: "Development in progress", aria: { describedby: "signal-development-status" }, form: { data: { turbo: false } } %>
             </div>
           <% end %>
           <% if @preparation_flights.empty? %><div class="signal-prep-empty">No flight is currently in Preparation.</div><% end %>
@@ -99,7 +101,7 @@
         <section class="signal-launch-card">
           <div class="signal-launch-body">
             <span class="signal-k">Direct acquisition</span><h2>Create from Signal</h2><p>A new Flight is created. Its aircraft is filled automatically when identification is unambiguous; otherwise it remains To complete.</p>
-            <%= button_to signal_sessions_path, class: "signal-tool-button is-primary signal-start-direct", form: { data: { turbo: false } } do %><%= sillage_icon "radio", size: 15 %><span>Start unassigned session</span><% end %>
+            <%= button_to signal_sessions_path, class: "signal-tool-button is-primary signal-start-direct", disabled: true, title: "Development in progress", aria: { describedby: "signal-development-status" }, form: { data: { turbo: false } } do %><%= sillage_icon "radio", size: 15 %><span>Start unassigned session</span><% end %>
             <div class="signal-launch-rules"><div><%= sillage_icon "download", size: 15 %><span><strong>Local capture first</strong>Raw MAVLink continues during a brief Internet cut.</span></div><div><%= sillage_icon "upload", size: 15 %><span><strong>Automatic recovery</strong>Queued batches resume from the last acknowledgement.</span></div><div><%= sillage_icon "shield", size: 15 %><span><strong>microSD authoritative</strong>Signal complements the onboard recorder.</span></div></div>
           </div>
         </section>

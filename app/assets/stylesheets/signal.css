@@ -115,7 +115,7 @@
   white-space: nowrap;
 }
 
-.signal-tool-button:hover,
+.signal-tool-button:hover:not(:disabled),
 .signal-tool-button:focus-visible {
   border-color: var(--ex-aqua-500);
   color: var(--ex-aqua-500);
@@ -128,7 +128,7 @@
   color: var(--ex-aqua-500);
 }
 
-.signal-tool-button.is-danger:hover,
+.signal-tool-button.is-danger:hover:not(:disabled),
 .signal-tool-button.is-danger:focus-visible {
   border-color: var(--ex-state-fault-text);
   color: var(--ex-state-fault-text);
@@ -212,12 +212,17 @@
   touch-action: none;
 }
 
-.signal-drag-handle:hover,
+.signal-drag-handle:hover:not(:disabled),
 .signal-drag-handle:focus-visible {
   border-color: var(--ex-carbon-700);
   background: var(--ex-carbon-950);
   color: var(--ex-aqua-500);
   outline: 0;
+}
+
+.signal-drag-handle:disabled {
+  cursor: not-allowed;
+  opacity: .45;
 }
 
 .signal-head-icon {
@@ -274,12 +279,17 @@
   text-transform: uppercase;
 }
 
-.signal-mode-buttons button:hover,
+.signal-mode-buttons button:hover:not(:disabled),
 .signal-mode-buttons button:focus-visible,
 .signal-mode-buttons button[aria-pressed="true"] {
   background: var(--ex-carbon-700);
   color: var(--ex-aqua-500);
   outline: 0;
+}
+
+.signal-mode-buttons button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
 }
 
 .signal-widget[data-mode="mini"] .signal-widget-subtitle,
@@ -485,7 +495,7 @@
   font-size: 10px;
 }
 
-.signal-fdr-connectivity .signal-tool-button:hover,
+.signal-fdr-connectivity .signal-tool-button:hover:not(:disabled),
 .signal-fdr-connectivity .signal-tool-button:focus-visible {
   border-color: var(--ds-teal);
   color: var(--ds-teal);
@@ -497,7 +507,7 @@
   color: var(--ds-teal-dark);
 }
 
-.signal-fdr-connectivity .signal-tool-button.is-danger:hover,
+.signal-fdr-connectivity .signal-tool-button.is-danger:hover:not(:disabled),
 .signal-fdr-connectivity .signal-tool-button.is-danger:focus-visible {
   border-color: var(--ex-state-fault-text);
   color: var(--ex-state-fault-text);

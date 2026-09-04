@@ -833,18 +833,38 @@ body {
 }
 
 .status-dot span {
+  box-sizing: border-box;
   width: 9px;
   height: 9px;
+  flex: 0 0 auto;
+  border: 0;
   border-radius: 50%;
   background: var(--ex-graphite-500);
+}
+
+.status-dot.is-ready span {
+  background: var(--ex-field-500);
 }
 
 .status-dot.is-live span {
   background: var(--ex-aqua-500);
 }
 
+.status-dot.is-pending span {
+  border: 2px solid var(--ex-amber-500);
+  background: transparent;
+}
+
+.status-dot.is-caution span {
+  background: var(--ex-amber-500);
+}
+
 .status-dot.is-fault span {
   background: var(--ex-red-600);
+}
+
+.status-dot.is-unknown span {
+  background: var(--ex-graphite-500);
 }
 
 .eyebrow {
