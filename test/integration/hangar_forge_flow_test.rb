@@ -105,6 +105,18 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_select "select[name='build[assembly_id]'] option[selected]", /#{Regexp.escape(@assembly.serial_label)}/
   end
 
+  test "function page renders an explicit empty inventory state" do
+    sign_in_as users(:operator)
+    empty_function = Function.create!(name: "I2C Multiplexer")
+
+    get hangar_function_path(empty_function)
+
+    assert_response :success
+    assert_select ".workspace-panel-header", text: /Assigned inventory.*0 parts/m
+    assert_select ".workspace-empty", text: "No parts use this function yet.", count: 1
+    assert_select ".workspace-list", count: 0
+  end
+
   test "bench token accepts an idempotent test result and freezes the build" do
     token = users(:operator).rotate_bench_token!
     payload = result_payload
