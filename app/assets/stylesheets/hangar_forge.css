@@ -1471,7 +1471,9 @@
 
 .workspace-form input:not([type="submit"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 .workspace-form select,
-.workspace-form textarea {
+.workspace-form textarea,
+.workspace-inline-form select,
+.workspace-compact-form select {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--border-strong, #aebfba);
@@ -1495,7 +1497,9 @@
 
 .workspace-form input:not([type="submit"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
 .workspace-form select:focus,
-.workspace-form textarea:focus {
+.workspace-form textarea:focus,
+.workspace-inline-form select:focus,
+.workspace-compact-form select:focus {
   border-color: var(--ex-aqua-500, #2fd6c6);
   outline: 2px solid color-mix(in srgb, var(--ex-aqua-500, #2fd6c6) 28%, transparent);
   outline-offset: 1px;
@@ -1503,7 +1507,8 @@
 
 .workspace-inline-form select,
 .workspace-compact-form select {
-  width: 100%;
+  min-height: 38px;
+  padding-block: 0;
 }
 
 .workspace-checkbox {
