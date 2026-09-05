@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "assets:prepare": "node script/prepare_cesium_assets.mjs",
     "typecheck": "tsc --project tsconfig.json"
   },
   "devDependencies": {
@@ -10,5 +11,8 @@
     "@types/w3c-web-serial": "1.0.8",
     "@types/web-bluetooth": "0.0.21",
     "typescript": "7.0.2"
+  },
+  "dependencies": {
+    "cesium": "1.124.0"
   }
 }

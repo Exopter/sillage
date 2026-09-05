@@ -3,7 +3,11 @@ module Flights
     EARTH_RADIUS_M = 6_371_000.0
 
     def initialize(points)
-      @points = points.sort_by { |point| point[:recorded_at] || Time.at(0) }
+      @points = if points.all? { |point| point[:elapsed_seconds] }
+        points.sort_by { |point| point[:elapsed_seconds] }
+      else
+        points.sort_by { |point| point[:recorded_at] || Time.at(0) }
+      end
     end
 
     def prepared_points
@@ -21,7 +25,7 @@ module Flights
         vertical_speed = point[:vel_d_mps]&.to_f
 
         point.merge(
-          elapsed_seconds: point[:recorded_at] && origin_time ? point[:recorded_at] - origin_time : nil,
+          elapsed_seconds: point[:elapsed_seconds] || (point[:recorded_at] && origin_time ? point[:recorded_at] - origin_time : nil),
           horizontal_speed_mps: horizontal_speed,
           vertical_speed_mps: vertical_speed,
           glide_ratio: glide_ratio(horizontal_speed, vertical_speed),
@@ -74,7 +78,9 @@ module Flights
     def duration(points)
       return nil if points.size < 2
 
-      points.last[:recorded_at] - points.first[:recorded_at]
+      first = points.first[:elapsed_seconds]
+      last = points.last[:elapsed_seconds]
+      last - first if first && last
     end
 
     def speed(north, east)

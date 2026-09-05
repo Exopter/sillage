@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_04_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_05_131000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -142,6 +142,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_160000) do
     t.index ["embedded_controller_id", "status"], name: "idx_on_embedded_controller_id_status_4ea14c7edc"
     t.index ["embedded_controller_id"], name: "index_fdr_recording_commands_on_embedded_controller_id"
     t.index ["requested_by_id"], name: "index_fdr_recording_commands_on_requested_by_id"
+  end
+
+  create_table "fdr_recordings", force: :cascade do |t|
+    t.bigint "boot_id", null: false
+    t.datetime "created_at", null: false
+    t.string "recorder_key", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "recorder_key", "boot_id"], name: "index_fdr_recordings_on_user_id_and_recorder_key_and_boot_id", unique: true
   end
 
   create_table "fdr_wifi_profiles", force: :cascade do |t|
@@ -344,14 +353,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_160000) do
   create_table "sensor_samples", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.float "elapsed_seconds"
+    t.bigint "fdr_recording_id"
+    t.bigint "fdr_sequence"
+    t.bigint "fdr_timestamp_us"
     t.bigint "flight_id", null: false
     t.json "readings"
     t.datetime "recorded_at"
     t.string "sensor_type"
+    t.bigint "source_blob_id"
     t.datetime "updated_at", null: false
+    t.index ["fdr_recording_id", "fdr_sequence"], name: "index_sensor_samples_on_fdr_recording_id_and_fdr_sequence", unique: true, where: "(fdr_recording_id IS NOT NULL)"
     t.index ["flight_id", "elapsed_seconds"], name: "index_sensor_samples_on_flight_id_and_elapsed_seconds"
     t.index ["flight_id", "sensor_type"], name: "index_sensor_samples_on_flight_id_and_sensor_type"
     t.index ["flight_id"], name: "index_sensor_samples_on_flight_id"
+    t.index ["source_blob_id"], name: "index_sensor_samples_on_source_blob_id", where: "(source_blob_id IS NOT NULL)"
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -582,6 +597,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_160000) do
     t.datetime "created_at", null: false
     t.float "distance_from_start_m"
     t.float "elapsed_seconds"
+    t.bigint "fdr_recording_id"
+    t.bigint "fdr_sequence"
+    t.bigint "fdr_timestamp_us"
     t.bigint "flight_id", null: false
     t.float "glide_ratio"
     t.integer "gps_fix"
@@ -592,6 +610,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_160000) do
     t.float "lon"
     t.datetime "recorded_at"
     t.integer "satellite_count"
+    t.bigint "source_blob_id"
     t.float "speed_accuracy_mps"
     t.datetime "updated_at", null: false
     t.float "vel_d_mps"
@@ -599,9 +618,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_160000) do
     t.float "vel_n_mps"
     t.float "vertical_accuracy_m"
     t.float "vertical_speed_mps"
+    t.index ["fdr_recording_id", "fdr_sequence"], name: "index_track_points_on_fdr_recording_id_and_fdr_sequence", unique: true, where: "(fdr_recording_id IS NOT NULL)"
     t.index ["flight_id", "elapsed_seconds"], name: "index_track_points_on_flight_id_and_elapsed_seconds"
     t.index ["flight_id", "recorded_at"], name: "index_track_points_on_flight_id_and_recorded_at"
     t.index ["flight_id"], name: "index_track_points_on_flight_id"
+    t.index ["source_blob_id"], name: "index_track_points_on_source_blob_id", where: "(source_blob_id IS NOT NULL)"
   end
 
   create_table "users", force: :cascade do |t|
@@ -648,6 +669,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_160000) do
   add_foreign_key "embedded_controllers", "parts"
   add_foreign_key "fdr_recording_commands", "embedded_controllers"
   add_foreign_key "fdr_recording_commands", "users", column: "requested_by_id"
+  add_foreign_key "fdr_recordings", "users"
   add_foreign_key "fdr_wifi_profiles", "embedded_controllers"
   add_foreign_key "fdr_wifi_profiles", "wifi_credentials"
   add_foreign_key "fdr_wifi_uploads", "embedded_controllers"
@@ -664,6 +686,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_160000) do
   add_foreign_key "part_installations", "assemblies"
   add_foreign_key "part_installations", "parts"
   add_foreign_key "parts", "functions"
+  add_foreign_key "sensor_samples", "active_storage_blobs", column: "source_blob_id"
+  add_foreign_key "sensor_samples", "fdr_recordings"
   add_foreign_key "sensor_samples", "flights"
   add_foreign_key "sessions", "users"
   add_foreign_key "signal_batches", "signal_sessions"
@@ -680,6 +704,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_160000) do
   add_foreign_key "test_runs", "parts"
   add_foreign_key "test_runs", "users", column: "operator_id"
   add_foreign_key "test_runs", "users", column: "validated_by_id"
+  add_foreign_key "track_points", "active_storage_blobs", column: "source_blob_id"
+  add_foreign_key "track_points", "fdr_recordings"
   add_foreign_key "track_points", "flights"
   add_foreign_key "wifi_credentials", "users", column: "created_by_id"
 end

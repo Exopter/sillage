@@ -1,6 +1,8 @@
 require "test_helper"
 
 class SignalFlowTest < ActionDispatch::IntegrationTest
+  include ActiveJob::TestHelper
+
   setup do
     sign_in_as users(:julien)
     @asset = Assembly.create!(name: "Signal FDR")
@@ -69,6 +71,119 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal "completed", session.reload.status
+    assert_equal "waiting_for_recording", flight.reload.status
+  end
+
+  test "mixed optional GPS columns are coerced and inserted atomically" do
+    session = users(:julien).signal_sessions.create!(flight: flights(:one))
+    post batches_api_v1_signal_session_path(session.uuid), params: {
+      sequence: 0,
+      samples: [
+        { kind: "gps", lat: "44.2", lon: "5.7", altitude_m: "1200.5", gps_fix: "3" },
+        { kind: "gps", latitude: 44.3, longitude: 5.8, heading_deg: "42.5", satellite_count: 12 }
+      ]
+    }, as: :json
+    assert_response :success
+    first, second = session.flight.track_points.order(:id).last(2)
+    assert_equal 44.2, first.lat
+    assert_equal 1200.5, first.altitude_m
+    assert_equal 3, first.gps_fix
+    assert_nil first.heading_deg
+    assert_nil second.altitude_m
+    assert_nil second.recorded_at
+    assert_equal 42.5, second.heading_deg
+    assert_equal 12, second.satellite_count
+  end
+
+  test "malformed batches return the offending field without consuming their sequence" do
+    session = users(:julien).signal_sessions.create!(flight: flights(:one))
+    malformed = [
+      [ { kind: "gps", latitude: "invalid", longitude: 5.7 }, "latitude" ],
+      [ { kind: "gps", latitude: 91, longitude: 5.7 }, "latitude" ],
+      [ { kind: "gps", latitude: 44, longitude: 5.7, altitude_m: "NaN" }, "altitude_m" ],
+      [ { kind: "gps", latitude: 44, longitude: 5.7, gps_fix: 2.5 }, "gps_fix" ],
+      [ { kind: "sensor", recorded_at: "yesterday", readings: {} }, "recorded_at" ],
+      [ { kind: "sensor", readings: [] }, "readings" ],
+      [ { kind: "unknown" }, "kind" ],
+      [ 42, "samples[1]" ]
+    ]
+    malformed.each do |sample, field|
+      assert_no_difference [ "SignalBatch.count", "TrackPoint.count", "SensorSample.count" ] do
+        post batches_api_v1_signal_session_path(session.uuid), params: {
+          sequence: 0, samples: [ { kind: "gps", latitude: 44, longitude: 5 }, sample ]
+        }, as: :json
+      end
+      assert_response :unprocessable_entity
+      assert_includes response.parsed_body.fetch("error"), "samples[1]"
+      assert_includes response.parsed_body.fetch("error"), field
+      assert_equal(-1, session.reload.last_acknowledged_sequence)
+    end
+    post batches_api_v1_signal_session_path(session.uuid), params: { sequence: 0, samples: [] }, as: :json
+    assert_response :success
+    assert_equal 0, session.reload.last_acknowledged_sequence
+  end
+
+  test "completed sessions accept duplicate receipts but cannot resume capture or overwrite imported status" do
+    flight = users(:julien).flights.create!(name: "Completed Signal", status: "live")
+    session = users(:julien).signal_sessions.create!(flight:)
+    post batches_api_v1_signal_session_path(session.uuid), params: { sequence: 0, samples: [] }, as: :json
+    assert_response :success
+    ended_at = Time.current.change(usec: 0)
+    patch complete_api_v1_signal_session_path(session.uuid), params: { ended_at: ended_at.iso8601 }, as: :json
+    assert_response :success
+    assert_equal "waiting_for_recording", flight.reload.status
+    get flight_path(flight)
+    assert_response :success
+    assert_select "section[aria-label='Waiting for recording'] a[href='#{new_flight_import_path(flight_id: flight.id)}']", text: "Import recording"
+
+    post batches_api_v1_signal_session_path(session.uuid), params: { sequence: 0, samples: [] }, as: :json
+    assert_response :success
+    assert_equal "waiting_for_recording", flight.reload.status
+    assert_no_difference "SignalBatch.count" do
+      post batches_api_v1_signal_session_path(session.uuid), params: { sequence: 1, samples: [] }, as: :json
+    end
+    assert_response :conflict
+    flight.update!(status: "analysed", flight_import: flight_imports(:one))
+    patch complete_api_v1_signal_session_path(session.uuid), params: { ended_at: 1.hour.from_now.iso8601 }, as: :json
+    assert_response :success
+    assert_equal "analysed", flight.reload.status
+    assert_equal ended_at, session.reload.ended_at
+  end
+
+  test "a completed Signal flight becomes analysed through the existing import job" do
+    flight = users(:julien).flights.create!(name: "Signal to recording", status: "live", aircraft: aircraft(:pilatus))
+    session = users(:julien).signal_sessions.create!(flight:)
+    session.complete!
+    assert_equal "waiting_for_recording", flight.reload.status
+    assert_enqueued_with(job: FlySightImportJob) do
+      post flight_imports_path, params: {
+        flight_import: {
+          import_type: "flysight", target_flight_id: flight.id,
+          source_files: [
+            fixture_file_upload("flysight_v2/TRACK.CSV", "text/csv"),
+            fixture_file_upload("flysight_v2/SENSOR.CSV", "text/csv")
+          ]
+        }
+      }
+    end
+    assert_response :redirect
+    assert_equal "processing", flight.reload.status
+    perform_enqueued_jobs only: FlySightImportJob
+    assert_equal "analysed", flight.reload.status
+    assert_predicate flight.flight_import, :imported?
+    assert_operator flight.track_points.count, :>, 0
+    get flight_path(flight)
+    assert_select "section[aria-label='Waiting for recording']", count: 0
+  end
+
+  test "completion preserves another active session and an authoritative import in progress" do
+    flight = users(:julien).flights.create!(name: "Shared capture", status: "live")
+    first = users(:julien).signal_sessions.create!(flight:)
+    second = users(:julien).signal_sessions.create!(flight:)
+    first.complete!
+    assert_equal "live", flight.reload.status
+    flight.update!(status: "processing", flight_import: flight_imports(:one))
+    second.complete!
     assert_equal "processing", flight.reload.status
   end
 

@@ -15,8 +15,8 @@ const applicationStyles = await readFile(
 )
 
 assert.match(controllerSource, /Cesium\.Ion\.defaultAccessToken = this\.cesiumTokenValue/)
-assert.match(controllerSource, /Cesium\.Terrain\.fromWorldTerrain/)
-assert.match(controllerSource, /Cesium\.ImageryLayer\.fromWorldImagery/)
+assert.match(controllerSource, /Cesium\.createWorldTerrainAsync/)
+assert.match(controllerSource, /Cesium\.createWorldImageryAsync/)
 assert.match(controllerSource, /Cesium\.createOsmBuildingsAsync/)
 assert.match(controllerSource, /CESIUM_TILE_PROVIDER = "CESIUM_ION"/)
 assert.match(controllerSource, /creditContainer: this\.creditsTarget/)

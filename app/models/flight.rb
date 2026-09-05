@@ -1,5 +1,5 @@
 class Flight < ApplicationRecord
-  STATUSES = %w[preparation live processing analysed review].freeze
+  STATUSES = %w[preparation live waiting_for_recording processing analysed review].freeze
   VIDEO_PROCESSING_STATUSES = %w[empty processing ready failed].freeze
   VIDEO_UPLOAD_EXTENSIONS = %w[.avi .m4v .mkv .mov .mp4 .webm].freeze
   LOCATION_SOURCES = %w[manual openstreetmap].freeze
@@ -14,7 +14,7 @@ class Flight < ApplicationRecord
   has_one_attached :video_upload
   has_one_attached :video
 
-  before_validation :assign_code, on: :create
+  before_validation :assign_code
 
   validates :code, :name, presence: true
   validates :code, uniqueness: true
@@ -36,7 +36,7 @@ class Flight < ApplicationRecord
   end
 
   def display_started_at
-    started_at || flight_import&.log_started_at || created_at
+    started_at || (created_at unless flight_import)
   end
 
   def display_aircraft
@@ -47,8 +47,15 @@ class Flight < ApplicationRecord
     location.presence || "Not recorded"
   end
 
-  def capture_configuration!
-    update!(configuration_snapshot: aircraft&.configuration_snapshot || {})
+  def capture_configuration!(replace: false, at: started_at)
+    return if configuration_snapshot.present? && !replace
+
+    snapshot = if flight_import && started_at.nil?
+      { "unavailable_reason" => "The recording has no absolute timestamp." }
+    else
+      aircraft&.configuration_snapshot(at:) || {}
+    end
+    update!(configuration_snapshot: snapshot)
   end
 
   def height_m
@@ -58,7 +65,7 @@ class Flight < ApplicationRecord
   end
 
   def video_ready?
-    video_processing_status == "ready" && video.attached?
+    video.attached?
   end
 
   def video_processing?
@@ -72,13 +79,16 @@ class Flight < ApplicationRecord
   private
 
   def assign_code
-    return if code.present?
+    if code.present?
+      if will_save_change_to_code? && (match = /\AFLT-(\d{4})-(\d+)\z/.match(code))
+        IdentifierSequence.reserve_through!("flight_code/#{match[1]}", match[2])
+      end
+      return
+    end
+    return unless new_record?
 
     year = (started_at || Time.current).year
-    next_sequence = self.class.where("code LIKE ?", "FLT-#{year}-%")
-      .pluck(:code)
-      .filter_map { |value| value[/\AFLT-#{year}-(\d+)\z/, 1]&.to_i }
-      .max.to_i + 1
+    next_sequence = IdentifierSequence.next_value!("flight_code/#{year}")
     self.code = format("FLT-%04d-%03d", year, next_sequence)
   end
 

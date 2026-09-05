@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 readonly POSTGRES_CONTAINER="sillage-postgres"
-readonly STATE_DIRECTORY="/var/lib/sillage-operations"
+readonly STATE_DIRECTORY="${SILLAGE_OPERATIONS_STATE_DIRECTORY:-/var/lib/sillage-operations}"
 readonly RESTIC_IMAGE="restic/restic:0.18.0@sha256:28f29bcc3d38a061e09f825600244cf9854f09dd59443e9cd1dfa038c22b43d2"
 readonly POSTGRES_BACKUP_STAMP="${STATE_DIRECTORY}/postgresql-backup.success"
 
@@ -33,7 +33,7 @@ run_monitored() {
   local output
   if output=$("$@" 2>&1); then
     ping_healthcheck "$url" "" "${output:-ok}"
-    [[ -n "$output" ]] && printf '%s\n' "$output"
+    [[ -z "$output" ]] || printf '%s\n' "$output"
   else
     local status=$?
     ping_healthcheck "$url" "/fail" "${output:-failed}"
@@ -53,44 +53,44 @@ acquire_lock() {
 
 check_ready() {
   local response
-  response=$(curl --fail --silent --show-error --max-time 30 https://sillage.exopter.com/ready)
-  grep --quiet --extended-regexp '"status"[[:space:]]*:[[:space:]]*"ok"' <<<"$response"
+  response=$(curl --fail --silent --show-error --max-time 30 https://sillage.exopter.com/ready) || return
+  grep --quiet --extended-regexp '^[[:space:]]*\{[[:space:]]*"status"[[:space:]]*:[[:space:]]*"ok"' <<<"$response" || return
   echo "Sillage readiness is healthy."
 }
 
 check_postgresql_archive() {
   local stats archive_age active_failure archived_count backup_age now backup_time
   stats=$(docker exec "$POSTGRES_CONTAINER" psql -U sillage -d sillage_production --no-align --tuples-only --field-separator='|' --command \
-    "SELECT COALESCE(EXTRACT(EPOCH FROM clock_timestamp() - last_archived_time)::bigint, -1), CASE WHEN last_failed_time IS NOT NULL AND (last_archived_time IS NULL OR last_failed_time > last_archived_time) THEN 1 ELSE 0 END, archived_count FROM pg_stat_archiver;")
+    "SELECT COALESCE(EXTRACT(EPOCH FROM clock_timestamp() - last_archived_time)::bigint, -1), CASE WHEN last_failed_time IS NOT NULL AND (last_archived_time IS NULL OR last_failed_time > last_archived_time) THEN 1 ELSE 0 END, archived_count FROM pg_stat_archiver;") || return
   IFS='|' read -r archive_age active_failure archived_count <<<"$stats"
 
-  [[ "$archive_age" =~ ^[0-9]+$ ]] && (( archive_age <= 1200 ))
-  [[ "$active_failure" == "0" ]]
+  [[ "$archive_age" =~ ^[0-9]+$ ]] && (( archive_age <= 1200 )) || return 1
+  [[ "$active_failure" == "0" ]] || return 1
   docker exec "$POSTGRES_CONTAINER" sh -ec \
-    '! find /var/spool/pgbackrest -type f -name "*.error" -size +0c -print -quit | grep -q .'
+    'errors=$(find /var/spool/pgbackrest -type f -name "*.error" -size +0c -print -quit) || exit; test -z "$errors"' || return
 
-  [[ -f "$POSTGRES_BACKUP_STAMP" ]]
-  now=$(date +%s)
-  backup_time=$(stat --format='%Y' "$POSTGRES_BACKUP_STAMP")
+  [[ -f "$POSTGRES_BACKUP_STAMP" ]] || return 1
+  now=$(date +%s) || return
+  backup_time=$(stat --format='%Y' "$POSTGRES_BACKUP_STAMP") || return
   backup_age=$((now - backup_time))
-  (( backup_age <= 93600 ))
+  (( backup_age >= 0 && backup_age <= 93600 )) || return 1
 
   echo "PostgreSQL archive age=${archive_age}s archived=${archived_count}; base backup age=${backup_age}s."
 }
 
 backup_postgresql() {
   docker exec --user postgres "$POSTGRES_CONTAINER" \
-    pgbackrest --stanza=sillage --type=full backup
-  touch "$POSTGRES_BACKUP_STAMP"
+    pgbackrest --stanza=sillage --type=full backup || return
+  touch "$POSTGRES_BACKUP_STAMP" || return
   echo "PostgreSQL full backup completed."
 }
 
 run_restic() {
-  require_variable R2_ACCOUNT_ID
-  require_variable R2_ACCESS_KEY_ID
-  require_variable R2_SECRET_ACCESS_KEY
-  require_variable R2_BACKUP_BUCKET
-  require_variable RESTIC_REPOSITORY_PASSWORD
+  require_variable R2_ACCOUNT_ID || return
+  require_variable R2_ACCESS_KEY_ID || return
+  require_variable R2_SECRET_ACCESS_KEY || return
+  require_variable R2_BACKUP_BUCKET || return
+  require_variable RESTIC_REPOSITORY_PASSWORD || return
 
   docker run --rm \
     --cpu-shares 2 \
@@ -110,12 +110,12 @@ run_restic() {
 }
 
 initialize_storage_repository() {
-  run_restic snapshots >/dev/null 2>&1 || run_restic init
+  run_restic snapshots >/dev/null 2>&1 || run_restic init || return
   echo "Active Storage backup repository is initialized."
 }
 
 backup_storage() {
-  run_restic backup /data --host sillage-production --tag active-storage
+  run_restic backup /data --host sillage-production --tag active-storage || return
   echo "Active Storage incremental backup completed."
 }
 
@@ -126,11 +126,12 @@ prune_storage() {
     --keep-within 24h \
     --keep-hourly 168 \
     --keep-daily 30 \
-    --prune
+    --prune || return
   echo "Active Storage retention pruning completed."
 }
 
-mkdir -p "$STATE_DIRECTORY"
+main() {
+mkdir -p "$STATE_DIRECTORY" || return
 
 case "${1:-}" in
   ready)
@@ -172,3 +173,8 @@ case "${1:-}" in
     exit 64
     ;;
 esac
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

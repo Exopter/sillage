@@ -4,7 +4,7 @@
       <%= link_to flight, class: "flight-card" do %>
         <span class="flight-card-icon"><%= sillage_icon "route", size: 18 %></span>
         <span class="flight-card-body">
-          <span class="flight-date"><%= l(flight.display_started_at, format: :short) %></span>
+          <span class="flight-date"><%= logbook_date(flight) %></span>
           <strong><%= flight.name %></strong>
           <span><%= [flight.location.presence, duration(flight.duration_seconds), meters(flight.distance_m)].compact.join(" / ") %></span>
         </span>

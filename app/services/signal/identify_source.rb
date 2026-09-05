@@ -74,7 +74,7 @@ module Signal
     end
 
     def refresh_configuration
-      @signal_session.flight.capture_configuration!
+      @signal_session.flight.capture_configuration!(replace: true, at: nil)
     end
   end
 end

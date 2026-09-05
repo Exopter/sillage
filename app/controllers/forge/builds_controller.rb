@@ -14,7 +14,6 @@ module Forge
 
     def new
       @build = Build.new(
-        code: Build.next_code,
         arduino_core_version: "3.3.10",
         assembly_id: params.dig(:build, :assembly_id)
       )

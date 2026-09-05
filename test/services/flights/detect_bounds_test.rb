@@ -2,6 +2,24 @@ require "test_helper"
 
 module Flights
   class DetectBoundsTest < ActiveSupport::TestCase
+    test "dense stationary records do not trigger quadratic window scans" do
+      counter = Class.new(DetectBounds) do
+        attr_reader :visits
+
+        private
+
+        def numeric(point, key)
+          @visits = @visits.to_i + 1
+          super
+        end
+      end
+      start = Time.utc(2026, 9, 5)
+      points = 10_000.times.map { { recorded_at: start, elapsed_seconds: 0.0, altitude_m: 100.0, horizontal_speed_mps: 0.0, vertical_speed_mps: 0.0 } }
+      detector = counter.new(points)
+      assert_equal({ exit_at: start, opening_at: start, landing_at: start }, detector.call)
+      assert_operator detector.visits, :<, points.size * 80
+    end
+
     test "detects aircraft exit after climb instead of recorder start" do
       started_at = Time.zone.parse("2026-05-20 09:39:03 UTC")
       points = [

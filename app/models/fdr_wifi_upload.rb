@@ -1,11 +1,10 @@
 require "fileutils"
 
 class FdrWifiUpload < ApplicationRecord
-  STATUSES = %w[receiving verifying complete failed].freeze
+  STATUSES = %w[receiving verifying complete failed retryable].freeze
   TOKEN_PATTERN = /\A[0-9a-f]{32}\z/
   FILENAME_PATTERN = /\AFDR\d{6}\.BIN\z/i
   SHA256_PATTERN = /\A[0-9a-f]{64}\z/
-  MAX_FILE_SIZE = 512.megabytes
 
   class OffsetMismatch < StandardError
     attr_reader :expected_offset
@@ -27,7 +26,7 @@ class FdrWifiUpload < ApplicationRecord
   validates :filename, presence: true, format: { with: FILENAME_PATTERN }
   validates :file_index, :boot_id, :format_version, numericality: { only_integer: true, greater_than: 0 }
   validates :size_bytes,
-    numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: MAX_FILE_SIZE }
+    numericality: { only_integer: true, greater_than: 0 }
   validates :received_bytes,
     numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validates :sha256, presence: true, format: { with: SHA256_PATTERN }
@@ -86,16 +85,31 @@ class FdrWifiUpload < ApplicationRecord
       raise OffsetMismatch, actual_file_size unless status == "receiving" && actual_file_size == size_bytes
 
       update!(status: "verifying", received_bytes: size_bytes, error_message: nil)
+      enqueue_verification!
+    end
+  end
+
+  def resume!
+    with_lock do
+      update!(status: "receiving", error_message: nil) if status == "retryable" && updated_at <= 5.minutes.ago
+      reconcile_received_bytes! if status == "receiving"
+      if status == "verifying" && updated_at < 5.minutes.ago
+        enqueue_verification!
+        touch
+      end
     end
   end
 
   def complete!(flight_import:)
     update!(status: "complete", flight_import:, completed_at: Time.current, error_message: nil)
-    purge_staged_file
   end
 
-  def fail!(message)
-    update!(status: "failed", error_message: message.to_s.first(2_000))
+  def fail!(message, retryable: false)
+    update!(status: retryable ? "retryable" : "failed", error_message: message.to_s.first(2_000))
+  end
+
+  def purge_completed_source!
+    purge_staged_file if status == "complete"
   end
 
   def staged_path
@@ -115,6 +129,10 @@ class FdrWifiUpload < ApplicationRecord
   end
 
   private
+
+  def enqueue_verification!
+    raise ActiveJob::EnqueueError, "The Wi-Fi upload could not be queued." unless FdrWifiUploadFinalizeJob.perform_later(self)
+  end
 
   def assign_token
     self.token ||= SecureRandom.hex(16)

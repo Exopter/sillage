@@ -35,10 +35,13 @@ export default class extends Controller {
     this.mavlinkComponentId = null
     this.syncing = false
     this.ended = false
-    this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.stopSerial())
+    this.ending = false
+    this.batchWrite = Promise.resolve()
+    this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.releaseCapture())
     this.layoutStorageKey = `signal-layout:${this.sessionValue}`
     this.db = await openDatabase()
     this.nextSequence = Number(await readMetadata(this.db, `${this.sessionValue}:next-sequence`)) || 0
+    this.ended = Boolean(await readMetadata(this.db, `${this.sessionValue}:ended-at`))
     this.boundOnline = () => this.flushOutbox()
     this.boundOffline = () => this.refreshCloudStatus()
     this.boundBeforeUnload = (event) => this.warnBeforeUnload(event)
@@ -58,7 +61,9 @@ export default class extends Controller {
     navigator.serial?.addEventListener("connect", this.boundSerialConnect)
     navigator.serial?.addEventListener("disconnect", this.boundSerialDisconnect)
     this.restoreLayout()
-    this.batchTimer = window.setInterval(() => this.queuePendingBatch(), BATCH_INTERVAL_MS)
+    this.batchTimer = window.setInterval(() => {
+      if (!this.ending) this.queuePendingBatch().then(() => this.flushOutbox()).catch((error) => this.showWarning(`Local storage failed: ${error.message}. Keep this page open and free disk space.`))
+    }, BATCH_INTERVAL_MS)
     this.drawAll()
     await this.prepareLocalStorage()
     await this.flushOutbox()
@@ -75,7 +80,7 @@ export default class extends Controller {
     window.removeEventListener("resize", this.boundResize)
     navigator.serial?.removeEventListener("connect", this.boundSerialConnect)
     navigator.serial?.removeEventListener("disconnect", this.boundSerialDisconnect)
-    this.stopSerial()
+    this.releaseCapture().catch((error) => this.showWarning(`Local storage failed: ${error.message}`))
     this.wakeLock?.release()
   }
 
@@ -94,7 +99,7 @@ export default class extends Controller {
   }
 
   async autoReconnect() {
-    if (!navigator.serial || this.ended) return
+    if (!navigator.serial || this.ended || this.ending) return
     const ports = await navigator.serial.getPorts()
     const lastPort = await readMetadata(this.db, "last-authorized-port")
     const port = ports.find((candidate) => samePort(candidate.getInfo(), lastPort)) || (ports.length === 1 ? ports[0] : null)
@@ -121,10 +126,14 @@ export default class extends Controller {
   }
 
   async acquirePort(port) {
-    if (this.port || this.openingPort) return
+    if (this.port || this.openingPort || this.ending || this.ended) return
     this.openingPort = true
     const lockName = `sillage-signal-port:${port.getInfo().usbVendorId || "serial"}:${port.getInfo().usbProductId || "port"}`
     navigator.locks.request(lockName, { ifAvailable: true }, async (lock) => {
+      if (this.ending || this.ended) {
+        this.openingPort = false
+        return
+      }
       if (!lock) {
         this.openingPort = false
         this.showWarning("This ground radio is already being read by another browser tab.")
@@ -144,7 +153,13 @@ export default class extends Controller {
 
   async openSerial(port) {
     this.port = port
-    await port.open({ baudRate: 57_600, bufferSize: 65_536 })
+    this.portOpening = port.open({ baudRate: 57_600, bufferSize: 65_536 })
+    try {
+      await this.portOpening
+    } finally {
+      this.portOpening = null
+    }
+    if (this.ending || this.ended) return
     await writeMetadata(this.db, "last-authorized-port", port.getInfo())
     this.openingPort = false
     this.connectedAt = new Date()
@@ -181,6 +196,11 @@ export default class extends Controller {
     if (!this.ended && this.port) await this.stopSerial()
   }
 
+  async releaseCapture() {
+    await this.stopSerial()
+    await this.queuePendingBatch()
+  }
+
   async stopSerial() {
     if (this.stopSerialPromise) return this.stopSerialPromise
 
@@ -193,6 +213,7 @@ export default class extends Controller {
   }
 
   async performStopSerial() {
+    try { await this.portOpening } catch (_) { /* A failed open still needs to release its lock. */ }
     try { await this.reader?.cancel() } catch (_) { /* Port may already be gone. */ }
     if (this.worker) {
       await closeWorkerCapture(this.worker)
@@ -297,13 +318,16 @@ export default class extends Controller {
     }
   }
 
-  async queuePendingBatch() {
+  queuePendingBatch() {
+    this.batchWrite = (this.batchWrite || Promise.resolve()).catch(() => {}).then(() => this.persistPendingBatch())
+    return this.batchWrite
+  }
+
+  async persistPendingBatch() {
     if (!this.pendingSamples.length || this.ended) return
     const samples = this.pendingSamples.splice(0)
     const sequence = this.nextSequence
-    this.nextSequence += 1
-    await writeMetadata(this.db, `${this.sessionValue}:next-sequence`, this.nextSequence)
-    await writeOutbox(this.db, {
+    const batch = {
       id: `${this.sessionValue}:batch:${sequence}`,
       session: this.sessionValue,
       kind: "batch",
@@ -320,11 +344,21 @@ export default class extends Controller {
         samples
       },
       queuedAt: Date.now()
-    })
-    await this.flushOutbox()
+    }
+    try {
+      await transactionRequest(this.db, [OUTBOX_STORE, META_STORE], "readwrite", (_store, transaction) => {
+        transaction.objectStore(META_STORE).put({ key: `${this.sessionValue}:next-sequence`, value: sequence + 1 })
+        return transaction.objectStore(OUTBOX_STORE).put(batch)
+      })
+      this.nextSequence = sequence + 1
+    } catch (error) {
+      this.pendingSamples = samples.concat(this.pendingSamples)
+      throw error
+    }
   }
 
   async markEvent() {
+    if (this.ending || this.ended) return
     const occurredAt = new Date().toISOString()
     const eventUuid = crypto.randomUUID()
     const label = `Operator marker · ${new Date().toLocaleTimeString()}`
@@ -335,14 +369,24 @@ export default class extends Controller {
   }
 
   async endSession() {
-    if (this.ended || !window.confirm("End local capture and move this flight to Processing?")) return
-    await this.queuePendingBatch()
-    this.ended = true
-    const id = `${this.sessionValue}:complete`
-    await writeOutbox(this.db, { id, session: this.sessionValue, kind: "complete", url: this.completeUrlValue, method: "PATCH", body: { ended_at: new Date().toISOString() }, queuedAt: Date.now() })
-    await this.stopSerial()
-    await this.flushOutbox()
-    this.dataStatusTarget.textContent = navigator.onLine ? "Session completed" : "Session ended locally"
+    if (this.ended || this.ending || !window.confirm("End local capture? Import the microSD recording afterward to analyse this flight.")) return
+    this.ending = true
+    try {
+      await this.releaseCapture()
+      const id = `${this.sessionValue}:complete`
+      const endedAt = new Date().toISOString()
+      await transactionRequest(this.db, [OUTBOX_STORE, META_STORE], "readwrite", (_store, transaction) => {
+        transaction.objectStore(META_STORE).put({ key: `${this.sessionValue}:ended-at`, value: endedAt })
+        return transaction.objectStore(OUTBOX_STORE).put({ id, session: this.sessionValue, kind: "complete", url: this.completeUrlValue, method: "PATCH", body: { ended_at: endedAt }, queuedAt: Date.now() })
+      })
+      this.ended = true
+      await this.flushOutbox()
+      this.dataStatusTarget.textContent = "Session ended locally"
+    } catch (error) {
+      this.showWarning(`The session could not be saved: ${error.message}. Keep this page open and retry ending the session.`)
+    } finally {
+      this.ending = false
+    }
   }
 
   async flushOutbox() {
@@ -359,14 +403,18 @@ export default class extends Controller {
           headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || "" },
           body: JSON.stringify(record.body)
         })
-        if (!response.ok) throw new Error(`Cloud returned ${response.status}`)
+        if (!response.ok) {
+          const body = await response.json().catch(() => null)
+          const detail = typeof body?.error === "string" ? body.error : `Cloud returned ${response.status}`
+          throw new Error(record.kind === "batch" ? `Batch ${record.sequence}: ${detail}` : detail)
+        }
         await deleteOutbox(this.db, record.id)
       }
     } catch (error) {
       this.cloudError = error.message
     } finally {
       this.syncing = false
-      this.refreshCloudStatus()
+      await this.refreshCloudStatus()
     }
   }
 
@@ -374,10 +422,12 @@ export default class extends Controller {
     const records = this.db ? (await readOutbox(this.db)).filter((record) => record.session === this.sessionValue) : []
     if (!navigator.onLine) {
       this.cloudStatusTarget.textContent = records.length ? `${ageInSeconds(records)} s behind` : "Offline"
+    } else if (!this.syncing && records.length && this.cloudError) {
+      this.cloudStatusTarget.textContent = `Sync blocked: ${this.cloudError}`
     } else if (this.syncing || records.length) {
       this.cloudStatusTarget.textContent = records.length ? `Syncing · ${ageInSeconds(records)} s behind` : "Syncing"
     } else {
-      this.cloudStatusTarget.textContent = "Live"
+      this.cloudStatusTarget.textContent = this.ended ? "Synced" : "Live"
       this.cloudError = null
     }
   }
@@ -656,7 +706,7 @@ export default class extends Controller {
 }
 
 function closeWorkerCapture(worker) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let settled = false
     const finish = () => {
       if (settled) return
@@ -668,7 +718,10 @@ function closeWorkerCapture(worker) {
     const handleMessage = ({ data }) => {
       if (data.type === "capture-closed") finish()
     }
-    const timeout = window.setTimeout(finish, 750)
+    const timeout = window.setTimeout(() => {
+      worker.removeEventListener("message", handleMessage)
+      reject(new Error("The capture worker did not finish draining"))
+    }, 5_000)
     worker.addEventListener("message", handleMessage)
     worker.postMessage({ type: "close" })
   })
@@ -745,8 +798,14 @@ async function readMetadata(database, key) { return (await transactionRequest(da
 function transactionRequest(database, storeName, mode, operation) {
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(storeName, mode)
-    const request = operation(transaction.objectStore(storeName))
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
+    let request
+    transaction.oncomplete = () => resolve(request?.result)
+    transaction.onabort = () => reject(transaction.error || new Error("Local storage transaction aborted"))
+    try {
+      request = operation(transaction.objectStore(Array.isArray(storeName) ? storeName[0] : storeName), transaction)
+    } catch (error) {
+      transaction.abort()
+      reject(error)
+    }
   })
 }

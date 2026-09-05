@@ -39,6 +39,6 @@ class PostgresqlImportConcurrencyTest < ActiveSupport::TestCase
   test "bulk imports use their dedicated queue" do
     assert_equal "imports", ExoFdrImportJob.new.queue_name
     assert_equal "imports", FlySightImportJob.new.queue_name
-    assert_equal "default", FdrWifiUploadFinalizeJob.new.queue_name
+    assert_equal "imports", FdrWifiUploadFinalizeJob.new.queue_name
   end
 end

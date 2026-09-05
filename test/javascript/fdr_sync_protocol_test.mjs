@@ -110,7 +110,7 @@ assert.match(connectivitySource, /USB_TRANSFER_REQUEST_TYPES\.has\(error\.usbReq
 assert.match(connectivitySource, /transferRecoveryAttempt: nextTransferRecoveryAttempt/)
 assert.match(connectivitySource, /void partial\.remove\(\)\.catch/)
 assert.match(wifiConnectivitySource, /registerUsbPageRelease\(\(\) => this\.disconnectUsb\(\)\)/)
-assert.match(signalWorkspaceSource, /registerUsbPageRelease\(\(\) => this\.stopSerial\(\)\)/)
+assert.match(signalWorkspaceSource, /registerUsbPageRelease\(\(\) => this\.releaseCapture\(\)\)/)
 
 const payload = new TextEncoder().encode("abc")
 assert.equal(protocol.crc32(payload), 0x352441c2)

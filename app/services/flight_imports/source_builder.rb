@@ -6,6 +6,7 @@ module FlightImports
         raise error_class, empty_message if files.empty?
         raise error_class, "Sign in before importing a flight recording." unless user
 
+
         flight_import = user.flight_imports.create!(
           source_filename: files.map { |file| filename_for(file) }.join(", "),
           status: "pending",

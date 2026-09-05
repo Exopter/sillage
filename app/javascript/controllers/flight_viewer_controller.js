@@ -9,6 +9,8 @@ import {
 } from "flight_geometry"
 import { pressureAltitudeFromPascals } from "pressure_altitude"
 
+import { loadCesiumLibrary, withTimeout } from "viewer_resources"
+
 const CESIUM_TILE_PROVIDER = "CESIUM_ION"
 
 export default class extends Controller {
@@ -35,11 +37,13 @@ export default class extends Controller {
     bounds: Object,
     analysis: Object,
     cesiumToken: String,
+    cesiumBaseUrl: String,
     labels: Object,
     videoExitOffset: Number
   }
 
   async connect() {
+    const generation = this.connectionGeneration = Symbol("flight-viewer")
     this.points = this.pointsValue.filter((point) =>
       Number.isFinite(Number(point.lat)) &&
       Number.isFinite(Number(point.lon)) &&
@@ -54,7 +58,6 @@ export default class extends Controller {
     this.groundAltitude = this.groundAltitudeFromAnalysis()
     this.points = this.points.map((point) => ({ ...point, height: this.heightFromGround(point) }))
     this.charts = []
-    this.renderFrame = null
     this.boundSceneHandlers = []
     this.cesiumInteractionHandler = null
     this.cesiumOrbit = null
@@ -79,31 +82,39 @@ export default class extends Controller {
     const cesiumLoad = this.shouldLoadCesium()
       ? this.loadCesium().catch((error) => error)
       : null
+    if (this.shouldLoadCesium()) this.setupScene(cesiumLoad, generation)
 
-    const chartModule = await import("https://cdn.jsdelivr.net/npm/chart.js@4.4.9/+esm")
+    try {
+      const chartModule = await this.loadCharts()
+      if (!this.isCurrentConnection(generation)) return
+      this.Chart = chartModule.Chart
+      this.tooltipPosition = this.installTooltipPositioner(chartModule.Tooltip) ? "osAwayFromPoint" : "average"
+      this.Chart.register(...chartModule.registerables, OS_BOUNDS_PLUGIN, OS_PLAYBACK_PLUGIN)
+      this.setupCharts()
+    } catch (error) {
+      if (!this.isCurrentConnection(generation)) return
+      this.charts.forEach((chart) => chart.destroy())
+      this.charts = []
+      this.unifiedChart = null
+      console.warn(`Flight charts unavailable: ${error.message || error}`)
+    }
 
-    this.Chart = chartModule.Chart
-    this.tooltipPosition = this.installTooltipPositioner(chartModule.Tooltip) ? "osAwayFromPoint" : "average"
-    this.Chart.register(...chartModule.registerables, OS_BOUNDS_PLUGIN, OS_PLAYBACK_PLUGIN)
-
-    this.setupCharts()
     this.applyPhase("all", { movePlayhead: false })
     this.updatePlayButton()
     this.updateVideoExitLabel()
-    if (this.hasSceneTarget && this.points.length >= 2) this.setupScene(cesiumLoad)
     this.updateScrubbedElapsed(this.defaultElapsed())
   }
 
   disconnect() {
-    if (this.renderFrame) cancelAnimationFrame(this.renderFrame)
+    this.connectionGeneration = null
+    this.cesiumSurfaceRefinementId = null
     if (this.playbackFrame) cancelAnimationFrame(this.playbackFrame)
     if (this.videoSyncFrame) cancelAnimationFrame(this.videoSyncFrame)
-    if (this.resizeObserver) this.resizeObserver.disconnect()
-    this.boundSceneHandlers.forEach(([eventName, handler, target, options]) => target?.removeEventListener(eventName, handler, options))
-    if (this.cesiumInteractionHandler && !this.cesiumInteractionHandler.isDestroyed()) this.cesiumInteractionHandler.destroy()
-    this.charts.forEach((chart) => chart.destroy())
-    if (this.cesiumViewer) this.cesiumViewer.destroy()
-    this.disposeScene()
+    this.disposeSceneHandlers()
+    this.disposeCesiumScene()
+    for (const chart of this.charts || []) chart.destroy()
+    this.charts = []
+    this.unifiedChart = null
   }
 
   scrub(event) {
@@ -276,15 +287,7 @@ export default class extends Controller {
     if (this.cesiumViewer && window.Cesium) {
       this.cesiumOrbit = { ...this.cesiumOrbitHome }
       this.applyCesiumOrbit(window.Cesium, this.cesiumViewer)
-      return
     }
-
-    if (!this.camera || !this.group || !this.localCameraHome) return
-
-    this.group.rotation.set(0, 0, 0)
-    this.camera.position.set(this.localCameraHome.x, this.localCameraHome.y, this.localCameraHome.z)
-    this.camera.lookAt(0, 0, 0)
-    this.scheduleRender()
   }
 
   markVideoExit(event) {
@@ -630,206 +633,160 @@ export default class extends Controller {
   }
 
   shouldLoadCesium() {
-    return this.hasSceneTarget && this.points.length >= 2 && Boolean(this.cesiumTokenValue)
+    return this.hasSceneTarget && this.points.length >= 2
   }
 
-  async setupScene(cesiumLoad = null) {
-    if (this.cesiumTokenValue) {
-      await this.setupCesiumScene(cesiumLoad)
-      this.updateScrubbedElapsed(this.currentElapsed, { followCamera: false })
-      return
-    }
+  isCurrentConnection(generation) {
+    return generation != null && this.connectionGeneration === generation
+  }
 
-    this.showSceneFallbackMessage(this.label("cesium_token_missing"))
-    await this.setupLocalScene()
+  loadCharts() {
+    return withTimeout(import("https://cdn.jsdelivr.net/npm/chart.js@4.4.9/+esm"), "Flight charts")
+  }
+
+  async setupScene(cesiumLoad = null, generation = this.connectionGeneration) {
+    if (!this.isCurrentConnection(generation)) return
+    try {
+      await this.setupCesiumScene(cesiumLoad, generation)
+    } catch (error) {
+      if (!this.isCurrentConnection(generation)) return
+      console.warn(`Cesium unavailable, showing 2D profile: ${error.message || error}`)
+      this.setupSceneFallback(this.label("cesium_unavailable"))
+    }
+    if (!this.isCurrentConnection(generation)) return
     this.updateScrubbedElapsed(this.currentElapsed, { followCamera: false })
   }
 
-  async setupCesiumScene(cesiumLoad = null) {
-    try {
-      const cesiumStartedAt = performance.now()
-      const Cesium = await (cesiumLoad || this.loadCesium())
-      if (Cesium instanceof Error) throw Cesium
+  disposeSceneHandlers() {
+    this.resizeObserver?.disconnect()
+    this.resizeObserver = null
+    for (const [eventName, handler, target, options] of this.boundSceneHandlers || []) target?.removeEventListener(eventName, handler, options)
+    this.boundSceneHandlers = []
+  }
+
+  disposeCesiumScene() {
+    this.cesiumEventHelper?.removeAll()
+    this.cesiumEventHelper = null
+    this.sceneNotice?.remove()
+    this.sceneNotice = null
+    if (this.cesiumInteractionHandler && !this.cesiumInteractionHandler.isDestroyed()) this.cesiumInteractionHandler.destroy()
+    this.cesiumInteractionHandler = null
+    if (this.cesiumViewer && !this.cesiumViewer.isDestroyed()) this.cesiumViewer.destroy()
+    this.cesiumViewer = null
+    this.cesiumMarker = null
+    this.sceneCanvas = null
+    if (this.cesiumTileset && !this.cesiumTileset.isDestroyed()) this.cesiumTileset.destroy()
+    this.cesiumTileset = null
+    this.cesiumSurfaceRefinementId = null
+  }
+
+  async setupCesiumScene(cesiumLoad = null, generation = this.connectionGeneration) {
+    const cesiumStartedAt = performance.now()
+    const Cesium = await (cesiumLoad || this.loadCesium())
+    if (!this.isCurrentConnection(generation)) return
+    if (Cesium instanceof Error) throw Cesium
+    this.startCesiumDiagnostics(Cesium, cesiumStartedAt)
+    this.recordCesiumDiagnostic("script_loaded")
+
+    const viewer = new Cesium.Viewer(this.sceneTarget, {
+      animation: false,
+      baseLayer: false,
+      baseLayerPicker: false,
+      fullscreenButton: false,
+      geocoder: false,
+      homeButton: false,
+      infoBox: false,
+      navigationHelpButton: false,
+      sceneModePicker: false,
+      selectionIndicator: false,
+      timeline: false,
+      creditContainer: this.creditsTarget,
+      creditViewport: this.sceneTarget,
+      requestRenderMode: true,
+      maximumRenderTimeChange: Number.POSITIVE_INFINITY,
+      scene3DOnly: true,
+      terrainProvider: new Cesium.EllipsoidTerrainProvider()
+    })
+
+    this.cesiumViewer = viewer
+    this.cesiumEventHelper = new Cesium.EventHelper()
+    this.sceneCanvas = viewer.scene.canvas
+    viewer.scene.debugShowFramesPerSecond = false
+    this.configureCesiumDaylight(Cesium, viewer)
+    this.configureCesiumCameraController(viewer)
+    this.cesiumVisualPoints = this.points.map((point) => ({ ...point, visualAlt: point.alt }))
+    this.addCesiumTrajectory(Cesium, viewer)
+    this.setupCesiumMouseControls(Cesium, viewer)
+    this.flyCesiumCamera(Cesium, viewer)
+    viewer.scene.requestRender()
+    this.recordCesiumDiagnostic("viewer_ready")
+
+    if (this.cesiumTokenValue) {
       Cesium.Ion.defaultAccessToken = this.cesiumTokenValue
-      this.startCesiumDiagnostics(Cesium, cesiumStartedAt)
-      this.recordCesiumDiagnostic("script_loaded")
+      this.loadCesiumGeography(Cesium, viewer, generation)
+    } else {
+      this.showSceneFallbackMessage(this.label("cesium_geography_unavailable"))
+    }
+  }
 
-      const viewer = new Cesium.Viewer(this.sceneTarget, {
-        animation: false,
-        baseLayer: Cesium.ImageryLayer.fromWorldImagery({
-          style: Cesium.IonWorldImageryStyle.AERIAL
-        }),
-        baseLayerPicker: false,
-        fullscreenButton: false,
-        geocoder: false,
-        homeButton: false,
-        infoBox: false,
-        navigationHelpButton: false,
-        sceneModePicker: false,
-        selectionIndicator: false,
-        timeline: false,
-        creditContainer: this.creditsTarget,
-        creditViewport: this.sceneTarget,
-        requestRenderMode: true,
-        maximumRenderTimeChange: Number.POSITIVE_INFINITY,
-        scene3DOnly: true,
-        terrain: Cesium.Terrain.fromWorldTerrain({
-          requestVertexNormals: true
-        })
-      })
-
-      this.cesiumViewer = viewer
-      this.sceneCanvas = viewer.scene.canvas
-      viewer.scene.debugShowFramesPerSecond = false
-      this.configureCesiumDaylight(Cesium, viewer)
-      this.configureCesiumCameraController(viewer)
-      this.cesiumVisualPoints = this.points.map((point) => ({ ...point, visualAlt: point.alt }))
-      this.addCesiumTrajectory(Cesium, viewer)
-      this.setupCesiumMouseControls(Cesium, viewer)
-      this.flyCesiumCamera(Cesium, viewer)
+  async loadCesiumGeography(Cesium, viewer, generation) {
+    const current = () => this.isCurrentConnection(generation) && this.cesiumViewer === viewer && !viewer.isDestroyed()
+    const unavailable = (name, error) => {
+      if (!current()) return
+      this.recordCesiumDiagnostic(`${name}_unavailable`, { message: error.message || String(error) })
+      this.showSceneFallbackMessage(this.label("cesium_geography_unavailable"))
+      console.warn(`Cesium ${name} unavailable: ${error.message || error}`)
       viewer.scene.requestRender()
-      this.recordCesiumDiagnostic("viewer_ready")
+    }
+    const terrain = withTimeout(Promise.resolve().then(() => Cesium.createWorldTerrainAsync({ requestVertexNormals: true })), "Cesium terrain")
+      .then((provider) => {
+        if (!current()) return
+        viewer.terrainProvider = provider
+        this.cesiumEventHelper.add(provider.errorEvent, (error) => {
+          if (!current()) return
+          viewer.terrainProvider = new Cesium.EllipsoidTerrainProvider()
+          unavailable("terrain", error)
+        })
+        viewer.scene.requestRender()
+      }).catch((error) => unavailable("terrain", error))
+    const imagery = withTimeout(Promise.resolve().then(() => Cesium.createWorldImageryAsync({ style: Cesium.IonWorldImageryStyle.AERIAL })), "Cesium imagery")
+      .then((provider) => {
+        if (!current()) return
+        const layer = viewer.imageryLayers.addImageryProvider(provider)
+        this.cesiumEventHelper.add(provider.errorEvent, (error) => {
+          if (!current()) return
+          viewer.imageryLayers.remove(layer, true)
+          unavailable("imagery", error)
+        })
+        viewer.scene.requestRender()
+      }).catch((error) => unavailable("imagery", error))
+    const buildings = this.addCesiumBuildings(Cesium, viewer, current)
+      .catch((error) => unavailable("buildings", error))
+    await Promise.all([terrain, imagery, buildings])
+  }
 
-      const tileset = await this.createCesiumIonTileset(Cesium)
+  async addCesiumBuildings(Cesium, viewer, current) {
+    let acceptingTileset = true
+    const tilesetRequest = Promise.resolve().then(() => this.createCesiumIonTileset(Cesium))
+    tilesetRequest.then((tileset) => {
+      if ((!acceptingTileset || !current()) && !tileset.isDestroyed()) tileset.destroy()
+    }, () => {})
+    try {
+      const tileset = await withTimeout(tilesetRequest, "Cesium tiles")
+      if (!current()) return
       this.cesiumTileset = tileset
-      this.instrumentCesiumTileset(viewer, tileset)
       viewer.scene.primitives.add(tileset)
+      this.instrumentCesiumTileset(viewer, tileset)
       viewer.scene.requestRender()
       this.recordCesiumDiagnostic("tileset_added", this.cesiumTilesetSnapshot(tileset))
-      this.refineCesiumSurface(Cesium, viewer, tileset).catch((error) => {
-        console.warn(`Cesium surface refinement unavailable: ${error.message || error}`)
-      })
-    } catch (error) {
-      console.warn(`Cesium unavailable, using local 3D fallback: ${error.message || error}`)
-      this.sceneTarget.replaceChildren()
-      this.showSceneFallbackMessage(this.label("cesium_unavailable"))
-      await this.setupLocalScene()
+      await this.refineCesiumSurface(Cesium, viewer, tileset)
+    } finally {
+      acceptingTileset = false
     }
   }
 
-  async setupLocalScene() {
-    const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js")
-    const canvas = document.createElement("canvas")
-    canvas.className = "trajectory-canvas"
-    this.sceneTarget.appendChild(canvas)
-    this.sceneCanvas = canvas
-
-    const context = this.webglContext(canvas)
-    if (!context) {
-      this.showSceneFallback(canvas)
-      return
-    }
-
-    const coordinates = this.localCoordinates()
-    const bounds = this.coordinateBounds(coordinates)
-    const span = Math.max(bounds.x, bounds.y, bounds.z, 40)
-
-    this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(this.colors.daySky)
-
-    this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, span * 12)
-    this.camera.position.set(span * 0.9, span * 0.65, span * 1.4)
-    this.camera.lookAt(0, 0, 0)
-    this.localCameraHome = {
-      x: this.camera.position.x,
-      y: this.camera.position.y,
-      z: this.camera.position.z
-    }
-
-    this.renderer = new THREE.WebGLRenderer({
-      canvas,
-      context,
-      antialias: false,
-      alpha: false,
-      powerPreference: "low-power"
-    })
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25))
-
-    this.group = new THREE.Group()
-    this.scene.add(this.group)
-
-    const positionArray = new Float32Array(coordinates.flatMap((point) => [point.x, point.y, point.z]))
-    const geometry = new THREE.BufferGeometry()
-    geometry.setAttribute("position", new THREE.BufferAttribute(positionArray, 3))
-    geometry.computeBoundingSphere()
-
-    this.group.add(new THREE.Line(
-      geometry,
-      new THREE.LineBasicMaterial({ color: this.colors.aqua, linewidth: 1 })
-    ))
-
-    const grid = new THREE.GridHelper(span * 2, 12, 0x2f5c57, 0x183532)
-    grid.position.y = bounds.minY - 8
-    this.group.add(grid)
-
-    this.marker = new THREE.Mesh(
-      new THREE.SphereGeometry(Math.max(span * 0.025, 2), 16, 16),
-      new THREE.MeshBasicMaterial({ color: this.colors.amber })
-    )
-    this.group.add(this.marker)
-
-    this.coordinates = coordinates
-    this.drag = { active: false, x: 0, y: 0 }
-    this.addSceneHandler("pointerdown", (event) => {
-      this.drag = { active: true, x: event.clientX, y: event.clientY }
-      this.sceneTarget.classList.add("is-dragging")
-      canvas.setPointerCapture(event.pointerId)
-    })
-    this.addSceneHandler("pointermove", (event) => {
-      if (!this.drag.active) return
-
-      const dx = event.clientX - this.drag.x
-      const dy = event.clientY - this.drag.y
-      this.group.rotation.y += dx * 0.006
-      this.group.rotation.x += dy * 0.003
-      this.drag = { active: true, x: event.clientX, y: event.clientY }
-      this.scheduleRender()
-    })
-    this.addSceneHandler("pointerup", () => {
-      this.drag.active = false
-      this.sceneTarget.classList.remove("is-dragging")
-      this.scheduleRender()
-    })
-    this.addSceneHandler("pointercancel", () => {
-      this.drag.active = false
-      this.sceneTarget.classList.remove("is-dragging")
-    })
-    this.addSceneHandler("wheel", (event) => {
-      event.preventDefault()
-      const scale = event.deltaY > 0 ? 1.12 : 0.88
-      this.camera.position.multiplyScalar(scale)
-      this.camera.position.clampLength(span * 0.28, span * 5)
-      this.camera.lookAt(0, 0, 0)
-      this.scheduleRender()
-    }, canvas, { passive: false })
-
-    this.resizeObserver = new ResizeObserver(() => this.resizeScene())
-    this.resizeObserver.observe(canvas)
-    this.resizeScene()
-  }
-
-  async loadCesium() {
-    if (window.Cesium) return window.Cesium
-
-    await new Promise((resolve, reject) => {
-      const existing = document.querySelector("script[data-sillage-cesium]")
-      if (existing) {
-        existing.addEventListener("load", resolve, { once: true })
-        existing.addEventListener("error", reject, { once: true })
-        return
-      }
-
-      const script = document.createElement("script")
-      script.src = "https://cdn.jsdelivr.net/npm/cesium@1.124.0/Build/Cesium/Cesium.js"
-      script.async = true
-      script.crossOrigin = "anonymous"
-      script.dataset.sillageCesium = "true"
-      script.addEventListener("load", resolve, { once: true })
-      script.addEventListener("error", reject, { once: true })
-      document.head.appendChild(script)
-    })
-
-    return window.Cesium
+  loadCesium() {
+    return loadCesiumLibrary(this.cesiumBaseUrlValue)
   }
 
   startCesiumDiagnostics(Cesium, startedAt) {
@@ -1029,6 +986,7 @@ export default class extends Controller {
   configureCesiumDaylight(Cesium, viewer) {
     const scene = viewer.scene
     scene.backgroundColor = Cesium.Color.fromCssColorString(this.colors.daySky)
+    scene.globe.baseColor = Cesium.Color.fromCssColorString(this.colors.field)
     if (scene.skyBox) scene.skyBox.show = false
     if (scene.moon) scene.moon.show = false
     if (scene.sun) scene.sun.show = true
@@ -1076,13 +1034,15 @@ export default class extends Controller {
     }
 
     try {
-      if (tileset.readyPromise) await tileset.readyPromise
+      if (tileset.readyPromise) await withTimeout(tileset.readyPromise, "Cesium surface")
+      if (this.cesiumViewer !== viewer || viewer.isDestroyed()) return fallback
 
       const samplePairs = this.cesiumSurfaceSamplePairs()
       const cartographics = samplePairs.map(({ point }) =>
         Cesium.Cartographic.fromDegrees(point.lon, point.lat, point.alt)
       )
-      const sampled = await viewer.scene.sampleHeightMostDetailed(cartographics, [], 2.0)
+      const sampled = await withTimeout(viewer.scene.sampleHeightMostDetailed(cartographics, [], 2.0), "Cesium surface samples")
+      if (this.cesiumViewer !== viewer || viewer.isDestroyed()) return fallback
       const sampledHeightsByIndex = new Map()
       sampled.forEach((position, sampleIndex) => {
         sampledHeightsByIndex.set(samplePairs[sampleIndex].index, this.number(position?.height))
@@ -1613,14 +1573,18 @@ export default class extends Controller {
     this.boundSceneHandlers.push([eventName, handler, target, options])
   }
 
-  webglContext(canvas) {
-    return canvas.getContext("webgl2", {
-      antialias: false,
-      powerPreference: "low-power"
-    }) || canvas.getContext("webgl", {
-      antialias: false,
-      powerPreference: "low-power"
-    })
+  setupSceneFallback(message) {
+    this.disposeSceneHandlers()
+    this.disposeCesiumScene()
+    this.sceneTarget.replaceChildren()
+    const canvas = document.createElement("canvas")
+    canvas.className = "trajectory-canvas"
+    this.sceneTarget.appendChild(canvas)
+    this.sceneCanvas = canvas
+    this.showSceneFallbackMessage(message)
+    this.showSceneFallback(canvas)
+    this.resizeObserver = new ResizeObserver(() => this.showSceneFallback(canvas))
+    this.resizeObserver.observe(this.sceneTarget)
   }
 
   showSceneFallback(canvas) {
@@ -1636,8 +1600,7 @@ export default class extends Controller {
     context.strokeStyle = this.colors.aqua
     context.lineWidth = 2
     context.beginPath()
-    const heights = this.points.map((row) => this.heightFromGround(row) ?? 0)
-    const heightSpan = Math.max(Math.max(...heights), 1)
+    const heightSpan = this.points.reduce((maximum, point) => Math.max(maximum, this.heightFromGround(point) ?? 0), 1)
     this.points.forEach((point, index) => {
       const x = (index / Math.max(this.points.length - 1, 1)) * width
       const y = height - ((this.heightFromGround(point) ?? 0) / heightSpan) * height * 0.78 - 24
@@ -1645,38 +1608,13 @@ export default class extends Controller {
       else context.lineTo(x, y)
     })
     context.stroke()
-    context.fillStyle = this.colors.night
-    context.font = "14px sans-serif"
-    context.fillText(this.label("webgl_unavailable"), 18, 28)
   }
 
   showSceneFallbackMessage(message) {
-    const note = document.createElement("div")
+    const note = this.sceneNotice ||= document.createElement("div")
     note.className = "trajectory-notice"
     note.textContent = message
     this.sceneTarget.appendChild(note)
-  }
-
-  resizeScene() {
-    if (!this.renderer || !this.sceneCanvas) return
-
-    const width = this.sceneTarget.clientWidth
-    const height = this.sceneTarget.clientHeight
-    if (width === 0 || height === 0) return
-
-    this.renderer.setSize(width, height, false)
-    this.camera.aspect = width / height
-    this.camera.updateProjectionMatrix()
-    this.scheduleRender()
-  }
-
-  scheduleRender() {
-    if (this.renderFrame || !this.renderer || !this.scene || !this.camera) return
-
-    this.renderFrame = requestAnimationFrame(() => {
-      this.renderFrame = null
-      this.renderer.render(this.scene, this.camera)
-    })
   }
 
   updateScrubbedElapsed(elapsed, options = {}) {
@@ -1685,7 +1623,6 @@ export default class extends Controller {
     const clampedElapsed = this.clamp(elapsed || 0, this.phaseStart(), this.phaseEnd())
     const point = this.telemetryPointAtElapsed(clampedElapsed)
     const visualPoint = this.coordinatePointAtElapsed(clampedElapsed, this.cesiumPoints())
-    const coordinate = this.sampleCoordinateAtElapsed(clampedElapsed)
     this.currentElapsed = clampedElapsed
 
     if (this.hasScrubberTarget && this.phaseSpan() > 0) {
@@ -1706,10 +1643,6 @@ export default class extends Controller {
       this.cesiumViewer?.scene.requestRender()
     }
 
-    if (coordinate && this.marker) {
-      this.marker.position.set(coordinate.x, coordinate.y, coordinate.z)
-      this.scheduleRender()
-    }
     if (this.hasTimeLabelTarget) this.timeLabelTarget.textContent = this.playbackTimeLabel(clampedElapsed)
     this.updateChartsPlaybackCursor(clampedElapsed)
     if (syncVideo) this.syncVideoToElapsed(clampedElapsed)
@@ -1841,25 +1774,6 @@ export default class extends Controller {
     return true
   }
 
-  disposeScene() {
-    if (this.group) {
-      this.group.traverse((object) => {
-        if (object.geometry) object.geometry.dispose()
-        if (object.material) object.material.dispose()
-      })
-    }
-    if (this.renderer) {
-      this.renderer.dispose()
-      this.renderer.forceContextLoss()
-    }
-
-    this.scene = null
-    this.camera = null
-    this.renderer = null
-    this.group = null
-    this.localCameraHome = null
-  }
-
   telemetryPointAtElapsed(elapsed) {
     const pressurePoint = this.pressureAltitudePointAtElapsed(elapsed)
     const gpsPoint = this.coordinatePointAtElapsed(elapsed, this.points)
@@ -1907,30 +1821,6 @@ export default class extends Controller {
     return sampleFlightPoint(elapsed, points)
   }
 
-  sampleCoordinateAtElapsed(elapsed) {
-    if (!this.coordinates?.length) return null
-    if (this.coordinates.length === 1) return this.coordinates[0]
-
-    const firstTime = this.number(this.points[0]?.t) ?? 0
-    if (elapsed < firstTime) return null
-    if (elapsed === firstTime) return this.coordinates[0]
-
-    for (let index = 1; index < this.coordinates.length; index += 1) {
-      const previousTime = this.number(this.points[index - 1]?.t) ?? 0
-      const nextTime = this.number(this.points[index]?.t) ?? previousTime
-      if (elapsed > nextTime) continue
-
-      const ratio = (elapsed - previousTime) / Math.max(nextTime - previousTime, 0.001)
-      return {
-        x: this.lerp(this.coordinates[index - 1].x, this.coordinates[index].x, ratio),
-        y: this.lerp(this.coordinates[index - 1].y, this.coordinates[index].y, ratio),
-        z: this.lerp(this.coordinates[index - 1].z, this.coordinates[index].z, ratio)
-      }
-    }
-
-    return this.coordinates[this.coordinates.length - 1]
-  }
-
   lerp(a, b, ratio) {
     return lerp(a, b, ratio)
   }
@@ -1951,53 +1841,6 @@ export default class extends Controller {
       carbon: styles.getPropertyValue("--ex-line-200").trim() || "#d4dfdc",
       grid: "rgba(95, 108, 107, 0.14)",
       monoFont: styles.getPropertyValue("--font-mono").trim() || "monospace"
-    }
-  }
-
-  localCoordinates() {
-    const first = this.points[0]
-    const lat0 = first.lat * Math.PI / 180
-    const metersPerDegreeLat = 111_320
-    const metersPerDegreeLon = Math.cos(lat0) * 111_320
-
-    const raw = this.points.map((point) => ({
-      x: (point.lon - first.lon) * metersPerDegreeLon,
-      y: (this.heightFromGround(point) ?? 0) * 0.45,
-      z: -(point.lat - first.lat) * metersPerDegreeLat
-    }))
-
-    const center = this.center(raw)
-    return raw.map((point) => ({
-      x: point.x - center.x,
-      y: point.y - center.y,
-      z: point.z - center.z
-    }))
-  }
-
-  coordinateBounds(points) {
-    const xs = points.map((point) => point.x)
-    const ys = points.map((point) => point.y)
-    const zs = points.map((point) => point.z)
-    const minY = Math.min(...ys)
-
-    return {
-      x: Math.max(...xs) - Math.min(...xs),
-      y: Math.max(...ys) - minY,
-      z: Math.max(...zs) - Math.min(...zs),
-      minY
-    }
-  }
-
-  center(points) {
-    const bounds = this.coordinateBounds(points)
-    const xs = points.map((point) => point.x)
-    const ys = points.map((point) => point.y)
-    const zs = points.map((point) => point.z)
-
-    return {
-      x: Math.min(...xs) + bounds.x / 2,
-      y: Math.min(...ys) + bounds.y / 2,
-      z: Math.min(...zs) + bounds.z / 2
     }
   }
 

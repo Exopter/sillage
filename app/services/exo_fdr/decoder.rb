@@ -23,69 +23,67 @@ module ExoFdr
 
     Result = Data.define(:header, :records, :stats)
 
-    def initialize(io, recover: true)
-      @data = io.read.to_s.b
-      @recover = recover
+    READ_CHUNK_SIZE = 64 * 1024
+    attr_reader :header, :stats
+
+    def initialize(io, recover: true, source_file: nil, seen_sequences: nil, next_sequence_by_boot: nil, on_record: nil)
+      @io, @recover, @source_file, @on_record = io, recover, source_file, on_record
+      @seen_sequences, @next_sequence_by_boot = seen_sequences, next_sequence_by_boot
       @stats = {
-        "records" => 0,
-        "crc_errors" => 0,
-        "malformed_headers" => 0,
-        "skipped_bytes" => 0,
-        "partial_tail_bytes" => 0,
-        "sequence_gaps" => 0,
-        "records_by_type" => Hash.new(0)
+        "records" => 0, "crc_errors" => 0, "malformed_headers" => 0,
+        "skipped_bytes" => 0, "partial_tail_bytes" => 0, "sequence_gaps" => 0,
+        "duplicate_records" => 0, "records_by_type" => Hash.new(0)
       }
+      @header = decode_file_header
     end
 
+    # Convenience for small callers; production imports consume each_record in batches.
     def call
-      header = decode_file_header
-      records = decode_records
-      Result.new(header:, records:, stats: @stats)
+      Result.new(header:, records: each_record.to_a, stats:)
     end
 
-    private
+    def each_record
+      return enum_for(__method__) unless block_given?
 
-    def decode_file_header
-      raw = @data.byteslice(0, FILE_HEADER_SIZE)
-      raise Error, "File is too short for an ExoFDR header." unless raw&.bytesize == FILE_HEADER_SIZE
-
-      magic, version, header_size, boot_id, boot_us, firmware, _reserved, stored_crc =
-        raw.unpack("a8vvVQ<a24a12V")
-      raise Error, "Unexpected ExoFDR file signature." unless magic == MAGIC
-      raise Error, "Unsupported ExoFDR format version #{version}." unless version.in?(SUPPORTED_FORMAT_VERSIONS)
-      raise Error, "Unsupported ExoFDR header size #{header_size}." unless header_size == FILE_HEADER_SIZE
-      actual_crc = Zlib.crc32(raw.byteslice(0, FILE_HEADER_SIZE - 4))
-      raise Error, "ExoFDR file header CRC mismatch." unless actual_crc == stored_crc
-
-      {
-        "format_version" => version,
-        "boot_id" => boot_id,
-        "boot_monotonic_us" => boot_us,
-        "firmware" => decode_string(firmware)
-      }
-    end
-
-    def decode_records
+      data = +"".b
       offset = FILE_HEADER_SIZE
+      eof = false
       expected_sequence = nil
-      records = []
-
-      while offset < @data.bytesize
-        sync_offset = @data.index(SYNC_BYTES, offset)
+      fill = lambda do |minimum|
+        while data.bytesize < minimum && !eof
+          chunk = @io.read(READ_CHUNK_SIZE)
+          chunk && !chunk.empty? ? data << chunk.b : eof = true
+        end
+      end
+      discard = lambda do |count|
+        data = data.byteslice(count..) || +"".b
+        offset += count
+      end
+      loop do
+        fill.call(2)
+        if data.bytesize < 2
+          @stats["partial_tail_bytes"] += data.bytesize
+          break
+        end
+        sync_offset = data.index(SYNC_BYTES)
         unless sync_offset
-          @stats["skipped_bytes"] += @data.bytesize - offset
+          if eof
+            @stats["skipped_bytes"] += data.bytesize
+            break
+          end
+          count = data.bytesize - (data.getbyte(-1) == SYNC_BYTES.getbyte(0) ? 1 : 0)
+          @stats["skipped_bytes"] += count
+          discard.call(count)
+          next
+        end
+        @stats["skipped_bytes"] += sync_offset
+        discard.call(sync_offset) if sync_offset.positive?
+        fill.call(RECORD_HEADER_SIZE)
+        if data.bytesize < RECORD_HEADER_SIZE
+          @stats["partial_tail_bytes"] += data.bytesize
           break
         end
-        if sync_offset > offset
-          @stats["skipped_bytes"] += sync_offset - offset
-          offset = sync_offset
-        end
-        if @data.bytesize - offset < RECORD_HEADER_SIZE
-          @stats["partial_tail_bytes"] += @data.bytesize - offset
-          break
-        end
-
-        raw_header = @data.byteslice(offset, RECORD_HEADER_SIZE)
+        raw_header = data.byteslice(0, RECORD_HEADER_SIZE)
         sync, version, type, header_size, payload_size, flags, _reserved, sequence, timestamp_us, stored_crc =
           raw_header.unpack("vCCvvvvVQ<V")
         sane = sync == 0xA55A && version.in?([ 1, 2 ]) && header_size == RECORD_HEADER_SIZE && payload_size <= 96
@@ -93,42 +91,62 @@ module ExoFdr
           @stats["malformed_headers"] += 1
           raise Error, "Malformed ExoFDR record header at byte #{offset}." unless @recover
 
-          offset += 1
+          discard.call(1)
           next
         end
-
         record_size = header_size + payload_size
-        if @data.bytesize - offset < record_size
-          @stats["partial_tail_bytes"] += @data.bytesize - offset
+        fill.call(record_size)
+        if data.bytesize < record_size
+          @stats["partial_tail_bytes"] += data.bytesize
           break
         end
-        payload = @data.byteslice(offset + header_size, payload_size)
-        actual_crc = Zlib.crc32(raw_header.byteslice(0, RECORD_HEADER_SIZE - 4) + payload)
-        unless actual_crc == stored_crc
+        payload = data.byteslice(header_size, payload_size)
+        unless Zlib.crc32(raw_header.byteslice(0, RECORD_HEADER_SIZE - 4) + payload) == stored_crc
           @stats["crc_errors"] += 1
           raise Error, "ExoFDR record CRC mismatch at byte #{offset}." unless @recover
 
-          offset += 1
+          discard.call(1)
           next
         end
-
+        record = {
+          "boot_id" => header.fetch("boot_id"), "source_file" => @source_file,
+          "sequence" => sequence, "timestamp_us" => timestamp_us,
+          "time_s" => timestamp_us / 1_000_000.0, "type_id" => type,
+          "type" => RECORD_NAMES.fetch(type, "unknown_#{type}"), "record_flags" => flags
+        }.merge(decode_payload(type, payload))
+        @on_record&.call(record)
+        if @seen_sequences && !@seen_sequences[header.fetch("boot_id")].add?(sequence)
+          @stats["duplicate_records"] += 1
+          discard.call(record_size)
+          next
+        end
+        expected_sequence = @next_sequence_by_boot[header.fetch("boot_id")] if @next_sequence_by_boot
         @stats["sequence_gaps"] += (sequence - expected_sequence) & 0xffffffff if expected_sequence && sequence != expected_sequence
         expected_sequence = (sequence + 1) & 0xffffffff
+        @next_sequence_by_boot[header.fetch("boot_id")] = expected_sequence if @next_sequence_by_boot
         record_name = RECORD_NAMES.fetch(type, "unknown_#{type}")
         @stats["records"] += 1
         @stats["records_by_type"][record_name] += 1
-        records << {
-          "sequence" => sequence,
-          "timestamp_us" => timestamp_us,
-          "time_s" => timestamp_us / 1_000_000.0,
-          "type_id" => type,
-          "type" => record_name,
-          "record_flags" => flags
-        }.merge(decode_payload(type, payload))
-        offset += record_size
+        yield record
+        discard.call(record_size)
       end
+    end
 
-      records
+    private
+
+    def decode_file_header
+      raw = @io.read(FILE_HEADER_SIZE)
+      raise Error, "File is too short for an ExoFDR header." unless raw&.bytesize == FILE_HEADER_SIZE
+
+      magic, version, header_size, boot_id, boot_us, firmware, _reserved, stored_crc =
+        raw.unpack("a8vvVQ<a24a12V")
+      raise Error, "Unexpected ExoFDR file signature." unless magic == MAGIC
+      raise Error, "Unsupported ExoFDR format version #{version}." unless version.in?(SUPPORTED_FORMAT_VERSIONS)
+      raise Error, "Unsupported ExoFDR header size #{header_size}." unless header_size == FILE_HEADER_SIZE
+      raise Error, "ExoFDR file header CRC mismatch." unless Zlib.crc32(raw.byteslice(0, FILE_HEADER_SIZE - 4)) == stored_crc
+
+      { "format_version" => version, "boot_id" => boot_id,
+        "boot_monotonic_us" => boot_us, "firmware" => decode_string(firmware) }
     end
 
     def decode_payload(type, payload)

@@ -3,16 +3,17 @@ module FlySight
     REQUIRED_COLUMNS = %w[time lat lon hMSL velN velE velD].freeze
 
     def initialize(text, filename: nil)
-      @text = text.to_s
+      @text = text
       @filename = filename
     end
 
     def call
-      lines = @text.each_line.map(&:strip).reject(&:blank?)
+      lines = CsvTools.lines(@text).lazy.map(&:strip).reject(&:blank?)
       headers = CsvTools.parse_line(lines.first).to_a
       validate_headers!(headers)
 
-      track_points = lines.drop(2).filter_map do |line|
+      track_points = FlightImports::SampleBuffer.new
+      lines.drop(2).each do |line|
         row = CsvTools.parse_line(line)
         next if row.blank?
 
@@ -20,19 +21,19 @@ module FlySight
         recorded_at = CsvTools.timestamp(values["time"])
         next unless recorded_at
 
-        {
+        track_points << {
           recorded_at: recorded_at,
-          lat: CsvTools.numeric(values["lat"]),
-          lon: CsvTools.numeric(values["lon"]),
-          altitude_m: CsvTools.numeric(values["hMSL"]),
-          vel_n_mps: CsvTools.numeric(values["velN"]),
-          vel_e_mps: CsvTools.numeric(values["velE"]),
-          vel_d_mps: CsvTools.numeric(values["velD"]),
-          horizontal_accuracy_m: CsvTools.numeric(values["hAcc"]),
-          vertical_accuracy_m: CsvTools.numeric(values["vAcc"]),
-          speed_accuracy_mps: CsvTools.numeric(values["sAcc"]),
-          heading_deg: CsvTools.numeric(values["heading"]),
-          course_accuracy_deg: CsvTools.numeric(values["cAcc"]),
+          lat: CsvTools.finite_numeric(values["lat"]),
+          lon: CsvTools.finite_numeric(values["lon"]),
+          altitude_m: CsvTools.finite_numeric(values["hMSL"]),
+          vel_n_mps: CsvTools.finite_numeric(values["velN"]),
+          vel_e_mps: CsvTools.finite_numeric(values["velE"]),
+          vel_d_mps: CsvTools.finite_numeric(values["velD"]),
+          horizontal_accuracy_m: CsvTools.finite_numeric(values["hAcc"]),
+          vertical_accuracy_m: CsvTools.finite_numeric(values["vAcc"]),
+          speed_accuracy_mps: CsvTools.finite_numeric(values["sAcc"]),
+          heading_deg: CsvTools.finite_numeric(values["heading"]),
+          course_accuracy_deg: CsvTools.finite_numeric(values["cAcc"]),
           gps_fix: CsvTools.integer(values["gpsFix"]),
           satellite_count: CsvTools.integer(values["numSV"])
         }
@@ -49,6 +50,9 @@ module FlySight
         track_points: track_points,
         sensor_samples: []
       )
+    rescue StandardError
+      track_points&.close
+      raise
     end
 
     private

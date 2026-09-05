@@ -4,8 +4,8 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://api.cesium.com" crossorigin>
   <link rel="preconnect" href="https://assets.cesium.com" crossorigin>
-  <link rel="preload" href="https://cdn.jsdelivr.net/npm/cesium@1.124.0/Build/Cesium/Cesium.js" as="script" crossorigin="anonymous">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@1.124.0/Build/Cesium/Widgets/widgets.css">
+  <link rel="preload" href="<%= Rails.application.config.x.cesium_base_url %>Cesium.js" as="script">
+  <link rel="stylesheet" href="<%= Rails.application.config.x.cesium_base_url %>Widgets/widgets.css">
 <% end %>
 
 <%
@@ -38,6 +38,7 @@
   data-flight-viewer-bounds-value="<%= json_escape(@bounds.to_json) %>"
   data-flight-viewer-analysis-value="<%= json_escape(@analysis.to_json) %>"
   data-flight-viewer-cesium-token-value="<%= @cesium_ion_token %>"
+  data-flight-viewer-cesium-base-url-value="<%= Rails.application.config.x.cesium_base_url %>"
   data-flight-viewer-labels-value="<%= json_escape(t("flights.charts").to_json) %>"
   <% if @flight.video_exit_offset_seconds.present? %>
     data-flight-viewer-video-exit-offset-value="<%= @flight.video_exit_offset_seconds %>"
@@ -54,6 +55,13 @@
 
   <div class="flight-replay-content">
     <div class="flight-analysis-workspace">
+    <% if @flight.waiting_for_recording? %>
+      <section class="analysis-mode-banner" aria-label="Waiting for recording">
+        <strong>Waiting for recording</strong>
+        <span>Signal capture is complete. Import the microSD recording to analyse the authoritative flight data.</span>
+        <%= link_to "Import recording", new_flight_import_path(flight_id: @flight.id) %>
+      </section>
+    <% end %>
     <% if @flight_analysis.degraded? %>
       <section class="analysis-mode-banner" aria-label="<%= t("flights.analysis.degraded_badge") %>">
         <strong><%= t("flights.analysis.degraded_title") %></strong>

@@ -16,6 +16,18 @@ module Flights
 
     def initialize(points)
       @points = points.sort_by { |point| point[:elapsed_seconds] || 0 }
+      @next_invalid = Array.new(@points.size)
+      next_invalid = @points.size
+      (@points.size - 1).downto(0) do |index|
+        next_invalid = index unless elapsed_seconds(@points[index]) && altitude_m(@points[index])
+        @next_invalid[index] = next_invalid
+      end
+      @fast_counts = [ 0 ]
+      @speed_counts = [ 0 ]
+      @points.each do |point|
+        @fast_counts << @fast_counts.last + (fast_freefall?(point) ? 1 : 0)
+        @speed_counts << @speed_counts.last + (vertical_speed_mps(point) ? 1 : 0)
+      end
     end
 
     def call
@@ -59,41 +71,39 @@ module Flights
     end
 
     def sustained_freefall_from?(index)
-      window = freefall_window(index)
-      return false if window.size < 2
+      last_index = freefall_window_end(index)
+      return false unless last_index && last_index > index
 
-      duration = elapsed_seconds(window.last) - elapsed_seconds(window.first)
+      first, last = @points.values_at(index, last_index)
+      duration = elapsed_seconds(last) - elapsed_seconds(first)
       return false unless duration.positive?
 
-      altitude_loss = altitude_m(window.first) - altitude_m(window.last)
+      altitude_loss = altitude_m(first) - altitude_m(last)
       return false unless altitude_loss >= FREEFALL_MIN_ALTITUDE_LOSS_M
       return false unless (altitude_loss / duration) >= FREEFALL_MIN_AVG_DESCENT_MPS
 
-      window.any? { |point| fast_freefall?(point) } ||
-        window.all? { |point| vertical_speed_mps(point).nil? }
+      @fast_counts[last_index + 1] > @fast_counts[index] || @speed_counts[last_index + 1] == @speed_counts[index]
     end
 
-    def freefall_window(index)
+    def freefall_window_end(index)
       point = @points[index]
       start_elapsed = elapsed_seconds(point)
-      return [] unless start_elapsed && altitude_m(point)
+      return unless start_elapsed && altitude_m(point)
 
-      window = @points[index..].take_while do |candidate|
-        elapsed = elapsed_seconds(candidate)
-        elapsed && elapsed <= start_elapsed + FREEFALL_LOOKAHEAD_SECONDS && altitude_m(candidate)
+      stop = @next_invalid[index]
+      last = ((index...stop).bsearch { |i| elapsed_seconds(@points[i]) > start_elapsed + FREEFALL_LOOKAHEAD_SECONDS } || stop) - 1
+      if last == index && elapsed_seconds(@points[index + 1]) && altitude_m(@points[index + 1])
+        last += 1
       end
-      window = @points[index, 2].to_a if window.size < 2
-
-      window.select { |candidate| elapsed_seconds(candidate) && altitude_m(candidate) }
+      last
     end
 
     def exit_onset_point(index)
       return @points.first if index.zero?
 
-      freefall_window(index).find do |point|
-        vertical_speed = vertical_speed_mps(point)
-        vertical_speed && vertical_speed >= EXIT_ONSET_VERTICAL_SPEED_MPS
-      end || @points[index]
+      last = freefall_window_end(index) || index
+      onset = (index..last).find { |i| vertical_speed_mps(@points[i]).to_f >= EXIT_ONSET_VERTICAL_SPEED_MPS }
+      @points[onset || index]
     end
 
     def detect_opening(exit_point)
@@ -101,28 +111,19 @@ module Flights
       candidates = []
       candidate_active = false
 
+      last_fast = nil
       after_exit.each_with_index do |point, index|
         slow_window = after_exit[index, OPENING_SLOW_POINTS].to_a
         candidate = slow_window.size == OPENING_SLOW_POINTS &&
-          recent_fast_descent?(after_exit, index) &&
+          last_fast && elapsed_seconds(last_fast).to_f >= elapsed_seconds(point).to_f - OPENING_FAST_LOOKBEHIND_SECONDS &&
           slow_window.all? { |window_point| vertical_speed_mps(window_point).to_f < OPENING_SLOW_DESCENT_MPS }
 
         candidates << point if candidate && !candidate_active
         candidate_active = candidate
+        last_fast = point if vertical_speed_mps(point).to_f >= OPENING_FAST_DESCENT_MPS
       end
 
       select_opening_candidate(candidates)
-    end
-
-    def recent_fast_descent?(points, index)
-      point = points[index]
-      return false unless point
-
-      lookbehind = points[0...index].to_a.reverse_each.take_while do |previous|
-        elapsed_seconds(previous).to_f >= elapsed_seconds(point).to_f - OPENING_FAST_LOOKBEHIND_SECONDS
-      end
-
-      lookbehind.any? { |point| vertical_speed_mps(point).to_f >= OPENING_FAST_DESCENT_MPS }
     end
 
     def select_opening_candidate(candidates)

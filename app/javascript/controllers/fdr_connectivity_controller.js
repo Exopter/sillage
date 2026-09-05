@@ -693,9 +693,27 @@ export default class extends Controller {
       body: form,
       signal
     })
-    const payload = await response.json()
+    let payload = await response.json()
     if (!response.ok) throw new Error(payload.error || `Sillage rejected ${manifest.filename}.`)
-    if (payload.sha256 !== manifest.sha256) throw new Error("Sillage acknowledged a different SHA-256.")
+    const deadline = Date.now() + 120_000
+    while (true) {
+      if (payload.sha256 !== manifest.sha256) throw new Error("Sillage acknowledged a different SHA-256.")
+      if (payload.import_status === "imported") return
+      if (payload.import_status === "failed") throw new Error(payload.error || "Sillage could not validate this recording.")
+      if (!payload.status_url || Date.now() >= deadline) throw new Error("Recording validation is still pending. Synchronize again to resume.")
+      const statusUrl = new URL(payload.status_url, window.location.href)
+      if (statusUrl.origin !== window.location.origin) throw new Error("Invalid recording validation URL.")
+      await new Promise((resolve, reject) => {
+        const abort = () => { clearTimeout(timer); reject(new DOMException("Aborted", "AbortError")) }
+        const timer = setTimeout(() => { signal?.removeEventListener("abort", abort); resolve(undefined) }, 1000)
+        signal?.addEventListener("abort", abort, { once: true })
+        if (signal?.aborted) abort()
+      })
+      const timeout = AbortSignal.timeout(Math.max(1, deadline - Date.now()))
+      const statusResponse = await fetch(statusUrl, { signal: signal ? AbortSignal.any([signal, timeout]) : timeout })
+      payload = await statusResponse.json()
+      if (!statusResponse.ok) throw new Error(payload.error || "Recording validation could not be checked.")
+    }
   }
 
   rememberUsbPort(port) {
@@ -1650,7 +1668,10 @@ function normalizeSillageHeartbeatStatus(status = {}) {
       fileIndex: Number(upload.file_index || 0),
       offset: Number(upload.offset || 0),
       sizeBytes: Number(upload.size_bytes || 0),
-      lastHttpStatus: Number(upload.last_http_status || 0)
+      lastHttpStatus: Number(upload.last_http_status || 0),
+      rejectedFiles: Number(upload.rejected_files || 0),
+      deferredFiles: Number(upload.deferred_files || 0),
+      damagedFileIndex: Number(upload.damaged_file_index || 0)
     },
     recordingControl: recording && typeof recording === "object"
       ? {
@@ -1685,7 +1706,10 @@ function describeWifiUpload(upload = {}) {
     case "verifying":
       return `Verifying ${filename} in Sillage`
     case "complete":
-      return "All sealed recordings synchronized"
+      if (upload.deferredFiles > 0) return "Upload pass finished · temporary failures will retry automatically"
+      return upload.rejectedFiles > 0 || upload.damagedFileIndex > 0
+        ? "Upload finished · rejected recordings retained on the card"
+        : "All sealed recordings synchronized"
     case "paused":
       return size > 0
         ? `Automatic upload paused · ${filename} · ${percent}%`

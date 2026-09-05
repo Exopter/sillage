@@ -38,6 +38,10 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", flight.name
     assert_select ".flight-replay-page"
+    cesium_base_url = Rails.application.config.x.cesium_base_url
+    assert_select ".flight-replay-page[data-flight-viewer-cesium-base-url-value=?]", cesium_base_url
+    assert_select "link[rel='preload'][href=?]", "#{cesium_base_url}Cesium.js"
+    assert_select "link[rel='stylesheet'][href=?]", "#{cesium_base_url}Widgets/widgets.css"
     assert_select ".flight-replay-title span", text: flight.name
     assert_select ".flight-replay-title", text: /FLT-\d{4}-\d{3}/, count: 0
     assert_select ".flight-recorded-at", count: 0
@@ -164,7 +168,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to flight_path(flight)
     assert_equal selected_aircraft, flight.reload.aircraft
-    assert_equal selected_aircraft.configuration_snapshot, flight.configuration_snapshot
+    assert_equal selected_aircraft.configuration_snapshot(at: flight.started_at), flight.configuration_snapshot
     follow_redirect!
     assert_select ".sillage-flashes[aria-label='Notifications']"
     assert_select ".flash.notice[role='status'][data-controller='flash'][data-flash-timeout-value='5000']",

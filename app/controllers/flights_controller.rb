@@ -68,7 +68,7 @@ class FlightsController < ApplicationController
     end
 
     if @flight.update(attributes)
-      @flight.capture_configuration! if @flight.saved_change_to_aircraft_id?
+      @flight.capture_configuration!(replace: true) if @flight.saved_change_to_aircraft_id?
       enqueue_video_processing(video_upload) if video_upload.present?
       respond_to_upload_success(flight_path(@flight), t(".success"))
     else
@@ -126,16 +126,17 @@ class FlightsController < ApplicationController
   end
 
   def enqueue_video_processing(video_upload)
-    @flight.video_upload.purge_later if @flight.video_upload.attached?
-    @flight.video.purge_later if @flight.video.attached?
-    @flight.video_upload.attach(video_upload)
-    @flight.update!(
-      video_processing_status: "processing",
-      video_processing_error: nil,
-      video_exit_offset_seconds: nil,
-      video_duration_seconds: nil
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: video_upload, filename: video_upload.original_filename, content_type: video_upload.content_type
     )
-    FlightVideoProcessingJob.perform_later(@flight)
+    @flight.with_lock do
+      @flight.video_upload.attach(blob)
+      @flight.update!(video_processing_status: "processing", video_processing_error: nil)
+      raise ActiveJob::EnqueueError, "The video could not be queued." unless FlightVideoProcessingJob.perform_later(@flight, blob)
+    end
+  rescue StandardError
+    blob&.purge unless blob&.attachments&.exists?
+    raise
   end
 
   def respond_to_upload_success(redirect_url, notice)

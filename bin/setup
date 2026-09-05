@@ -47,6 +47,7 @@ FileUtils.chdir APP_ROOT do
   puts "== Installing dependencies =="
   system("bundle check") || system!("bundle install")
   system! "npm ci"
+  system! "npm run assets:prepare"
 
   puts "\n== Starting PostgreSQL =="
   start_local_postgres!

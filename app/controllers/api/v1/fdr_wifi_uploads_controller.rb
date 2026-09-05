@@ -31,7 +31,7 @@ module Api
         elsif !upload.manifest_matches?(manifest)
           return render json: { error: "This recorder file already has a different upload manifest." }, status: :conflict
         end
-        upload.reconcile_received_bytes! if upload.status == "receiving"
+        upload.resume!
         render_upload(upload, status: created ? :created : :ok)
       rescue JSON::ParserError, KeyError, ArgumentError, TypeError, ActiveRecord::RecordInvalid => error
         render json: { error: error.message }, status: :unprocessable_entity
@@ -51,7 +51,6 @@ module Api
         return render json: { error: "Upload completion requests must be empty." }, status: :unprocessable_entity if @body.present?
 
         @upload.begin_verification!
-        FdrWifiUploadFinalizeJob.perform_later(@upload)
         render_upload(@upload.reload, status: @upload.status == "complete" ? :ok : :accepted)
       end
 

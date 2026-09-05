@@ -1,5 +1,13 @@
 # Production operations runbook
 
+`BACKUPS_ENABLED=false` renders PostgreSQL with `archive_mode=off` and omits
+pgBackRest archive commands, repository settings, secrets, and mounts. Enabling
+backups adds those surfaces and validates their credentials. Readiness monitoring
+requires only its own ping URL; backup ping URLs are required when both flags are
+true. Changing the flag in the repository does not change a running PostgreSQL
+accessory: applying it requires a separately authorized accessory reconfiguration
+and restart. Do not restart the production database as part of a code review.
+
 Sillage uses project-local PostgreSQL on its production VPS. Cloudflare R2
 stores encrypted off-host backups in the private `sillage-backups` bucket.
 Healthchecks.io receives readiness, WAL archive, database backup, and Active
@@ -20,6 +28,31 @@ Storage backup signals through the account's existing alert channels.
 - R2 lifecycle rules abort incomplete multipart uploads under both repository
   prefixes after seven days. pgBackRest and restic own object expiry because
   blind object deletion would corrupt their repository metadata.
+
+## FDR import recovery
+
+Deploy migration `20260905120000_preserve_fdr_record_provenance` before starting
+the updated imports worker. It adds recording identities and sample provenance;
+it does not infer provenance for previously imported samples. Keep Solid Queue
+on the application database: source receipts and processing jobs commit together.
+
+Deploy the matching FDR firmware to enable skipping rejected files during a Wi-Fi
+upload pass. `retryable` uploads cool down for five minutes before resuming from
+their staged byte count. Firmware advances to later files and automatically
+revisits deferred files after the pass. `verifying` uploads with no update for five minutes are queued
+again. Processing locks make repeated jobs idempotent.
+
+`failed` uploads represent rejected source data. Inspect `error_message` and retain
+both the staged source and recorder file for diagnosis. Firmware reports rejected
+files through its heartbeat and never acknowledges them to advance the queue.
+After diagnosing and correcting a transient cause, an explicitly authorized
+operator can set that upload's status to `retryable`; do not mark it `complete`
+manually. Source bytes or manifest mismatches require a reviewed replacement.
+
+Recordings without a device identity deduplicate within their manual import only;
+the binary header cannot establish identity across unrelated uploads. Historical
+snapshots use installation dates and record unavailable subassembly history.
+Existing captured snapshots remain frozen unless explicitly recaptured.
 
 ## Deployment
 

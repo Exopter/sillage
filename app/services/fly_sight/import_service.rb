@@ -1,6 +1,7 @@
 require "stringio"
 require "set"
 require "zip"
+require "zlib"
 
 module FlySight
   class ImportService
@@ -39,15 +40,18 @@ module FlySight
     private
 
     def read_attached_payloads
-      @flight_import.source_files.attachments.includes(:blob).map do |attachment|
-        blob = attachment.blob
-        FilePayload.new(
-          path: blob.filename.to_s,
-          filename: blob.filename.to_s,
-          content: blob.download,
-          content_type: blob.content_type.presence || "application/octet-stream"
-        )
+      blobs = @flight_import.source_files.attachments.includes(:blob).map(&:blob)
+      blobs.map do |blob|
+        file = temporary_file
+        blob.open { |source| IO.copy_stream(source, file) }
+        file.rewind
+        FilePayload.new(path: blob.filename.to_s, filename: blob.filename.to_s,
+          content: file, content_type: blob.content_type.to_s)
       end
+    end
+
+    def temporary_file
+      Tempfile.new("flysight-import", binmode: true).tap { |file| @temporary_files << file }
     end
 
     def expand_archives(payloads)
@@ -61,34 +65,64 @@ module FlySight
     end
 
     def zip?(payload)
-      payload.filename.to_s.downcase.end_with?(".zip") || payload.content.b.start_with?("PK\x03\x04".b)
+      payload.content.rewind
+      signature = payload.content.read(4)
+      payload.content.rewind
+      payload.filename.to_s.downcase.end_with?(".zip") || signature == "PK\x03\x04".b
+    end
+
+    # Validate the supported single-volume ZIP directory before reading entries.
+    def validate_zip_directory!(io)
+      io.seek([ io.size - 65_557, 0 ].max)
+      tail = io.read(65_557)
+      raise Error, "ZIP64 archives are not supported." if tail.include?("PK\x06\x07".b) || tail.include?("PK\x06\x06".b)
+
+      offset = tail.rindex("PK\x05\x06".b)
+      raise Error, "ZIP central directory is missing." unless offset && tail.bytesize - offset >= 22
+
+      disk, directory_disk, entries_on_disk, entries, bytes, position, comment_size = tail.byteslice(offset + 4, 18).unpack("vvvvVVv")
+      unless disk.zero? && directory_disk.zero? && entries_on_disk == entries &&
+          position + bytes <= io.size && tail.bytesize == offset + 22 + comment_size
+        raise Error, "Multi-volume or malformed ZIP archives are not supported."
+      end
     end
 
     def extract_zip(payload)
+      validate_zip_directory!(payload.content)
       files = []
-      Zip::File.open_buffer(StringIO.new(payload.content)) do |zip_file|
+      Zip::File.open(payload.content.path) do |zip_file|
         zip_file.each do |entry|
+          raise Error, "ZIP entry path exceeds 1 KiB." if entry.name.bytesize > 1.kilobyte
           next if entry.directory?
           next if entry.name.start_with?("__MACOSX/")
 
           filename = File.basename(entry.name)
-          next unless filename.match?(/\A(?:TRACK|SENSOR)\.CSV\z/i) || filename.match?(/\.csv\z/i)
+          next unless filename.match?(/\.csv\z/i)
 
-          files << FilePayload.new(
-            path: entry.name,
-            filename: filename,
-            content: entry.get_input_stream.read,
-            content_type: "text/csv"
-          )
+          file = temporary_file
+          bytes = 0
+          crc = 0
+          entry.get_input_stream do |input|
+            while (chunk = input.read(64.kilobytes)) && !chunk.empty?
+              bytes += chunk.bytesize
+              crc = Zlib.crc32(chunk, crc)
+              file.write(chunk)
+            end
+          end
+          raise Error, "ZIP entry size or CRC does not match its directory." unless bytes == entry.size && crc == entry.crc
+
+          file.rewind
+          files << FilePayload.new(path: entry.name, filename: filename, content: file, content_type: "text/csv")
         end
       end
-
       files
-    rescue Zip::Error
-      raise Error, "#{payload.filename} is not a readable ZIP archive."
+    rescue Zip::Error, Zlib::Error => error
+      raise Error, "#{payload.filename} is not a readable ZIP archive: #{error.message}"
     end
 
     def detect_sessions(files)
+      raise Error, "FlySight sources contain ambiguous duplicate paths." if files.map(&:path).uniq.size != files.size
+
       sessions = []
       used_paths = Set.new
 
@@ -119,7 +153,7 @@ module FlySight
     end
 
     def v1_candidate?(file)
-      headers = CsvTools.parse_line(text(file).each_line.first).to_a
+      headers = CsvTools.parse_line(CsvTools.lines(file.content).first).to_a
       (ParseV1::REQUIRED_COLUMNS - headers).empty?
     end
 
@@ -127,49 +161,45 @@ module FlySight
       case session.format
       when :v2
         ParseV2.new(
-          text(session.track),
-          text(session.sensor),
+          session.track.content,
+          session.sensor.content,
           track_filename: session.track.path,
           sensor_filename: session.sensor.path
         ).call
       when :v1
-        ParseV1.new(text(session.csv), filename: session.csv.path).call
+        ParseV1.new(session.csv.content, filename: session.csv.path).call
       end
     end
 
     def import!
+      @temporary_files = []
       sessions = detect_sessions(expand_archives(read_attached_payloads))
       raise Error, "No usable FlySight session was found." if sessions.empty?
 
-      parsed_sessions = sessions.map { |session| parse_session(session) }
-      FlightImport.transaction do
-        @flight_import.flights.where.not(id: @flight_import.target_flight_id).destroy_all
-        parsed_sessions.each.with_index(1) do |parsed_session, index|
-          FlightImports::FlightWriter.new(
-            flight_import: @flight_import,
-            name: generated_name(parsed_session, index),
-            started_at: parsed_session.started_at,
-            track_points: parsed_session.track_points,
-            sensor_samples: parsed_session.sensor_samples,
-            replace_target: index == 1
-          ).call
-        end
+      metadata = []
+      formats = []
+      @flight_import.flights.where.not(id: @flight_import.target_flight_id).destroy_all
+      sessions.each.with_index(1) do |session, index|
+        parsed = parse_session(session)
 
-        first = parsed_sessions.first
-        @flight_import.update!(
-          status: "imported",
-          error_message: nil,
-          device_id: metadata_value(first, "DEVICE_ID"),
-          firmware_version: metadata_value(first, "FIRMWARE_VER"),
-          session_id: metadata_value(first, "SESSION_ID"),
-          log_started_at: first.started_at,
-          details: {
-            "format" => parsed_sessions.map(&:format).uniq.join(", "),
-            "sessions_count" => parsed_sessions.size,
-            "sessions" => parsed_sessions.map(&:metadata)
-          }
-        )
+        FlightImports::FlightWriter.new(
+          flight_import: @flight_import, name: generated_name(parsed, index), started_at: parsed.started_at,
+          track_points: parsed.track_points, sensor_samples: parsed.sensor_samples, replace_target: index == 1
+        ).call
+        if index == 1
+          @flight_import.assign_attributes(device_id: metadata_value(parsed, "DEVICE_ID"),
+            firmware_version: metadata_value(parsed, "FIRMWARE_VER"), session_id: metadata_value(parsed, "SESSION_ID"),
+            log_started_at: parsed.started_at)
+        end
+        metadata << parsed.metadata
+        formats << parsed.format
+      ensure
+        parsed&.close
       end
+      @flight_import.update!(status: "imported", error_message: nil,
+        details: { "format" => formats.uniq.join(", "), "sessions_count" => sessions.size, "sessions" => metadata })
+    ensure
+      @temporary_files&.each(&:close!)
     end
 
     def generated_name(parsed_session, index)
@@ -180,10 +210,6 @@ module FlySight
     def metadata_value(parsed_session, key)
       metadata = parsed_session.metadata
       metadata.dig("sensor_vars", key).presence || metadata.dig("track_vars", key).presence
-    end
-
-    def text(payload)
-      payload.content.dup.force_encoding("UTF-8").scrub
     end
   end
 end

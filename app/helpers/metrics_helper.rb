@@ -4,12 +4,13 @@ module MetricsHelper
   end
 
   def logbook_date(flight)
-    flight.display_started_at.strftime("%d %b · %H:%M")
+    flight.display_started_at&.strftime("%d %b · %H:%M") || "Date unknown"
   end
 
   def logbook_status(flight)
     return [ "unknown", "Preparation" ] if flight.preparation?
     return [ "live", "Live" ] if flight.live?
+    return [ "caution", "Waiting for recording" ] if flight.waiting_for_recording?
     return [ "live", "Processing" ] if flight.processing?
     return [ "caution", "Review" ] if flight.review?
     return [ "live", "Processing" ] if flight.video_processing?

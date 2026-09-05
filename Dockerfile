@@ -3,6 +3,13 @@
 
 # Production image for Kamal deploys.
 ARG RUBY_VERSION=4.0.3
+FROM docker.io/library/node:24-bookworm-slim AS frontend
+WORKDIR /frontend
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+COPY script/prepare_cesium_assets.mjs script/
+RUN npm run assets:prepare
+
 FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
 
 WORKDIR /rails
@@ -33,6 +40,7 @@ RUN bundle install && \
     bundle exec bootsnap precompile -j 1 --gemfile
 
 COPY . .
+COPY --from=frontend /frontend/public/vendor/cesium /rails/public/vendor/cesium
 
 RUN bundle exec bootsnap precompile -j 1 app/ lib/
 RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile

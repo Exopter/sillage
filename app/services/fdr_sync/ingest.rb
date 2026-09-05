@@ -2,20 +2,20 @@ require "digest"
 
 module FdrSync
   class Ingest
-    Result = Data.define(:flight_import, :duplicate, :ignored, :duration_seconds, :sha256)
+    Result = Data.define(:flight_import, :duplicate, :sha256)
 
-    MAX_FILE_SIZE = 512.megabytes
     MIN_RECORDING_DURATION_SECONDS = 5.0
     FILENAME_PATTERN = /\AFDR\d{6}\.BIN\z/i
     SHA256_PATTERN = /\A[0-9a-f]{64}\z/
 
     TRANSPORTS = %w[usb_cdc wifi_https].freeze
 
-    def initialize(user:, upload:, metadata:, transport: "usb_cdc")
+    def initialize(user:, upload:, metadata:, transport: "usb_cdc", enqueue: true)
       @user = user
       @upload = upload
       @metadata = metadata.to_h.stringify_keys
       @transport = transport.to_s
+      @enqueue = enqueue
     end
 
     def call
@@ -24,40 +24,40 @@ module FdrSync
       raise Error, "The uploaded file does not match its declared SHA-256." unless actual_sha256 == expected_sha256
 
       existing = @user.flight_imports.find_by(source_sha256: actual_sha256)
-      return result_for(existing, duplicate: true, sha256: actual_sha256) if existing
+      return resume_import(existing, actual_sha256) if existing
 
-      decoded = decode_file
-      validate_header!(decoded.header)
-      duration_seconds = recording_duration_seconds(decoded.records)
-      if duration_seconds < MIN_RECORDING_DURATION_SECONDS
-        return result_for(nil, ignored: true, duration_seconds:, sha256: actual_sha256)
-      end
-
-      flight_import = create_import!(decoded.header, decoded.records, actual_sha256)
-      ExoFdrImportJob.perform_later(flight_import)
-      result_for(flight_import, duration_seconds:, sha256: actual_sha256)
+      @upload.tempfile.rewind
+      header = ExoFdr::Decoder.new(@upload.tempfile).header
+      validate_header!(header)
+      flight_import = create_import!(header, actual_sha256)
+      result_for(flight_import, sha256: actual_sha256)
     rescue ActiveRecord::RecordNotUnique
       existing = @user.flight_imports.find_by!(source_sha256: expected_sha256)
-      result_for(existing, duplicate: true, sha256: expected_sha256)
+      resume_import(existing, expected_sha256)
     end
 
     private
+
+    def resume_import(flight_import, sha256)
+      flight_import.with_lock do
+        enqueue_import!(flight_import) unless flight_import.imported?
+      end
+      result_for(flight_import, duplicate: true, sha256:)
+    end
+
+    def enqueue_import!(flight_import)
+      return unless @enqueue
+
+      raise ActiveJob::EnqueueError, "The FDR import could not be queued." unless ExoFdrImportJob.perform_later(flight_import)
+    end
 
     def validate_metadata!
       raise Error, "Select an ExoFDR binary file." unless @upload.respond_to?(:tempfile)
       raise Error, "Invalid ExoFDR filename." unless filename.match?(FILENAME_PATTERN)
       raise Error, "Invalid SHA-256." unless expected_sha256.match?(SHA256_PATTERN)
       raise Error, "The uploaded file is empty." unless @upload.size.positive?
-      raise Error, "The uploaded file exceeds 512 MB." if @upload.size > MAX_FILE_SIZE
       raise Error, "The uploaded file size does not match the manifest." unless @upload.size == declared_size
       raise Error, "Unsupported FDR synchronization transport." unless @transport.in?(TRANSPORTS)
-    end
-
-    def decode_file
-      @upload.tempfile.rewind
-      result = ExoFdr::Decoder.new(@upload.tempfile, recover: false).call
-      @upload.tempfile.rewind
-      result
     end
 
     def validate_header!(header)
@@ -65,49 +65,40 @@ module FdrSync
       raise Error, "The ExoFDR format does not match the manifest." unless header.fetch("format_version") == declared_format_version
     end
 
-    def recording_duration_seconds(records)
-      timestamps = records.map { |record| record.fetch("timestamp_us").to_i }
-      return 0.0 if timestamps.empty?
-
-      (timestamps.max - timestamps.min) / 1_000_000.0
+    def result_for(flight_import, duplicate: false, sha256:)
+      Result.new(flight_import:, duplicate:, sha256:)
     end
 
-    def result_for(flight_import, duplicate: false, ignored: false, duration_seconds: nil, sha256:)
-      Result.new(flight_import:, duplicate:, ignored:, duration_seconds:, sha256:)
-    end
-
-    def create_import!(header, records, actual_sha256)
-      recorded_at = ExoFdr::RecordingClock.new(records).started_at
-      resolution = FdrIdentity::Resolve.new(@metadata.fetch("device_id"), at: recorded_at).call
-      flight_import = @user.flight_imports.create!(
-        source_filename: filename,
-        source_sha256: actual_sha256,
-        status: "pending",
-        import_type: "exofdr",
-        device_id: @metadata.fetch("device_id"),
-        aircraft: resolution.aircraft,
-        firmware_version: header.fetch("firmware"),
-        details: {
-          "sync" => {
-            "transport" => @transport,
-            "protocol" => "EXS1",
-            "boot_id" => declared_boot_id,
-            "format_version" => declared_format_version,
-            "file_index" => Integer(@metadata.fetch("file_index")),
-            "size_bytes" => declared_size,
-            "sha256" => actual_sha256
-          }
-        }
-      )
+    def create_import!(header, actual_sha256)
       @upload.tempfile.rewind
-      flight_import.source_files.attach(
-        io: @upload,
-        filename:,
-        content_type: "application/octet-stream"
-      )
-      flight_import
+      blob = ActiveStorage::Blob.create_and_upload!(io: @upload, filename:, content_type: "application/octet-stream")
+      ActiveRecord::Base.current_transaction.after_rollback { blob.service.delete(blob.key) }
+      FlightImport.transaction(requires_new: true) do
+        flight_import = @user.flight_imports.create!(
+          source_filename: filename,
+          source_sha256: actual_sha256,
+          status: "pending",
+          import_type: "exofdr",
+          device_id: @metadata.fetch("device_id"),
+          firmware_version: header.fetch("firmware"),
+          details: {
+            "sync" => {
+              "transport" => @transport,
+              "protocol" => "EXS1",
+              "boot_id" => declared_boot_id,
+              "format_version" => declared_format_version,
+              "file_index" => Integer(@metadata.fetch("file_index")),
+              "size_bytes" => declared_size,
+              "sha256" => actual_sha256
+            }
+          }
+        )
+        flight_import.source_files.attach(blob)
+        enqueue_import!(flight_import)
+        flight_import
+      end
     rescue StandardError
-      flight_import&.destroy!
+      blob&.purge unless blob&.attachments&.exists?
       raise
     ensure
       @upload.tempfile.rewind if @upload.respond_to?(:tempfile)

@@ -33,6 +33,7 @@
 /app/assets/builds/*
 !/app/assets/builds/.keep
 /public/assets
+/public/vendor/cesium/
 
 # Keep deployment config out of the image.
 /config/deploy*.yml

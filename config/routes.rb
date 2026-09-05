@@ -104,7 +104,7 @@ Rails.application.routes.draw do
         resource :initialization, controller: "fdr_initializations", only: %i[create update]
         resource :wifi_provisioning, controller: "fdr_wifi_provisionings", only: %i[create update], path: "wifi-provisioning"
       end
-      resources :fdr_syncs, only: :create, path: "fdr-syncs"
+      resources :fdr_syncs, only: [ :create, :show ], path: "fdr-syncs"
       resources :signal_sessions, only: :create, param: :uuid do
         member do
           post :batches

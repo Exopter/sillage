@@ -1,20 +1,22 @@
 module ExoFdr
   class RecordingClock
-    def initialize(records)
-      @records = records
+    attr_reader :started_at, :origin_us
+
+    def initialize(records = [])
+      records.each do |record|
+        observe(record)
+        break if started_at
+      end
     end
 
-    def started_at
-      origin_us = @records.first&.fetch("timestamp_us", 0).to_i
-      @records.each do |record|
-        anchor_at = gps_recorded_at(record)
-        next unless anchor_at
+    def observe(record)
+      @origin_us ||= record.fetch("timestamp_us").to_i
+      return if @started_at
 
-        anchor_elapsed = (record.fetch("timestamp_us").to_i - origin_us) / 1_000_000.0
-        return anchor_at - anchor_elapsed
-      end
+      anchor_at = gps_recorded_at(record)
+      return unless anchor_at
 
-      nil
+      @started_at = anchor_at - (record.fetch("timestamp_us").to_i - @origin_us) / 1_000_000.0
     end
 
     private

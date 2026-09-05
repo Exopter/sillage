@@ -27,6 +27,7 @@
 /node_modules/
 /vendor/bundle/
 /public/assets/
+/public/vendor/cesium/
 
 # OS/editor noise
 .DS_Store

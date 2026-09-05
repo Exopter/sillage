@@ -19,12 +19,15 @@ class Aircraft < ApplicationRecord
     installations.active.includes(:installable)
   end
 
-  def configuration_snapshot
+  def configuration_snapshot(at: nil)
+    recorded_installations = at ? installations.covering(at).includes(:installable) : active_installations
     {
       "aircraft" => { "registration" => registration, "name" => name },
-      "installations" => active_installations.map do |installation|
+      "effective_at" => at&.iso8601,
+      "history_limitations" => at ? [ "Aircraft and asset metadata reflect the time of capture." ] : [],
+      "installations" => recorded_installations.map do |installation|
         installable = installation.installable
-        asset_snapshot = installable.snapshot
+        asset_snapshot = installable.is_a?(Assembly) ? installable.snapshot(at:) : installable.snapshot
         {
           "type" => installation.installable_type,
           "installed_at" => installation.installed_at.iso8601,

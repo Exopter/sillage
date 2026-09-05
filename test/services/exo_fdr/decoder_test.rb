@@ -45,21 +45,67 @@ class ExoFdr::DecoderTest < ActiveSupport::TestCase
     assert_operator result.stats.fetch("partial_tail_bytes"), :>, 0
   end
 
-  test "matches the Python reference decoder" do
-    reference = Rails.root.join("..", "..", "fdr", "tools", "decode_fdr.py").expand_path
-    skip "FDR Python reference is not available" unless reference.exist?
+  test "matches the shared Python corpus including provenance and recovery" do
+    root = Pathname.new(ENV.fetch("EXOPTER_FDR_PATH", Rails.root.join("..", "fdr").to_s)).expand_path
+    reference = root.join("tools/decode_fdr.py")
+    assert reference.exist?, "FDR Python reference is required; set EXOPTER_FDR_PATH."
+    fixture = root.join("tests/fixtures/decoder_parity.json")
+    assert fixture.exist?, "The shared decoder parity corpus is required."
 
-    Tempfile.create([ "exo-fdr-parity", ".bin" ]) do |file|
-      file.binmode
-      file.write(valid_file)
-      file.flush
-      stdout, stderr, status = Open3.capture3("python3", reference.to_s, "--format", "jsonl", file.path)
-      assert status.success?, stderr
-      python_records = stdout.lines.map { |line| JSON.parse(line) }
-      ruby_records = ExoFdr::Decoder.new(StringIO.new(valid_file)).call.records
-
-      assert_equal python_records, ruby_records
+    JSON.parse(fixture.read).fetch("cases").each do |scenario|
+      Dir.mktmpdir("decoder-parity") do |directory|
+        paths = scenario.fetch("files").map do |file|
+          File.join(directory, file.fetch("name")).tap { |path| File.binwrite(path, [ file.fetch("hex") ].pack("H*")) }
+        end
+        stdout, stderr, status = Open3.capture3("python3", reference.to_s, "--format", "jsonl", *paths)
+        assert_includes [ 0, 2 ], status.exitstatus, stderr
+        summary = JSON.parse(stderr)
+        seen = Hash.new { |sets, boot_id| sets[boot_id] = Set.new }
+        next_sequences = {}
+        ruby_records = []
+        ruby_headers = []
+        recovery = Hash.new(0)
+        types = Hash.new(0)
+        paths.each do |path|
+          File.open(path, "rb") do |io|
+            result = ExoFdr::Decoder.new(io, source_file: path, seen_sequences: seen, next_sequence_by_boot: next_sequences).call
+            ruby_headers << result.header.merge("source_file" => path)
+            ruby_records.concat(result.records)
+            result.stats.each do |key, value|
+              key == "records_by_type" ? value.each { |type, count| types[type] += count } : recovery[key] += value
+            end
+          end
+        end
+        assert_equal stdout.lines.map { |line| JSON.parse(line) }, ruby_records, scenario.fetch("name")
+        assert_equal summary.fetch("file_headers"), ruby_headers
+        assert_equal scenario.fetch("sequences"), ruby_records.map { |record| record.fetch("sequence") }
+        assert_equal scenario.fetch("recovery"), recovery
+        assert_equal summary.fetch("recovery").slice(*recovery.keys), recovery
+        assert_equal summary.dig("recovery", "records_by_type"), types
+        if scenario.fetch("strict_error")
+          _out, _err, strict_status = Open3.capture3("python3", reference.to_s, "--strict", *paths)
+          assert_equal 1, strict_status.exitstatus
+          assert_raises(ExoFdr::Error) { File.open(paths.first, "rb") { |io| ExoFdr::Decoder.new(io, recover: false).each_record { |_| } } }
+        end
+      end
     end
+  end
+
+  test "streams bounded reads and recovers a sync marker across chunk boundaries" do
+    binary = file_header + ("x" * (ExoFdr::Decoder::READ_CHUNK_SIZE - 1)) + record(type: 5, sequence: 0, timestamp_us: 1, payload: marker_payload)
+    io = StringIO.new(binary)
+    reads = []
+    original = io.method(:read)
+    io.define_singleton_method(:read) do |length|
+      raise "unbounded read" unless length && length <= ExoFdr::Decoder::READ_CHUNK_SIZE
+
+      reads << length
+      original.call(length)
+    end
+    decoder = ExoFdr::Decoder.new(io)
+    assert_equal [ 0 ], decoder.each_record.map { |record| record.fetch("sequence") }
+    assert_equal ExoFdr::Decoder::READ_CHUNK_SIZE - 1, decoder.stats.fetch("skipped_bytes")
+    assert_operator reads.size, :>, 2
   end
 
   private

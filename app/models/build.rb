@@ -14,6 +14,7 @@ class Build < ApplicationRecord
   has_many :test_runs, dependent: :restrict_with_error
 
   before_validation :capture_assembly_snapshot, on: :create
+  before_validation :assign_code
   before_update :prevent_changes_when_locked
   before_destroy :prevent_changes_when_locked
 
@@ -43,7 +44,6 @@ class Build < ApplicationRecord
 
   def clone_as_next!(by:)
     self.class.create!(
-      code: self.class.next_code,
       assembly: assembly,
       previous_build: self,
       created_by: by,
@@ -59,8 +59,7 @@ class Build < ApplicationRecord
   end
 
   def self.next_code
-    highest = pluck(:code).filter_map { |value| value[/\AFDR-DEV-(\d+)\z/, 1]&.to_i }.max || 0
-    format("FDR-DEV-%03d", highest + 1)
+    format("FDR-DEV-%03d", IdentifierSequence.next_value!("build_code"))
   end
 
   def part_changes
@@ -91,6 +90,16 @@ class Build < ApplicationRecord
   end
 
   private
+
+  def assign_code
+    if code.present?
+      if will_save_change_to_code? && (match = /\AFDR-DEV-(\d+)\z/.match(code))
+        IdentifierSequence.reserve_through!("build_code", match[1])
+      end
+    elsif new_record?
+      self.code = self.class.next_code
+    end
+  end
 
   def capture_assembly_snapshot
     self.assembly_snapshot = assembly.snapshot if assembly

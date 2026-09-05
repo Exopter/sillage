@@ -3,8 +3,10 @@ require "digest"
 require "fileutils"
 require "openssl"
 require "zlib"
+require_relative "../support/method_replacement"
 
 class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
+  include MethodReplacement
   SIGNATURE_DOMAIN = "exopter/fdr/wifi-upload/v1\0".b
 
   setup do
@@ -27,6 +29,19 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
     FdrWifiUpload.where(embedded_controller: @recorder).find_each do |upload|
       FileUtils.rm_f(upload.staged_path)
     end
+  end
+
+  test "accepts a signed manifest above the former 512 MiB file limit" do
+    body = @manifest.merge(size_bytes: 513.megabytes).to_json
+    post api_v1_fdr_wifi_uploads_path,
+      params: body,
+      headers: signed_headers(body, "create", content_type: "application/json")
+
+    assert_response :created
+    upload = FdrWifiUpload.find_by!(token: response.headers.fetch("X-FDR-Upload-Token"))
+    assert_equal 513.megabytes, upload.size_bytes
+    assert_equal 0, upload.received_bytes
+    assert_equal "receiving", upload.status
   end
 
   test "recorder resumes, verifies and imports a signed Wi-Fi upload without a browser session" do
@@ -67,7 +82,7 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal @binary.bytesize.to_s, response.headers.fetch("X-FDR-Upload-Offset")
 
-    assert_enqueued_with(job: ExoFdrImportJob) do
+    assert_no_enqueued_jobs only: ExoFdrImportJob do
       perform_enqueued_jobs only: FdrWifiUploadFinalizeJob do
         post complete_api_v1_fdr_wifi_upload_path(token),
           params: "",
@@ -78,6 +93,7 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
 
     upload = FdrWifiUpload.find_by!(token:)
     assert_equal "complete", upload.status
+    assert_equal "imported", upload.flight_import.status
     assert_equal 4_110_214_648, upload.boot_id
     assert_equal @binary.bytesize, upload.received_bytes
     assert_not File.exist?(upload.staged_path)
@@ -187,6 +203,54 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
     assert_match(/declared SHA-256/, upload.error_message)
     assert File.exist?(upload.staged_path)
     assert_nil upload.flight_import
+  end
+
+  test "transient verification failures remain resumable after retries are exhausted" do
+    upload = @recorder.fdr_wifi_uploads.create!(@manifest)
+    upload.append_chunk!(offset: 0, bytes: @binary)
+    upload.begin_verification!
+    failing_ingest = Object.new
+    failing_ingest.define_singleton_method(:call) { raise IOError, "Temporary storage failure" }
+    replace_method(FdrSync::Ingest, :new, ->(**) { failing_ingest }) do
+      job = FdrWifiUploadFinalizeJob.new(upload)
+      job.executions = FdrWifiUploadFinalizeJob::MAX_ATTEMPTS
+      job.perform_now
+    end
+    assert_equal "retryable", upload.reload.status
+    assert File.exist?(upload.staged_path)
+    body = @manifest.to_json
+    post api_v1_fdr_wifi_uploads_path, params: body, headers: signed_headers(body, "create", content_type: "application/json")
+    assert_response :success
+    assert_equal "retryable", response.headers.fetch("X-FDR-Upload-Status")
+    upload.update_columns(updated_at: 6.minutes.ago)
+    post api_v1_fdr_wifi_uploads_path, params: body, headers: signed_headers(body, "create", content_type: "application/json")
+    assert_equal "receiving", response.headers.fetch("X-FDR-Upload-Status")
+    assert_equal @binary.bytesize.to_s, response.headers.fetch("X-FDR-Upload-Offset")
+    upload.reload.begin_verification!
+    FdrWifiUploadFinalizeJob.perform_now(upload)
+    assert_equal "complete", upload.reload.status
+    assert upload.flight_import.source_files.attached?
+  end
+
+  test "a missing verification job is rescheduled on manifest polling" do
+    upload = @recorder.fdr_wifi_uploads.create!(@manifest)
+    upload.append_chunk!(offset: 0, bytes: @binary)
+    upload.update!(status: "verifying", updated_at: 6.minutes.ago)
+    body = @manifest.to_json
+    assert_enqueued_jobs 1, only: FdrWifiUploadFinalizeJob do
+      post api_v1_fdr_wifi_uploads_path, params: body, headers: signed_headers(body, "create", content_type: "application/json")
+    end
+    assert_equal "verifying", response.headers.fetch("X-FDR-Upload-Status")
+  end
+
+  test "an enqueue error cannot strand an upload in verifying" do
+    upload = @recorder.fdr_wifi_uploads.create!(@manifest)
+    upload.append_chunk!(offset: 0, bytes: @binary)
+    replace_method(FdrWifiUploadFinalizeJob, :perform_later, ->(*) { false }) do
+      assert_raises(ActiveJob::EnqueueError) { upload.begin_verification! }
+    end
+    assert_equal "receiving", upload.reload.status
+    assert File.exist?(upload.staged_path)
   end
 
   private

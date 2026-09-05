@@ -15,7 +15,9 @@ module FlySight
       assert_equal "fixture-device", session.metadata.dig("sensor_vars", "DEVICE_ID")
       assert_equal Time.utc(2024, 4, 20, 4, 20, 0), session.sensor_samples.first[:recorded_at]
       assert_in_delta 0.0, session.sensor_samples.first[:elapsed_seconds]
-      assert_in_delta 4_055.5, session.sensor_samples.second.dig(:readings, "pressure_altitude_m"), 0.1
+      assert_in_delta 4_055.5, session.sensor_samples.first(2).last.dig(:readings, "pressure_altitude_m"), 0.1
+    ensure
+      session&.close
     end
 
     test "rebases raw sensor elapsed time to the GNSS track start" do
@@ -44,6 +46,8 @@ module FlySight
       assert_equal Time.utc(2024, 4, 20, 4, 19, 50), baro_samples.first[:recorded_at]
       assert_equal 990.0, baro_samples.first.dig(:readings, "sensor_time")
       assert_in_delta 4_055.5, baro_samples.first.dig(:readings, "pressure_altitude_m"), 0.1
+    ensure
+      session&.close
     end
   end
 end

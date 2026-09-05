@@ -4,8 +4,9 @@ module FlightImports
       recorded_at elapsed_seconds lat lon altitude_m vel_n_mps vel_e_mps vel_d_mps
       horizontal_accuracy_m vertical_accuracy_m speed_accuracy_mps heading_deg course_accuracy_deg
       gps_fix satellite_count horizontal_speed_mps vertical_speed_mps glide_ratio distance_from_start_m
+      fdr_recording_id fdr_sequence fdr_timestamp_us source_blob_id
     ].freeze
-    SENSOR_ATTRIBUTES = %i[sensor_type recorded_at elapsed_seconds readings].freeze
+    SENSOR_ATTRIBUTES = %i[sensor_type recorded_at elapsed_seconds readings fdr_recording_id fdr_sequence fdr_timestamp_us source_blob_id].freeze
     INSERT_BATCH_SIZE = 1_000
 
     def initialize(flight_import:, name:, started_at:, track_points:, sensor_samples:, replace_target: false)
@@ -18,12 +19,13 @@ module FlightImports
     end
 
     def call
-      metrics = Flights::TrackMetrics.new(@track_points)
+      metrics = Flights::TrackMetrics.new(@track_points.to_a)
       points = metrics.prepared_points
-      analysis = Flights::FlightAnalysis.new(track_points: points, sensor_samples: @sensor_samples).call
+      analysis = Flights::FlightAnalysis.new(track_points: points, sensor_samples: analysis_samples).call
       bounds = analysis.bounds
       summary = metrics.summary(points, sensor_count: @sensor_samples.size, bounds:)
         .merge(analysis_summary(analysis))
+      summary[:ended_at] = @started_at + analysis.timeline_end if @started_at
       flight = persist_flight(summary.compact, bounds)
 
       insert_records(TrackPoint, flight, points, TRACK_ATTRIBUTES)
@@ -34,6 +36,29 @@ module FlightImports
 
     private
 
+    # Phase detection uses pressure only. Other sensors contribute timeline endpoints,
+    # not millions of readings that analysis cannot use.
+    def analysis_samples
+      pressure = []
+      first = last = nil
+      @sensor_samples.each do |sample|
+        if sample[:sensor_type] == "BARO"
+          readings = sample[:readings].to_h.slice("pressure", "pressure_altitude_m").transform_values do |value|
+            number = Float(value, exception: false)
+            number if number&.finite?
+          end
+          pressure << sample.slice(:sensor_type, :recorded_at, :elapsed_seconds).merge(readings:)
+        end
+        elapsed = sample[:elapsed_seconds]
+        next unless elapsed
+
+        first = sample if !first || elapsed < first[:elapsed_seconds]
+        last = sample if !last || elapsed > last[:elapsed_seconds]
+      end
+      pressure + [ first, last ].compact.reject { |sample| sample[:sensor_type] == "BARO" }
+        .map { |sample| sample.slice(:sensor_type, :recorded_at, :elapsed_seconds) }
+    end
+
     def persist_flight(summary, bounds)
       attributes = {
         name: @name,
@@ -41,7 +66,7 @@ module FlightImports
         aircraft: @flight_import.aircraft,
         status: "analysed",
         started_at: @started_at
-      }.merge(summary, bounds)
+      }.merge(summary, bounds, started_at: @started_at)
 
       if @replace_target && @flight_import.target_flight
         @flight_import.target_flight.tap do |target|

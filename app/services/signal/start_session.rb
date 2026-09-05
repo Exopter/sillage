@@ -41,7 +41,7 @@ module Signal
         @user.flights.create!(name: "Live flight", status: "live", started_at: @started_at)
       end
       flight.update!(status: "live", started_at: flight.started_at || @started_at)
-      flight.capture_configuration!
+      flight.capture_configuration!(at: nil)
       flight
     end
   end

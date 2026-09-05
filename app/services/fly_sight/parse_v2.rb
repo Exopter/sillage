@@ -2,8 +2,8 @@ module FlySight
   class ParseV2
     GPS_EPOCH = Time.utc(1980, 1, 6)
     def initialize(track_text, sensor_text, track_filename: "TRACK.CSV", sensor_filename: "SENSOR.CSV")
-      @track_text = track_text.to_s
-      @sensor_text = sensor_text.to_s
+      @track_text = track_text
+      @sensor_text = sensor_text
       @track_filename = track_filename
       @sensor_filename = sensor_filename
     end
@@ -29,42 +29,49 @@ module FlySight
         track_points: track_points,
         sensor_samples: sensor_samples
       )
+    rescue StandardError
+      track_points&.close
+      sensor_samples&.close
+      raise
     end
 
     private
 
-    def parse_document(text)
+    def parse_document(source)
       vars = {}
       columns = {}
-      units = {}
-      data_rows = []
       in_data = false
+      header_bytes = 0
+      CsvTools.lines(source).each_with_index do |line, index|
+        header_bytes += line.bytesize
+        raise Error, "FlySight V2 metadata exceeds 64 KiB." if header_bytes > FlightImports::Limits::MAX_METADATA_BYTES
+        raise Error, "FlySight V2 header exceeds 256 lines." if index >= FlightImports::Limits::MAX_HEADER_LINES
 
-      text.each_line do |line|
         row = CsvTools.parse_line(line)
         next if row.blank?
 
-        token = row.first.to_s
-        if in_data
-          data_rows << row
-          next
-        end
-
-        case token
-        when "$VAR"
-          vars[row[1].to_s] = row.drop(2).join(",")
-        when "$COL"
-          columns[CsvTools.normalize_sensor_name(row[1])] = row.drop(2)
-        when "$UNIT"
-          units[CsvTools.normalize_sensor_name(row[1])] = row.drop(2)
+        case row.first.to_s
+        when "$VAR" then vars[row[1].to_s] = row.drop(2).join(",")
+        when "$COL" then columns[CsvTools.normalize_sensor_name(row[1])] = row.drop(2)
         when "$DATA"
           in_data = true
+          break
         end
       end
-
       raise Error, "Invalid FlySight V2 file: missing $DATA section." unless in_data
 
-      { vars: vars, columns: columns, units: units, rows: data_rows }
+      rows = Enumerator.new do |output|
+        data = false
+        CsvTools.lines(source).each do |line|
+          row = CsvTools.parse_line(line)
+          unless data
+            data = row&.first == "$DATA"
+            next
+          end
+          output << row unless row.blank?
+        end
+      end
+      { vars: vars, columns: columns, rows: rows }
     end
 
     def parse_track_points(document)
@@ -72,31 +79,37 @@ module FlySight
         raise Error, "#{@track_filename} does not contain a $COL,GNSS definition."
       end
 
-      document.fetch(:rows).filter_map do |row|
+      points = FlightImports::SampleBuffer.new
+      document.fetch(:rows).each do |row|
         next unless CsvTools.normalize_sensor_name(row.first) == "GNSS"
 
         values = columns.zip(row.drop(1)).to_h
         recorded_at = CsvTools.timestamp(values["time"])
         next unless recorded_at
 
-        {
+        points << {
           recorded_at: recorded_at,
-          lat: CsvTools.numeric(values["lat"]),
-          lon: CsvTools.numeric(values["lon"]),
-          altitude_m: CsvTools.numeric(values["hMSL"]),
-          vel_n_mps: CsvTools.numeric(values["velN"]),
-          vel_e_mps: CsvTools.numeric(values["velE"]),
-          vel_d_mps: CsvTools.numeric(values["velD"]),
-          horizontal_accuracy_m: CsvTools.numeric(values["hAcc"]),
-          vertical_accuracy_m: CsvTools.numeric(values["vAcc"]),
-          speed_accuracy_mps: CsvTools.numeric(values["sAcc"]),
+          lat: CsvTools.finite_numeric(values["lat"]),
+          lon: CsvTools.finite_numeric(values["lon"]),
+          altitude_m: CsvTools.finite_numeric(values["hMSL"]),
+          vel_n_mps: CsvTools.finite_numeric(values["velN"]),
+          vel_e_mps: CsvTools.finite_numeric(values["velE"]),
+          vel_d_mps: CsvTools.finite_numeric(values["velD"]),
+          horizontal_accuracy_m: CsvTools.finite_numeric(values["hAcc"]),
+          vertical_accuracy_m: CsvTools.finite_numeric(values["vAcc"]),
+          speed_accuracy_mps: CsvTools.finite_numeric(values["sAcc"]),
           satellite_count: CsvTools.integer(values["numSV"])
         }
       end
+      points
+    rescue StandardError
+      points&.close
+      raise
     end
 
     def parse_sensor_samples(document, first_track_time)
-      rows = document.fetch(:rows).filter_map do |row|
+      rows = FlightImports::SampleBuffer.new
+      document.fetch(:rows).each do |row|
         sensor = CsvTools.normalize_sensor_name(row.first)
         columns = document.fetch(:columns)[sensor]
         next if columns.blank?
@@ -107,7 +120,7 @@ module FlySight
         readings["sensor_time"] = elapsed_seconds if elapsed_seconds.is_a?(Numeric)
         readings["pressure_altitude_m"] = Flights::PressureAltitude.from_pascals(readings["pressure"]) if sensor == "BARO"
 
-        {
+        rows << {
           sensor_type: sensor,
           elapsed_seconds: elapsed_seconds.is_a?(Numeric) ? elapsed_seconds : nil,
           readings: readings
@@ -116,7 +129,8 @@ module FlySight
 
       sync_origin = sensor_sync_origin(rows, first_track_time)
 
-      rows.map do |sample|
+      samples = FlightImports::SampleBuffer.new
+      rows.each do |sample|
         recorded_at = if sync_origin && sample[:elapsed_seconds]
           sync_origin + sample[:elapsed_seconds]
         end
@@ -126,8 +140,14 @@ module FlySight
           sample[:elapsed_seconds]
         end
 
-        sample.merge(recorded_at: recorded_at, elapsed_seconds: elapsed_seconds)
+        samples << sample.merge(recorded_at: recorded_at, elapsed_seconds: elapsed_seconds)
       end
+      samples
+    rescue StandardError
+      samples&.close
+      raise
+    ensure
+      rows&.close
     end
 
     def sensor_sync_origin(rows, first_track_time)

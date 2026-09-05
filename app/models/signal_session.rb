@@ -24,9 +24,16 @@ class SignalSession < ApplicationRecord
   end
 
   def complete!(ended_at: Time.current)
-    transaction do
+    with_lock do
+      return if status == "completed"
+
       update!(status: "completed", ended_at:)
-      flight.update!(status: "processing", ended_at: flight.ended_at || ended_at)
+      flight.with_lock do
+        active_sessions = flight.signal_sessions.where(status: %w[live syncing]).exists?
+        if flight.live? && !active_sessions
+          flight.update!(status: "waiting_for_recording", ended_at: flight.ended_at || ended_at)
+        end
+      end
     end
   end
 

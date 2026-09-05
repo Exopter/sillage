@@ -20,6 +20,13 @@ secrets are not imported into the application process.
 
 Open `http://localhost:3000`.
 
+Cesium's pinned npm distribution is served from `/vendor/cesium/<version>/`.
+`bin/setup` and the Docker build copy its browser assets and license locally;
+run `npm ci && npm run assets:prepare` to refresh them after a dependency update.
+The 3D flight trajectory works without an ion token. Terrain, imagery, and
+buildings load independently when configured; unavailable map data leaves the
+3D viewer usable. A native 2D profile handles engine/WebGL initialization failure.
+
 ## Validation
 
 ```sh
@@ -66,3 +73,22 @@ preferred before falling back to the address at the landing point.
 `NOMINATIM_URL`, `NOMINATIM_SEARCH_URL`, `NOMINATIM_USER_AGENT`, and
 `NOMINATIM_LANGUAGE` override the safe defaults. The dedicated geocoding worker
 is single-threaded and results are cached before being persisted on the flight.
+
+## Recording imports
+
+Imports use the dedicated `imports` queue. USB synchronization first stores a
+SHA-256-verified source and a queued receipt; the browser polls that receipt and
+acknowledges the recorder only after successful validation/import. Wi-Fi
+finalization validates and imports on the same queue. Failed imports retain their
+source attachments and roll back partial flight data.
+
+There are no application quotas on recording size, sample count, source file
+count, or expanded ZIP volume. Format and integrity checks remain: CRC/SHA-256,
+manifest sizes, CSV lines of at most 16 KiB, V2 metadata of at most 256 lines/64 KiB,
+and ZIP paths of at most 1 KiB. ZIP64 and multi-volume archives are unsupported.
+
+Decoding uses 64 KiB reads, disk-backed temporary JSON sample buffers, a paged
+sparse sequence bitmap, and 1,000-row inserts. GPS and pressure analysis still
+loads the relevant samples into memory; other sensor streams contribute only
+their timeline endpoints. Temporary files are removed on success and failure.
+Memory and temporary storage usage grow with the recording and worker concurrency.

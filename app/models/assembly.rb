@@ -37,17 +37,20 @@ class Assembly < ApplicationRecord
   scope :roots, -> { where(parent_id: nil) }
   scope :ordered, -> { order(:internal_number) }
 
-  def snapshot
+  def snapshot(at: nil)
+    recorded_parts = at ? Part.where(id: part_installations.covering(at).select(:part_id)) : parts
     {
       "internal_number" => internal_number,
       "name" => name,
       "serial_number" => serial_number,
       "serviceability_state" => serviceability_state,
       "hardware_definition" => hardware_definition&.snapshot,
-      "parts" => parts.includes(:function).ordered.map do |part|
+      "parts" => recorded_parts.includes(:function, :embedded_controller).ordered.map do |part|
         part.snapshot
       end,
-      "assemblies" => children.ordered.map(&:snapshot)
+      "assemblies" => at ? [] : children.ordered.map(&:snapshot),
+      # Parent assignments and mutable asset metadata have no temporal history.
+      "history_limitations" => at ? [ "Subassembly membership is not recorded historically.", "Asset metadata reflects the time of capture." ] : []
     }
   end
 

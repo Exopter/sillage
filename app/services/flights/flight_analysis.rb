@@ -51,9 +51,16 @@ module Flights
 
     def initialize(track_points:, sensor_samples:, origin_time: nil)
       @track_points = normalize_track_points(track_points)
-      @origin_time = origin_time || @track_points.first&.fetch(:recorded_at, nil)
+      first = @track_points.first
+      @origin_time = origin_time || (first&.fetch(:recorded_at, nil) && first[:recorded_at] - first[:elapsed_seconds].to_f)
       @sensor_samples = normalize_sensor_samples(sensor_samples)
       @pressure_points = pressure_altitude_points
+      last_fast = nil
+      @previous_fast_pressure = @pressure_points.map.with_index do |point, index|
+        previous = last_fast
+        last_fast = index if point[:vertical_speed_mps].to_f >= OPENING_FAST_DESCENT_MPS
+        previous
+      end
     end
 
     def call
@@ -137,18 +144,21 @@ module Flights
       peak_index = @pressure_points.each_with_index.max_by { |point, _index| point[:altitude_m].to_f }&.last || 0
       search_start = [ peak_index - 12, 0 ].max
 
-      @pressure_points.each_with_index.drop(search_start).each do |_point, index|
-        window = time_window(index, EXIT_LOOKAHEAD_SECONDS)
-        next if window.size < 2
+      (search_start...@pressure_points.size).each do |index|
+        last_index = window_end(index, EXIT_LOOKAHEAD_SECONDS)
+        next unless last_index > index
 
-        duration = window.last[:elapsed_seconds] - window.first[:elapsed_seconds]
+        first = @pressure_points[index]
+        last = @pressure_points[last_index]
+        duration = last[:elapsed_seconds] - first[:elapsed_seconds]
         next unless duration&.positive?
 
-        altitude_loss = window.first[:altitude_m].to_f - window.last[:altitude_m].to_f
+        altitude_loss = first[:altitude_m].to_f - last[:altitude_m].to_f
         next unless altitude_loss >= EXIT_MIN_ALTITUDE_LOSS_M
         next unless (altitude_loss / duration) >= EXIT_MIN_AVG_DESCENT_MPS
 
-        return window.find { |point| point[:vertical_speed_mps].to_f >= 2.5 } || window.first
+        onset = (index..last_index).find { |i| @pressure_points[i][:vertical_speed_mps].to_f >= 2.5 }
+        return @pressure_points[onset || index]
       end
 
       nil
@@ -188,20 +198,19 @@ module Flights
       point = @pressure_points[index]
       return false unless point
 
-      @pressure_points[0...index].to_a.reverse_each.take_while do |previous|
-        previous[:elapsed_seconds].to_f >= point[:elapsed_seconds].to_f - OPENING_FAST_LOOKBEHIND_SECONDS
-      end.any? { |previous| previous[:vertical_speed_mps].to_f >= OPENING_FAST_DESCENT_MPS }
+      previous = @previous_fast_pressure[index]
+      previous && @pressure_points[previous][:elapsed_seconds].to_f >= point[:elapsed_seconds].to_f - OPENING_FAST_LOOKBEHIND_SECONDS
     end
 
     def sensor_opening_slowdown?(index)
-      window = time_window(index, OPENING_LOOKAHEAD_SECONDS)
-      return false if window.size < 2
+      last_index = window_end(index, OPENING_LOOKAHEAD_SECONDS)
+      return false unless last_index > index
 
-      duration = window.last[:elapsed_seconds] - window.first[:elapsed_seconds]
+      first, last = @pressure_points.values_at(index, last_index)
+      duration = last[:elapsed_seconds] - first[:elapsed_seconds]
       return false unless duration&.positive?
 
-      altitude_loss = window.first[:altitude_m].to_f - window.last[:altitude_m].to_f
-      (altitude_loss / duration) <= OPENING_MAX_AVG_DESCENT_MPS
+      (first[:altitude_m].to_f - last[:altitude_m].to_f) / duration <= OPENING_MAX_AVG_DESCENT_MPS
     end
 
     def fallback_opening(exit_point)
@@ -220,13 +229,9 @@ module Flights
       active_points.last
     end
 
-    def time_window(index, seconds)
-      start = @pressure_points[index]
-      return [] unless start
-
-      @pressure_points[index..].take_while do |point|
-        point[:elapsed_seconds].to_f <= start[:elapsed_seconds].to_f + seconds
-      end
+    def window_end(index, seconds)
+      deadline = @pressure_points[index][:elapsed_seconds].to_f + seconds
+      ((index...@pressure_points.size).bsearch { |i| @pressure_points[i][:elapsed_seconds].to_f > deadline } || @pressure_points.size) - 1
     end
 
     def normalize_track_points(records)

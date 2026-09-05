@@ -21,12 +21,16 @@ module Api
         batch = Signal::IngestBatch.new(
           signal_session: @signal_session,
           sequence: params.require(:sequence),
-          payload: batch_params.to_h
+          payload: batch_params.to_h.merge("samples" => params[:samples]&.as_json)
         ).call
         render json: {
           sequence: batch.sequence,
           acknowledged_sequence: @signal_session.reload.last_acknowledged_sequence
         }
+      rescue Signal::IngestBatch::InvalidBatch => error
+        render json: { error: error.message }, status: :unprocessable_entity
+      rescue Signal::IngestBatch::SessionCompleted => error
+        render json: { error: error.message }, status: :conflict
       end
 
       def events
@@ -74,33 +78,7 @@ module Api
           :mavlink_system_id,
           :mavlink_component_id,
           :telemetry_system_id,
-          position: %i[latitude longitude],
-          samples: [
-            :kind,
-            :sensor_type,
-            :recorded_at,
-            :elapsed_seconds,
-            :latitude,
-            :longitude,
-            :lat,
-            :lon,
-            :altitude_m,
-            :vel_n_mps,
-            :vel_e_mps,
-            :vel_d_mps,
-            :horizontal_accuracy_m,
-            :vertical_accuracy_m,
-            :speed_accuracy_mps,
-            :heading_deg,
-            :course_accuracy_deg,
-            :gps_fix,
-            :satellite_count,
-            :horizontal_speed_mps,
-            :vertical_speed_mps,
-            :glide_ratio,
-            :distance_from_start_m,
-            { readings: {} }
-          ]
+          position: %i[latitude longitude]
         )
       end
 

@@ -35,9 +35,13 @@
   end
 
   if monitoring_enabled
-    required_monitoring = %w[
-      MONITORING_PLAN_URL HEALTHCHECKS_READY_PING_URL HEALTHCHECKS_POSTGRESQL_ARCHIVE_PING_URL
-    ]
+    required_monitoring = %w[MONITORING_PLAN_URL HEALTHCHECKS_READY_PING_URL]
+    if backups_enabled
+      required_monitoring += %w[
+        HEALTHCHECKS_POSTGRESQL_ARCHIVE_PING_URL HEALTHCHECKS_POSTGRESQL_BACKUP_PING_URL
+        HEALTHCHECKS_STORAGE_BACKUP_PING_URL
+      ]
+    end
     missing_monitoring = required_monitoring.select { |key| ENV[key].to_s.strip.empty? }
     raise "MONITORING_ENABLED=true requires #{missing_monitoring.join(', ')}" if missing_monitoring.any?
   end
@@ -46,7 +50,6 @@
     required_backup = %w[
       BACKUP_PLAN_URL R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BACKUP_BUCKET
       PGBACKREST_REPOSITORY_PASSWORD RESTIC_REPOSITORY_PASSWORD
-      HEALTHCHECKS_POSTGRESQL_BACKUP_PING_URL HEALTHCHECKS_STORAGE_BACKUP_PING_URL
     ]
     missing_backup = required_backup.select { |key| ENV[key].to_s.strip.empty? }
     raise "BACKUPS_ENABLED=true requires #{missing_backup.join(', ')}" if missing_backup.any?
@@ -133,28 +136,36 @@ accessories:
     port: "127.0.0.1:5432:5432"
     cmd: >-
       postgres
-      -c archive_mode=on
+      -c archive_mode=<%= backups_enabled ? "on" : "off" %>
+<% if backups_enabled %>
       -c archive_timeout=15min
       -c "archive_command=pgbackrest --stanza=sillage archive-push %p"
+<% end %>
     env:
       clear:
         POSTGRES_DB: sillage_production
         POSTGRES_USER: sillage
+<% if backups_enabled %>
         PGBACKREST_REPO1_TYPE: s3
         PGBACKREST_REPO1_S3_BUCKET: "<%= ENV.fetch("R2_BACKUP_BUCKET", "") %>"
         PGBACKREST_REPO1_S3_ENDPOINT: "<%= ENV.fetch("R2_ACCOUNT_ID", "") %>.r2.cloudflarestorage.com"
         PGBACKREST_REPO1_S3_REGION: auto
         PGBACKREST_REPO1_S3_URI_STYLE: path
+<% end %>
       secret:
         - POSTGRES_PASSWORD
+<% if backups_enabled %>
         - PGBACKREST_REPO1_S3_KEY
         - PGBACKREST_REPO1_S3_KEY_SECRET
         - PGBACKREST_REPO1_CIPHER_PASS
     files:
       - ops/postgresql/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro
+<% end %>
     volumes:
       - "sillage_postgres_data:/var/lib/postgresql/data"
+<% if backups_enabled %>
       - "sillage_pgbackrest_spool:/var/spool/pgbackrest"
+<% end %>
 
 # Bridge fingerprinted assets between versions during deploys.
 asset_path: /rails/public/assets
