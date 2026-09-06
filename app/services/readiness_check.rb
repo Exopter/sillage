@@ -1,5 +1,5 @@
 class ReadinessCheck
-  REQUIRED_QUEUES = %w[imports geocoding default].freeze
+  REQUIRED_QUEUES = %w[imports geocoding default solid_queue_recurring].freeze
   REQUIRED_QUEUE_PROCESS_KINDS = {
     worker: ->(kind) { kind == "Worker" },
     dispatcher: ->(kind) { kind == "Dispatcher" },

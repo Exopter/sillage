@@ -42,12 +42,28 @@ class ReadinessCheckTest < ActiveSupport::TestCase
     processes = [
       QueueProcess.new(kind: "Supervisor(fork)", last_heartbeat_at: now),
       QueueProcess.new(kind: "Dispatcher", last_heartbeat_at: now),
-      QueueProcess.new(kind: "Worker", last_heartbeat_at: now, metadata: { "queues" => "default,geocoding" }),
+      QueueProcess.new(kind: "Worker", last_heartbeat_at: now, metadata: { "queues" => "default,geocoding,solid_queue_recurring" }),
       QueueProcess.new(kind: "Worker", last_heartbeat_at: now - 1.hour, metadata: { "queues" => "imports" })
     ]
     assert_equal({ status: "error", error: "MissingQueueWorkers", missing: [ "imports" ] }, ReadinessCheck.call(queue_processes: processes, now:).dig(:checks, :queue_processes))
     processes.last.last_heartbeat_at = now
     assert_equal "ok", ReadinessCheck.call(queue_processes: processes, now:).fetch(:status)
+  end
+
+  test "production workers consume recurring maintenance and readiness detects its loss" do
+    config = YAML.safe_load(ERB.new(Rails.root.join("config/queue.yml").read).result, aliases: true).fetch("production")
+    now = Time.current
+    processes = config.fetch("workers").map do |worker|
+      QueueProcess.new(kind: "Worker", last_heartbeat_at: now, metadata: { "queues" => Array(worker.fetch("queues")).join(",") })
+    end
+    processes += [ QueueProcess.new(kind: "Supervisor(fork)", last_heartbeat_at: now), QueueProcess.new(kind: "Dispatcher", last_heartbeat_at: now) ]
+    assert_equal "ok", ReadinessCheck.call(queue_processes: processes, now:).fetch(:status)
+
+    queue = SolidQueue::RecurringJob.new.queue_name
+    processes.select { |process| process.kind == "Worker" }.each do |worker|
+      worker.metadata["queues"] = worker.metadata.fetch("queues").split(",").reject { |name| name == queue }.join(",")
+    end
+    assert_equal({ status: "error", error: "MissingQueueWorkers", missing: [ queue ] }, ReadinessCheck.call(queue_processes: processes, now:).dig(:checks, :queue_processes))
   end
 
   test "reports a sanitized database failure" do
