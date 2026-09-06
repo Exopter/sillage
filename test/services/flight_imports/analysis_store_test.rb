@@ -46,4 +46,12 @@ class AnalysisStoreTest < ActiveSupport::TestCase
     end
     assert_raises(IOError) { sequence.each.to_a }
   end
+  test "external merging propagates unreadable runs instead of omitting their samples" do
+    FlightImports::AnalysisStore.open do |store|
+      left = store.sequence([ 1 ])
+      right = store.sequence([ 2 ])
+      left.define_singleton_method(:each) { Enumerator.new { raise IOError, "temporary file is unreadable" } }
+      assert_raises(IOError) { left.send(:merge, left, right, ->(value) { value }) }
+    end
+  end
 end

@@ -149,7 +149,7 @@ module FlightImports
       def merge(left, right, key)
         output = store.sequence
         streams = [ left.each, right.each ]
-        heads = streams.map { |stream| stream.next rescue nil }
+        heads = streams.map(&:next)
         while heads.any?
           side = heads[0].nil? ? 1 : heads[1].nil? ? 0 : ((key.call(heads[0]) <=> key.call(heads[1])) <= 0 ? 0 : 1)
           output << heads[side]
