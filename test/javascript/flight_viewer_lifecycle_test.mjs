@@ -37,8 +37,10 @@ globalThis.viewerResources = {
   ...resources,
   withTimeout: (promise, label) => resources.withTimeout(promise, label, label === "Cesium tiles" ? 30 : 15000)
 }
+const geometryURL = new URL("../../app/javascript/lib/flight_geometry.js", import.meta.url).href
 const pluginsURL = new URL("../../app/javascript/lib/flight_chart_plugins.js", import.meta.url).href
-const { default: Viewer } = await import(`data:text/javascript;base64,${Buffer.from(`import { OS_BOUNDS_PLUGIN, OS_PLAYBACK_PLUGIN, tooltipVerticalAlign } from "${pluginsURL}";\nconst { withTimeout, loadCesiumLibrary } = globalThis.viewerResources;\n${controllerSource}`).toString("base64")}`)
+const { default: Viewer } = await import(`data:text/javascript;base64,${Buffer.from(`import { isFiniteNumber, normalizeFlightPoints, normalizeSensorSamples } from "${geometryURL}";
+import { OS_BOUNDS_PLUGIN, OS_PLAYBACK_PLUGIN, tooltipVerticalAlign } from "${pluginsURL}";\nconst { withTimeout, loadCesiumLibrary } = globalThis.viewerResources;\n${controllerSource}`).toString("base64")}`)
 const tick = () => new Promise((resolve) => setImmediate(resolve))
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject } }
 function viewer() {
@@ -69,7 +71,7 @@ await newConnect
 assert.equal(charts, 1)
 let observerDisconnected = false, handlerRemoved = false
 screen.resizeObserver = { disconnect() { observerDisconnected = true } }
-screen.boundSceneHandlers = [["pointerup", () => {}, { removeEventListener() { handlerRemoved = true } }]]
+screen.boundSceneHandlers = [() => { handlerRemoved = true }]
 screen.disconnect()
 assert.ok(observerDisconnected && handlerRemoved, "disconnect releases the observer and native handlers")
 
@@ -155,7 +157,7 @@ function cesiumScreen() {
   Object.assign(screen, {
     connectionGeneration: Symbol(), cesiumTokenValue: "test", points: offline.points, sceneTarget: sceneTarget(),
     createCesiumIonTileset() { state.requests++; return tiles.promise }, refineCesiumSurface: async () => {},
-    boundSceneHandlers: [["wheel", () => {}, { removeEventListener() { state.handlerRemoved = true } }]]
+    boundSceneHandlers: [() => { state.handlerRemoved = true }]
   })
   for (const name of ["startCesiumDiagnostics", "recordCesiumDiagnostic", "configureCesiumDaylight", "configureCesiumCameraController", "addCesiumTrajectory", "setupCesiumMouseControls", "flyCesiumCamera", "instrumentCesiumTileset", "cesiumTilesetSnapshot"]) screen[name] = () => {}
   let geography
@@ -226,6 +228,6 @@ broken.imagery.reject(new Error("imagery unavailable"))
 await broken.settled()
 assert.equal(broken.state.destroyed, false, "external failures must never destroy the base 3D scene")
 assert.equal(broken.screen.cesiumViewer, broken.instance)
-assert.equal(broken.screen.resizeObserver, undefined, "2D is reserved for engine failures")
+assert.equal(broken.screen.resizeObserver, null, "2D is reserved for engine failures")
 broken.screen.disconnect()
 console.log("Viewer local assets, independent layers, reconnect and resource cleanup tests passed")

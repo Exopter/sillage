@@ -16,7 +16,8 @@ module Signal
         raise InvalidBatch, "sequence must be a non-negative 32-bit integer"
       end
       @sequence = sequence.to_i
-      @payload = payload.to_h.deep_stringify_keys
+      raise InvalidBatch, "payload must be an object" unless payload.is_a?(Hash)
+      @payload = payload.deep_stringify_keys
     end
 
     def call
@@ -114,7 +115,7 @@ module Signal
     def identify_flight_source
       Signal::IdentifySource.new(
         signal_session: @signal_session,
-        system_id: @payload["mavlink_system_id"] || @payload["telemetry_system_id"],
+        system_id: @payload["mavlink_system_id"],
         component_id: @payload["mavlink_component_id"]
       ).call
     end
@@ -132,7 +133,7 @@ module Signal
     end
 
     def validate_samples!
-      raw = @payload.fetch("samples", [])
+      raw = @payload["samples"]
       raise InvalidBatch, "samples must be an array" unless raw.is_a?(Array)
 
       @samples = raw.each_with_index.map do |sample, index|

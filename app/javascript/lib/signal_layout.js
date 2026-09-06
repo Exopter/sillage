@@ -38,3 +38,23 @@ export function signalLayoutPreset(width, height, widgets, largeId) {
   })
   return rectangles
 }
+
+/** @param {string|null} json */
+export function parseSignalLayout(json) {
+  try {
+    /** @type {unknown} */
+    const value = JSON.parse(json || "null")
+    if (!value || typeof value !== "object") return null
+    /** @type {Record<string,{left:number,top:number,width:number,height:number,mode:string}>} */
+    const widgets = {}
+    /** @type {{width:number,height:number}|null} */
+    let board = null
+    for (const [key, record] of Object.entries(value)) {
+      if (!record || typeof record !== "object" || !Number.isFinite(record.width) || !Number.isFinite(record.height)) continue
+      if (key === "__board") { board = {width: record.width, height: record.height}; continue }
+      if (!Number.isFinite(record.left) || !Number.isFinite(record.top) || !["large", "mini", "hidden"].includes(record.mode)) continue
+      widgets[key] = {left:record.left, top:record.top, width:record.width, height:record.height, mode:record.mode}
+    }
+    return Object.keys(widgets).length ? {board, widgets} : null
+  } catch { return null }
+}

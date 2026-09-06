@@ -58,6 +58,13 @@ class ExoFdr::DecoderTest < ActiveSupport::TestCase
           File.join(directory, file.fetch("name")).tap { |path| File.binwrite(path, [ file.fetch("hex") ].pack("H*")) }
         end
         stdout, stderr, status = Open3.capture3("python3", reference.to_s, "--format", "jsonl", *paths)
+        if scenario["header_error"]
+          assert_equal 1, status.exitstatus
+          assert_match(/unsupported FDR format version/, stderr)
+          error = assert_raises(ExoFdr::Error) { File.open(paths.first, "rb") { |io| ExoFdr::Decoder.new(io) } }
+          assert_match(/Unsupported ExoFDR format version/, error.message)
+          next
+        end
         assert_includes [ 0, 2 ], status.exitstatus, stderr
         summary = JSON.parse(stderr)
         seen = Hash.new { |sets, boot_id| sets[boot_id] = Set.new }

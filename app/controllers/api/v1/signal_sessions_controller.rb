@@ -11,7 +11,7 @@ module Api
           uuid: create_params[:uuid],
           started_at: parse_time(create_params[:started_at]),
           station_metadata: create_params[:station_metadata] || {},
-          mavlink_system_id: create_params[:mavlink_system_id] || create_params[:telemetry_system_id],
+          mavlink_system_id: create_params[:mavlink_system_id],
           mavlink_component_id: create_params[:mavlink_component_id]
         ).call
         render json: session_payload(signal_session), status: :created
@@ -65,7 +65,6 @@ module Api
           :flight_id,
           :mavlink_system_id,
           :mavlink_component_id,
-          :telemetry_system_id,
           :started_at,
           station_metadata: {}
         )
@@ -77,7 +76,6 @@ module Api
           :last_received_at,
           :mavlink_system_id,
           :mavlink_component_id,
-          :telemetry_system_id,
           position: %i[latitude longitude]
         )
       end

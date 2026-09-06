@@ -44,6 +44,7 @@ export const USB_PORT_RELEASE_TIMEOUT_MS = 2_000
  *   timeoutMs?: number,
  *   usbConnectionStage?: "opening" | "handshake",
  *   usbConnectionLost?: boolean,
+ *   usbSyncInterrupted?: boolean,
  *   usbConnectionTimedOut?: boolean,
  *   usbRequestTimedOut?: boolean,
  *   usbRequestType?: number
@@ -428,7 +429,8 @@ export class UsbFdrClient {
 
     try {
       return await Promise.race([exchange, timeout])
-    } catch (error) {
+    } catch (caught) {
+      const error = protocolError(caught)
       if (!this.writer || !this.frameReader) {
         if (error?.usbRequestTimedOut) throw error
         throw usbConnectionError()
@@ -460,7 +462,8 @@ export class UsbFdrClient {
         if (!expectedTypes.includes(frame.type)) throw new Error(`Unexpected EXS1 response ${frame.type}.`)
         return frame
       }
-    } catch (error) {
+    } catch (caught) {
+      const error = protocolError(caught)
       if (!this.writer || !this.frameReader || isUsbTransportError(error)) throw usbConnectionError()
       throw error
     }
@@ -1184,3 +1187,6 @@ function joinBytes(left, right) {
   result.set(right, left.length)
   return result
 }
+
+/** @param {unknown} value @returns {FdrProtocolError} */
+export function protocolError(value) { return value instanceof Error ? value : new Error(String(value)) }

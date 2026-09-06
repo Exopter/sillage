@@ -50,6 +50,8 @@ module Flights
     REPLAY_PADDING_SECONDS = 10.0
 
     def initialize(track_points:, sensor_samples:, origin_time: nil)
+      raise ArgumentError, "track_points must be an enumerable collection" unless track_points.is_a?(Enumerable)
+      raise ArgumentError, "sensor_samples must be an enumerable collection" unless sensor_samples.is_a?(Enumerable)
       @track_points = normalize_track_points(track_points)
       first = @track_points.first
       @origin_time = origin_time || (first&.fetch(:recorded_at, nil) && first[:recorded_at] - first[:elapsed_seconds].to_f)
@@ -333,7 +335,8 @@ module Flights
 
     def readings(record)
       raw = value(record, :readings) || {}
-      raw.respond_to?(:to_h) ? raw.to_h : {}
+      raise ArgumentError, "sensor readings must be an object" unless raw.is_a?(Hash)
+      raw
     end
 
     def value(record, key)
@@ -345,10 +348,10 @@ module Flights
     end
 
     def numeric(value)
-      return nil if value.nil?
+      return nil unless value.is_a?(Numeric) || value.is_a?(String)
 
-      number = value.to_f
-      number.finite? ? number : nil
+      number = Float(value, exception: false)
+      number&.finite? ? number : nil
     end
   end
 end

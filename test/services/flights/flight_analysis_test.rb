@@ -2,6 +2,26 @@ require "test_helper"
 
 module Flights
   class FlightAnalysisTest < ActiveSupport::TestCase
+    test "invalid numeric telemetry never becomes zero altitude" do
+      points = [
+        { elapsed_seconds: 0, altitude_m: "invalid" },
+        { elapsed_seconds: 1, altitude_m: "1200.5" },
+        { elapsed_seconds: 2, altitude_m: Float::INFINITY }
+      ]
+      result = FlightAnalysis.new(track_points: points, sensor_samples: []).call
+      assert_equal 1200.5, result.altitude_min
+      assert_equal 1200.5, result.altitude_max
+      assert_equal 2, result.duration_seconds
+    end
+
+    test "requires collections and object sensor readings" do
+      assert_raises(ArgumentError) { FlightAnalysis.new(track_points: nil, sensor_samples: []) }
+      assert_raises(ArgumentError) { FlightAnalysis.new(track_points: [], sensor_samples: false) }
+      assert_raises(ArgumentError) do
+        FlightAnalysis.new(track_points: [], sensor_samples: [ { sensor_type: "BARO", readings: [] } ])
+      end
+    end
+
     test "uses the first pressure sample when unordered samples repeat a timestamp" do
       started_at = Time.utc(2026, 9, 1)
       sensor_samples = baro_profile(started_at, [

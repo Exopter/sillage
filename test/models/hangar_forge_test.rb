@@ -144,8 +144,7 @@ class HangarForgeTest < ActiveSupport::TestCase
     assert_not EmbeddedController.new(device_id: "ECU-not-a-chip").valid?
 
     legacy = EmbeddedController.new(device_id: "EXOFDR-F00D01")
-    assert legacy.valid?
-    assert_equal "ECU-F00D01", legacy.device_id
+    assert_not legacy.valid?
   end
 
   test "controller activity is append-only and human-readable" do

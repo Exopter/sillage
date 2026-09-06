@@ -49,6 +49,15 @@
       ],
       "fdr_heartbeat": [
         "./app/javascript/lib/fdr_heartbeat.js"
+      ],
+      "controllers/*": [
+        "./app/javascript/controllers/*"
+      ],
+      "controllers": [
+        "./app/javascript/controllers/index.js"
+      ],
+      "fdr_api": [
+        "./app/javascript/lib/fdr_api.js"
       ]
     },
     "strict": true,
@@ -56,11 +65,10 @@
     "types": [
       "w3c-web-serial",
       "web-bluetooth"
-    ],
-    "useUnknownInCatchVariables": false
+    ]
   },
   "include": [
-    "app/javascript/lib/**/*.js",
-    "app/javascript/controllers/fdr_wifi_configuration_controller.js"
+    "app/javascript/**/*.js",
+    "app/javascript/types/**/*.d.ts"
   ]
 }

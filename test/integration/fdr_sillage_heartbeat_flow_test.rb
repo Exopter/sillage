@@ -46,15 +46,15 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
-  test "normalizes the legacy controller prefix during the firmware transition" do
+  test "rejects the retired controller prefix" do
     payload = heartbeat_payload.merge(device_id: "EXOFDR-A172E0").to_json
 
     post api_v1_fdr_sillage_heartbeat_path,
       params: payload,
       headers: heartbeat_headers(payload)
 
-    assert_response :accepted
-    assert_equal "ECU-A172E0", @recorder.signal_presence.reload.status.fetch("device_id")
+    assert_response :unauthorized
+    assert_nil @recorder.signal_presence
   end
 
   test "rejects a signature made with the BLE session domain" do

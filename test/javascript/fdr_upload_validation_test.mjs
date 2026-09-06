@@ -3,7 +3,8 @@ import { readFile } from "node:fs/promises"
 
 const source = await readFile(new URL("../../app/javascript/controllers/fdr_connectivity_controller.js", import.meta.url), "utf8")
 const method = source.slice(source.indexOf("  async uploadFile("), source.indexOf("  rememberUsbPort("))
-const { default: Controller } = await import(`data:text/javascript;base64,${Buffer.from(`export default class { ${method} }`).toString("base64")}`)
+const apiURL = new URL("../../app/javascript/lib/fdr_api.js", import.meta.url).href
+const { default: Controller } = await import(`data:text/javascript;base64,${Buffer.from(`import { importReceipt, readResponse } from "${apiURL}"; export default class { ${method} }`).toString("base64")}`)
 const controller = new Controller()
 controller.uploadUrlValue = "/api/v1/fdr-syncs"
 globalThis.document = { querySelector: () => ({ getAttribute: () => "csrf" }) }

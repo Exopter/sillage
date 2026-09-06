@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
-import { clamp, signalLayoutPreset } from "signal_layout"
+import { clamp, signalLayoutPreset, parseSignalLayout } from "signal_layout"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
 
 import { OUTBOX_STORE, META_STORE, openDatabase, putOutbox, writeOutbox, deleteOutbox, readOutbox, oldestOutbox, writeMetadata, readMetadata, transactionRequest } from "signal_outbox"
@@ -41,6 +41,68 @@ const BATCH_INTERVAL_MS = 2_000
 const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller & StimulusBindings} */ (/** @type {unknown} */ (Controller))
 
 export default class extends TypedController {
+  /** @type {{heading:number|null,airspeed:number|null,altitude:number|null,verticalSpeed:number|null,glide:number|null,roll:number,pitch:number,gps:number[]|null,radio:number|null}} */
+  telemetry = { heading: null, airspeed: null, altitude: null, verticalSpeed: null, glide: null, roll: 0, pitch: 0, gps: null, radio: null }
+  /** @type {Record<"airspeed"|"altitude"|"verticalSpeed"|"validity",number[]>} */
+  history = { airspeed: [], altitude: [], verticalSpeed: [], validity: [] }
+  /** @type {import("../types/signal").SignalSample[]} */
+  pendingSamples = []
+  /** @type {IDBDatabase|null} */
+  db = null
+  /** @type {SerialPort|null} */
+  port = null
+  /** @type {Worker|null} */
+  worker = null
+  /** @type {ReadableStreamDefaultReader<Uint8Array>|null} */
+  reader = null
+  /** @type {Date|null} */
+  connectedAt = null
+  /** @type {number|null} */
+  lastFrameAt = null
+  /** @type {string|null} */
+  mavlinkSystemId = null
+  /** @type {string|null} */
+  mavlinkComponentId = null
+  /** @type {Promise<void>|null} */
+  portOpening = null
+  /** @type {Promise<void>|null} */
+  stopSerialPromise = null
+  /** @type {(() => void)|null} */
+  releasePortLock = null
+  /** @type {(() => void)|null} */
+  unregisterUsbPageRelease = null
+  /** @type {WakeLockSentinel|null} */
+  wakeLock = null
+  /** @type {string|null} */
+  cloudError = null
+  /** @type {number|undefined} */
+  batchTimer = undefined
+  /** @type {number|undefined} */
+  resizeTimer = undefined
+  /** @type {Promise<void>} */
+  batchWrite = Promise.resolve()
+  nextSequence = 0
+  syncing = false
+  ended = false
+  ending = false
+  openingPort = false
+  layoutStorageKey = ""
+
+  boundOnline = () => { this.flushOutbox() }
+  boundOffline = () => { this.refreshCloudStatus() }
+  boundBeforeUnload = (/** @type {BeforeUnloadEvent} */ event) => this.warnBeforeUnload(event)
+  boundResize = () => this.reflowLayout()
+  boundSerialConnect = async () => { await this.stopSerialPromise; this.autoReconnect() }
+  boundSerialDisconnect = () => {
+    this.showWarning("The ground radio was disconnected. Acquisition will resume after USB reconnection.")
+    this.stopSerial()
+  }
+
+  get database() {
+    if (!this.db) throw new Error("Local storage is not ready")
+    return this.db
+  }
+
   static targets = [
     "presentation", "board", "widget", "mapCanvas", "instrumentCanvas", "chartCanvas",
     "connectButton", "radioStatus", "recorderStatus", "cloudStatus", "warning",
@@ -56,7 +118,11 @@ export default class extends TypedController {
     completeUrl: String
   }
 
+  /** @type {symbol|null} */
+  connectionGeneration = null
+
   async connect() {
+    const generation = this.connectionGeneration = Symbol("signal")
     this.telemetry = { heading: null, airspeed: null, altitude: null, verticalSpeed: null, glide: null, roll: 0, pitch: 0, gps: null, radio: null }
     this.history = { airspeed: [], altitude: [], verticalSpeed: [], validity: [] }
     this.pendingSamples = []
@@ -71,25 +137,22 @@ export default class extends TypedController {
     this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.releaseCapture())
     this.layoutStorageKey = `signal-layout:${this.sessionValue}`
     try {
-      this.db = await openDatabase()
-    } catch (error) {
+      const database = await openDatabase()
+      if (generation !== this.connectionGeneration) { database.close(); return }
+      const [nextSequence, endedAt] = await Promise.all([
+        readMetadata(database, `${this.sessionValue}:next-sequence`),
+        readMetadata(database, `${this.sessionValue}:ended-at`)
+      ])
+      if (generation !== this.connectionGeneration) { database.close(); return }
+      this.db = database
+      this.nextSequence = Number(nextSequence) || 0
+      this.ended = Boolean(endedAt)
+    } catch (caught) {
+      if (generation !== this.connectionGeneration) return
+      const error = caught instanceof Error ? caught : new Error(String(caught))
       this.connectButtonTarget.disabled = true
       this.showWarning(`Local storage unavailable: ${error.message}`)
       return
-    }
-    this.nextSequence = Number(await readMetadata(this.db, `${this.sessionValue}:next-sequence`)) || 0
-    this.ended = Boolean(await readMetadata(this.db, `${this.sessionValue}:ended-at`))
-    this.boundOnline = () => this.flushOutbox()
-    this.boundOffline = () => this.refreshCloudStatus()
-    this.boundBeforeUnload = (event) => this.warnBeforeUnload(event)
-    this.boundResize = () => this.reflowLayout()
-    this.boundSerialConnect = async () => {
-      await this.stopSerialPromise
-      this.autoReconnect()
-    }
-    this.boundSerialDisconnect = () => {
-      this.showWarning("The ground radio was disconnected. Acquisition will resume after USB reconnection.")
-      this.stopSerial()
     }
     window.addEventListener("online", this.boundOnline)
     window.addEventListener("offline", this.boundOffline)
@@ -104,10 +167,11 @@ export default class extends TypedController {
     this.drawAll()
     await this.prepareLocalStorage()
     await this.flushOutbox()
-    await this.autoReconnect()
+    if (generation === this.connectionGeneration) await this.autoReconnect()
   }
 
   disconnect() {
+    this.connectionGeneration = null
     this.unregisterUsbPageRelease?.()
     this.unregisterUsbPageRelease = null
     window.clearInterval(this.batchTimer)
@@ -136,11 +200,12 @@ export default class extends TypedController {
   }
 
   async autoReconnect() {
-    if (!navigator.serial || this.ended || this.ending) return
+    const generation = this.connectionGeneration
+    if (!navigator.serial || this.ended || this.ending || !generation) return
     const ports = await navigator.serial.getPorts()
-    const lastPort = await readMetadata(this.db, "last-authorized-port")
+    const lastPort = await readMetadata(this.database, "last-authorized-port")
     const port = ports.find((candidate) => samePort(candidate.getInfo(), lastPort)) || (ports.length === 1 ? ports[0] : null)
-    if (port) await this.acquirePort(port)
+    if (port && generation === this.connectionGeneration) await this.acquirePort(port)
   }
 
   async connectStation() {
@@ -157,17 +222,20 @@ export default class extends TypedController {
       const authorized = await navigator.serial.getPorts()
       const port = authorized.length === 1 ? authorized[0] : await navigator.serial.requestPort()
       await this.acquirePort(port)
-    } catch (error) {
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error(String(caught))
       if (error.name !== "NotFoundError") this.showWarning(`Ground radio connection failed: ${error.message}`)
     }
   }
 
+  /** @param {SerialPort} port */
   async acquirePort(port) {
-    if (this.port || this.openingPort || this.ending || this.ended) return
+    const generation = this.connectionGeneration
+    if (!generation || this.port || this.openingPort || this.ending || this.ended) return
     this.openingPort = true
     const lockName = `sillage-signal-port:${port.getInfo().usbVendorId || "serial"}:${port.getInfo().usbProductId || "port"}`
     navigator.locks.request(lockName, { ifAvailable: true }, async (lock) => {
-      if (this.ending || this.ended) {
+      if (generation !== this.connectionGeneration || this.ending || this.ended) {
         this.openingPort = false
         return
       }
@@ -176,19 +244,22 @@ export default class extends TypedController {
         this.showWarning("This ground radio is already being read by another browser tab.")
         return
       }
-      await new Promise(async (release) => {
-        this.releasePortLock = release
-        try {
-          await this.openSerial(port)
-        } catch (error) {
-          this.showWarning(`Ground radio connection failed: ${error.message}`)
-          await this.stopSerial()
-        }
-      })
+      /** @type {Promise<void>} */
+      const released = new Promise((release) => { this.releasePortLock = release })
+      try {
+        await this.openSerial(port)
+      } catch (caught) {
+        const error = caught instanceof Error ? caught : new Error(String(caught))
+        this.showWarning(`Ground radio connection failed: ${error.message}`)
+        await this.stopSerial()
+      }
+      await released
     })
   }
 
+  /** @param {SerialPort} port */
   async openSerial(port) {
+    const generation = this.connectionGeneration
     this.port = port
     this.portOpening = port.open({ baudRate: 57_600, bufferSize: 65_536 })
     try {
@@ -196,14 +267,16 @@ export default class extends TypedController {
     } finally {
       this.portOpening = null
     }
-    if (this.ending || this.ended) return
-    await writeMetadata(this.db, "last-authorized-port", port.getInfo())
+    if (generation !== this.connectionGeneration || this.ending || this.ended) return
+    await writeMetadata(this.database, "last-authorized-port", port.getInfo())
+    if (generation !== this.connectionGeneration || this.ending || this.ended) return
     this.openingPort = false
     this.connectedAt = new Date()
     this.worker = new Worker("/signal_serial_worker.js")
     this.worker.onmessage = ({ data }) => this.handleWorkerMessage(data)
     this.worker.postMessage({ type: "init-capture", filename: `${this.flightCodeValue}-${this.sessionValue}.mavcap` })
-    this.connectButtonTarget.querySelector("span:last-child").textContent = "Disconnect ground radio"
+    const label = this.connectButtonTarget.querySelector("span:last-child") || this.connectButtonTarget
+    label.textContent = "Disconnect ground radio"
     this.connectButtonTarget.setAttribute("aria-label", "Disconnect ground radio")
     this.radioStatusTarget.textContent = "Connected · waiting for MAVLink"
     this.updateGroundRadioState("connected")
@@ -220,9 +293,10 @@ export default class extends TypedController {
           if (done) break
           if (!value?.length) continue
           const bytes = value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength)
-          this.worker.postMessage({ type: "bytes", bytes, receivedAtUs: String(Date.now() * 1000) }, [bytes])
+          this.worker?.postMessage({ type: "bytes", bytes, receivedAtUs: String(Date.now() * 1000) }, [bytes])
         }
-      } catch (error) {
+      } catch (caught) {
+        const error = caught instanceof Error ? caught : new Error(String(caught))
         if (!this.ended) this.showWarning(`The ground radio was disconnected: ${error.message}`)
       } finally {
         this.reader.releaseLock()
@@ -262,18 +336,21 @@ export default class extends TypedController {
     }
     this.port = null
     this.openingPort = false
-    this.releasePortLock?.(undefined)
+    this.releasePortLock?.()
     this.releasePortLock = null
-    this.connectButtonTarget.querySelector("span:last-child").textContent = "Connect ground radio"
+    const label = this.connectButtonTarget.querySelector("span:last-child") || this.connectButtonTarget
+    label.textContent = "Connect ground radio"
     this.connectButtonTarget.setAttribute("aria-label", "Connect ground radio")
     this.radioStatusTarget.textContent = "Not connected"
     this.updateGroundRadioState("disconnected")
   }
 
+  /** @param {"connected"|"disconnected"} state */
   updateGroundRadioState(state) {
     setAircraftConnection(AircraftConnectionTransport.GROUND_RADIO, state === "connected")
   }
 
+  /** @param {import("../types/signal").CaptureMessage} message */
   handleWorkerMessage(message) {
     if (message.type === "capture-ready") {
       this.recorderStatusTarget.textContent = `Recording locally · ${formatBytes(message.bytes)}`
@@ -295,8 +372,10 @@ export default class extends TypedController {
     this.drawAll()
   }
 
+  /** @param {import("../types/signal").DecodedMessage} decoded @param {import("../types/signal").FrameMessage} frame */
   applyTelemetry(decoded, frame) {
     const recordedAt = new Date(Number(BigInt(frame.receivedAtUs) / 1000n)).toISOString()
+    /** @type {import("../types/signal").SignalSample | null} */
     let sample = null
     if (decoded.name === "gps") {
       this.telemetry.gps = [decoded.longitude, decoded.latitude]
@@ -326,13 +405,14 @@ export default class extends TypedController {
     this.renderValues()
   }
 
+  /** @param {string} recordedAt @param {string} sensorType @param {import("../types/signal").DecodedMessage} readings @returns {import("../types/signal").SignalSample} */
   sensorSample(recordedAt, sensorType, readings) {
     return { kind: "sensor", sensor_type: sensorType, recorded_at: recordedAt, readings }
   }
 
   pushHistory() {
-    const push = (key, value) => {
-      if (!Number.isFinite(value)) return
+    const push = (/** @type {"airspeed"|"altitude"|"verticalSpeed"|"validity"} */ key, /** @type {number|null} */ value) => {
+      if (value === null || !Number.isFinite(value)) return
       this.history[key].push(value)
       if (this.history[key].length > 180) this.history[key].shift()
     }
@@ -375,7 +455,7 @@ export default class extends TypedController {
       body: {
         sequence,
         first_received_at: samples[0].recorded_at,
-        last_received_at: samples.at(-1).recorded_at,
+        last_received_at: samples[samples.length - 1].recorded_at,
         mavlink_system_id: this.mavlinkSystemId,
         mavlink_component_id: this.mavlinkComponentId,
         position: this.telemetry.gps ? { longitude: this.telemetry.gps[0], latitude: this.telemetry.gps[1] } : null,
@@ -384,12 +464,13 @@ export default class extends TypedController {
       queuedAt: Date.now()
     }
     try {
-      await transactionRequest(this.db, [OUTBOX_STORE, META_STORE], "readwrite", (_store, transaction) => {
+      await transactionRequest(this.database, [OUTBOX_STORE, META_STORE], "readwrite", (_store, transaction) => {
         transaction.objectStore(META_STORE).put({ key: `${this.sessionValue}:next-sequence`, value: sequence + 1 })
         return putOutbox(transaction.objectStore(OUTBOX_STORE), batch)
       })
       this.nextSequence = sequence + 1
-    } catch (error) {
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error(String(caught))
       this.pendingSamples = samples.concat(this.pendingSamples)
       throw error
     }
@@ -400,7 +481,7 @@ export default class extends TypedController {
     const occurredAt = new Date().toISOString()
     const eventUuid = crypto.randomUUID()
     const label = `Operator marker · ${new Date().toLocaleTimeString()}`
-    await writeOutbox(this.db, { id: `${this.sessionValue}:event:${eventUuid}`, session: this.sessionValue, kind: "event", url: this.eventUrlValue, method: "POST", body: { event_uuid: eventUuid, event_type: "marker", occurred_at: occurredAt, label, metadata: {} }, queuedAt: Date.now() })
+    await writeOutbox(this.database, { id: `${this.sessionValue}:event:${eventUuid}`, session: this.sessionValue, kind: "event", url: this.eventUrlValue, method: "POST", body: { event_uuid: eventUuid, event_type: "marker", occurred_at: occurredAt, label, metadata: {} }, queuedAt: Date.now() })
     this.latestEventTarget.hidden = false
     this.latestEventTarget.textContent = label
     await this.flushOutbox()
@@ -413,14 +494,15 @@ export default class extends TypedController {
       await this.releaseCapture()
       const id = `${this.sessionValue}:complete`
       const endedAt = new Date().toISOString()
-      await transactionRequest(this.db, [OUTBOX_STORE, META_STORE], "readwrite", (_store, transaction) => {
+      await transactionRequest(this.database, [OUTBOX_STORE, META_STORE], "readwrite", (_store, transaction) => {
         transaction.objectStore(META_STORE).put({ key: `${this.sessionValue}:ended-at`, value: endedAt })
         return putOutbox(transaction.objectStore(OUTBOX_STORE), { id, session: this.sessionValue, kind: "complete", url: this.completeUrlValue, method: "PATCH", body: { ended_at: endedAt }, queuedAt: Date.now() })
       })
       this.ended = true
       await this.flushOutbox()
       this.dataStatusTarget.textContent = "Session ended locally"
-    } catch (error) {
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error(String(caught))
       this.showWarning(`The session could not be saved: ${error.message}. Keep this page open and retry ending the session.`)
     } finally {
       this.ending = false
@@ -451,7 +533,8 @@ export default class extends TypedController {
         await deleteOutbox(this.db, record.id)
       }
       }
-    } catch (error) {
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error(String(caught))
       this.cloudError = error.message
     } finally {
       this.syncing = false
@@ -479,12 +562,14 @@ export default class extends TypedController {
     try { this.wakeLock = await navigator.wakeLock.request("screen") } catch (_) { /* Non-fatal. */ }
   }
 
+  /** @param {BeforeUnloadEvent} event */
   warnBeforeUnload(event) {
     if (this.ended || (!this.port && this.pendingSamples.length === 0)) return
     event.preventDefault()
     event.returnValue = ""
   }
 
+  /** @param {string} message */
   showWarning(message) {
     this.warningTarget.hidden = false
     this.warningTarget.textContent = message
@@ -504,18 +589,21 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {MouseEvent} event */
   setMode(event) {
-    const widget = event.currentTarget.closest("[data-widget]")
-    const mode = event.currentTarget.dataset.mode
+    const widget = event.currentTarget instanceof Element ? event.currentTarget.closest("[data-widget]") : null
+    if (!(widget instanceof HTMLElement) || !(event.currentTarget instanceof HTMLElement)) return
+    const mode = event.currentTarget.dataset.mode || "mini"
     if (mode === "large") {
       this.widgetTargets.forEach((candidate) => {
         if (candidate !== widget && candidate.dataset.mode !== "hidden") candidate.dataset.mode = "mini"
       })
       widget.dataset.mode = "large"
-      this.applyPreset(widget.dataset.widget)
+      this.applyPreset(widget.dataset.widget || "map")
     } else {
       widget.dataset.mode = mode
-      const rect = this.widgetRect(widget)
+      if (!(widget instanceof HTMLElement)) return
+    const rect = this.widgetRect(widget)
       widget.style.height = `${mode === "hidden" ? 38 : Math.max(170, Math.min(320, rect.height))}px`
       widget.style.width = `${Math.max(250, Math.min(430, rect.width))}px`
       this.clampWidget(widget)
@@ -532,26 +620,28 @@ export default class extends TypedController {
     this.saveLayout()
   }
 
+  /** @param {MouseEvent} event */
   resetWidget(event) {
-    const id = event.currentTarget.closest("[data-widget]").dataset.widget
+    const widget = event.currentTarget instanceof Element ? event.currentTarget.closest("[data-widget]") : null
+    if (!(widget instanceof HTMLElement)) return
+    const id = widget.dataset.widget || "map"
     this.applyPreset(this.widgetTargets.find((widget) => widget.dataset.mode === "large")?.dataset.widget || id)
   }
 
   restoreLayout() {
     requestAnimationFrame(() => {
-      let stored = null
-      try { stored = JSON.parse(sessionStorage.getItem(this.layoutStorageKey)) } catch (_) { /* Ignore invalid session state. */ }
+      const stored = parseSignalLayout(sessionStorage.getItem(this.layoutStorageKey))
       if (stored) {
-        const board = stored.__board
+        const board = stored.board
         this.widgetTargets.forEach((widget) => {
-          const record = stored[widget.dataset.widget]
+          const record = stored.widgets[widget.dataset.widget || "map"]
           if (!record) return
           widget.dataset.mode = record.mode
           Object.assign(widget.style, { left: `${record.left}px`, top: `${record.top}px`, width: `${record.width}px`, height: `${record.height}px` })
         })
         const viewportChanged = board && (Math.abs(board.width - this.boardTarget.clientWidth) > 80 || Math.abs(board.height - this.boardTarget.clientHeight) > 80)
         const oversized = this.widgetTargets.some((widget) => {
-          const record = stored[widget.dataset.widget]
+          const record = stored.widgets[widget.dataset.widget || "map"]
           return record && (record.width > this.boardTarget.clientWidth || record.height > this.boardTarget.clientHeight)
         })
         if (viewportChanged || oversized) this.applyPreset(this.widgetTargets.find((widget) => widget.dataset.mode === "large")?.dataset.widget || "map")
@@ -570,17 +660,18 @@ export default class extends TypedController {
     }, 120)
   }
 
+  /** @param {string} largeId */
   applyPreset(largeId) {
     const width = this.boardTarget.clientWidth
     const height = this.boardTarget.clientHeight
     const rectangles = signalLayoutPreset(
       width,
       height,
-      this.widgetTargets.map((widget) => ({ id: widget.dataset.widget, mode: widget.dataset.mode })),
+      this.widgetTargets.map((widget) => ({ id: widget.dataset.widget || "map", mode: widget.dataset.mode || "mini" })),
       largeId
     )
     this.widgetTargets.forEach((widget) => {
-      const rectangle = rectangles[widget.dataset.widget]
+      const rectangle = rectangles[(widget.dataset.widget || "map")]
       Object.assign(widget.style, {
         left: `${rectangle.left}px`,
         top: `${rectangle.top}px`,
@@ -593,16 +684,18 @@ export default class extends TypedController {
     this.drawAll()
   }
 
+  /** @param {PointerEvent} event */
   startDrag(event) {
     if (event.button !== 0) return
     event.preventDefault()
-    const widget = event.currentTarget.closest("[data-widget]")
+    const widget = event.currentTarget instanceof Element ? event.currentTarget.closest("[data-widget]") : null
+    if (!(widget instanceof HTMLElement)) return
     const rect = this.widgetRect(widget)
     const boardRect = this.boardTarget.getBoundingClientRect()
     const start = { x: event.clientX, y: event.clientY, left: rect.left, top: rect.top }
     widget.classList.add("is-dragging")
     widget.style.zIndex = "12"
-    const move = (nextEvent) => {
+    const move = (/** @type {PointerEvent} */ nextEvent) => {
       const left = clamp(start.left + nextEvent.clientX - start.x, 0, boardRect.width - rect.width)
       const top = clamp(start.top + nextEvent.clientY - start.y, 0, boardRect.height - rect.height)
       widget.style.left = `${left}px`
@@ -619,11 +712,15 @@ export default class extends TypedController {
     window.addEventListener("pointerup", stop, { once: true })
   }
 
+  /** @param {KeyboardEvent} event */
   nudgeWidget(event) {
-    const direction = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key]
+    /** @type {Record<string, number[]>} */
+    const directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }
+    const direction = directions[event.key]
     if (!direction) return
     event.preventDefault()
-    const widget = event.currentTarget.closest("[data-widget]")
+    const widget = event.currentTarget instanceof Element ? event.currentTarget.closest("[data-widget]") : null
+    if (!(widget instanceof HTMLElement)) return
     const rect = this.widgetRect(widget)
     const step = event.shiftKey ? 24 : 8
     widget.style.left = `${rect.left + direction[0] * step}px`
@@ -632,12 +729,14 @@ export default class extends TypedController {
     this.saveLayout()
   }
 
+  /** @param {HTMLElement} widget */
   widgetRect(widget) {
     const board = this.boardTarget.getBoundingClientRect()
     const rect = widget.getBoundingClientRect()
     return { left: rect.left - board.left, top: rect.top - board.top, width: rect.width, height: rect.height }
   }
 
+  /** @param {HTMLElement} widget */
   clampWidget(widget) {
     const width = this.boardTarget.clientWidth
     const height = this.boardTarget.clientHeight
@@ -655,8 +754,9 @@ export default class extends TypedController {
   }
 
   saveLayout() {
+    /** @type {Record<string, {width:number,height:number,left?:number,top?:number,mode?:string}>} */
     const layout = { __board: { width: this.boardTarget.clientWidth, height: this.boardTarget.clientHeight } }
-    this.widgetTargets.forEach((widget) => { layout[widget.dataset.widget] = { mode: widget.dataset.mode, ...this.widgetRect(widget) } })
+    this.widgetTargets.forEach((widget) => { layout[(widget.dataset.widget || "map")] = { mode: widget.dataset.mode, ...this.widgetRect(widget) } })
     sessionStorage.setItem(this.layoutStorageKey, JSON.stringify(layout))
   }
 
@@ -687,7 +787,7 @@ export default class extends TypedController {
     context.setLineDash([7, 6])
     drawPolyline(context, points.slice(Math.max(0, points.length - 60)))
     context.setLineDash([])
-    const last = points.at(-1)
+    const last = points[points.length - 1]
     const heading = this.telemetry.heading || 36
     this.aircraftMarkerTarget.style.left = `${last[0]}px`
     this.aircraftMarkerTarget.style.top = `${last[1]}px`
@@ -759,7 +859,7 @@ function closeWorkerCapture(worker) {
       worker.removeEventListener("message", handleMessage)
       resolve()
     }
-    const handleMessage = ({ data }) => {
+    const handleMessage = (/** @type {MessageEvent<import("../types/signal").CaptureMessage>} */ { data }) => {
       if (data.type === "capture-closed") finish()
     }
     const timeout = window.setTimeout(() => {
@@ -771,6 +871,7 @@ function closeWorkerCapture(worker) {
   })
 }
 
+/** @param {HTMLCanvasElement} canvas */
 function prepareCanvas(canvas) {
   const width = Math.floor(canvas.clientWidth)
   const height = Math.floor(canvas.clientHeight)
@@ -779,10 +880,11 @@ function prepareCanvas(canvas) {
   canvas.width = width * ratio
   canvas.height = height * ratio
   const context = canvas.getContext("2d")
-  context.scale(ratio, ratio)
+  context?.scale(ratio, ratio)
   return { context, width, height }
 }
 
+/** @param {CanvasRenderingContext2D} context @param {number[][]} points */
 function drawPolyline(context, points) {
   if (!points.length) return
   context.beginPath()
@@ -790,6 +892,7 @@ function drawPolyline(context, points) {
   context.stroke()
 }
 
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} centerY @param {string} label @param {number|null} value @param {string} unit @param {boolean} left */
 function drawTape(ctx, x, centerY, label, value, unit, left) {
   ctx.textAlign = left ? "left" : "right"
   ctx.fillStyle = "#899392"; ctx.font = "600 9px ui-monospace"; ctx.fillText(label, x, 78); ctx.fillText(unit, x, 92)
@@ -797,20 +900,26 @@ function drawTape(ctx, x, centerY, label, value, unit, left) {
     const y = centerY + index * 38
     ctx.strokeStyle = "#788281"; ctx.beginPath(); ctx.moveTo(x + (left ? 46 : -46), y); ctx.lineTo(x + (left ? 70 : -70), y); ctx.stroke()
     ctx.fillStyle = index === 0 ? "#8cff4d" : "#e6ece9"; ctx.font = index === 0 ? "600 17px ui-monospace" : "500 11px ui-monospace"
-    const base = Number.isFinite(value) ? value : 0
-    ctx.fillText(Math.round(base + index * (left ? 10 : 100)), x, y + 5)
+    const base = value !== null && Number.isFinite(value) ? value : 0
+    ctx.fillText(String(Math.round(base + index * (left ? 10 : 100))), x, y + 5)
   }
 }
 
+/** @param {number|null|undefined} value */
 function formatNumber(value, precision = 0, padding = 0) {
   if (!Number.isFinite(value)) return "---"
   const formatted = Number(value).toFixed(precision)
   return padding ? formatted.padStart(padding, "0") : formatted
 }
 
+/** @param {number} value */
 function normalizeHeading(value) { return (Number(value) + 360) % 360 }
+/** @param {SerialPortInfo} info @param {unknown} saved */
 function samePort(info, saved) {
-  if (!saved || (saved.usbVendorId == null && saved.usbProductId == null)) return false
-  return info.usbVendorId === saved.usbVendorId && info.usbProductId === saved.usbProductId
+  if (!saved || typeof saved !== "object") return false
+  const vendorId = "usbVendorId" in saved ? saved.usbVendorId : undefined
+  const productId = "usbProductId" in saved ? saved.usbProductId : undefined
+  return (vendorId != null || productId != null) && info.usbVendorId === vendorId && info.usbProductId === productId
 }
+/** @param {number} value */
 function formatBytes(value) { return value < 1024 * 1024 ? `${Math.round(value / 1024)} KB` : `${(value / 1024 / 1024).toFixed(1)} MB` }

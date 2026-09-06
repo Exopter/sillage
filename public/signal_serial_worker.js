@@ -3,33 +3,39 @@ const MAGIC_V1 = 0xfe
 const CRC_EXTRAS = new Map([[0, 50], [1, 124], [4, 237], [24, 24], [31, 246], [74, 20], [109, 185], [137, 195], [253, 83]])
 
 let buffer = new Uint8Array(0)
+/** @type {{getSize():number, write(buffer: Uint8Array, options:{at:number}):number, flush():void, close():void} | null} */
 let captureHandle = null
 let captureOffset = 0
 let errors = 0
 let ignored = 0
+/** @type {number | null} */
 let lastSequence = null
 let dropped = 0
 
-self.onmessage = async ({ data }) => {
-  if (data.type === "init-capture") {
+self.onmessage = async (/** @type {MessageEvent<unknown>} */ { data }) => {
+  if (!data || typeof data !== "object" || !("type" in data)) return
+
+  if (data.type === "init-capture" && "filename" in data && typeof data.filename === "string" && /^[A-Za-z0-9._-]+$/.test(data.filename)) {
     await openCapture(data.filename)
-  } else if (data.type === "bytes") {
+  } else if (data.type === "bytes" && "bytes" in data && data.bytes instanceof ArrayBuffer && "receivedAtUs" in data && typeof data.receivedAtUs === "string" && /^\d{1,16}$/.test(data.receivedAtUs)) {
     feed(new Uint8Array(data.bytes), data.receivedAtUs)
   } else if (data.type === "close") {
     closeCapture()
-    self.postMessage({ type: "capture-closed", bytes: captureOffset })
+    send({ type: "capture-closed", bytes: captureOffset })
   }
 }
 
+/** @param {string} filename */
 async function openCapture(filename) {
   try {
     const root = await navigator.storage.getDirectory()
     const file = await root.getFileHandle(filename, { create: true })
-    captureHandle = await file.createSyncAccessHandle()
+    const syncFile = /** @type {FileSystemFileHandle & {createSyncAccessHandle(): Promise<NonNullable<typeof captureHandle>>}} */ (file)
+    captureHandle = await syncFile.createSyncAccessHandle()
     captureOffset = captureHandle.getSize()
-    self.postMessage({ type: "capture-ready", filename, bytes: captureOffset })
+    send({ type: "capture-ready", filename, bytes: captureOffset })
   } catch (error) {
-    self.postMessage({ type: "capture-error", message: error.message })
+    send({ type: "capture-error", message: error instanceof Error ? error.message : String(error) })
   }
 }
 
@@ -40,6 +46,7 @@ function closeCapture() {
   captureHandle = null
 }
 
+/** @param {Uint8Array} chunk @param {string} receivedAtUs */
 function feed(chunk, receivedAtUs) {
   const combined = new Uint8Array(buffer.length + chunk.length)
   combined.set(buffer)
@@ -101,7 +108,7 @@ function feed(chunk, receivedAtUs) {
     const payload = raw.slice(isV2 ? 10 : 6, -2)
     const decoded = decode(messageId, payload)
     const transferableRaw = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength)
-    self.postMessage({
+    send({
       type: "frame",
       messageId,
       systemId: isV2 ? raw[5] : raw[3],
@@ -115,6 +122,7 @@ function feed(chunk, receivedAtUs) {
   }
 }
 
+/** @param {bigint} receivedAtUs @param {Uint8Array} raw */
 function appendCapture(receivedAtUs, raw) {
   if (!captureHandle) return
   const record = new Uint8Array(10 + raw.length)
@@ -127,13 +135,14 @@ function appendCapture(receivedAtUs, raw) {
   if (captureOffset % 8192 < record.length) captureHandle.flush()
 }
 
+/** @param {number} messageId @param {Uint8Array} payload @returns {import("../app/javascript/types/signal").DecodedMessage} */
 function decode(messageId, payload) {
   const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength)
-  const f32 = (offset) => view.getFloat32(offset, true)
-  const u16 = (offset) => view.getUint16(offset, true)
-  const i16 = (offset) => view.getInt16(offset, true)
-  const u32 = (offset) => view.getUint32(offset, true)
-  const i32 = (offset) => view.getInt32(offset, true)
+  const f32 = (/** @type {number} */ offset) => view.getFloat32(offset, true)
+  const u16 = (/** @type {number} */ offset) => view.getUint16(offset, true)
+  const i16 = (/** @type {number} */ offset) => view.getInt16(offset, true)
+  const u32 = (/** @type {number} */ offset) => view.getUint32(offset, true)
+  const i32 = (/** @type {number} */ offset) => view.getInt32(offset, true)
 
   if (messageId === 0 && payload.length >= 9) {
     return { name: "heartbeat", customMode: u32(0), type: payload[4], autopilot: payload[5], baseMode: payload[6], systemStatus: payload[7] }
@@ -169,18 +178,26 @@ function decode(messageId, payload) {
   return { name: "unknown" }
 }
 
+/** @param {Uint8Array} bytes @param {number} extra */
 function x25Crc(bytes, extra) {
   let crc = 0xffff
   for (const value of bytes) crc = x25Accumulate(value, crc)
   return x25Accumulate(extra, crc)
 }
 
+/** @param {number} value @param {number} crc */
 function x25Accumulate(value, crc) {
   let temporary = value ^ (crc & 0xff)
   temporary ^= (temporary << 4) & 0xff
   return ((crc >> 8) ^ (temporary << 8) ^ (temporary << 3) ^ (temporary >> 4)) & 0xffff
 }
 
+/** @param {number} value */
 function radiansToDegrees(value) { return value * 180 / Math.PI }
+/** @param {number} value */
 function normalizeDegrees(value) { return (value + 360) % 360 }
+/** @param {number} value @param {number} minimum @param {number} maximum */
 function clamp(value, minimum, maximum) { return Math.min(Math.max(value, minimum), maximum) }
+
+/** @param {import("../app/javascript/types/signal").CaptureMessage} message @param {Transferable[]} [transfer] */
+function send(message, transfer = []) { self.postMessage(message, transfer) }

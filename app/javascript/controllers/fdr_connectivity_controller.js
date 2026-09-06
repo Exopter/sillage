@@ -1,3 +1,4 @@
+import { objectPayload, readResponse, registrationPayload, importReceipt, authenticationHex, commandSequence, heartbeatPayloads } from "fdr_api"
 import { normalizeSillageHeartbeatStatus, describeWifiUpload, normalizeSillageHeartbeatDiagnostics, sillageHeartbeatIdentity, formatSeenAt } from "fdr_heartbeat"
 import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
@@ -18,6 +19,7 @@ import {
   formatUsbErrorDetails,
   parseBleDeviceInfo,
   parseBleDiagnostics,
+  protocolError,
   parseBleStatus
 } from "fdr_sync_protocol"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
@@ -26,6 +28,7 @@ const USB_PORT_STORAGE_KEY = "sillage:fdr-usb-port"
 const BLE_DEVICE_STORAGE_KEY = "sillage:fdr-ble-device"
 const USB_TRANSFER_RECOVERY_ATTEMPTS = 3
 const USB_TRANSFER_RECOVERY_DELAY_MS = 500
+/** @type {Set<number>} */
 const USB_TRANSFER_REQUEST_TYPES = new Set([
   UsbMessage.NEXT_FILE,
   UsbMessage.READ_CHUNK,
@@ -110,6 +113,78 @@ const ConnectionStatus = Object.freeze({
 const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller & StimulusBindings} */ (/** @type {unknown} */ (Controller))
 
 export default class extends TypedController {
+  /** @type {UsbFdrClient|null} */
+  usbClient = null
+  /** @type {symbol|null} */
+  usbSession = null
+  /** @type {SerialPort|null} */
+  usbPort = null
+  /** @type {Awaited<ReturnType<UsbFdrClient["connect"]>>|null} */
+  usbIdentity = null
+  /** @type {ReturnType<typeof parseBleDeviceInfo>|null} */
+  bleIdentity = null
+  /** @type {ReturnType<typeof sillageHeartbeatIdentity>|null} */
+  wifiIdentity = null
+  /** @type {ReturnType<typeof sillageHeartbeatIdentity>[]} */
+  wifiIdentities = []
+  /** @type {import("../types/recorder").Identity|null} */
+  registrationIdentity = null
+  /** @type {string|null} */
+  registrationLookupDeviceId = null
+  /** @type {import("../types/recorder").Recorder|null} */
+  registeredRecorder = null
+  /** @type {import("../types/recorder").Aircraft|null} */
+  registeredAircraft = null
+  /** @type {number|undefined} */
+  usbPollTimer = undefined
+  /** @type {number|undefined} */
+  wifiPollTimer = undefined
+  /** @type {string|null} */
+  usbSynchronization = null
+  /** @type {import("../types/recorder").Issue|null} */
+  usbRecorderError = null
+  /** @type {AbortController|null} */
+  usbUploadController = null
+  /** @type {string|null} */
+  recordingActionError = null
+  /** @type {boolean|null} */
+  recordingRequestedEnabled = null
+  /** @type {boolean|null} */
+  recordingEffectiveEnabled = null
+  /** @type {number|null} */
+  recordingPendingSequence = null
+  /** @type {boolean|null} */
+  recordingPendingEnabled = null
+  /** @type {BluetoothDevice|null} */
+  bleDevice = null
+  /** @type {BluetoothRemoteGATTServer|null} */
+  bleServer = null
+  /** @type {Partial<Record<"debug"|"status"|"diagnostics"|"recording",BluetoothRemoteGATTCharacteristic|null>>} */
+  bleCharacteristics = {}
+  /** @type {(()=>void)|null} */
+  unregisterUsbPageRelease = null
+  /** @type {{href:string,label:string}} */
+  defaultWifiState = {href:"",label:""}
+  /** @type {import("../types/recorder").Facts|null} */
+  usbFacts = null
+  /** @type {import("../types/recorder").Facts|null} */
+  bleFacts = null
+  /** @type {import("../types/recorder").Facts|null} */
+  wifiFacts = null
+  initialized = false
+  usbBusy = false
+  usbAuthenticated = false
+  usbAuthenticationConfigured = false
+  usbSyncActive = false
+  usbSyncInterrupted = false
+  usbEraseActive = false
+  recordingBusy = false
+  bleAuthenticated = false
+  wifiRecordingControlSupported = false
+  registrationSubmitting = false
+  registrationState = "idle"
+  registrationRequestToken = 0
+
   static values = {
     uploadUrl: String,
     registrationUrl: String,
@@ -141,7 +216,7 @@ export default class extends TypedController {
     this.usbAuthenticated = false
     this.usbAuthenticationConfigured = false
     this.usbPort = null
-    this.usbPollTimer = null
+    this.usbPollTimer = undefined
     this.usbIdentity = null
     this.usbFacts = null
     this.usbSynchronization = null
@@ -165,7 +240,7 @@ export default class extends TypedController {
     this.wifiIdentity = null
     this.wifiIdentities = []
     this.wifiFacts = null
-    this.wifiPollTimer = null
+    this.wifiPollTimer = undefined
     this.wifiRecordingControlSupported = false
     this.registrationIdentity = null
     this.registrationLookupDeviceId = null
@@ -176,7 +251,7 @@ export default class extends TypedController {
     this.registeredAircraft = null
     this.defaultWifiState = {
       href: this.wifiLinkTarget.href,
-      label: this.wifiLinkLabelTarget.textContent
+      label: this.wifiLinkLabelTarget.textContent || ""
     }
     this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.disconnectUsb())
     this.handleSerialConnect = this.handleSerialConnect.bind(this)
@@ -218,7 +293,8 @@ export default class extends TypedController {
       const port = await navigator.serial.requestPort()
       this.rememberUsbPort(port)
       await this.synchronizeUsb(port)
-    } catch (error) {
+    } catch (caught) {
+      const error = protocolError(caught)
       if (error.name !== "NotFoundError") this.showUsbConnectionError(error)
     }
   }
@@ -231,7 +307,8 @@ export default class extends TypedController {
       })
       window.localStorage.setItem(BLE_DEVICE_STORAGE_KEY, device.id)
       await this.openBleDevice(device)
-    } catch (error) {
+    } catch (caught) {
+      const error = protocolError(caught)
       if (error.name !== "NotFoundError") this.showBleConnectionError(error.message)
     }
   }
@@ -242,8 +319,9 @@ export default class extends TypedController {
     try {
       this.debugTarget.textContent = this.usbClient
         ? await this.usbClient.debug()
-        : new TextDecoder().decode(await characteristic.readValue())
-    } catch (error) {
+        : characteristic ? new TextDecoder().decode(await characteristic.readValue()) : ""
+    } catch (caught) {
+      const error = protocolError(caught)
       this.showDiagnosticsError(error.message)
     }
   }
@@ -256,22 +334,26 @@ export default class extends TypedController {
       const ports = await navigator.serial.getPorts()
       const port = ports.find((candidate) => samePort(candidate.getInfo(), saved))
       if (port) await this.synchronizeUsb(port)
-    } catch (error) {
+    } catch (caught) {
+      const error = protocolError(caught)
       this.showUsbConnectionError(error)
     }
   }
 
+  /** @param {Event & {port?:SerialPort}} event */
   async handleSerialConnect(event) {
     const saved = JSON.parse(window.localStorage.getItem(USB_PORT_STORAGE_KEY) || "null")
     const port = event.port || event.target
-    if (saved && port?.getInfo && samePort(port.getInfo(), saved)) await this.synchronizeUsb(port)
+    if (saved && port && "getInfo" in port && typeof port.getInfo === "function" && samePort(port.getInfo(), saved)) await this.synchronizeUsb(/** @type {SerialPort} */ (port))
   }
 
+  /** @param {Event & {port?:SerialPort}} event */
   handleSerialDisconnect(event) {
     const port = event.port || event.target
     if (port === this.usbPort) void this.disconnectUsb()
   }
 
+  /** @param {SerialPort} port @param {{skipFileSynchronization?:boolean,transferRecoveryAttempt?:number}} [options] */
   async synchronizeUsb(port, {
     skipFileSynchronization = false,
     transferRecoveryAttempt = 0
@@ -307,9 +389,10 @@ export default class extends TypedController {
     try {
       const device = await this.connectUsbClient(port, session, client)
       if (!device) return
+      if (!this.usbClient) return
       client = this.usbClient
-      if (!client) return
       if (!this.usbSessionActive(session, client)) return
+      /** @type {{message:string,state:string,label:string}|null} */
       let authenticationNotice = null
       const challenge = await client.usbAuthenticationChallenge()
       this.usbAuthenticationConfigured = challenge.configured
@@ -324,7 +407,8 @@ export default class extends TypedController {
           const proof = await this.requestAuthenticationProof(device.deviceId, challenge.nonce, "usb")
           await client.authenticateUsbSession(proof)
           this.usbAuthenticated = true
-        } catch (error) {
+        } catch (caught) {
+          const error = protocolError(caught)
           authenticationNotice = {
             message: error.message,
             state: "error",
@@ -344,7 +428,7 @@ export default class extends TypedController {
       this.renderRecorderInformation()
       if (this.usbAuthenticated && skipFileSynchronization) {
         this.usbSynchronization = "Interrupted by operator"
-        this.usbFacts.synchronization = this.usbSynchronization
+        this.updateUsbSynchronization(this.usbSynchronization)
         this.showSynchronizationNotice("Transfer interrupted. The recordings and partial transfer are preserved.", {
           state: "caution",
           label: "Synchronization stopped"
@@ -358,12 +442,13 @@ export default class extends TypedController {
           if (!this.usbSessionActive(session, client)) return
           this.showSynchronizationNotice(synchronization)
           this.usbSynchronization = synchronization
-          this.usbFacts.synchronization = synchronization
-        } catch (error) {
+          this.updateUsbSynchronization(synchronization)
+        } catch (caught) {
+          const error = protocolError(caught)
           if (!this.usbSessionActive(session, client) || error?.usbConnectionLost) throw error
           if (error?.usbSyncInterrupted) {
             this.usbSynchronization = "Interrupted by operator"
-            this.usbFacts.synchronization = this.usbSynchronization
+            this.updateUsbSynchronization(this.usbSynchronization)
             this.showSynchronizationNotice("Transfer interrupted. The recordings and partial transfer are preserved.", {
               state: "caution",
               label: "Synchronization stopped"
@@ -378,19 +463,20 @@ export default class extends TypedController {
         }
       } else {
         this.hideSynchronizationNotice()
-        this.showUsbConnectionNotice(authenticationNotice.message, authenticationNotice)
+        if (authenticationNotice) this.showUsbConnectionNotice(authenticationNotice.message, authenticationNotice)
       }
       this.syncProgressTarget.hidden = true
       this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.CONNECTED)
       this.startUsbPolling()
       this.renderRecorderInformation()
-    } catch (error) {
+    } catch (caught) {
+      const error = protocolError(caught)
       if (!this.usbSessionActive(session, client)) return
       nextTransferRecoveryAttempt = transferRecoveryAttempt + 1
       recoverTransfer = this.initialized
         && !this.usbSyncInterrupted
-        && error?.usbRequestTimedOut
-        && USB_TRANSFER_REQUEST_TYPES.has(error.usbRequestType)
+        && error.usbRequestTimedOut === true
+        && error.usbRequestType !== undefined && USB_TRANSFER_REQUEST_TYPES.has(error.usbRequestType)
         && nextTransferRecoveryAttempt <= USB_TRANSFER_RECOVERY_ATTEMPTS
       this.usbClient = null
       this.usbAuthenticated = false
@@ -424,16 +510,24 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {string} message */
+  updateUsbSynchronization(message) {
+    if (this.usbFacts) this.usbFacts.synchronization = message
+  }
+
+  /** @param {symbol} session @param {UsbFdrClient} client */
   usbSessionActive(session, client) {
     return this.usbSession === session && this.usbClient === client
   }
 
+  /** @param {SerialPort} port @param {symbol} session @param {UsbFdrClient} initialClient */
   async connectUsbClient(port, session, initialClient) {
     let client = initialClient
     for (let attempt = 1; attempt <= USB_CONNECTION_ATTEMPTS; attempt += 1) {
       try {
         return await client.connect({ attempt, attempts: USB_CONNECTION_ATTEMPTS })
-      } catch (error) {
+      } catch (caught) {
+        const error = protocolError(caught)
         const retryable = error?.usbConnectionTimedOut
           && error.usbConnectionStage === "handshake"
           && attempt < USB_CONNECTION_ATTEMPTS
@@ -450,6 +544,7 @@ export default class extends TypedController {
     return null
   }
 
+  /** @param {UsbFdrClient} client @param {{deviceId:string}} device */
   async synchronizeUsbFiles(client, device) {
     let synchronizedFiles = 0
     while (true) {
@@ -496,7 +591,8 @@ export default class extends TypedController {
           console.warn(`Could not remove the partial transfer for ${manifest.filename}.`, error)
         })
         synchronizedFiles += 1
-      } catch (error) {
+      } catch (caught) {
+        const error = protocolError(caught)
         this.usbUploadController = null
         await partial.close()
         if (this.usbSyncInterrupted) throw usbSyncInterruptedError()
@@ -542,7 +638,7 @@ export default class extends TypedController {
         label: "Erase unavailable"
       })
     }
-    if ((this.usbIdentity?.capabilities & UsbCapability.ERASE_RECORDINGS) === 0) {
+    if (((this.usbIdentity?.capabilities || 0) & UsbCapability.ERASE_RECORDINGS) === 0) {
       return this.showSynchronizationNotice("Update the recorder firmware before erasing recordings from Sillage.", {
         state: "caution",
         label: "Erase unavailable"
@@ -551,7 +647,7 @@ export default class extends TypedController {
     if (!window.confirm("Erase all FDR recordings from this recorder's microSD card? This cannot be undone. Files already synchronized to Sillage and non-FDR files on the card will be preserved.")) return
 
     window.clearInterval(this.usbPollTimer)
-    this.usbPollTimer = null
+    this.usbPollTimer = undefined
     this.usbEraseActive = true
     this.updateUsbActions()
     this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.CONNECTED)
@@ -563,12 +659,13 @@ export default class extends TypedController {
       const result = await client.eraseRecordings()
       if (client !== this.usbClient) return
       this.usbSynchronization = "Recordings erased"
-      if (this.usbFacts) this.usbFacts.synchronization = this.usbSynchronization
+      this.updateUsbSynchronization(this.usbSynchronization)
       await this.refreshUsbControlData()
       this.showSynchronizationNotice(`${result.deletedFiles} recording${result.deletedFiles === 1 ? "" : "s"} erased · ${formatBytes(result.deletedBytes)} freed. Recording resumed in a new file.`, {
         label: "microSD recordings erased"
       })
-    } catch (error) {
+    } catch (caught) {
+      const error = protocolError(caught)
       if (error?.usbConnectionLost) {
         await this.disconnectUsb()
         this.showUsbConnectionError(error)
@@ -589,10 +686,10 @@ export default class extends TypedController {
   async toggleRecording() {
     const usbAvailable = Boolean(this.usbClient)
       && this.usbAuthenticated
-      && (this.usbIdentity?.capabilities & UsbCapability.RECORDING_CONTROL) !== 0
+      && ((this.usbIdentity?.capabilities || 0) & UsbCapability.RECORDING_CONTROL) !== 0
     const bleAvailable = Boolean(this.bleCharacteristics.recording)
       && this.bleAuthenticated
-      && (this.bleIdentity?.capabilities & BleCapability.RECORDING_CONTROL) !== 0
+      && ((this.bleIdentity?.capabilities || 0) & BleCapability.RECORDING_CONTROL) !== 0
     const wifiAvailable = Boolean(this.wifiIdentity)
       && this.wifiRecordingControlSupported
       && this.hasRecordingCommandUrlValue
@@ -615,13 +712,13 @@ export default class extends TypedController {
     this.renderRecordingControl()
     const requestedEnabled = !this.recordingRequestedEnabled
     try {
-      if (usbAvailable) {
+      if (usbAvailable && this.usbClient) {
         const client = this.usbClient
         const recording = await client.setRecording(requestedEnabled)
         if (client !== this.usbClient) return
         this.applyRecordingState(recording)
         if (this.usbFacts) this.usbFacts.recording = recording.effectiveEnabled
-      } else if (bleAvailable) {
+      } else if (bleAvailable && this.bleCharacteristics.recording) {
         const characteristic = this.bleCharacteristics.recording
         const recording = await new BleRecordingClient(characteristic).set(requestedEnabled)
         if (characteristic !== this.bleCharacteristics.recording) return
@@ -638,16 +735,16 @@ export default class extends TypedController {
             "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || ""
           },
           body: JSON.stringify({
-            device_id: this.wifiIdentity.deviceId,
+            device_id: this.wifiIdentity?.deviceId,
             enabled: requestedEnabled
           })
         })
-        const payload = await response.json()
-        if (!response.ok) throw new Error(payload.error || "Sillage could not send the recording command.")
-        this.recordingPendingSequence = Number(payload.sequence)
+        const payload = await readResponse(response, "Sillage could not send the recording command.")
+        this.recordingPendingSequence = commandSequence(payload.sequence)
         this.recordingPendingEnabled = requestedEnabled
       }
-    } catch (error) {
+    } catch (caught) {
+      const error = protocolError(caught)
       this.recordingActionError = error.message
     } finally {
       this.recordingBusy = false
@@ -656,13 +753,14 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {{requestedEnabled:boolean,effectiveEnabled:boolean}} recording */
   applyRecordingState(recording) {
     this.recordingRequestedEnabled = recording.requestedEnabled
     this.recordingEffectiveEnabled = recording.effectiveEnabled
   }
 
   recordingIdentitiesMatch() {
-    const identities = [this.usbIdentity, this.bleIdentity, ...this.wifiIdentities].filter(Boolean)
+    const identities = [this.usbIdentity, this.bleIdentity, ...this.wifiIdentities].filter((value) => value != null)
     return new Set(identities.map(({ deviceId }) => deviceId)).size <= 1
   }
 
@@ -670,7 +768,7 @@ export default class extends TypedController {
     if (!client) return
     const status = await client.status()
     const diagnostics = await client.diagnostics()
-    const recording = (this.usbIdentity?.capabilities & UsbCapability.RECORDING_CONTROL) !== 0
+    const recording = ((this.usbIdentity?.capabilities || 0) & UsbCapability.RECORDING_CONTROL) !== 0
       ? await client.recording()
       : null
     this.renderStatus(status, "usb")
@@ -692,7 +790,8 @@ export default class extends TypedController {
       pollInFlight = true
       try {
         await this.refreshUsbControlData(client)
-      } catch (error) {
+      } catch (caught) {
+        const error = protocolError(caught)
         if (client !== this.usbClient) return
         await this.disconnectUsb()
         this.showUsbConnectionError(error)
@@ -704,7 +803,7 @@ export default class extends TypedController {
 
   async disconnectUsb() {
     window.clearInterval(this.usbPollTimer)
-    this.usbPollTimer = null
+    this.usbPollTimer = undefined
     const client = this.usbClient
     this.usbSyncInterrupted = true
     this.usbUploadController?.abort()
@@ -743,7 +842,7 @@ export default class extends TypedController {
     await client?.close()
   }
 
-  /** @param {{deviceId: string}} device @param {Awaited<ReturnType<UsbFdrClient["nextFile"]>>} manifest @param {Blob} blob @param {{signal?: AbortSignal}} options */
+  /** @param {{deviceId: string}} device @param {NonNullable<Awaited<ReturnType<UsbFdrClient["nextFile"]>>>} manifest @param {Blob} blob @param {{signal?: AbortSignal}} options */
   async uploadFile(device, manifest, blob, { signal } = {}) {
     const form = new FormData()
     form.append("source_file", blob, manifest.filename)
@@ -760,8 +859,7 @@ export default class extends TypedController {
       body: form,
       signal
     })
-    let payload = await response.json()
-    if (!response.ok) throw new Error(payload.error || `Sillage rejected ${manifest.filename}.`)
+    let payload = importReceipt(await readResponse(response, `Sillage rejected ${manifest.filename}.`))
     const deadline = Date.now() + 120_000
     while (true) {
       if (payload.sha256 !== manifest.sha256) throw new Error("Sillage acknowledged a different SHA-256.")
@@ -778,11 +876,11 @@ export default class extends TypedController {
       })
       const timeout = AbortSignal.timeout(Math.max(1, deadline - Date.now()))
       const statusResponse = await fetch(statusUrl, { signal: signal ? AbortSignal.any([signal, timeout]) : timeout })
-      payload = await statusResponse.json()
-      if (!statusResponse.ok) throw new Error(payload.error || "Recording validation could not be checked.")
+      payload = importReceipt(await readResponse(statusResponse, "Recording validation could not be checked."))
     }
   }
 
+  /** @param {SerialPort} port */
   rememberUsbPort(port) {
     const info = port.getInfo()
     window.localStorage.setItem(USB_PORT_STORAGE_KEY, JSON.stringify({
@@ -799,11 +897,13 @@ export default class extends TypedController {
       const devices = await navigator.bluetooth.getDevices()
       const device = devices.find((candidate) => candidate.id === savedId)
       if (device) await this.openBleDevice(device)
-    } catch (error) {
+    } catch (caught) {
+      const error = protocolError(caught)
       this.showBleConnectionError(error.message)
     }
   }
 
+  /** @param {BluetoothDevice} device */
   async openBleDevice(device) {
     this.bleIdentity = null
     this.bleFacts = null
@@ -814,6 +914,7 @@ export default class extends TypedController {
     this.bleButtonTarget.disabled = true
     this.bleDevice = device
     device.addEventListener("gattserverdisconnected", this.handleBleDisconnect)
+    if (!device.gatt) throw new Error("The recorder has no Bluetooth GATT server")
     this.bleServer = await device.gatt.connect()
     const service = await this.bleServer.getPrimaryService(BleUuid.service)
     const [status, diagnostics, debug, deviceInformation, authenticationCharacteristic, recording] = await Promise.all([
@@ -826,7 +927,7 @@ export default class extends TypedController {
     ])
     this.bleCharacteristics = { status, diagnostics, debug, recording }
     await status.startNotifications()
-    status.addEventListener("characteristicvaluechanged", ({ target }) => this.renderStatus(parseBleStatus(target.value), "ble"))
+    status.addEventListener("characteristicvaluechanged", () => this.renderStatus(parseBleStatus(status.value), "ble"))
     const [statusValue, diagnosticsValue, deviceValue] = await Promise.all([
       status.readValue(), diagnostics.readValue(), deviceInformation.readValue()
     ])
@@ -845,7 +946,8 @@ export default class extends TypedController {
         await authentication.authenticate(proof)
         this.bleAuthenticated = true
       }
-    } catch (error) {
+    } catch (caught) {
+      const error = protocolError(caught)
       this.showBleNotice(error.message, { state: "error", label: "Sillage authentication" })
     }
     this.refreshRecorderRegistration()
@@ -901,19 +1003,20 @@ export default class extends TypedController {
         credentials: "same-origin",
         headers: { "Accept": "application/json" }
       })
-      const payload = await response.json()
-      if (!response.ok) throw new Error(payload.error || "Sillage could not read recorder heartbeats.")
+      const payload = await readResponse(response, "Sillage could not read recorder heartbeats.")
 
-      const heartbeats = Array.isArray(payload.heartbeats) ? payload.heartbeats : []
+      const heartbeats = heartbeatPayloads(payload)
       if (heartbeats.length === 0) return this.disconnectSillageHeartbeat("Waiting for signed Sillage heartbeat")
       if (heartbeats.length > 1) return this.renderMultipleSillageHeartbeats(heartbeats)
 
       this.renderSillageHeartbeat(heartbeats[0])
-    } catch (error) {
+    } catch (caught) {
+      const error = protocolError(caught)
       this.disconnectSillageHeartbeat("Sillage heartbeat status unavailable", { error: error.message })
     }
   }
 
+  /** @param {import("../types/recorder").Heartbeat} heartbeat */
   renderSillageHeartbeat(heartbeat) {
     const status = normalizeSillageHeartbeatStatus(heartbeat.status)
     this.wifiIdentity = sillageHeartbeatIdentity(heartbeat)
@@ -922,7 +1025,7 @@ export default class extends TypedController {
     this.wifiDeviceTarget.removeAttribute("title")
     this.setConnectionStatus(this.wifiStatusTarget, ConnectionStatus.CONNECTED)
     this.setWifiAutomaticDetail(
-      `${describeWifiUpload(status.wifiUpload)} · signed heartbeat ${formatSeenAt(heartbeat.seen_at)}`
+      `${describeWifiUpload("wifiUpload" in status ? status.wifiUpload : {})} · signed heartbeat ${formatSeenAt(heartbeat.seen_at)}`
     )
     this.hideWifiNotice()
     setAircraftConnection(AircraftConnectionTransport.WIFI, true, {
@@ -938,7 +1041,7 @@ export default class extends TypedController {
     const command = heartbeat.recording_command
     if (this.recordingPendingSequence !== null
         && Number(command?.sequence) === this.recordingPendingSequence
-        && ["acknowledged", "failed", "superseded"].includes(command?.status)) {
+        && command && ["acknowledged", "failed", "superseded"].includes(command.status)) {
       if (command.status !== "acknowledged") {
         this.recordingActionError = "The recorder could not apply the persistent recording choice. Try again."
       }
@@ -951,6 +1054,7 @@ export default class extends TypedController {
     this.renderRecorderInformation()
   }
 
+  /** @param {import("../types/recorder").Heartbeat[]} heartbeats */
   renderMultipleSillageHeartbeats(heartbeats) {
     this.wifiIdentities = heartbeats.map(sillageHeartbeatIdentity)
     this.wifiIdentity = null
@@ -970,6 +1074,7 @@ export default class extends TypedController {
     this.renderRecorderInformation()
   }
 
+  /** @param {string} detail @param {{error?:string|null}} [options] */
   disconnectSillageHeartbeat(detail, { error = null } = {}) {
     setAircraftConnection(AircraftConnectionTransport.WIFI, false)
     this.wifiIdentity = null
@@ -994,6 +1099,7 @@ export default class extends TypedController {
     this.renderRecorderInformation()
   }
 
+  /** @param {ReturnType<typeof normalizeSillageHeartbeatStatus>|ReturnType<typeof parseBleStatus>} status @param {"usb"|"ble"|"wifi"} transport */
   renderStatus(status, transport) {
     const storageReady = (status.stateFlags & 0x02) !== 0
     const facts = {
@@ -1020,14 +1126,15 @@ export default class extends TypedController {
       this.bleFacts = facts
       this.setConnectionStatus(this.bleStatusTarget, ConnectionStatus.CONNECTED)
     } else {
-      facts.synchronization = describeWifiUpload(status.wifiUpload)
+      facts.synchronization = describeWifiUpload("wifiUpload" in status ? status.wifiUpload : {})
       this.wifiFacts = facts
-      this.renderWifiSynchronizationProgress(status.wifiUpload)
+      this.renderWifiSynchronizationProgress("wifiUpload" in status ? status.wifiUpload : {})
       this.setConnectionStatus(this.wifiStatusTarget, ConnectionStatus.CONNECTED)
     }
     this.renderRecorderInformation()
   }
 
+  /** @param {Partial<ReturnType<typeof normalizeSillageHeartbeatStatus>["wifiUpload"]>} [upload] */
   renderWifiSynchronizationProgress(upload = {}) {
     if (this.usbSyncActive) return
 
@@ -1050,6 +1157,7 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {Record<string,number>} diagnostics @param {"usb"|"ble"|"wifi"} transport */
   renderDiagnostics(diagnostics, transport) {
     const facts = transport === "usb" ? this.usbFacts : transport === "ble" ? this.bleFacts : this.wifiFacts
     const total = Object.values(diagnostics).reduce((sum, value) => sum + value, 0)
@@ -1060,9 +1168,9 @@ export default class extends TypedController {
   }
 
   renderRecordingControl() {
-    const usbSupported = (this.usbIdentity?.capabilities & UsbCapability.RECORDING_CONTROL) !== 0
+    const usbSupported = ((this.usbIdentity?.capabilities || 0) & UsbCapability.RECORDING_CONTROL) !== 0
     const usbAvailable = Boolean(this.usbClient) && this.usbAuthenticated && usbSupported
-    const bleSupported = (this.bleIdentity?.capabilities & BleCapability.RECORDING_CONTROL) !== 0
+    const bleSupported = ((this.bleIdentity?.capabilities || 0) & BleCapability.RECORDING_CONTROL) !== 0
     const bleAvailable = Boolean(this.bleCharacteristics.recording) && this.bleAuthenticated && bleSupported
     const wifiAvailable = Boolean(this.wifiIdentity)
       && this.wifiRecordingControlSupported
@@ -1122,9 +1230,10 @@ export default class extends TypedController {
     this.recordingResultTarget.hidden = !result
   }
 
+  /** @param {import("fdr_sync_protocol").FdrProtocolError} error */
   showUsbSyncError(error) {
     const storageUnavailable = error?.recorderCode === UsbErrorCode.STORAGE_ERROR
-    const technicalDetails = formatUsbErrorDetails(error)
+    const technicalDetails = formatUsbErrorDetails(error instanceof Error ? error : new Error(String(error)))
     const recorderError = Number.isInteger(error?.recorderCode)
     const message = error instanceof Error ? error.message : String(error)
     this.syncProgressTarget.hidden = true
@@ -1138,22 +1247,23 @@ export default class extends TypedController {
         technical: technicalDetails
       })
     }
-    if (this.usbIdentity) {
+    if (this.usbIdentity && this.usbFacts) {
       this.usbFacts.health = "Attention required"
       if (storageUnavailable) this.usbFacts.storage = "microSD unavailable"
       this.usbSynchronization = "Interrupted"
-      this.usbFacts.synchronization = this.usbSynchronization
+      this.updateUsbSynchronization(this.usbSynchronization)
     }
     this.renderRecorderInformation()
   }
 
+  /** @param {unknown} error */
   showUsbConnectionError(error) {
     setAircraftConnection(AircraftConnectionTransport.USB_C, false)
     this.usbRecorderError = null
     this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.ERROR)
     this.syncProgressTarget.hidden = true
     this.hideSynchronizationNotice()
-    const technicalDetails = formatUsbErrorDetails(error)
+    const technicalDetails = formatUsbErrorDetails(error instanceof Error ? error : new Error(String(error)))
     this.showUsbConnectionNotice(error instanceof Error ? error.message : String(error), {
       state: "error",
       label: "Connection error",
@@ -1168,6 +1278,7 @@ export default class extends TypedController {
     this.renderRecorderInformation()
   }
 
+  /** @param {string} message */
   showBleConnectionError(message) {
     setAircraftConnection(AircraftConnectionTransport.BLE, false)
     this.setConnectionStatus(this.bleStatusTarget, ConnectionStatus.ERROR)
@@ -1181,10 +1292,12 @@ export default class extends TypedController {
     this.renderRecorderInformation()
   }
 
+  /** @param {string} message */
   showDiagnosticsError(message) {
     this.debugTarget.textContent = `Unable to load the engineering log: ${message}`
   }
 
+  /** @param {string} message @param {{state?:string,label?:string,technical?:string}} [options] */
   showUsbConnectionNotice(message, { state = "status", label = "Connection status", technical = "" } = {}) {
     this.usbNoticeTarget.dataset.state = state
     this.usbNoticeTarget.setAttribute("role", state === "error" ? "alert" : "status")
@@ -1200,6 +1313,7 @@ export default class extends TypedController {
     this.showUsbConnectionNotice("")
   }
 
+  /** @param {string} message @param {{state?:string,label?:string,technical?:string}} [options] */
   showSynchronizationNotice(message, { state = "status", label = "Synchronization", technical = "" } = {}) {
     this.syncNoticeTarget.dataset.state = state
     this.syncNoticeTarget.setAttribute("role", state === "error" ? "alert" : "status")
@@ -1215,6 +1329,7 @@ export default class extends TypedController {
     this.showSynchronizationNotice("")
   }
 
+  /** @param {string} message @param {{state?:string,label?:string}} [options] */
   showBleNotice(message, { state = "status", label = "Connection status" } = {}) {
     this.bleNoticeTarget.dataset.state = state
     this.bleNoticeTarget.setAttribute("role", state === "error" ? "alert" : "status")
@@ -1228,6 +1343,7 @@ export default class extends TypedController {
     this.showBleNotice("")
   }
 
+  /** @param {string} message @param {{state?:string,label?:string}} [options] */
   showWifiNotice(message, { state = "status", label = "Automatic connection" } = {}) {
     this.wifiNoticeTarget.dataset.state = state
     this.wifiNoticeTarget.setAttribute("role", state === "error" ? "alert" : "status")
@@ -1241,6 +1357,7 @@ export default class extends TypedController {
     this.showWifiNotice("")
   }
 
+  /** @param {string} detail */
   setWifiAutomaticDetail(detail) {
     this.wifiAutoLabelTarget.title = detail
     this.wifiAutoLabelTarget.setAttribute("aria-label", `Automatic Wi-Fi connection: ${detail}`)
@@ -1261,7 +1378,7 @@ export default class extends TypedController {
   updateUsbActions() {
     const authenticated = Boolean(this.usbClient) && this.usbAuthenticated
     const canErase = authenticated
-      && (this.usbIdentity?.capabilities & UsbCapability.ERASE_RECORDINGS) !== 0
+      && ((this.usbIdentity?.capabilities || 0) & UsbCapability.ERASE_RECORDINGS) !== 0
     this.stopSyncButtonTarget.hidden = !this.usbSyncActive
     this.stopSyncButtonTarget.disabled = !this.usbSyncActive || this.usbSyncInterrupted
     this.stopSyncButtonTarget.textContent = this.usbSyncInterrupted ? "Stopping…" : "Stop transfer"
@@ -1271,6 +1388,7 @@ export default class extends TypedController {
     this.renderRecordingControl()
   }
 
+  /** @param {string} deviceId @param {string} nonce @param {"usb"|"ble"} transport */
   async requestAuthenticationProof(deviceId, nonce, transport) {
     const response = await fetch(this.authenticationUrlValue, {
       method: "POST",
@@ -1283,11 +1401,11 @@ export default class extends TypedController {
       },
       body: JSON.stringify({ device_id: deviceId, nonce, transport })
     })
-    const payload = await response.json()
-    if (!response.ok) throw new Error(payload.error || `Sillage could not authenticate this ${transport.toUpperCase()} session.`)
-    return payload.proof
+    const payload = await readResponse(response, `Sillage could not authenticate this ${transport.toUpperCase()} session.`)
+    return authenticationHex(payload.proof)
   }
 
+  /** @param {HTMLElement} target @param {string} label @param {string} state */
   setTransportStatus(target, label, state) {
     target.textContent = label
     target.dataset.state = state
@@ -1301,7 +1419,7 @@ export default class extends TypedController {
   async refreshRecorderRegistration() {
     const usb = this.usbIdentity
     const ble = this.bleIdentity
-    const identities = [usb, ble, ...this.wifiIdentities].filter(Boolean)
+    const identities = [usb, ble, ...this.wifiIdentities].filter((value) => value != null)
     if (new Set(identities.map((identity) => identity.deviceId)).size > 1) {
       this.registrationRequestToken += 1
       this.registrationLookupDeviceId = null
@@ -1337,11 +1455,10 @@ export default class extends TypedController {
         credentials: "same-origin",
         headers: { "Accept": "application/json" }
       })
-      const payload = await response.json()
-      if (!response.ok) throw new Error(payload.error || "Sillage could not check this recorder in Forge.")
+      const payload = registrationPayload(await readResponse(response, "Sillage could not check this recorder in Forge."))
       if (requestToken !== this.registrationRequestToken) return
 
-      if (payload.registered) {
+      if (payload.recorder) {
         if (this.usbAuthenticated && !payload.recorder.initialization_confirmed) {
           try {
             await this.confirmRecorderInitialization(payload.recorder, identity)
@@ -1350,9 +1467,10 @@ export default class extends TypedController {
         }
         this.renderRegisteredRecorder(payload.recorder, payload.aircraft)
       } else {
-        this.renderUnregisteredRecorder(this.registrationIdentity)
+        this.renderUnregisteredRecorder(identity)
       }
-    } catch (error) {
+    } catch (caught) {
+      const error = protocolError(caught)
       if (requestToken !== this.registrationRequestToken) return
       this.wifiLinkTarget.hidden = false
       this.recorderOnboardingTarget.hidden = true
@@ -1373,7 +1491,7 @@ export default class extends TypedController {
     this.registrationSubmitting = true
     this.wifiRegisterButtonTarget.disabled = true
     window.clearInterval(this.usbPollTimer)
-    this.usbPollTimer = null
+    this.usbPollTimer = undefined
     let recorder = this.registeredRecorder
     let aircraft = this.registeredAircraft
     try {
@@ -1400,7 +1518,8 @@ export default class extends TypedController {
       this.renderRegisteredRecorder(recorder, aircraft)
       await this.disconnectUsb()
       window.location.assign(recorder.connectivity_url)
-    } catch (error) {
+    } catch (caught) {
+      const error = protocolError(caught)
       this.registrationSubmitting = false
       if (recorder) this.renderRecorderInitializationRequired(recorder, aircraft, error.message)
       else this.renderUnregisteredRecorder(identity, error.message)
@@ -1408,6 +1527,7 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {import("../types/recorder").Identity} identity */
   async createRecorderRegistration(identity) {
     const response = await fetch(this.registrationUrlValue, {
       method: "POST",
@@ -1426,11 +1546,12 @@ export default class extends TypedController {
         mavlink_component_id: identity.mavlinkComponentId
       })
     })
-    const payload = await response.json()
-    if (!response.ok) throw new Error(payload.error || "Sillage could not add this recorder to Forge.")
-    return payload
+    const payload = registrationPayload(await readResponse(response, "Sillage could not add this recorder to Forge."))
+    if (!payload.recorder) throw new Error("Sillage did not register the recorder.")
+    return {recorder: payload.recorder, aircraft: payload.aircraft}
   }
 
+  /** @param {import("../types/recorder").Recorder} recorder @param {import("../types/recorder").Identity} identity */
   async establishRecorderAuthentication(recorder, identity) {
     if (!this.usbClient || this.usbIdentity?.deviceId !== identity.deviceId) {
       throw new Error("Keep this recorder connected over USB-C during secure initialization.")
@@ -1448,9 +1569,8 @@ export default class extends TypedController {
         },
         body: JSON.stringify({ device_id: identity.deviceId })
       })
-      const payload = await response.json()
-      if (!response.ok) throw new Error(payload.error || "Sillage could not prepare this recorder's authentication key.")
-      await this.usbClient.installAuthenticationKey(payload.authentication.key)
+      const payload = await readResponse(response, "Sillage could not prepare this recorder's authentication key.")
+      await this.usbClient.installAuthenticationKey(authenticationHex(objectPayload(payload.authentication).key))
       this.usbAuthenticationConfigured = true
     }
 
@@ -1460,6 +1580,7 @@ export default class extends TypedController {
     await this.usbClient.authenticateUsbSession(proof)
   }
 
+  /** @param {import("../types/recorder").Recorder} recorder @param {import("../types/recorder").Identity} identity */
   async confirmRecorderInitialization(recorder, identity) {
     const response = await fetch(recorder.initialization_url, {
       method: "PATCH",
@@ -1472,8 +1593,7 @@ export default class extends TypedController {
       },
       body: JSON.stringify({ device_id: identity.deviceId })
     })
-    const payload = await response.json()
-    if (!response.ok) throw new Error(payload.error || "Sillage could not confirm recorder initialization.")
+    const payload = await readResponse(response, "Sillage could not confirm recorder initialization.")
   }
 
   canOnboardRecorder(identity = this.registrationIdentity) {
@@ -1492,6 +1612,7 @@ export default class extends TypedController {
     return "Recorder initialization is not available."
   }
 
+  /** @param {import("../types/recorder").Recorder} recorder @param {import("../types/recorder").Aircraft|null} [aircraft] */
   renderRegisteredRecorder(recorder, aircraft = null) {
     this.registeredRecorder = recorder
     this.registeredAircraft = aircraft
@@ -1513,6 +1634,7 @@ export default class extends TypedController {
     this.renderRecorderInformation()
   }
 
+  /** @param {import("../types/recorder").Recorder} recorder @param {import("../types/recorder").Aircraft|null} [aircraft] @param {string|null} [error] */
   renderRecorderInitializationRequired(recorder, aircraft = null, error = null) {
     this.registeredRecorder = recorder
     this.registeredAircraft = aircraft
@@ -1535,6 +1657,7 @@ export default class extends TypedController {
     this.renderRecorderInformation()
   }
 
+  /** @param {import("../types/recorder").Identity} identity @param {string|null} [error] */
   renderUnregisteredRecorder(identity, error = null) {
     this.registeredRecorder = null
     this.registeredAircraft = null
@@ -1553,6 +1676,7 @@ export default class extends TypedController {
     this.renderRecorderInformation()
   }
 
+  /** @param {string} deviceId @param {import("../types/recorder").Aircraft|null} aircraft */
   updateResolvedConnections(deviceId, aircraft) {
     const identity = {
       deviceId: deviceId,
@@ -1586,12 +1710,14 @@ export default class extends TypedController {
     this.setWifiRegistrationStatus("")
   }
 
+  /** @param {string} label */
   setWifiLinkLabel(label) {
     this.wifiLinkLabelTarget.textContent = label
     this.wifiLinkTarget.setAttribute("aria-label", label)
     this.wifiLinkTarget.title = label
   }
 
+  /** @param {string} message */
   setWifiRegistrationStatus(message, state = "status") {
     this.wifiRegistrationStatusTarget.textContent = message
     this.wifiRegistrationStatusTarget.dataset.state = state
@@ -1629,9 +1755,9 @@ export default class extends TypedController {
       return
     }
 
-    const identities = [usb, ble, ...this.wifiIdentities].filter(Boolean)
+    const identities = [usb, ble, ...this.wifiIdentities].filter((value) => value != null)
     const mismatch = new Set(identities.map(({ deviceId }) => deviceId)).size > 1 ||
-      new Set(identities.map(({ firmware }) => firmware).filter(Boolean)).size > 1
+      new Set(identities.map(({ firmware }) => firmware).filter((value) => value != null)).size > 1
     this.recorderDeviceTarget.textContent = identity.deviceId
     this.recorderFirmwareTarget.textContent = identity.firmware || "—"
     this.recorderFirmwareGroupTarget.hidden = !identity.firmware
@@ -1673,6 +1799,7 @@ export default class extends TypedController {
     this.renderRecorderAlert(this.usbRecorderError || this.usbFacts?.issue || this.bleFacts?.issue || this.wifiFacts?.issue)
   }
 
+  /** @param {import("../types/recorder").Issue|null|undefined} issue */
   renderRecorderAlert(issue) {
     if (!issue) {
       this.recorderAlertTarget.hidden = true
@@ -1693,17 +1820,20 @@ function usbSyncInterruptedError() {
   return Object.assign(new Error("Synchronization interrupted by operator."), { usbSyncInterrupted: true })
 }
 
+/** @param {SerialPortInfo} info @param {unknown} saved */
 function samePort(info, saved) {
-  if (!saved || (saved.usbVendorId == null && saved.usbProductId == null)) return false
+  if (!saved || typeof saved !== "object" || !("usbVendorId" in saved) || !("usbProductId" in saved) || (saved.usbVendorId == null && saved.usbProductId == null)) return false
   return info.usbVendorId === saved.usbVendorId && info.usbProductId === saved.usbProductId
 }
 
+/** @param {number} value */
 function formatBytes(value) {
   return value < 1024 * 1024
     ? `${Math.round(value / 1024)} KB`
     : `${(value / 1024 / 1024).toFixed(1)} MB`
 }
 
+/** @param {number} flags */
 function describeAlerts(flags) {
   if (flags === 0) return "Nominal"
   /** @type {[number, string][]} */

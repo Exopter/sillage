@@ -153,7 +153,7 @@ delete cloud.flushOutbox
 cloud.cloudStatusTarget = {}
 cloud.db.autoCommit = true
 cloud.db.values.outbox.set("bad", {
-  id: "bad", session: "session", kind: "batch", sequence: 7, url: "/batch", method: "POST", body: {}, queuedAt: Date.now()
+  id: "bad", session: "session", kind: "batch", sequence: 7, url: "/batch", method: "POST", body: {sequence:7,first_received_at:"2026-09-06T10:00:00Z",last_received_at:"2026-09-06T10:00:00Z",samples:[]}, queuedAt: Date.now()
 })
 globalThis.fetch = async () => ({ ok: false, status: 422, json: async () => ({ error: "samples[1].latitude must be a finite number" }) })
 await cloud.flushOutbox()

@@ -7,7 +7,7 @@ module Api
         result = FdrSync::Ingest.new(
           user: Current.user,
           upload: params.require(:source_file),
-          metadata: sync_params
+          metadata: sync_params.to_h
         ).call
         render json: payload(result), status: result.duplicate ? :ok : :created
       rescue FdrSync::Error, ExoFdr::Error, ActiveRecord::RecordInvalid,

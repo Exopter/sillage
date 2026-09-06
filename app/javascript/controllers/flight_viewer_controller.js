@@ -3,6 +3,9 @@ import { Controller } from "@hotwired/stimulus"
 import {
   clamp,
   finiteNumber,
+  isFiniteNumber,
+  normalizeFlightPoints,
+  normalizeSensorSamples,
   lerp,
   median,
   sampleFlightPoint,
@@ -29,8 +32,8 @@ const CESIUM_TILE_PROVIDER = "CESIUM_ION"
  * @property {boolean} hasPhaseNameTarget
  * @property {HTMLElement} phaseRangeTarget
  * @property {boolean} hasPhaseRangeTarget
- * @property {HTMLButtonElement} metricToggleTarget
- * @property {HTMLButtonElement[]} metricToggleTargets
+ * @property {HTMLInputElement} metricToggleTarget
+ * @property {HTMLInputElement[]} metricToggleTargets
  * @property {HTMLElement} statTarget
  * @property {HTMLElement[]} statTargets
  * @property {HTMLInputElement} scrubberTarget
@@ -45,20 +48,104 @@ const CESIUM_TILE_PROVIDER = "CESIUM_ION"
  * @property {boolean} hasVideoExitOffsetInputTarget
  * @property {HTMLElement} videoExitOffsetLabelTarget
  * @property {boolean} hasVideoExitOffsetLabelTarget
- * @property {Array} pointsValue
- * @property {Array} sensorsValue
- * @property {Object} boundsValue
- * @property {Object} analysisValue
+ * @property {unknown} pointsValue
+ * @property {unknown} sensorsValue
+ * @property {import("../types/flight").FlightBounds} boundsValue
+ * @property {import("../types/flight").FlightAnalysis} analysisValue
  * @property {boolean} hasAnalysisValue
  * @property {string} cesiumTokenValue
  * @property {string} cesiumBaseUrlValue
- * @property {Object} labelsValue
+ * @property {Record<string,string>} labelsValue
  * @property {number} videoExitOffsetValue
  * @property {boolean} hasVideoExitOffsetValue
  */
 const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller & StimulusBindings} */ (/** @type {unknown} */ (Controller))
 
 export default class extends TypedController {
+  /** @type {import("../types/flight").FlightPoint[]} */
+  points = []
+  /** @type {import("../types/flight").SensorSample[]} */
+  sensors = []
+  /** @type {import("../types/flight").FlightAnalysis} */
+  analysis = {}
+  /** @type {import("../types/flight").FlightChart[]} */
+  charts = []
+  /** @type {import("../types/flight").FlightChart|null} */
+  unifiedChart = null
+  /** @type {typeof import("chart.js").Chart|null} */
+  Chart = null
+  /** @type {"osAwayFromPoint"|"average"} */
+  tooltipPosition = "average"
+  /** @type {Array<() => void>} */
+  boundSceneHandlers = []
+  /** @type {import("cesium").ScreenSpaceEventHandler|null} */
+  cesiumInteractionHandler = null
+  /** @type {import("cesium").Viewer|null} */
+  cesiumViewer = null
+  /** @type {import("cesium").Cesium3DTileset|null} */
+  cesiumTileset = null
+  /** @type {import("cesium").Entity|null} */
+  cesiumPath = null
+  /** @type {import("cesium").Entity|null} */
+  cesiumMarker = null
+  /** @type {import("cesium").EventHelper|null} */
+  cesiumEventHelper = null
+  /** @type {HTMLCanvasElement|null} */
+  sceneCanvas = null
+  /** @type {HTMLDivElement|null} */
+  sceneNotice = null
+  /** @type {ResizeObserver|null} */
+  resizeObserver = null
+  /** @type {symbol|null} */
+  connectionGeneration = null
+  /** @type {symbol|null} */
+  cesiumSurfaceRefinementId = null
+  /** @type {import("../types/flight").Orbit|null} */
+  cesiumOrbit = null
+  /** @type {import("../types/flight").Orbit|null} */
+  cesiumOrbitHome = null
+  /** @type {{active:boolean,x:number,y:number}|null} */
+  cesiumDrag = null
+  /** @type {import("../types/flight").FlightPoint[]|null} */
+  cesiumVisualPoints = null
+  /** @type {import("../types/flight").CesiumDiagnostics|null} */
+  cesiumDiagnostics = null
+  /** @type {number|null} */
+  groundAltitude = null
+  /** @type {number|null} */
+  videoExitOffset = null
+  /** @type {number|null} */
+  playbackFrame = null
+  /** @type {number|null} */
+  videoSyncFrame = null
+  /** @type {"all"|"plane"|"jump"|"canopy"} */
+  activePhase = "all"
+  timelineStart = 0
+  flightDuration = 0
+  currentElapsed = 0
+  playbackStartedAt = 0
+  playbackStartElapsed = 0
+  playbackLastRenderAt = 0
+  playbackLastCameraAt = 0
+  videoSyncLastRenderAt = 0
+  isPlaying = false
+  syncingVideo = false
+  colors = {
+      night: "#071817",
+      daySky: "#b9dcf2",
+      aqua: "#28bfb8",
+      sky: "#2ea8ff",
+      field: "#4f7b4e",
+      amber: "#d89122",
+      violet: "#6658c7",
+      coral: "#e85d4f",
+      lime: "#a7c83f",
+      graphite: "#5f6c6b",
+      carbon: "#d4dfdc",
+      grid: "rgba(95, 108, 107, 0.14)",
+      monoFont: "monospace"
+    }
+
   static targets = [
     "scene",
     "credits",
@@ -89,16 +176,12 @@ export default class extends TypedController {
 
   async connect() {
     const generation = this.connectionGeneration = Symbol("flight-viewer")
-    this.points = this.pointsValue.filter((point) =>
-      Number.isFinite(Number(point.lat)) &&
-      Number.isFinite(Number(point.lon)) &&
-      Number.isFinite(Number(point.alt))
-    )
+    this.points = normalizeFlightPoints(this.pointsValue)
     this.analysis = this.hasAnalysisValue ? this.analysisValue : {}
-    this.sensors = this.sensorsValue
+    this.sensors = normalizeSensorSamples(this.sensorsValue)
       .map((sample) => this.normalizedSensorSample(sample))
-      .filter((sample) => Number.isFinite(Number(sample.t)))
-      .sort((a, b) => this.number(a.t) - this.number(b.t))
+      .filter((sample) => isFiniteNumber(Number(sample.t)))
+      .sort((a, b) => a.t - b.t)
     this.sensors = this.enrichedSensorSamples(this.sensors)
     this.groundAltitude = this.groundAltitudeFromAnalysis()
     this.points = this.points.map((point) => ({ ...point, height: this.heightFromGround(point) }))
@@ -124,10 +207,7 @@ export default class extends TypedController {
     this.videoSyncLastRenderAt = 0
     this.syncingVideo = false
     this.colors = this.designColors()
-    const cesiumLoad = this.shouldLoadCesium()
-      ? this.loadCesium().catch((error) => error)
-      : null
-    if (this.shouldLoadCesium()) this.setupScene(cesiumLoad, generation)
+    if (this.shouldLoadCesium()) this.setupScene(this.loadCesium(), generation)
 
     try {
       const chartModule = await this.loadCharts()
@@ -136,7 +216,8 @@ export default class extends TypedController {
       this.tooltipPosition = this.installTooltipPositioner(chartModule.Tooltip) ? "osAwayFromPoint" : "average"
       this.Chart.register(...chartModule.registerables, OS_BOUNDS_PLUGIN, OS_PLAYBACK_PLUGIN)
       this.setupCharts()
-    } catch (error) {
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error(String(caught))
       if (!this.isCurrentConnection(generation)) return
       this.charts.forEach((chart) => chart.destroy())
       this.charts = []
@@ -144,6 +225,7 @@ export default class extends TypedController {
       console.warn(`Flight charts unavailable: ${error.message || error}`)
     }
 
+    if (!this.isCurrentConnection(generation)) return
     this.applyPhase("all", { movePlayhead: false })
     this.updatePlayButton()
     this.updateVideoExitLabel()
@@ -162,17 +244,22 @@ export default class extends TypedController {
     this.unifiedChart = null
   }
 
+  /** @param {Event} event */
   scrub(event) {
+    if (!(event.target instanceof HTMLInputElement)) return
     this.pausePlayback()
     this.updateScrubbedElapsed(this.phaseStart() + ((Number(event.target.value) / 1000) * this.phaseSpan()))
   }
 
+  /** @param {MouseEvent} event */
   selectPhase(event) {
+    if (!(event.currentTarget instanceof HTMLElement)) return
     this.applyPhase(event.currentTarget.dataset.phase)
   }
 
+  /** @param {Event} event */
   toggleMetric(event) {
-    if (!this.unifiedChart) return
+    if (!this.unifiedChart || !(event.currentTarget instanceof HTMLInputElement)) return
 
     const metric = event.currentTarget.dataset.metric
     const datasetIndex = this.unifiedChart.data.datasets.findIndex((dataset) => dataset.metric === metric)
@@ -204,6 +291,7 @@ export default class extends TypedController {
     this.playbackFrame = requestAnimationFrame((timestamp) => this.stepPlayback(timestamp))
   }
 
+  /** @param {{skipVideoPause?:boolean}} [options] */
   pausePlayback(options = {}) {
     if (this.playbackFrame) cancelAnimationFrame(this.playbackFrame)
     if (this.videoSyncFrame) cancelAnimationFrame(this.videoSyncFrame)
@@ -215,6 +303,7 @@ export default class extends TypedController {
     this.updatePlayButton()
   }
 
+  /** @param {number} timestamp */
   stepPlayback(timestamp) {
     if (!this.isPlaying) return
 
@@ -299,6 +388,7 @@ export default class extends TypedController {
     this.videoSyncFrame = requestAnimationFrame((timestamp) => this.stepVideoPlayback(timestamp))
   }
 
+  /** @param {number} timestamp */
   stepVideoPlayback(timestamp) {
     this.videoSyncFrame = null
     if (!this.isPlaying || !this.videoCanSync()) return
@@ -329,12 +419,13 @@ export default class extends TypedController {
   }
 
   resetCamera() {
-    if (this.cesiumViewer && window.Cesium) {
+    if (this.cesiumViewer && window.Cesium && this.cesiumOrbitHome) {
       this.cesiumOrbit = { ...this.cesiumOrbitHome }
       this.applyCesiumOrbit(window.Cesium, this.cesiumViewer)
     }
   }
 
+  /** @param {MouseEvent} event */
   markVideoExit(event) {
     event.preventDefault()
     if (!this.hasVideoTarget || !this.hasVideoExitOffsetInputTarget) return
@@ -346,7 +437,7 @@ export default class extends TypedController {
     )
     this.videoExitOffsetInputTarget.value = this.videoExitOffset.toFixed(3)
     this.updateVideoExitLabel()
-    event.currentTarget.closest("form")?.requestSubmit()
+    if (event.currentTarget instanceof Element) event.currentTarget.closest("form")?.requestSubmit()
   }
 
   syncVideoFromFlight() {
@@ -356,12 +447,13 @@ export default class extends TypedController {
     this.syncVideoToElapsed(this.currentElapsed)
   }
 
+  /** @param {number} elapsed */
   syncVideoToElapsed(elapsed) {
     if (!this.videoCanSync()) return
     if (this.videoTarget.readyState === 0) return
 
     const targetTime = this.videoTimeForElapsed(elapsed)
-    if (!Number.isFinite(targetTime)) return
+    if (targetTime === null || !isFiniteNumber(targetTime)) return
     if (Math.abs(this.videoTarget.currentTime - targetTime) < 0.12) return
 
     this.syncingVideo = true
@@ -371,22 +463,24 @@ export default class extends TypedController {
 
   videoCanSync() {
     return this.hasVideoTarget &&
-      Number.isFinite(this.videoExitOffset) &&
-      this.videoExitOffset >= 0
+      isFiniteNumber(this.videoExitOffset) &&
+      this.videoExitOffset !== null && this.videoExitOffset >= 0
   }
 
+  /** @param {number} elapsed */
   videoTimeForElapsed(elapsed) {
     const elapsedSeconds = this.number(elapsed)
-    if (!Number.isFinite(elapsedSeconds) || !this.videoCanSync()) return null
+    if (!isFiniteNumber(elapsedSeconds) || !this.videoCanSync() || this.videoExitOffset === null) return null
 
     const targetTime = elapsedSeconds - this.exitElapsed() + this.videoExitOffset
     const duration = this.number(this.videoTarget.duration)
-    return this.clamp(targetTime, 0, Number.isFinite(duration) ? duration : Math.max(targetTime, 0))
+    return this.clamp(targetTime, 0, isFiniteNumber(duration) ? duration : Math.max(targetTime, 0))
   }
 
+  /** @param {number} currentTime */
   elapsedForVideoTime(currentTime) {
     const videoTime = this.number(currentTime)
-    if (!Number.isFinite(videoTime) || !this.videoCanSync()) return this.currentElapsed
+    if (!isFiniteNumber(videoTime) || !this.videoCanSync() || this.videoExitOffset === null) return this.currentElapsed
 
     return videoTime - this.videoExitOffset + this.exitElapsed()
   }
@@ -400,7 +494,7 @@ export default class extends TypedController {
   }
 
   setupCharts() {
-    if (!this.hasUnifiedChartTarget) return
+    if (!this.hasUnifiedChartTarget || !this.Chart) return
 
     this.setupUnifiedChart()
   }
@@ -439,9 +533,10 @@ export default class extends TypedController {
     this.syncMetricControls()
   }
 
+  /** @param {string|undefined} requestedPhase @param {{movePlayhead?:boolean}} [options] */
   applyPhase(requestedPhase, options = {}) {
     const ranges = this.phaseRanges()
-    const phase = ranges[requestedPhase] ? requestedPhase : "all"
+    const phase = requestedPhase === "plane" || requestedPhase === "jump" || requestedPhase === "canopy" ? requestedPhase : "all"
     this.activePhase = phase
 
     this.phaseButtonTargets.forEach((button) => {
@@ -452,8 +547,8 @@ export default class extends TypedController {
 
     if (this.unifiedChart) {
       const [ start, end ] = ranges[phase]
-      this.unifiedChart.options.scales.x.min = start
-      this.unifiedChart.options.scales.x.max = end
+      const axis = this.unifiedChart.options.scales?.x
+      if (axis) { axis.min = start; axis.max = end }
       this.unifiedChart.update("none")
     }
 
@@ -477,15 +572,17 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {unknown} value @param {number} fallback @param {number} [maximum] */
   boundaryWithinTimeline(value, fallback, maximum = this.flightDuration) {
     const boundary = this.number(value)
-    if (!Number.isFinite(boundary)) return fallback
+    if (!isFiniteNumber(boundary)) return fallback
 
     return this.clamp(boundary, this.timelineStart, maximum)
   }
 
+  /** @param {number} start @param {number} end @param {number} fallbackStart @param {number} fallbackEnd */
   validPhaseRange(start, end, fallbackStart, fallbackEnd) {
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return [ fallbackStart, fallbackEnd ]
+    if (!isFiniteNumber(start) || !isFiniteNumber(end) || end <= start) return [ fallbackStart, fallbackEnd ]
 
     return [ start, end ]
   }
@@ -546,21 +643,25 @@ export default class extends TypedController {
     this.setStat("peak-load", loads.length > 0 ? this.formatUnit(Math.max(...loads), "g", 1) : "—")
   }
 
+  /** @param {unknown} value @param {number} start @param {number} end */
   timeInsideRange(value, start, end) {
     const time = this.number(value)
-    return Number.isFinite(time) && time >= start && time <= end
+    return isFiniteNumber(time) && time >= start && time <= end
   }
 
+  /** @template T @param {T[]} rows @param {(row:T)=>number|null} mapper @returns {number[]} */
   finiteValues(rows, mapper) {
-    return rows.map(mapper).filter((value) => Number.isFinite(value))
+    return rows.map(mapper).filter((value) => isFiniteNumber(value))
   }
 
+  /** @param {string} key @param {string} value */
   setStat(key, value) {
     this.statTargets.filter((target) => target.dataset.stat === key).forEach((target) => {
       target.textContent = value
     })
   }
 
+  /** @param {string} key @param {number[]} values @param {number} digits */
   setAverageMaximumStat(key, values, digits) {
     if (values.length === 0) {
       this.setStat(`${key}-average`, "—")
@@ -573,6 +674,7 @@ export default class extends TypedController {
     this.setStat(`${key}-maximum`, Math.max(...values).toFixed(digits))
   }
 
+  /** @param {unknown} value */
   formatDuration(value) {
     const seconds = Math.max(0, Math.round(this.number(value) || 0))
     const hours = Math.floor(seconds / 3600)
@@ -584,19 +686,22 @@ export default class extends TypedController {
     return `${remainder} s`
   }
 
+  /** @param {unknown} value */
   formatDistance(value) {
     const meters = this.number(value)
-    if (!Number.isFinite(meters)) return "—"
+    if (!isFiniteNumber(meters)) return "—"
     if (meters >= 1000) return `${(meters / 1000).toFixed(meters >= 10000 ? 0 : 1)} km`
 
     return `${Math.round(meters)} m`
   }
 
+  /** @param {unknown} value @param {string} unit @param {number} digits */
   formatUnit(value, unit, digits) {
     const number = this.number(value)
-    return Number.isFinite(number) ? `${number.toFixed(digits)} ${unit}` : "—"
+    return isFiniteNumber(number) ? `${number.toFixed(digits)} ${unit}` : "—"
   }
 
+  /** @param {number[]} values @param {number} digits */
   formatAverage(values, digits) {
     if (values.length === 0) return "—"
 
@@ -604,24 +709,27 @@ export default class extends TypedController {
     return `Avg ${average.toFixed(digits)}`
   }
 
+  /** @param {Record<string,unknown>} readings */
   accelerationLoadFactor(readings) {
     const x = this.number(readings?.x ?? readings?.ax)
     const y = this.number(readings?.y ?? readings?.ay)
     const z = this.number(readings?.z ?? readings?.az)
-    if (![ x, y, z ].every(Number.isFinite)) return null
+    if (!isFiniteNumber(x) || !isFiniteNumber(y) || !isFiniteNumber(z)) return null
 
     const magnitude = Math.sqrt((x ** 2) + (y ** 2) + (z ** 2))
     return magnitude > 4 ? magnitude / 9.80665 : magnitude
   }
 
+  /** @param {import("../types/flight").TelemetryPoint} point */
   totalSpeedMetersPerSecond(point) {
     const horizontal = this.number(point?.hspeed)
     const vertical = this.number(point?.vspeed)
-    if (!Number.isFinite(horizontal) && !Number.isFinite(vertical)) return null
+    if (!isFiniteNumber(horizontal) && !isFiniteNumber(vertical)) return null
 
     return Math.sqrt((horizontal || 0) ** 2 + (vertical || 0) ** 2)
   }
 
+  /** @param {import("../types/flight").FlightPoint[]} points */
   integratedDistanceRows(points) {
     let distance = 0
 
@@ -631,27 +739,30 @@ export default class extends TypedController {
     })
   }
 
+  /** @param {import("../types/flight").FlightPoint[]} points */
   integratedDistance(points) {
     return points.slice(1).reduce((distance, point, index) => (
       distance + this.distanceIncrement(points[index], point)
     ), 0)
   }
 
+  /** @param {import("../types/flight").FlightPoint} start @param {import("../types/flight").FlightPoint} finish */
   distanceIncrement(start, finish) {
     const startTime = this.number(start?.t)
     const finishTime = this.number(finish?.t)
     const startSpeed = this.number(start?.hspeed)
     const finishSpeed = this.number(finish?.hspeed)
+    if (!isFiniteNumber(startTime) || !isFiniteNumber(finishTime) || !isFiniteNumber(startSpeed) || !isFiniteNumber(finishSpeed)) return 0
     const elapsed = finishTime - startTime
-    if (![ startTime, finishTime, startSpeed, finishSpeed ].every(Number.isFinite)) return 0
     if (elapsed <= 0 || elapsed > 15) return 0
 
     return ((Math.abs(startSpeed) + Math.abs(finishSpeed)) / 2) * elapsed
   }
 
+  /** @param {unknown} value @param {{absolute?:boolean}} [options] */
   kilometersPerHour(value, options = {}) {
     const number = this.number(value)
-    if (!Number.isFinite(number)) return null
+    if (!isFiniteNumber(number)) return null
 
     return (options.absolute ? Math.abs(number) : number) * 3.6
   }
@@ -667,13 +778,14 @@ export default class extends TypedController {
   refreshUnifiedAxes() {
     if (!this.unifiedChart) return
 
-    const visibleAxes = new Set(this.unifiedChart.data.datasets.filter((_dataset, index) =>
-      this.unifiedChart.isDatasetVisible(index)
+    const chart = this.unifiedChart
+    const visibleAxes = new Set(chart.data.datasets.filter((_dataset, index) =>
+      chart.isDatasetVisible(index)
     ).map((dataset) => dataset.yAxisID))
 
-    Object.entries(this.unifiedChart.options.scales).forEach(([ key, scale ]) => {
+    Object.entries(chart.options.scales || {}).forEach(([ key, scale ]) => {
       if (key === "x") return
-      scale.display = visibleAxes.has(key)
+      if (scale) scale.display = visibleAxes.has(key)
     })
   }
 
@@ -681,6 +793,7 @@ export default class extends TypedController {
     return this.hasSceneTarget && this.points.length >= 2
   }
 
+  /** @param {symbol|null} generation */
   isCurrentConnection(generation) {
     return generation != null && this.connectionGeneration === generation
   }
@@ -689,11 +802,13 @@ export default class extends TypedController {
     return withTimeout(import("https://cdn.jsdelivr.net/npm/chart.js@4.4.9/+esm"), "Flight charts")
   }
 
+  /** @param {Promise<typeof import("cesium")>|null} [cesiumLoad] @param {symbol|null} [generation] */
   async setupScene(cesiumLoad = null, generation = this.connectionGeneration) {
     if (!this.isCurrentConnection(generation)) return
     try {
       await this.setupCesiumScene(cesiumLoad, generation)
-    } catch (error) {
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error(String(caught))
       if (!this.isCurrentConnection(generation)) return
       console.warn(`Cesium unavailable, showing 2D profile: ${error.message || error}`)
       this.setupSceneFallback(this.label("cesium_unavailable"))
@@ -705,7 +820,7 @@ export default class extends TypedController {
   disposeSceneHandlers() {
     this.resizeObserver?.disconnect()
     this.resizeObserver = null
-    for (const [eventName, handler, target, options] of this.boundSceneHandlers || []) target?.removeEventListener(eventName, handler, options)
+    for (const remove of this.boundSceneHandlers) remove()
     this.boundSceneHandlers = []
   }
 
@@ -725,6 +840,7 @@ export default class extends TypedController {
     this.cesiumSurfaceRefinementId = null
   }
 
+  /** @param {Promise<typeof import("cesium")>|null} [cesiumLoad] @param {symbol|null} [generation] */
   async setupCesiumScene(cesiumLoad = null, generation = this.connectionGeneration) {
     const cesiumStartedAt = performance.now()
     const Cesium = await (cesiumLoad || this.loadCesium())
@@ -774,20 +890,21 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {typeof import("cesium")} Cesium @param {import("cesium").Viewer} viewer @param {symbol|null} generation */
   async loadCesiumGeography(Cesium, viewer, generation) {
     const current = () => this.isCurrentConnection(generation) && this.cesiumViewer === viewer && !viewer.isDestroyed()
-    const unavailable = (name, error) => {
+    const unavailable = (/** @type {string} */ name, /** @type {{message?:string}|string} */ error) => {
       if (!current()) return
-      this.recordCesiumDiagnostic(`${name}_unavailable`, { message: error.message || String(error) })
+      this.recordCesiumDiagnostic(`${name}_unavailable`, { message: (typeof error === "object" ? error.message : null) || String(error) })
       this.showSceneFallbackMessage(this.label("cesium_geography_unavailable"))
-      console.warn(`Cesium ${name} unavailable: ${error.message || error}`)
+      console.warn(`Cesium ${name} unavailable: ${String(error)}`)
       viewer.scene.requestRender()
     }
     const terrain = withTimeout(Promise.resolve().then(() => Cesium.createWorldTerrainAsync({ requestVertexNormals: true })), "Cesium terrain")
       .then((provider) => {
         if (!current()) return
         viewer.terrainProvider = provider
-        this.cesiumEventHelper.add(provider.errorEvent, (error) => {
+        this.cesiumEventHelper?.add(provider.errorEvent, (error) => {
           if (!current()) return
           viewer.terrainProvider = new Cesium.EllipsoidTerrainProvider()
           unavailable("terrain", error)
@@ -798,7 +915,7 @@ export default class extends TypedController {
       .then((provider) => {
         if (!current()) return
         const layer = viewer.imageryLayers.addImageryProvider(provider)
-        this.cesiumEventHelper.add(provider.errorEvent, (error) => {
+        this.cesiumEventHelper?.add(provider.errorEvent, (error) => {
           if (!current()) return
           viewer.imageryLayers.remove(layer, true)
           unavailable("imagery", error)
@@ -810,6 +927,7 @@ export default class extends TypedController {
     await Promise.all([terrain, imagery, buildings])
   }
 
+  /** @param {typeof import("cesium")} Cesium @param {import("cesium").Viewer} viewer @param {()=>boolean} current */
   async addCesiumBuildings(Cesium, viewer, current) {
     let acceptingTileset = true
     const tilesetRequest = Promise.resolve().then(() => this.createCesiumIonTileset(Cesium))
@@ -834,6 +952,7 @@ export default class extends TypedController {
     return loadCesiumLibrary(this.cesiumBaseUrlValue)
   }
 
+  /** @param {typeof import("cesium")} Cesium @param {number} startedAt */
   startCesiumDiagnostics(Cesium, startedAt) {
     this.cesiumDiagnostics = {
       startedAt,
@@ -852,6 +971,7 @@ export default class extends TypedController {
     this.publishCesiumDiagnostics()
   }
 
+  /** @param {string} name @param {Record<string,unknown>} [details] */
   recordCesiumDiagnostic(name, details = {}) {
     if (!this.cesiumDiagnostics) return
 
@@ -880,10 +1000,14 @@ export default class extends TypedController {
     })
   }
 
-  createCesiumIonTileset(Cesium) {
-    return Cesium.createOsmBuildingsAsync(this.cesiumTilesetOptions())
+  /** @param {typeof import("cesium")} Cesium */
+  async createCesiumIonTileset(Cesium) {
+    const tileset = await Cesium.createOsmBuildingsAsync()
+    Object.assign(tileset, this.cesiumTilesetOptions())
+    return tileset
   }
 
+  /** @returns {Pick<import("cesium").Cesium3DTileset, "maximumScreenSpaceError" | "skipLevelOfDetail" | "foveatedConeSize" | "foveatedTimeDelay" | "progressiveResolutionHeightFraction">} */
   cesiumTilesetOptions() {
     return {
       maximumScreenSpaceError: 48,
@@ -894,8 +1018,10 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {import("cesium").Viewer} viewer @param {import("cesium").Cesium3DTileset} tileset */
   instrumentCesiumTileset(viewer, tileset) {
-    if (!this.cesiumDiagnostics) return
+    const diagnostics = this.cesiumDiagnostics
+    if (!diagnostics) return
 
     tileset.initialTilesLoaded?.addEventListener(() => {
       this.recordCesiumDiagnostic("initial_tiles_loaded", this.cesiumTilesetSnapshot(tileset))
@@ -908,24 +1034,24 @@ export default class extends TypedController {
     })
 
     tileset.loadProgress?.addEventListener((numberOfPendingRequests, numberOfTilesProcessing) => {
-      this.cesiumDiagnostics.loadProgress.push({
-        elapsedMs: Math.round(performance.now() - this.cesiumDiagnostics.startedAt),
+      diagnostics.loadProgress.push({
+        elapsedMs: Math.round(performance.now() - diagnostics.startedAt),
         pendingRequests: numberOfPendingRequests,
         tilesProcessing: numberOfTilesProcessing,
-        tileLoads: this.cesiumDiagnostics.tileLoads
+        tileLoads: diagnostics.tileLoads
       })
-      if (this.cesiumDiagnostics.loadProgress.length > 120) this.cesiumDiagnostics.loadProgress.shift()
+      if (diagnostics.loadProgress.length > 120) diagnostics.loadProgress.shift()
       this.publishCesiumDiagnostics()
     })
 
     tileset.tileLoad?.addEventListener(() => {
-      this.cesiumDiagnostics.tileLoads += 1
-      if ((this.cesiumDiagnostics.tileLoads % 10) === 0) this.publishCesiumDiagnostics()
+      diagnostics.tileLoads += 1
+      if ((diagnostics.tileLoads % 10) === 0) this.publishCesiumDiagnostics()
     })
 
     tileset.tileFailed?.addEventListener((error) => {
-      this.cesiumDiagnostics.tileFailures.push({
-        elapsedMs: Math.round(performance.now() - this.cesiumDiagnostics.startedAt),
+      diagnostics.tileFailures.push({
+        elapsedMs: Math.round(performance.now() - diagnostics.startedAt),
         url: error?.url,
         message: error?.message
       })
@@ -933,6 +1059,7 @@ export default class extends TypedController {
     })
   }
 
+  /** @param {import("cesium").Viewer} viewer @param {import("cesium").Cesium3DTileset} tileset @param {number} maximumScreenSpaceError */
   refineCesiumTilesetQuality(viewer, tileset, maximumScreenSpaceError) {
     if (this.cesiumTileset !== tileset || viewer.isDestroyed()) return
     if (tileset.maximumScreenSpaceError <= maximumScreenSpaceError) return
@@ -942,6 +1069,7 @@ export default class extends TypedController {
     viewer.scene.requestRender()
   }
 
+  /** @param {import("cesium").Cesium3DTileset} tileset */
   cesiumTilesetSnapshot(tileset) {
     return {
       maximumScreenSpaceError: tileset.maximumScreenSpaceError,
@@ -950,6 +1078,7 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {typeof import("cesium")} Cesium @param {import("cesium").Viewer} viewer */
   addCesiumTrajectory(Cesium, viewer) {
     const points = this.cesiumPoints()
     const positions = points.flatMap((point) => [point.lon, point.lat, this.cesiumAltitude(point)])
@@ -1001,6 +1130,7 @@ export default class extends TypedController {
     this.addCesiumEventMarker(Cesium, viewer, "landing", this.boundsValue.landing)
   }
 
+  /** @param {typeof import("cesium")} Cesium @param {import("cesium").Viewer} viewer @param {string} key @param {number|null|undefined} elapsed */
   addCesiumEventMarker(Cesium, viewer, key, elapsed) {
     const point = this.coordinatePointAtElapsed(elapsed, this.cesiumPoints())
     if (!point) return
@@ -1028,6 +1158,7 @@ export default class extends TypedController {
     })
   }
 
+  /** @param {typeof import("cesium")} Cesium @param {import("cesium").Viewer} viewer */
   configureCesiumDaylight(Cesium, viewer) {
     const scene = viewer.scene
     scene.backgroundColor = Cesium.Color.fromCssColorString(this.colors.daySky)
@@ -1038,6 +1169,7 @@ export default class extends TypedController {
     if (scene.skyAtmosphere) scene.skyAtmosphere.show = false
   }
 
+  /** @param {typeof import("cesium")} Cesium @param {import("cesium").Viewer} viewer @param {import("cesium").Cesium3DTileset} tileset */
   async refineCesiumSurface(Cesium, viewer, tileset) {
     const refinementId = Symbol("cesium-surface-refinement")
     this.cesiumSurfaceRefinementId = refinementId
@@ -1052,6 +1184,7 @@ export default class extends TypedController {
     viewer.scene.requestRender()
   }
 
+  /** @param {typeof import("cesium")} Cesium @param {import("cesium").Viewer} viewer */
   refreshCesiumTrajectory(Cesium, viewer) {
     viewer.entities.removeAll()
     this.cesiumPath = null
@@ -1071,6 +1204,7 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {typeof import("cesium")} Cesium @param {import("cesium").Viewer} viewer @param {import("cesium").Cesium3DTileset} tileset */
   async pointsLiftedAboveCesiumSurface(Cesium, viewer, tileset) {
     const fallback = this.points.map((point) => ({ ...point, visualAlt: point.alt }))
 
@@ -1079,7 +1213,6 @@ export default class extends TypedController {
     }
 
     try {
-      if (tileset.readyPromise) await withTimeout(tileset.readyPromise, "Cesium surface")
       if (this.cesiumViewer !== viewer || viewer.isDestroyed()) return fallback
 
       const samplePairs = this.cesiumSurfaceSamplePairs()
@@ -1093,7 +1226,7 @@ export default class extends TypedController {
         sampledHeightsByIndex.set(samplePairs[sampleIndex].index, this.number(position?.height))
       })
       const sampledIndexes = Array.from(sampledHeightsByIndex.keys())
-        .filter((index) => Number.isFinite(sampledHeightsByIndex.get(index)))
+        .filter((index) => isFiniteNumber(sampledHeightsByIndex.get(index)))
         .sort((a, b) => a - b)
       const datumOffset = this.cesiumDatumOffsetFromSurface(sampledHeightsByIndex)
 
@@ -1109,26 +1242,29 @@ export default class extends TypedController {
       })
 
       return this.preserveCesiumDescentProfile(liftedPoints)
-    } catch (error) {
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error(String(caught))
       console.warn(`Cesium surface sampling unavailable: ${error.message || error}`)
       return fallback
     }
   }
 
+  /** @param {number} index @param {import("../types/flight").FlightPoint} point @param {number|null|undefined} sampledHeight */
   shouldClampCesiumPointToSurface(index, point, sampledHeight) {
-    if (!Number.isFinite(sampledHeight)) return false
+    if (!isFiniteNumber(sampledHeight)) return false
     if (index === 0 || index === this.points.length - 1) return true
 
     const elapsed = this.number(point?.t)
     const landing = this.number(this.boundsValue.landing)
-    if (Number.isFinite(elapsed) && Number.isFinite(landing) && Math.abs(elapsed - landing) < 2) return true
+    if (isFiniteNumber(elapsed) && isFiniteNumber(landing) && Math.abs(elapsed - landing) < 2) return true
 
     const height = this.heightFromGround(point)
-    return Number.isFinite(height) && height <= 60
+    return isFiniteNumber(height) && height <= 60
   }
 
+  /** @param {import("../types/flight").FlightPoint[]} points @returns {import("../types/flight").FlightPoint[]} */
   preserveCesiumDescentProfile(points) {
-    return points.reduce((ordered, point, index) => {
+    return points.reduce((/** @type {import("../types/flight").FlightPoint[]} */ ordered, point, index) => {
       const previous = ordered[index - 1]
       if (!previous) {
         ordered.push(point)
@@ -1141,10 +1277,10 @@ export default class extends TypedController {
       const previousVisualAltitude = this.number(previous.visualAlt)
 
       if (
-        Number.isFinite(altitude) &&
-        Number.isFinite(previousAltitude) &&
-        Number.isFinite(visualAltitude) &&
-        Number.isFinite(previousVisualAltitude) &&
+        isFiniteNumber(altitude) &&
+        isFiniteNumber(previousAltitude) &&
+        isFiniteNumber(visualAltitude) &&
+        isFiniteNumber(previousVisualAltitude) &&
         altitude < previousAltitude &&
         visualAltitude > previousVisualAltitude
       ) {
@@ -1159,6 +1295,7 @@ export default class extends TypedController {
     }, [])
   }
 
+  /** @param {number} index @param {Map<number,number|null>} sampledHeightsByIndex @param {number[]} sampledIndexes */
   interpolateCesiumSampledHeight(index, sampledHeightsByIndex, sampledIndexes) {
     if (!sampledIndexes.length) return null
 
@@ -1178,8 +1315,8 @@ export default class extends TypedController {
 
     const previousHeight = sampledHeightsByIndex.get(previousIndex)
     const nextHeight = sampledHeightsByIndex.get(nextIndex)
-    if (!Number.isFinite(previousHeight)) return nextHeight
-    if (!Number.isFinite(nextHeight)) return previousHeight
+    if (!isFiniteNumber(previousHeight)) return nextHeight
+    if (!isFiniteNumber(nextHeight)) return previousHeight
     if (previousIndex === nextIndex) return previousHeight
 
     return this.lerp(previousHeight, nextHeight, (index - previousIndex) / (nextIndex - previousIndex))
@@ -1192,42 +1329,45 @@ export default class extends TypedController {
       this.indexAtElapsed(this.boundsValue.exit),
       this.indexAtElapsed(this.boundsValue.opening),
       this.indexAtElapsed(this.boundsValue.landing)
-    ].filter((index) => Number.isInteger(index) && index >= 0 && index < this.points.length))
+    ].filter((/** @type {number|null} */ index) => isFiniteNumber(index) && Number.isInteger(index) && index >= 0 && index < this.points.length))
 
     const step = Math.max(Math.ceil(this.points.length / limit), 1)
     this.points.forEach((_point, index) => {
       if ((index % step) === 0) requiredIndexes.add(index)
     })
 
-    return Array.from(requiredIndexes).sort((a, b) => a - b).map((index) => ({
+    return Array.from(requiredIndexes).filter(isFiniteNumber).sort((a, b) => a - b).map((index) => ({
       index,
       point: this.points[index]
     }))
   }
 
+  /** @param {number|null|undefined} elapsed @returns {number|null} */
   indexAtElapsed(elapsed) {
-    if (!Number.isFinite(Number(elapsed))) return null
+    if (!isFiniteNumber(Number(elapsed))) return null
 
-    return this.points.reduce((closestIndex, point, index) => {
+    return this.points.reduce((/** @type {number|null} */ closestIndex, point, index) => {
       if (closestIndex === null) return index
 
-      const closestDistance = Math.abs(this.number(this.points[closestIndex]?.t) - Number(elapsed))
-      const pointDistance = Math.abs(this.number(point.t) - Number(elapsed))
+      const closestDistance = Math.abs(this.points[closestIndex].t - Number(elapsed))
+      const pointDistance = Math.abs(point.t - Number(elapsed))
       return pointDistance < closestDistance ? index : closestIndex
     }, null)
   }
 
+  /** @param {Map<number,number|null>} sampledHeightsByIndex */
   cesiumDatumOffsetFromSurface(sampledHeightsByIndex) {
     const landingIndex = this.points.length - 1
     const landingGroundHeight = sampledHeightsByIndex.get(landingIndex)
-    if (!Number.isFinite(landingGroundHeight)) return 0
+    if (!isFiniteNumber(landingGroundHeight)) return 0
 
     const landingAltitude = this.number(this.points[landingIndex]?.alt)
-    if (!Number.isFinite(landingAltitude)) return 0
+    if (!isFiniteNumber(landingAltitude)) return 0
 
     return this.clamp(landingGroundHeight + this.cesiumSurfaceClearance(landingIndex) - landingAltitude, 0, 120)
   }
 
+  /** @param {number} index */
   cesiumSurfaceClearance(index) {
     if (index === 0 || index === this.points.length - 1) return 10
 
@@ -1240,6 +1380,7 @@ export default class extends TypedController {
     return 18
   }
 
+  /** @param {import("cesium").Viewer} viewer */
   configureCesiumCameraController(viewer) {
     const controller = viewer.scene.screenSpaceCameraController
     controller.enableCollisionDetection = false
@@ -1251,6 +1392,7 @@ export default class extends TypedController {
     controller.enableZoom = false
   }
 
+  /** @param {typeof import("cesium")} Cesium @param {import("cesium").Viewer} viewer */
   setupCesiumMouseControls(Cesium, viewer) {
     if (this.cesiumInteractionHandler && !this.cesiumInteractionHandler.isDestroyed()) {
       this.cesiumInteractionHandler.destroy()
@@ -1260,7 +1402,7 @@ export default class extends TypedController {
     this.cesiumInteractionHandler = handler
     this.addSceneHandler("wheel", (event) => event.preventDefault(), viewer.scene.canvas, { passive: false })
 
-    handler.setInputAction((movement) => {
+    handler.setInputAction((/** @type {import("cesium").ScreenSpaceEventHandler.PositionedEvent} */ movement) => {
       this.cesiumDrag = {
         active: true,
         x: movement.position.x,
@@ -1269,7 +1411,7 @@ export default class extends TypedController {
       this.sceneTarget.classList.add("is-dragging")
     }, Cesium.ScreenSpaceEventType.LEFT_DOWN)
 
-    handler.setInputAction((movement) => {
+    handler.setInputAction((/** @type {import("cesium").ScreenSpaceEventHandler.MotionEvent} */ movement) => {
       if (!this.cesiumDrag?.active || !this.cesiumOrbit) return
 
       const position = movement.endPosition
@@ -1287,10 +1429,10 @@ export default class extends TypedController {
 
     handler.setInputAction(() => this.endCesiumDrag(), Cesium.ScreenSpaceEventType.LEFT_UP)
     handler.setInputAction(() => this.resetCamera(), Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK)
-    handler.setInputAction((delta) => {
+    handler.setInputAction((/** @type {number} */ delta) => {
       if (!this.cesiumOrbit) return
 
-      const wheel = typeof delta === "number" ? delta : delta?.deltaY || 0
+      const wheel = delta
       const factor = wheel > 0 ? 1.12 : 0.88
       this.cesiumOrbit.range = this.clamp(
         this.cesiumOrbit.range * factor,
@@ -1306,6 +1448,7 @@ export default class extends TypedController {
     this.sceneTarget.classList.remove("is-dragging")
   }
 
+  /** @param {typeof import("cesium")} Cesium @param {import("cesium").Viewer} viewer */
   flyCesiumCamera(Cesium, viewer) {
     const visualPoints = this.cesiumPoints()
     const start = visualPoints[0]
@@ -1326,16 +1469,18 @@ export default class extends TypedController {
     this.applyCesiumOrbit(Cesium, viewer)
   }
 
+  /** @param {import("../types/flight").FlightPoint[]} points */
   cesiumOverviewRange(points) {
     const altitudes = points
       .map((point) => this.cesiumAltitude(point))
-      .filter((altitude) => Number.isFinite(altitude))
+      .filter((altitude) => isFiniteNumber(altitude))
     const altitudeSpan = altitudes.length ? Math.max(...altitudes) - Math.min(...altitudes) : 0
     const routeDistance = this.routeDistanceMeters()
 
     return this.clamp(Math.max(routeDistance * 1.45, altitudeSpan * 3.2), 900, 14_000)
   }
 
+  /** @param {typeof import("cesium")} Cesium @param {import("cesium").Viewer} viewer */
   applyCesiumOrbit(Cesium, viewer) {
     if (!this.cesiumOrbit?.targetPoint) return
 
@@ -1353,6 +1498,7 @@ export default class extends TypedController {
     viewer.scene.requestRender()
   }
 
+  /** @param {HTMLCanvasElement} target @param {import("../types/flight").FlightDataset[]} datasets @param {import("../types/flight").LinearAxis} scales */
   createTimeChart(target, datasets, scales) {
     const usableDatasets = datasets.filter((dataset) => dataset.data.length > 0)
     if (usableDatasets.length === 0) return null
@@ -1364,13 +1510,16 @@ export default class extends TypedController {
     })
   }
 
+  /** @param {HTMLCanvasElement} target @param {import("chart.js").ChartConfiguration<"line",import("chart.js").ScatterDataPoint[]>} config */
   createChart(target, config) {
-    const chart = /** @type {import("chart.js").Chart<"line">} */ (new this.Chart(target, config))
+    if (!this.Chart) throw new Error("Charts are not loaded")
+    const chart = new this.Chart(target, config)
     this.charts.push(chart)
     this.installChartSync(chart)
     return chart
   }
 
+  /** @param {import("../types/flight").LinearAxis} scales @param {boolean} showBounds @returns {import("chart.js").ChartOptions<"line">} */
   chartOptions(scales, showBounds) {
     return {
       animation: false,
@@ -1392,15 +1541,15 @@ export default class extends TypedController {
           boxPadding: 2,
           caretSize: 4,
           cornerRadius: 3,
-          titleFont: { size: 11, weight: "600" },
+          titleFont: { size: 11, weight: 600 },
           bodyFont: { size: 11 },
           filter: (item) => this.unifiedChart?.isDatasetVisible(item.datasetIndex) ?? true,
           callbacks: {
             title: (items) => this.formatTimer(this.chartItemElapsed(items[0])),
             label: (item) => {
-              const value = this.number(item.raw?.y)
+              const value = this.number(item.parsed.y)
               const unit = item.dataset.unit || ""
-              return `${item.dataset.label}: ${Number.isFinite(value) ? value.toFixed(value >= 100 ? 0 : 1) : "—"}${unit ? ` ${unit}` : ""}`
+              return `${item.dataset.label}: ${isFiniteNumber(value) ? value.toFixed(value >= 100 ? 0 : 1) : "—"}${unit ? ` ${unit}` : ""}`
             }
           }
         },
@@ -1415,6 +1564,7 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {import("../types/flight").FlightChart} chart */
   installChartSync(chart) {
     const canvas = chart.canvas
     this.addSceneHandler("pointermove", (event) => {
@@ -1436,21 +1586,24 @@ export default class extends TypedController {
     }, canvas)
   }
 
+  /** @param {import("../types/flight").FlightChart} chart @param {PointerEvent} event */
   updateFromChartEvent(chart, event) {
     const elapsed = this.elapsedFromChartEvent(chart, event)
-    if (!Number.isFinite(elapsed)) return
+    if (!isFiniteNumber(elapsed)) return
 
     this.updateScrubbedElapsed(elapsed, { followCamera: false })
   }
 
+  /** @param {import("../types/flight").FlightChart} chart @param {PointerEvent} event */
   elapsedFromChartEvent(chart, event) {
     const position = this.chartEventPosition(chart, event)
     if (!position || !this.positionInsideChartArea(chart, position)) return null
 
     const elapsed = chart.scales?.x?.getValueForPixel(position.x)
-    return Number.isFinite(Number(elapsed)) ? this.clamp(Number(elapsed), this.timelineStart, this.flightDuration || 0) : null
+    return isFiniteNumber(Number(elapsed)) ? this.clamp(Number(elapsed), this.timelineStart, this.flightDuration || 0) : null
   }
 
+  /** @param {import("../types/flight").FlightChart} chart @param {PointerEvent} event */
   chartEventPosition(chart, event) {
     const rect = chart.canvas.getBoundingClientRect()
     if (rect.width <= 0 || rect.height <= 0) return null
@@ -1461,6 +1614,7 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {import("../types/flight").FlightChart} chart @param {{x:number,y:number}} position */
   positionInsideChartArea(chart, position) {
     const area = chart.chartArea
     if (!area) return false
@@ -1468,24 +1622,28 @@ export default class extends TypedController {
     return position.x >= area.left && position.x <= area.right && position.y >= area.top && position.y <= area.bottom
   }
 
+  /** @param {import("chart.js").TooltipItem<"line">|undefined} item */
   chartItemElapsed(item) {
     return this.dataElapsed(item?.raw) ?? this.number(item?.parsed?.x)
   }
 
+  /** @param {unknown} point */
   dataElapsed(point) {
-    const elapsed = this.number(point?.t)
-    if (Number.isFinite(elapsed)) return elapsed
+    if (!point || typeof point !== "object") return null
+    const elapsed = this.number("t" in point ? point.t : null)
+    if (isFiniteNumber(elapsed)) return elapsed
 
-    return this.number(point?.x)
+    return this.number("x" in point ? point.x : null)
   }
 
+  /** @template {{t:number}} T @param {string} metric @param {string} label @param {T[]} rows @param {(row:T)=>number|null|undefined} valueForRow @param {string} color @param {string} axis @param {string} unit @param {boolean} visible @returns {import("../types/flight").FlightDataset} */
   metricDataset(metric, label, rows, valueForRow, color, axis, unit, visible) {
     return {
       metric,
       label,
       unit,
       data: rows.map((row) => ({ x: this.number(row.t), y: this.number(valueForRow(row)) }))
-        .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y)),
+        .filter((/** @type {{x:number|null,y:number|null}} */ point) => isChartPoint(point)),
       borderColor: color,
       backgroundColor: color,
       yAxisID: axis,
@@ -1495,14 +1653,16 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {string} type */
   sensorRows(type) {
     return this.sensors.filter((sample) => sample.type === type)
   }
 
   pressureAltitudeRows() {
-    return this.sensorRows("BARO").filter((sample) => Number.isFinite(this.number(sample.readings?.pressure_altitude_m)))
+    return this.sensorRows("BARO").filter((sample) => isFiniteNumber(this.number(sample.readings?.pressure_altitude_m)))
   }
 
+  /** @param {import("../types/flight").SensorSample[]} samples */
   enrichedSensorSamples(samples) {
     const pressureSpeeds = this.pressureSpeedsBySample(samples)
 
@@ -1517,69 +1677,78 @@ export default class extends TypedController {
     })
   }
 
+  /** @param {import("../types/flight").SensorSample[]} samples */
   pressureSpeedsBySample(samples) {
     const baroSamples = samples.filter((sample) =>
       sample.type === "BARO" &&
-      Number.isFinite(this.number(sample.t)) &&
-      Number.isFinite(this.number(sample.readings?.pressure_altitude_m))
+      isFiniteNumber(this.number(sample.t)) &&
+      isFiniteNumber(this.number(sample.readings?.pressure_altitude_m))
     )
     const speeds = new Map()
 
     baroSamples.forEach((sample, index) => {
       const speed = this.robustPressureVerticalSpeed(baroSamples, index)
-      if (Number.isFinite(speed)) speeds.set(sample, speed)
+      if (isFiniteNumber(speed)) speeds.set(sample, speed)
     })
 
     return speeds
   }
 
+  /** @param {import("../types/flight").SensorSample[]} samples @param {number} index */
   robustPressureVerticalSpeed(samples, index) {
     const centerTime = this.number(samples[index]?.t)
-    if (!Number.isFinite(centerTime)) return null
+    if (!isFiniteNumber(centerTime)) return null
 
-    const windowRows = samples.filter((sample) => Math.abs(this.number(sample.t) - centerTime) <= 2.0)
+    // Samples are sorted once during connection. Visit only the four-second window.
+    let first = index
+    let last = index
+    while (first > 0 && centerTime - samples[first - 1].t <= 2.0) first -= 1
+    while (last + 1 < samples.length && samples[last + 1].t - centerTime <= 2.0) last += 1
+    /** @type {number[]} */
     const slopes = []
 
-    windowRows.forEach((start, startIndex) => {
-      windowRows.slice(startIndex + 1).forEach((finish) => {
-        const startTime = this.number(start.t)
-        const finishTime = this.number(finish.t)
-        const duration = finishTime - startTime
-        if (duration < 0.25) return
-
-        const startAltitude = this.number(start.readings?.pressure_altitude_m)
+    for (let startIndex = first; startIndex < last; startIndex += 1) {
+      const start = samples[startIndex]
+      const startAltitude = this.number(start.readings?.pressure_altitude_m)
+      if (!isFiniteNumber(startAltitude)) continue
+      for (let finishIndex = startIndex + 1; finishIndex <= last; finishIndex += 1) {
+        const finish = samples[finishIndex]
+        const duration = finish.t - start.t
+        if (duration < 0.25) continue
         const finishAltitude = this.number(finish.readings?.pressure_altitude_m)
-        if (!Number.isFinite(startAltitude) || !Number.isFinite(finishAltitude)) return
-
-        slopes.push((startAltitude - finishAltitude) / duration)
-      })
-    })
+        if (isFiniteNumber(finishAltitude)) slopes.push((startAltitude - finishAltitude) / duration)
+      }
+    }
 
     const speed = this.median(slopes)
     return this.cleanTrajectorySpeed(speed)
   }
 
+  /** @param {number|null} speed */
   cleanTrajectorySpeed(speed) {
     const value = this.number(speed)
-    if (!Number.isFinite(value)) return null
+    if (!isFiniteNumber(value)) return null
     if (Math.abs(value) > 140) return null
 
     return value
   }
 
+  /** @param {number[]} values */
   median(values) {
     return median(values)
   }
 
+  /** @param {import("../types/flight").SensorSample} sample */
   normalizedSensorSample(sample) {
     const readings = { ...(sample.readings || {}) }
-    if (sample.type === "BARO" && !Number.isFinite(this.number(readings.pressure_altitude_m))) {
+    if (sample.type === "BARO" && !isFiniteNumber(this.number(readings.pressure_altitude_m))) {
       readings.pressure_altitude_m = pressureAltitudeFromPascals(readings.pressure)
     }
 
     return { ...sample, readings }
   }
 
+  /** @returns {import("chart.js").ScaleOptions<"linear">} */
   timeAxis() {
     return {
       type: "linear",
@@ -1598,6 +1767,7 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {"left"|"right"} position @param {string} title @param {boolean} [drawGrid] @returns {import("chart.js").ScaleOptions<"linear">} */
   axis(position, title, drawGrid = true) {
     return {
       type: "linear",
@@ -1613,11 +1783,14 @@ export default class extends TypedController {
     }
   }
 
+  /** @template {keyof HTMLElementEventMap} K @param {K} eventName @param {(event:HTMLElementEventMap[K])=>void} handler @param {HTMLCanvasElement|null} [target] @param {AddEventListenerOptions} [options] */
   addSceneHandler(eventName, handler, target = this.sceneCanvas, options = undefined) {
+    if (!target) return
     target.addEventListener(eventName, handler, options)
-    this.boundSceneHandlers.push([eventName, handler, target, options])
+    this.boundSceneHandlers.push(() => target.removeEventListener(eventName, handler, options))
   }
 
+  /** @param {string} message */
   setupSceneFallback(message) {
     this.disposeSceneHandlers()
     this.disposeCesiumScene()
@@ -1632,6 +1805,7 @@ export default class extends TypedController {
     this.resizeObserver.observe(this.sceneTarget)
   }
 
+  /** @param {HTMLCanvasElement} canvas */
   showSceneFallback(canvas) {
     const context = canvas.getContext("2d")
     const width = canvas.clientWidth || 640
@@ -1655,6 +1829,7 @@ export default class extends TypedController {
     context.stroke()
   }
 
+  /** @param {string} message */
   showSceneFallbackMessage(message) {
     const note = this.sceneNotice ||= document.createElement("div")
     note.className = "trajectory-notice"
@@ -1662,6 +1837,7 @@ export default class extends TypedController {
     this.sceneTarget.appendChild(note)
   }
 
+  /** @param {number} elapsed @param {{followCamera?:boolean,syncVideo?:boolean}} [options] */
   updateScrubbedElapsed(elapsed, options = {}) {
     const followCamera = options.followCamera !== false
     const syncVideo = options.syncVideo !== false
@@ -1675,13 +1851,13 @@ export default class extends TypedController {
     }
 
     if (visualPoint && this.cesiumMarker && window.Cesium) {
-      this.cesiumMarker.position = window.Cesium.Cartesian3.fromDegrees(
+      this.cesiumMarker.position = new window.Cesium.ConstantPositionProperty(window.Cesium.Cartesian3.fromDegrees(
         Number(visualPoint.lon),
         Number(visualPoint.lat),
         this.cesiumAltitude(visualPoint)
-      )
-      this.cesiumMarker.label.text = this.markerLabel(point)
-      if (followCamera && this.cesiumOrbit) {
+      ))
+      if (this.cesiumMarker.label) this.cesiumMarker.label.text = new window.Cesium.ConstantProperty(this.markerLabel(point))
+      if (followCamera && this.cesiumOrbit && this.cesiumViewer) {
         this.cesiumOrbit.targetPoint = visualPoint
         this.applyCesiumOrbit(window.Cesium, this.cesiumViewer)
       }
@@ -1693,6 +1869,7 @@ export default class extends TypedController {
     if (syncVideo) this.syncVideoToElapsed(clampedElapsed)
   }
 
+  /** @param {number} elapsed */
   updateChartsPlaybackCursor(elapsed) {
     this.charts.forEach((chart) => {
       const playback = chart.options?.plugins?.osPlayback
@@ -1706,6 +1883,7 @@ export default class extends TypedController {
     })
   }
 
+  /** @param {import("../types/flight").FlightChart} chart @param {number} elapsed */
   chartActiveElementsAtElapsed(chart, elapsed) {
     return chart.data.datasets.filter((dataset) => dataset.data.length > 0).map((dataset) => {
       const datasetIndex = chart.data.datasets.indexOf(dataset)
@@ -1713,11 +1891,12 @@ export default class extends TypedController {
       if (index === null) return null
 
       return { datasetIndex, index }
-    }).filter(Boolean)
+    }).filter((item) => item !== null)
   }
 
+  /** @param {import("chart.js").ScatterDataPoint[]} data @param {number} elapsed @returns {number|null} */
   nearestDataIndexAtElapsed(data, elapsed) {
-    if (!data?.length || !Number.isFinite(Number(elapsed))) return null
+    if (!data?.length || !isFiniteNumber(Number(elapsed))) return null
 
     let low = 0
     let high = data.length - 1
@@ -1725,33 +1904,35 @@ export default class extends TypedController {
     while (low < high) {
       const middle = Math.floor((low + high) / 2)
       const middleElapsed = this.dataElapsed(data[middle])
-      if (!Number.isFinite(middleElapsed)) return this.nearestDataIndexAtElapsedLinear(data, elapsed)
+      if (!isFiniteNumber(middleElapsed)) return this.nearestDataIndexAtElapsedLinear(data, elapsed)
       if (middleElapsed < elapsed) low = middle + 1
       else high = middle
     }
 
     const candidates = [ low, low - 1, low + 1 ].filter((index) => index >= 0 && index < data.length)
-    return candidates.reduce((closestIndex, index) => {
+    return candidates.reduce((/** @type {number|null} */ closestIndex, index) => {
       if (closestIndex === null) return index
 
-      const closestDistance = Math.abs(this.dataElapsed(data[closestIndex]) - elapsed)
-      const distance = Math.abs(this.dataElapsed(data[index]) - elapsed)
+      const closestDistance = Math.abs((this.dataElapsed(data[closestIndex]) ?? Infinity) - elapsed)
+      const distance = Math.abs((this.dataElapsed(data[index]) ?? Infinity) - elapsed)
       return distance < closestDistance ? index : closestIndex
     }, null)
   }
 
+  /** @param {import("chart.js").ScatterDataPoint[]} data @param {number} elapsed @returns {number|null} */
   nearestDataIndexAtElapsedLinear(data, elapsed) {
-    return data.reduce((closestIndex, point, index) => {
+    return data.reduce((/** @type {number|null} */ closestIndex, point, index) => {
       const pointElapsed = this.dataElapsed(point)
-      if (!Number.isFinite(pointElapsed)) return closestIndex
+      if (!isFiniteNumber(pointElapsed)) return closestIndex
       if (closestIndex === null) return index
 
-      const closestDistance = Math.abs(this.dataElapsed(data[closestIndex]) - elapsed)
+      const closestDistance = Math.abs((this.dataElapsed(data[closestIndex]) ?? Infinity) - elapsed)
       const distance = Math.abs(pointElapsed - elapsed)
       return distance < closestDistance ? index : closestIndex
     }, null)
   }
 
+  /** @param {import("../types/flight").FlightChart} chart @param {import("chart.js").ActiveDataPoint[]} activeElements @param {number} elapsed */
   chartTooltipPosition(chart, activeElements, elapsed) {
     const firstElement = activeElements[0]
     if (firstElement) {
@@ -1762,18 +1943,19 @@ export default class extends TypedController {
     const area = chart.chartArea
     const x = chart.scales?.x?.getPixelForValue(elapsed)
     return {
-      x: Number.isFinite(x) ? x : area?.left || 0,
+      x: isFiniteNumber(x) ? x : area?.left || 0,
       y: area ? area.top : 0
     }
   }
 
+  /** @param {typeof import("chart.js").Tooltip} Tooltip */
   installTooltipPositioner(Tooltip) {
     if (!Tooltip?.positioners) return false
-    if (Tooltip.positioners.osAwayFromPoint) return true
+    if (Object.hasOwn(Tooltip.positioners, "osAwayFromPoint")) return true
 
     Tooltip.positioners.osAwayFromPoint = function(elements, eventPosition) {
       const element = elements.find((item) => item?.element)?.element
-      const point = element?.tooltipPosition ? element.tooltipPosition() : eventPosition
+      const point = element?.tooltipPosition ? element.tooltipPosition(false) : eventPosition
       const area = this.chart?.chartArea
       if (!point || !area) return eventPosition
 
@@ -1819,6 +2001,7 @@ export default class extends TypedController {
     return true
   }
 
+  /** @param {number} elapsed */
   telemetryPointAtElapsed(elapsed) {
     const pressurePoint = this.pressureAltitudePointAtElapsed(elapsed)
     const gpsPoint = this.coordinatePointAtElapsed(elapsed, this.points)
@@ -1834,8 +2017,9 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {number|null|undefined} elapsed @param {import("../types/flight").FlightPoint[]} [points] */
   coordinatePointAtElapsed(elapsed, points = this.points) {
-    if (!points?.length || !Number.isFinite(Number(elapsed))) return null
+    if (!points?.length || !isFiniteNumber(elapsed)) return null
 
     const firstTime = this.number(points[0].t) ?? 0
     if (elapsed < firstTime) return null
@@ -1843,9 +2027,10 @@ export default class extends TypedController {
     return this.samplePointAtElapsed(elapsed, points)
   }
 
+  /** @param {number} elapsed */
   pressureAltitudePointAtElapsed(elapsed) {
     const rows = this.pressureAltitudeRows()
-    if (!rows.length || !Number.isFinite(Number(elapsed))) return null
+    if (!rows.length || !isFiniteNumber(Number(elapsed))) return null
 
     const sampled = this.sampleSensorRowsAtElapsed(elapsed, rows, "pressure_altitude_m")
     if (!sampled) return null
@@ -1858,14 +2043,17 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {number} elapsed @param {import("../types/flight").SensorSample[]} rows @param {string} key */
   sampleSensorRowsAtElapsed(elapsed, rows, key) {
     return sampleSensorValue(elapsed, rows, key)
   }
 
+  /** @param {number} elapsed @param {import("../types/flight").FlightPoint[]} [points] */
   samplePointAtElapsed(elapsed, points = this.points) {
     return sampleFlightPoint(elapsed, points)
   }
 
+  /** @param {number} a @param {number} b @param {number} ratio */
   lerp(a, b, ratio) {
     return lerp(a, b, ratio)
   }
@@ -1893,6 +2081,7 @@ export default class extends TypedController {
     return this.cesiumVisualPoints || this.points
   }
 
+  /** @param {import("../types/flight").FlightPoint} point */
   cesiumAltitude(point) {
     return this.number(point?.visualAlt) ?? this.number(point?.alt) ?? 0
   }
@@ -1911,6 +2100,7 @@ export default class extends TypedController {
     return Math.sqrt(dx ** 2 + dy ** 2)
   }
 
+  /** @param {import("../types/flight").FlightPoint} start @param {import("../types/flight").FlightPoint} end */
   flightHeadingRadians(start, end) {
     const lat1 = start.lat * Math.PI / 180
     const lat2 = end.lat * Math.PI / 180
@@ -1920,10 +2110,12 @@ export default class extends TypedController {
     return Math.atan2(y, x)
   }
 
+  /** @param {number} value @param {number} min @param {number} max */
   clamp(value, min, max) {
     return clamp(value, min, max)
   }
 
+  /** @param {unknown} value */
   number(value) {
     if (value === null || value === undefined || value === "") return null
 
@@ -1931,7 +2123,7 @@ export default class extends TypedController {
   }
 
   groundAltitudeFromPoints() {
-    const altitudes = this.points.map((point) => this.number(point.alt)).filter((value) => Number.isFinite(value))
+    const altitudes = this.points.map((point) => this.number(point.alt)).filter((value) => isFiniteNumber(value))
     if (!altitudes.length) return null
 
     return Math.min(...altitudes)
@@ -1939,30 +2131,33 @@ export default class extends TypedController {
 
   groundAltitudeFromAnalysis() {
     const altitude = this.number(this.analysis?.altitude_min)
-    if (Number.isFinite(altitude)) return altitude
+    if (isFiniteNumber(altitude)) return altitude
 
     const pressureAltitudes = this.pressureAltitudeRows()
       .map((sample) => this.number(sample.readings?.pressure_altitude_m))
-      .filter((value) => Number.isFinite(value))
+      .filter((value) => isFiniteNumber(value))
     if (pressureAltitudes.length > 0) return Math.min(...pressureAltitudes)
 
     return this.groundAltitudeFromPoints()
   }
 
+  /** @param {import("../types/flight").TelemetryPoint} point */
   heightFromGround(point) {
     const height = this.number(point?.height)
-    if (Number.isFinite(height)) return height
+    if (isFiniteNumber(height)) return height
 
     const altitude = this.number(point?.alt)
-    if (!Number.isFinite(altitude) || !Number.isFinite(this.groundAltitude)) return null
+    if (!isFiniteNumber(altitude) || !isFiniteNumber(this.groundAltitude)) return null
 
     return Math.max(altitude - this.groundAltitude, 0)
   }
 
+  /** @param {string} key */
   label(key) {
     return this.labelsValue[key] || key
   }
 
+  /** @param {import("../types/flight").TelemetryPoint|null} point */
   markerLabel(point) {
     if (!point) return ""
 
@@ -1976,56 +2171,62 @@ export default class extends TypedController {
     ].join("\n")
   }
 
+  /** @param {unknown} value @param {string} unit @param {number} digits */
   formatMetric(value, unit, digits) {
     const number = this.number(value)
-    if (!Number.isFinite(number)) return `- ${unit}`
+    if (!isFiniteNumber(number)) return `- ${unit}`
 
     return `${number.toFixed(digits)} ${unit}`
   }
 
+  /** @param {unknown} value @param {number} digits */
   formatNumber(value, digits) {
     const number = this.number(value)
-    return Number.isFinite(number) ? number.toFixed(digits) : "-"
+    return isFiniteNumber(number) ? number.toFixed(digits) : "-"
   }
 
+  /** @param {number} elapsed */
   playbackTimeLabel(elapsed) {
     return `${this.formatTimer(elapsed)} / ${this.formatSeconds(this.phaseSpan())}`
   }
 
+  /** @param {unknown} elapsed */
   formatTimer(elapsed) {
     const relativeElapsed = this.elapsedFromExit(elapsed)
-    if (!Number.isFinite(relativeElapsed)) return "T --:--"
+    if (!isFiniteNumber(relativeElapsed)) return "T --:--"
 
     const prefix = relativeElapsed < 0 ? "T-" : "T+"
     return `${prefix}${this.formatSeconds(Math.abs(relativeElapsed))}`
   }
 
+  /** @param {number|null} value */
   formatSeconds(value) {
     const seconds = Math.max(0, Math.round(value || 0))
     const minutes = Math.floor(seconds / 60)
     return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`
   }
 
+  /** @param {unknown} elapsed */
   elapsedFromExit(elapsed) {
     const elapsedSeconds = this.number(elapsed)
-    if (!Number.isFinite(elapsedSeconds)) return null
+    if (!isFiniteNumber(elapsedSeconds)) return null
 
     return elapsedSeconds - this.exitElapsed()
   }
 
   exitElapsed() {
     const exit = this.number(this.boundsValue?.exit)
-    return Number.isFinite(exit) ? exit : 0
+    return isFiniteNumber(exit) ? exit : 0
   }
 
   timelineStartFromData() {
     const analyzedStart = this.number(this.analysis?.timeline_start)
-    if (Number.isFinite(analyzedStart)) return analyzedStart
+    if (isFiniteNumber(analyzedStart)) return analyzedStart
 
     const values = [
       ...this.points.map((point) => this.number(point.t)),
       ...this.sensors.map((sample) => this.number(sample.t))
-    ].filter((value) => Number.isFinite(value))
+    ].filter((value) => isFiniteNumber(value))
 
     return values.length > 0 ? Math.min(...values) : 0
   }
@@ -2035,9 +2236,9 @@ export default class extends TypedController {
     const values = [
       ...this.points.map((point) => this.number(point.t)),
       ...this.sensors.map((sample) => this.number(sample.t))
-    ].filter((value) => Number.isFinite(value))
+    ].filter((value) => isFiniteNumber(value))
     const fallbackEnd = values.length > 0 ? Math.max(...values) : 0
-    const end = Number.isFinite(analyzedEnd) ? analyzedEnd : fallbackEnd
+    const end = isFiniteNumber(analyzedEnd) ? analyzedEnd : fallbackEnd
 
     return Math.max(end, this.timelineStart)
   }
@@ -2046,3 +2247,6 @@ export default class extends TypedController {
     return this.clamp(this.exitElapsed(), this.timelineStart, this.flightDuration || 0)
   }
 }
+
+/** @param {{x:number|null,y:number|null}} point @returns {point is {x:number,y:number}} */
+function isChartPoint(point) { return isFiniteNumber(point.x) && isFiniteNumber(point.y) }

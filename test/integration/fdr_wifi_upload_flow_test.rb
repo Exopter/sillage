@@ -167,7 +167,7 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
     assert_equal chunk.bytesize.to_s, response.headers.fetch("X-FDR-Upload-Offset")
   end
 
-  test "accepts the legacy controller prefix during the firmware transition" do
+  test "rejects the retired controller prefix" do
     manifest_body = @manifest.to_json
     legacy_device_id = "EXOFDR-A172E0"
 
@@ -175,8 +175,8 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
       params: manifest_body,
       headers: signed_headers(manifest_body, "create", device_id: legacy_device_id, content_type: "application/json")
 
-    assert_response :created
-    assert_equal @recorder, FdrWifiUpload.find_by!(token: response.headers.fetch("X-FDR-Upload-Token")).embedded_controller
+    assert_response :unauthorized
+    assert_nil response.headers["X-FDR-Upload-Token"]
   end
 
   test "keeps a staged recording unacknowledged when final SHA verification fails" do

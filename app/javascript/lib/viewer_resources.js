@@ -1,4 +1,4 @@
-/** @type {Promise<any> | null} */
+/** @type {Promise<typeof import("cesium")> | null} */
 let cesiumPromise = null
 
 /** @template T @param {Promise<T>} promise @param {string} label @param {number} [timeoutMs] @returns {Promise<T>} */
@@ -9,14 +9,18 @@ export function withTimeout(promise, label, timeoutMs = 15000) {
   return /** @type {Promise<T>} */ (Promise.race([promise, timeout])).finally(() => clearTimeout(timer))
 }
 
-/** @param {string} baseUrl */
-export function loadCesiumLibrary(baseUrl, { document: doc = globalThis.document, global = /** @type {any} */ (globalThis), timeoutMs = 15000 } = {}) {
+/**
+ * @param {string} baseUrl
+ * @param {{document?: Document, global?: {Cesium?: typeof import("cesium"), CESIUM_BASE_URL?: string}, timeoutMs?: number}} [options]
+ * @returns {Promise<typeof import("cesium")>}
+ */
+export function loadCesiumLibrary(baseUrl, { document: doc = globalThis.document, global = globalThis.window, timeoutMs = 15000 } = {}) {
   if (global.Cesium) return Promise.resolve(global.Cesium)
   if (cesiumPromise) return cesiumPromise
 
   // An element left by an older failed visit has already emitted its error.
   doc.querySelector("script[data-sillage-cesium]")?.remove()
-  cesiumPromise = new Promise((resolve, reject) => {
+  cesiumPromise = new Promise((/** @type {(value: typeof import("cesium")) => void} */ resolve, reject) => {
     const script = doc.createElement("script")
     let settled = false
     const finish = (/** @type {Error | null} */ error) => {
@@ -26,7 +30,7 @@ export function loadCesiumLibrary(baseUrl, { document: doc = globalThis.document
       script.removeEventListener("load", loaded)
       script.removeEventListener("error", failed)
       if (error) { script.remove(); reject(error) }
-      else resolve(global.Cesium)
+      else if (global.Cesium) resolve(global.Cesium)
     }
     const loaded = () => finish(global.Cesium ? null : new Error("Cesium loaded without its API"))
     const failed = () => finish(new Error("Cesium could not be loaded"))
@@ -38,7 +42,7 @@ export function loadCesiumLibrary(baseUrl, { document: doc = globalThis.document
     script.addEventListener("load", loaded)
     script.addEventListener("error", failed)
     try { doc.head.appendChild(script) }
-    catch (error) { finish(error) }
+    catch (error) { finish(error instanceof Error ? error : new Error(String(error))) }
   }).catch((error) => {
     cesiumPromise = null
     throw error

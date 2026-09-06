@@ -98,7 +98,14 @@ ordered samples bypass sorting, and equal timestamps retain their input order.
 Other sensor streams contribute only timeline endpoints. Decoding buffers are
 removed on success and failure. Analysis has no size-based disk fallback or quota.
 
-Local JavaScript validation checks the shared protocol and storage modules in strict
-mode, and checks the viewer, connectivity and Signal controllers with their Stimulus
-bindings declared explicitly. The controller check does not yet enforce strict null
-or implicit-parameter typing. No browser bundle or runtime transpilation is added.
+Local JavaScript validation checks every application module, all Stimulus
+controllers and the serial worker in strict mode. Domain declarations cover
+flight analysis, EXS1, HTTP receipts, worker messages and the local outbox.
+Unknown errors and nullable DOM resources are checked without suppressions.
+No browser bundle or runtime transpilation is added.
+
+Only FDR file format 3 and record version 2 are imported. Device identifiers use
+`ECU-XXXXXX`; MAVLink identity uses `mavlink_system_id`. The previous aliases and
+recording variants are retired. For an external historical recording, use the
+archive decoder command in the FDR repository README; existing source files are
+preserved.

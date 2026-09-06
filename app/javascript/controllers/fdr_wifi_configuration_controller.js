@@ -155,7 +155,8 @@ export default class extends TypedController {
       const port = await navigator.serial.requestPort()
       this.rememberUsbPort(port)
       await this.openUsbPort(port)
-    } catch (error) {
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error(String(caught))
       if (error.name !== "NotFoundError") this.showError(error.message)
       this.resetConnectionState()
     }
@@ -171,7 +172,8 @@ export default class extends TypedController {
       const device = await navigator.bluetooth.requestDevice({ filters: [{ services: [BleUuid.service] }] })
       window.localStorage.setItem(BLE_DEVICE_STORAGE_KEY, device.id)
       await this.openDevice(device)
-    } catch (error) {
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error(String(caught))
       if (error.name !== "NotFoundError") this.showError(error.message)
       this.device?.removeEventListener("gattserverdisconnected", this.handleDisconnect)
       this.device?.gatt?.disconnect()
@@ -238,7 +240,8 @@ export default class extends TypedController {
       this.wifiClient = new UsbWifiClient(client)
       this.renderConnection(status, "USB-C")
       this.startUsbKeepalive()
-    } catch (error) {
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error(String(caught))
       await client.close()
       throw error
     }
@@ -322,7 +325,8 @@ export default class extends TypedController {
       }
       this.renderScanResults(results)
       this.scanStatusTarget.textContent = `${results.length} network${results.length === 1 ? "" : "s"} found`
-    } catch (error) {
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error(String(caught))
       this.showError(error.message)
       this.scanStatusTarget.textContent = "Scan failed"
     } finally {
@@ -414,7 +418,8 @@ export default class extends TypedController {
       this.applyStatusTarget.textContent = "Configuration verified and confirmed in Forge."
       this.applyStatusTarget.dataset.state = "success"
       window.setTimeout(() => window.location.reload(), 700)
-    } catch (error) {
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error(String(caught))
       try { await wifiClient.cancelUpdate() } catch (_) {}
       this.showError(error.message)
     } finally {

@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "assets:prepare": "node script/prepare_cesium_assets.mjs",
-    "typecheck": "tsc --project tsconfig.json && tsc --project tsconfig.controllers.json"
+    "typecheck": "tsc --project tsconfig.json && tsc --project tsconfig.worker.json"
   },
   "devDependencies": {
     "@hotwired/stimulus": "3.2.2",

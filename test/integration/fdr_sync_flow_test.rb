@@ -22,6 +22,22 @@ class FdrSyncFlowTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "rejects malformed manifests before hashing or storing uploads" do
+    with_upload do |upload, binary|
+      valid = sync_params(upload, binary)
+      manifests = [ nil, [], {}, valid.except(:filename), valid.except(:sha256),
+        valid.merge(size_bytes: 1.5), valid.merge(boot_id: -1),
+        valid.merge(file_index: "1.5"), valid.merge(device_id: "EXOFDR-ABC123") ]
+      assert_no_difference [ -> { FlightImport.count }, -> { ActiveStorage::Blob.count } ] do
+        manifests.each do |metadata|
+          assert_raises(FdrSync::Error) do
+            FdrSync::Ingest.new(user: users(:julien), upload:, metadata:).call
+          end
+        end
+      end
+    end
+  end
+
   test "stores, verifies and acknowledges an idempotent USB synchronized file" do
     asset = Assembly.create!(name: "Synchronized recorder")
     create_embedded_controller(assembly: asset, device_id: "ECU-ABC123")

@@ -1,3 +1,9 @@
+/** @type {Array<"height" | "hspeed" | "vspeed" | "glide" | "distance">} */
+const optionalFlightFields = ["height", "hspeed", "vspeed", "glide", "distance"]
+
+/** @param {unknown} value @returns {value is number} */
+export function isFiniteNumber(value) { return typeof value === "number" && Number.isFinite(value) }
+
 /** @param {unknown} value @returns {number | null} */
 export function finiteNumber(value) {
   const number = Number(value)
@@ -26,14 +32,15 @@ export function median(values) {
 }
 
 /**
- * @param {Record<string, unknown>} previous
- * @param {Record<string, unknown>} next
+ * @param {import("../types/flight").FlightPoint} previous
+ * @param {import("../types/flight").FlightPoint} next
  * @param {number} ratio
  * @param {number} elapsed
  */
 export function interpolateFlightPoint(previous, next, ratio, elapsed) {
-  /** @type {Record<string, unknown>} */
+  /** @type {import("../types/flight").FlightPoint} */
   const point = { ...previous, t: elapsed }
+  /** @type {Array<keyof import("../types/flight").FlightPoint>} */
   const keys = ["lat", "lon", "alt", "height", "hspeed", "vspeed", "glide", "distance", "visualAlt", "groundAlt", "datumOffset"]
 
   keys.forEach((key) => {
@@ -47,7 +54,7 @@ export function interpolateFlightPoint(previous, next, ratio, elapsed) {
 
 /**
  * @param {number} elapsed
- * @param {Record<string, unknown>[]} points
+ * @param {import("../types/flight").FlightPoint[]} points
  */
 export function sampleFlightPoint(elapsed, points) {
   if (!points?.length) return null
@@ -72,7 +79,7 @@ export function sampleFlightPoint(elapsed, points) {
 
 /**
  * @param {number} elapsed
- * @param {{ t?: unknown, readings?: Record<string, unknown> }[]} rows
+ * @param {import("../types/flight").SensorSample[]} rows
  * @param {string} key
  */
 export function sampleSensorValue(elapsed, rows, key) {
@@ -101,4 +108,29 @@ export function sampleSensorValue(elapsed, rows, key) {
 
   const last = rows[rows.length - 1]
   return { row: last, value: finiteNumber(last.readings?.[key]) }
+}
+
+/** @param {unknown} value @returns {import("../types/flight").FlightPoint[]} */
+export function normalizeFlightPoints(value) {
+  if (!Array.isArray(value)) return []
+  /** @type {import("../types/flight").FlightPoint[]} */
+  const points = []
+  for (const row of value) {
+    if (!row || typeof row !== "object" || ![row.t, row.lat, row.lon, row.alt].every(isFiniteNumber)) continue
+    if (Math.abs(row.lat) > 90 || Math.abs(row.lon) > 180) continue
+    /** @type {import("../types/flight").FlightPoint} */
+    const point = {t:row.t, lat:row.lat, lon:row.lon, alt:row.alt}
+    for (const key of optionalFlightFields) {
+      if (isFiniteNumber(row[key])) point[key] = row[key]
+    }
+    points.push(point)
+  }
+  return points
+}
+
+/** @param {unknown} value @returns {import("../types/flight").SensorSample[]} */
+export function normalizeSensorSamples(value) {
+  if (!Array.isArray(value)) return []
+  return value.filter((row) => row && typeof row === "object" && isFiniteNumber(row.t) && typeof row.type === "string")
+    .map((row) => ({t:row.t, type:row.type, readings:row.readings && typeof row.readings === "object" && !Array.isArray(row.readings) ? row.readings : {}}))
 }

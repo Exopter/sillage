@@ -13,7 +13,8 @@ module FdrSync
     def initialize(user:, upload:, metadata:, transport: "usb_cdc", enqueue: true)
       @user = user
       @upload = upload
-      @metadata = metadata.to_h.stringify_keys
+      raise Error, "The recording manifest must be an object." unless metadata.is_a?(Hash)
+      @metadata = metadata.stringify_keys
       @transport = transport.to_s
       @enqueue = enqueue
     end
@@ -52,7 +53,12 @@ module FdrSync
     end
 
     def validate_metadata!
-      raise Error, "Select an ExoFDR binary file." unless @upload.respond_to?(:tempfile)
+      raise Error, "Select an ExoFDR binary file." unless @upload.respond_to?(:tempfile) && @upload.respond_to?(:size)
+      raise Error, "Invalid FDR device identifier." unless FdrIdentity::DeviceId.valid?(@metadata["device_id"])
+      @declared_size = manifest_integer("size_bytes", "file size", minimum: 1)
+      @declared_boot_id = manifest_integer("boot_id", "boot identifier", maximum: 0xffff_ffff)
+      @declared_format_version = manifest_integer("format_version", "format version", minimum: 1, maximum: 0xffff)
+      @file_index = manifest_integer("file_index", "file index", minimum: 1, maximum: 999_999)
       raise Error, "Invalid ExoFDR filename." unless filename.match?(FILENAME_PATTERN)
       raise Error, "Invalid SHA-256." unless expected_sha256.match?(SHA256_PATTERN)
       raise Error, "The uploaded file is empty." unless @upload.size.positive?
@@ -87,7 +93,7 @@ module FdrSync
               "protocol" => "EXS1",
               "boot_id" => declared_boot_id,
               "format_version" => declared_format_version,
-              "file_index" => Integer(@metadata.fetch("file_index")),
+              "file_index" => @file_index,
               "size_bytes" => declared_size,
               "sha256" => actual_sha256
             }
@@ -105,29 +111,23 @@ module FdrSync
     end
 
     def filename
-      @metadata.fetch("filename").to_s
+      @metadata["filename"].to_s
     end
 
     def expected_sha256
-      @metadata.fetch("sha256").to_s.downcase
+      @metadata["sha256"].to_s.downcase
     end
 
-    def declared_size
-      Integer(@metadata.fetch("size_bytes"))
-    rescue ArgumentError, TypeError
-      raise Error, "Invalid file size."
-    end
+    attr_reader :declared_size, :declared_boot_id, :declared_format_version
 
-    def declared_boot_id
-      Integer(@metadata.fetch("boot_id"))
-    rescue ArgumentError, TypeError
-      raise Error, "Invalid boot identifier."
-    end
-
-    def declared_format_version
-      Integer(@metadata.fetch("format_version"))
-    rescue ArgumentError, TypeError
-      raise Error, "Invalid format version."
+    def manifest_integer(key, label, minimum: 0, maximum: nil)
+      value = @metadata[key]
+      unless value.is_a?(Integer) || (value.is_a?(String) && /\A[0-9]+\z/.match?(value))
+        raise Error, "Invalid #{label}."
+      end
+      number = value.to_i
+      raise Error, "Invalid #{label}." if number < minimum || (maximum && number > maximum)
+      number
     end
   end
 end

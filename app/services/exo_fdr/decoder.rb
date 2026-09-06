@@ -6,7 +6,7 @@ module ExoFdr
     RECORD_HEADER_SIZE = 28
     MAGIC = "EXOFDR1\0".b
     SYNC_BYTES = [ 0xA55A ].pack("v")
-    SUPPORTED_FORMAT_VERSIONS = [ 1, 2, 3 ].freeze
+    FORMAT_VERSION = 3
     RECORD_NAMES = {
       1 => "gps_pvt",
       2 => "imu",
@@ -86,7 +86,7 @@ module ExoFdr
         raw_header = data.byteslice(0, RECORD_HEADER_SIZE)
         sync, version, type, header_size, payload_size, flags, _reserved, sequence, timestamp_us, stored_crc =
           raw_header.unpack("vCCvvvvVQ<V")
-        sane = sync == 0xA55A && version.in?([ 1, 2 ]) && header_size == RECORD_HEADER_SIZE && payload_size <= 96
+        sane = sync == 0xA55A && version == 2 && header_size == RECORD_HEADER_SIZE && payload_size <= 96
         unless sane
           @stats["malformed_headers"] += 1
           raise Error, "Malformed ExoFDR record header at byte #{offset}." unless @recover
@@ -141,7 +141,7 @@ module ExoFdr
       magic, version, header_size, boot_id, boot_us, firmware, _reserved, stored_crc =
         raw.unpack("a8vvVQ<a24a12V")
       raise Error, "Unexpected ExoFDR file signature." unless magic == MAGIC
-      raise Error, "Unsupported ExoFDR format version #{version}." unless version.in?(SUPPORTED_FORMAT_VERSIONS)
+      raise Error, "Unsupported ExoFDR format version #{version}." unless version == FORMAT_VERSION
       raise Error, "Unsupported ExoFDR header size #{header_size}." unless header_size == FILE_HEADER_SIZE
       raise Error, "ExoFDR file header CRC mismatch." unless Zlib.crc32(raw.byteslice(0, FILE_HEADER_SIZE - 4)) == stored_crc
 
@@ -190,10 +190,9 @@ module ExoFdr
     end
 
     def decode_airspeed(payload)
-      return raw_payload(payload) unless payload.bytesize.in?([ 23, 27 ])
+      return raw_payload(payload) unless payload.bytesize == 27
 
-      raw_size = payload.bytesize == 27 ? 11 : 7
-      raw, pressure, differential, temperature, airspeed = payload.unpack("a#{raw_size}e4")
+      raw, pressure, differential, temperature, airspeed = payload.unpack("a11e4")
       {
         "raw_hex" => raw.unpack1("H*"),
         "sensor_pressure_pa" => pressure,

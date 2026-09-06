@@ -27,6 +27,7 @@ const scope = {
     }
   },
   Uint8Array,
+  ArrayBuffer,
   Int8Array,
   DataView,
   TextDecoder,
@@ -38,6 +39,10 @@ const scope = {
 vm.createContext(scope)
 vm.runInContext(workerSource, scope, { filename: "signal_serial_worker.js" })
 
+for (const data of [null, 42, {}, {type:"future-message"}, {type:"bytes", bytes:new ArrayBuffer(0), receivedAtUs:"NaN"}, {type:"init-capture",filename:"../escape.mavcap"}]) {
+  await scope.self.onmessage({data})
+}
+assert.equal(messages.length, 0, "malformed and unknown commands are ignored without opening a capture")
 await scope.self.onmessage({ data: { type: "init-capture", filename: "test.mavcap" } })
 assert.equal(messages.shift().type, "capture-ready")
 

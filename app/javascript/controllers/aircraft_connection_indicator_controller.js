@@ -8,17 +8,26 @@ const TRANSPORT_LABELS = {
   "ground-radio": "ground radio"
 }
 
-export default class extends Controller {
+/**
+ * @typedef {Object} StimulusBindings
+ * @property {HTMLElement} labelTarget
+ * @property {HTMLElement[]} iconTargets
+ */
+const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller<HTMLElement> & StimulusBindings} */ (/** @type {unknown} */ (Controller))
+
+export default class extends TypedController {
   static targets = ["label", "icon"]
 
   connect() {
     this.render(currentAircraftConnections())
   }
 
+  /** @param {CustomEvent<{connections?: import("aircraft_connection").AircraftConnection[]}>} event */
   update(event) {
     this.render(event.detail?.connections || [])
   }
 
+  /** @param {import("aircraft_connection").AircraftConnection[]} connections */
   render(connections) {
     const transports = connections.map((connection) => connection.transport)
     const active = new Set(transports)
@@ -26,7 +35,7 @@ export default class extends Controller {
     this.element.dataset.aircraftConnectionState = connected ? "connected" : "disconnected"
     this.labelTarget.textContent = aircraftConnectionLabel(connections)
     this.iconTargets.forEach((icon) => {
-      icon.hidden = !active.has(icon.dataset.aircraftConnectionTransport)
+      icon.hidden = !transports.some((transport) => transport === icon.dataset.aircraftConnectionTransport)
     })
 
     const labels = transports.map((transport) => TRANSPORT_LABELS[transport]).filter(Boolean)
