@@ -4,9 +4,9 @@ module Flights
 
     def initialize(points)
       @points = if points.all? { |point| point[:elapsed_seconds] }
-        FlightImports::AnalysisStore.sort(points) { |point| point[:elapsed_seconds] }
+        SampleOrder.sort(points) { |point| point[:elapsed_seconds] }
       else
-        FlightImports::AnalysisStore.sort(points) { |point| point[:recorded_at] || Time.at(0) }
+        SampleOrder.sort(points) { |point| point[:recorded_at] || Time.at(0) }
       end
     end
 

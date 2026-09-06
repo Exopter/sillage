@@ -247,7 +247,7 @@ module Flights
           vertical_speed_mps: numeric(value(record, :vertical_speed_mps))
         }
       end
-      FlightImports::AnalysisStore.sort(normalized) { |point| point[:elapsed_seconds] || 0.0 }
+      SampleOrder.sort(normalized) { |point| point[:elapsed_seconds] || 0.0 }
     end
 
     def normalize_sensor_samples(records)
@@ -267,7 +267,7 @@ module Flights
           readings: readings(record).merge("sensor_time" => raw_elapsed)
         }
       end
-      FlightImports::AnalysisStore.sort(normalized) { |sample| sample[:elapsed_seconds] || 0.0 }
+      SampleOrder.sort(normalized) { |sample| sample[:elapsed_seconds] || 0.0 }
     end
 
     def pressure_altitude_points
@@ -290,8 +290,7 @@ module Flights
     end
 
     def dedupe_pressure_points(points)
-      output = points.respond_to?(:store) ? points.store.sequence : []
-      FlightImports::AnalysisStore.sort(points) { |point| point[:elapsed_seconds] }.each_with_object(output) do |point, deduped|
+      SampleOrder.sort(points) { |point| point[:elapsed_seconds] }.each_with_object([]) do |point, deduped|
         previous = deduped.last
         next if previous && (previous[:elapsed_seconds] - point[:elapsed_seconds]).abs < 0.001
 

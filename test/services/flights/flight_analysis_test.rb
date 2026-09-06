@@ -2,6 +2,20 @@ require "test_helper"
 
 module Flights
   class FlightAnalysisTest < ActiveSupport::TestCase
+    test "uses the first pressure sample when unordered samples repeat a timestamp" do
+      started_at = Time.utc(2026, 9, 1)
+      sensor_samples = baro_profile(started_at, [
+        [ 2.0, 800.0 ], [ 0.0, 1_000.0 ], [ 0.0, 4_000.0 ], [ 1.0, 900.0 ]
+      ])
+
+      analysis = FlightAnalysis.new(track_points: [], sensor_samples:, origin_time: started_at).call
+
+      assert_equal "degraded", analysis.mode
+      assert_equal 1_000.0, analysis.altitude_max
+      assert_equal 800.0, analysis.altitude_min
+      assert_equal 2.0, analysis.duration_seconds
+    end
+
     test "keeps GPS mode when GPS altitude covers the pressure altitude range" do
       started_at = Time.zone.parse("2026-07-01 15:18:00 UTC")
       track_points = [

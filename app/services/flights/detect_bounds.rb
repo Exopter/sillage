@@ -15,15 +15,15 @@ module Flights
     OPENING_TYPICAL_MAX_HEIGHT_M = 1_500.0
 
     def initialize(points)
-      @points = FlightImports::AnalysisStore.sort(points) { |point| point[:elapsed_seconds] || 0 }
-      @next_invalid = sequence
+      @points = SampleOrder.sort(points) { |point| point[:elapsed_seconds] || 0 }
+      @next_invalid = Array.new(@points.size)
       next_invalid = @points.size
       (@points.size - 1).downto(0) do |index|
         next_invalid = index unless elapsed_seconds(@points[index]) && altitude_m(@points[index])
-        @next_invalid << next_invalid
+        @next_invalid[index] = next_invalid
       end
-      @fast_counts = sequence << 0
-      @speed_counts = sequence << 0
+      @fast_counts = [ 0 ]
+      @speed_counts = [ 0 ]
       @points.each do |point|
         @fast_counts << @fast_counts.last + (fast_freefall?(point) ? 1 : 0)
         @speed_counts << @speed_counts.last + (vertical_speed_mps(point) ? 1 : 0)
@@ -45,10 +45,6 @@ module Flights
     end
 
     private
-
-    def sequence
-      @points.respond_to?(:store) ? @points.store.sequence : []
-    end
 
     def detect_exit
       detect_aircraft_exit || detect_movement_exit
@@ -94,7 +90,7 @@ module Flights
       start_elapsed = elapsed_seconds(point)
       return unless start_elapsed && altitude_m(point)
 
-      stop = @next_invalid[@points.size - 1 - index]
+      stop = @next_invalid[index]
       last = ((index...stop).bsearch { |i| elapsed_seconds(@points[i]) > start_elapsed + FREEFALL_LOOKAHEAD_SECONDS } || stop) - 1
       if last == index && elapsed_seconds(@points[index + 1]) && altitude_m(@points[index + 1])
         last += 1

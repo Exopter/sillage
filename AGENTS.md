@@ -1,5 +1,8 @@
 # Project Instructions
 
+- Always prioritize execution speed, responsiveness and throughput over lower
+  memory usage across Exopter projects. Do not accept a slowdown solely to save
+  RAM; use measurements to evaluate performance tradeoffs.
 - Work 100% in English for documentation, code comments, UI copy, tests,
   fixtures, commit messages, PR text, issue text, and operational notes.
 - Keep business, product, architecture, design, requirements, contract,

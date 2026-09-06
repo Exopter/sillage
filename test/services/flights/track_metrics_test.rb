@@ -2,6 +2,19 @@ require "test_helper"
 
 module Flights
   class TrackMetricsTest < ActiveSupport::TestCase
+    test "preserves acquisition order for duplicate timestamps in unordered tracks" do
+      started_at = Time.utc(2026, 9, 1)
+      points = [ 2.0, 0.0, 0.0, 1.0 ].each_with_index.map do |elapsed, index|
+        point(started_at, elapsed, 2.0).merge(fdr_sequence: index)
+      end
+
+      prepared = TrackMetrics.new(points).prepared_points
+
+      assert_equal [ 1, 2, 3, 0 ], prepared.pluck(:fdr_sequence)
+      assert_equal [ 0.0, 0.0, 1.0, 2.0 ], prepared.pluck(:elapsed_seconds)
+      assert_equal [ 0, 1, 2, 3 ], points.pluck(:fdr_sequence)
+    end
+
     test "averages glide ratio between exit and opening bounds" do
       started_at = Time.zone.parse("2026-05-20 09:39:03 UTC")
       points = [
