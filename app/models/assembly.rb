@@ -37,25 +37,42 @@ class Assembly < ApplicationRecord
   scope :roots, -> { where(parent_id: nil) }
   scope :ordered, -> { order(:internal_number) }
 
-  def snapshot(at: nil)
-    recorded_parts = at ? Part.where(id: part_installations.covering(at).select(:part_id)) : parts
+  def snapshot(at: nil, tree: nil)
+    unless at || tree
+      nodes = [ self, *Assembly.where(id: descendant_ids) ]
+      ActiveRecord::Associations::Preloader.new(records: nodes,
+        associations: [ :hardware_definition, { parts: [ :function, :embedded_controller ] } ]).call
+      tree = nodes.drop(1).group_by(&:parent_id)
+    end
+    recorded_parts = if at
+      Part.where(id: part_installations.covering(at).select(:part_id)).includes(:function, :embedded_controller).ordered
+    else
+      parts.sort_by { |part| [ part.internal_number.nil? ? 1 : 0, part.internal_number.to_s ] }
+    end
     {
       "internal_number" => internal_number,
       "name" => name,
       "serial_number" => serial_number,
       "serviceability_state" => serviceability_state,
       "hardware_definition" => hardware_definition&.snapshot,
-      "parts" => recorded_parts.includes(:function, :embedded_controller).ordered.map do |part|
-        part.snapshot
-      end,
-      "assemblies" => at ? [] : children.ordered.map(&:snapshot),
+      "parts" => recorded_parts.map(&:snapshot),
+      "assemblies" => at ? [] : Array(tree[id]).sort_by { |child| [ child.internal_number.nil? ? 1 : 0, child.internal_number.to_s ] }.map { |child| child.snapshot(tree:) },
       # Parent assignments and mutable asset metadata have no temporal history.
       "history_limitations" => at ? [ "Subassembly membership is not recorded historically.", "Asset metadata reflects the time of capture." ] : []
     }
   end
 
   def descendant_ids
-    children.flat_map { |child| [ child.id, *child.descendant_ids ] }
+    return [] unless persisted?
+
+    sql = self.class.sanitize_sql_array([ <<~SQL, id ])
+      WITH RECURSIVE descendants AS (
+        SELECT id FROM assemblies WHERE parent_id = ?
+        UNION
+        SELECT assemblies.id FROM assemblies JOIN descendants ON assemblies.parent_id = descendants.id
+      ) SELECT id FROM descendants
+    SQL
+    self.class.connection_pool.with_connection { |connection| connection.select_values(sql) }
   end
 
   def contains_part?(part)
@@ -107,8 +124,7 @@ class Assembly < ApplicationRecord
   end
 
   def snapshot_part_numbers
-    own = parts.pluck(:internal_number)
-    own + children.flat_map(&:snapshot_part_numbers)
+    Part.joins(:active_part_installation).where(part_installations: { assembly_id: [ id, *descendant_ids ] }).pluck(:internal_number)
   end
 
   def deletion_blockers

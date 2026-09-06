@@ -15,3 +15,7 @@ pin "signal_layout", to: "lib/signal_layout.js"
 pin "aircraft_connection", to: "lib/aircraft_connection.js"
 pin "usb_page_lifecycle", to: "lib/usb_page_lifecycle.js"
 pin_all_from "app/javascript/controllers", under: "controllers"
+
+pin "signal_outbox", to: "lib/signal_outbox.js"
+pin "flight_chart_plugins", to: "lib/flight_chart_plugins.js"
+pin "fdr_heartbeat", to: "lib/fdr_heartbeat.js"

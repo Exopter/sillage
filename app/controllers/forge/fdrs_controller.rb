@@ -1,5 +1,7 @@
 module Forge
   class FdrsController < BaseController
+    include Pagination
+
     before_action :set_fdr, only: %i[show update connectivity activity]
     before_action :load_fdr_context, only: %i[show connectivity activity]
 
@@ -50,7 +52,7 @@ module Forge
     end
 
     def activity
-      @activities = @fdr.device_activities.includes(:actor).recent
+      @activities = paginate(@fdr.device_activities.includes(:actor).recent)
     end
 
     private

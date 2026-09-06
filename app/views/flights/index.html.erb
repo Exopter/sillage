@@ -1,3 +1,5 @@
 <% content_for :title, "Flights" %>
 
 <%= render "flights/logbook_table", flights: @flights, query: @query %>
+
+<%= render "shared/pagination" %>

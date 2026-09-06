@@ -3,13 +3,44 @@ import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_con
 import { clamp, signalLayoutPreset } from "signal_layout"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
 
-const DATABASE_NAME = "sillage-signal-v1"
-const DATABASE_VERSION = 1
-const OUTBOX_STORE = "outbox"
-const META_STORE = "metadata"
+import { OUTBOX_STORE, META_STORE, openDatabase, putOutbox, writeOutbox, deleteOutbox, readOutbox, oldestOutbox, writeMetadata, readMetadata, transactionRequest } from "signal_outbox"
 const BATCH_INTERVAL_MS = 2_000
 
-export default class extends Controller {
+
+/**
+ * Stimulus accessors are installed at runtime.
+ * @typedef {Object} StimulusBindings
+ * @property {HTMLElement} presentationTarget
+ * @property {HTMLElement} boardTarget
+ * @property {HTMLElement} widgetTarget
+ * @property {HTMLElement[]} widgetTargets
+ * @property {HTMLCanvasElement} mapCanvasTarget
+ * @property {HTMLCanvasElement} instrumentCanvasTarget
+ * @property {HTMLCanvasElement} chartCanvasTarget
+ * @property {HTMLButtonElement} connectButtonTarget
+ * @property {HTMLElement} radioStatusTarget
+ * @property {HTMLElement} recorderStatusTarget
+ * @property {HTMLElement} cloudStatusTarget
+ * @property {HTMLElement} warningTarget
+ * @property {HTMLElement} headingTarget
+ * @property {HTMLElement} airspeedTarget
+ * @property {HTMLElement} altitudeTarget
+ * @property {HTMLElement} verticalSpeedTarget
+ * @property {HTMLElement} glideTarget
+ * @property {HTMLElement} dataStatusTarget
+ * @property {HTMLElement} parserStatusTarget
+ * @property {HTMLElement} aircraftMarkerTarget
+ * @property {HTMLElement} aircraftLabelTarget
+ * @property {HTMLElement} latestEventTarget
+ * @property {string} sessionValue
+ * @property {string} flightCodeValue
+ * @property {string} batchUrlValue
+ * @property {string} eventUrlValue
+ * @property {string} completeUrlValue
+ */
+const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller & StimulusBindings} */ (/** @type {unknown} */ (Controller))
+
+export default class extends TypedController {
   static targets = [
     "presentation", "board", "widget", "mapCanvas", "instrumentCanvas", "chartCanvas",
     "connectButton", "radioStatus", "recorderStatus", "cloudStatus", "warning",
@@ -39,7 +70,13 @@ export default class extends Controller {
     this.batchWrite = Promise.resolve()
     this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.releaseCapture())
     this.layoutStorageKey = `signal-layout:${this.sessionValue}`
-    this.db = await openDatabase()
+    try {
+      this.db = await openDatabase()
+    } catch (error) {
+      this.connectButtonTarget.disabled = true
+      this.showWarning(`Local storage unavailable: ${error.message}`)
+      return
+    }
     this.nextSequence = Number(await readMetadata(this.db, `${this.sessionValue}:next-sequence`)) || 0
     this.ended = Boolean(await readMetadata(this.db, `${this.sessionValue}:ended-at`))
     this.boundOnline = () => this.flushOutbox()
@@ -225,7 +262,7 @@ export default class extends Controller {
     }
     this.port = null
     this.openingPort = false
-    this.releasePortLock?.()
+    this.releasePortLock?.(undefined)
     this.releasePortLock = null
     this.connectButtonTarget.querySelector("span:last-child").textContent = "Connect ground radio"
     this.connectButtonTarget.setAttribute("aria-label", "Connect ground radio")
@@ -327,6 +364,7 @@ export default class extends Controller {
     if (!this.pendingSamples.length || this.ended) return
     const samples = this.pendingSamples.splice(0)
     const sequence = this.nextSequence
+    /** @type {import("signal_outbox").OutboxRecord} */
     const batch = {
       id: `${this.sessionValue}:batch:${sequence}`,
       session: this.sessionValue,
@@ -348,7 +386,7 @@ export default class extends Controller {
     try {
       await transactionRequest(this.db, [OUTBOX_STORE, META_STORE], "readwrite", (_store, transaction) => {
         transaction.objectStore(META_STORE).put({ key: `${this.sessionValue}:next-sequence`, value: sequence + 1 })
-        return transaction.objectStore(OUTBOX_STORE).put(batch)
+        return putOutbox(transaction.objectStore(OUTBOX_STORE), batch)
       })
       this.nextSequence = sequence + 1
     } catch (error) {
@@ -377,7 +415,7 @@ export default class extends Controller {
       const endedAt = new Date().toISOString()
       await transactionRequest(this.db, [OUTBOX_STORE, META_STORE], "readwrite", (_store, transaction) => {
         transaction.objectStore(META_STORE).put({ key: `${this.sessionValue}:ended-at`, value: endedAt })
-        return transaction.objectStore(OUTBOX_STORE).put({ id, session: this.sessionValue, kind: "complete", url: this.completeUrlValue, method: "PATCH", body: { ended_at: endedAt }, queuedAt: Date.now() })
+        return putOutbox(transaction.objectStore(OUTBOX_STORE), { id, session: this.sessionValue, kind: "complete", url: this.completeUrlValue, method: "PATCH", body: { ended_at: endedAt }, queuedAt: Date.now() })
       })
       this.ended = true
       await this.flushOutbox()
@@ -396,11 +434,13 @@ export default class extends Controller {
     }
     this.syncing = true
     try {
-      const records = (await readOutbox(this.db)).filter((record) => record.session === this.sessionValue).sort(outboxOrder)
+      while (navigator.onLine) {
+      const records = await readOutbox(this.db, this.sessionValue)
+      if (!records.length) break
       for (const record of records) {
         const response = await fetch(record.url, {
           method: record.method,
-          headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || "" },
+          headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "" },
           body: JSON.stringify(record.body)
         })
         if (!response.ok) {
@@ -409,6 +449,7 @@ export default class extends Controller {
           throw new Error(record.kind === "batch" ? `Batch ${record.sequence}: ${detail}` : detail)
         }
         await deleteOutbox(this.db, record.id)
+      }
       }
     } catch (error) {
       this.cloudError = error.message
@@ -419,13 +460,14 @@ export default class extends Controller {
   }
 
   async refreshCloudStatus() {
-    const records = this.db ? (await readOutbox(this.db)).filter((record) => record.session === this.sessionValue) : []
+    const oldest = this.db ? await oldestOutbox(this.db, this.sessionValue) : null
+    const age = oldest ? Math.max(1, Math.round((Date.now() - oldest.queuedAt) / 1000)) : 0
     if (!navigator.onLine) {
-      this.cloudStatusTarget.textContent = records.length ? `${ageInSeconds(records)} s behind` : "Offline"
-    } else if (!this.syncing && records.length && this.cloudError) {
+      this.cloudStatusTarget.textContent = oldest ? `${age} s behind` : "Offline"
+    } else if (!this.syncing && oldest && this.cloudError) {
       this.cloudStatusTarget.textContent = `Sync blocked: ${this.cloudError}`
-    } else if (this.syncing || records.length) {
-      this.cloudStatusTarget.textContent = records.length ? `Syncing · ${ageInSeconds(records)} s behind` : "Syncing"
+    } else if (this.syncing || oldest) {
+      this.cloudStatusTarget.textContent = oldest ? `Syncing · ${age} s behind` : "Syncing"
     } else {
       this.cloudStatusTarget.textContent = this.ended ? "Synced" : "Live"
       this.cloudError = null
@@ -620,7 +662,7 @@ export default class extends Controller {
 
   updateModeButtons() {
     this.widgetTargets.forEach((widget) => {
-      widget.querySelectorAll("[data-mode]").forEach((button) => button.setAttribute("aria-pressed", button.dataset.mode === widget.dataset.mode))
+      widget.querySelectorAll("[data-mode]").forEach((button) => button.setAttribute("aria-pressed", String(button.getAttribute("data-mode") === widget.dataset.mode)))
     })
   }
 
@@ -683,6 +725,7 @@ export default class extends Controller {
     const { context: ctx, width: w, height: h } = prepareCanvas(canvas)
     if (!ctx || !w || !h) return
     ctx.fillStyle = "#071011"; ctx.fillRect(0, 0, w, h)
+    /** @type {[string, number[], string][]} */
     const rows = [["AIRSPEED", this.history.airspeed, "#2fd6c6"], ["ALTITUDE", this.history.altitude, "#2fd6c6"], ["VERTICAL SPEED", this.history.verticalSpeed, "#2fd6c6"], ["DATA VALIDITY", this.history.validity, "#65c87a"]]
     const left = Math.min(120, w * .3)
     const right = w - 14
@@ -705,6 +748,7 @@ export default class extends Controller {
   }
 }
 
+/** @param {Worker} worker @returns {Promise<void>} */
 function closeWorkerCapture(worker) {
   return new Promise((resolve, reject) => {
     let settled = false
@@ -770,42 +814,3 @@ function samePort(info, saved) {
   return info.usbVendorId === saved.usbVendorId && info.usbProductId === saved.usbProductId
 }
 function formatBytes(value) { return value < 1024 * 1024 ? `${Math.round(value / 1024)} KB` : `${(value / 1024 / 1024).toFixed(1)} MB` }
-function ageInSeconds(records) { return Math.max(1, Math.round((Date.now() - Math.min(...records.map((record) => record.queuedAt))) / 1000)) }
-function outboxOrder(left, right) {
-  const rank = { batch: 0, event: 1, complete: 2 }
-  return (rank[left.kind] - rank[right.kind]) || ((left.sequence || 0) - (right.sequence || 0)) || (left.queuedAt - right.queuedAt)
-}
-
-function openDatabase() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION)
-    request.onupgradeneeded = () => {
-      const database = request.result
-      if (!database.objectStoreNames.contains(OUTBOX_STORE)) database.createObjectStore(OUTBOX_STORE, { keyPath: "id" })
-      if (!database.objectStoreNames.contains(META_STORE)) database.createObjectStore(META_STORE, { keyPath: "key" })
-    }
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-  })
-}
-
-function writeOutbox(database, record) { return transactionRequest(database, OUTBOX_STORE, "readwrite", (store) => store.put(record)) }
-function deleteOutbox(database, id) { return transactionRequest(database, OUTBOX_STORE, "readwrite", (store) => store.delete(id)) }
-function readOutbox(database) { return transactionRequest(database, OUTBOX_STORE, "readonly", (store) => store.getAll()) }
-function writeMetadata(database, key, value) { return transactionRequest(database, META_STORE, "readwrite", (store) => store.put({ key, value })) }
-async function readMetadata(database, key) { return (await transactionRequest(database, META_STORE, "readonly", (store) => store.get(key)))?.value }
-
-function transactionRequest(database, storeName, mode, operation) {
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction(storeName, mode)
-    let request
-    transaction.oncomplete = () => resolve(request?.result)
-    transaction.onabort = () => reject(transaction.error || new Error("Local storage transaction aborted"))
-    try {
-      request = operation(transaction.objectStore(Array.isArray(storeName) ? storeName[0] : storeName), transaction)
-    } catch (error) {
-      transaction.abort()
-      reject(error)
-    }
-  })
-}

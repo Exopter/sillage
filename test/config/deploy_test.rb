@@ -36,6 +36,8 @@ class DeployTest < ActiveSupport::TestCase
 
   def render_deploy(env, success: true)
     Dir.mktmpdir do |directory|
+      FileUtils.mkdir_p(File.join(directory, "config"))
+      FileUtils.cp(Rails.root.join("config/environment_file.rb"), File.join(directory, "config/environment_file.rb"))
       stdout, stderr, status = Open3.capture3(
         { "PATH" => ENV.fetch("PATH"), "POSTGRES_PASSWORD" => "test-password" }.merge(env),
         RbConfig.ruby, "-rerb", "-e", "puts ERB.new(File.read(ARGV.fetch(0))).result", Rails.root.join("config/deploy.yml").to_s,

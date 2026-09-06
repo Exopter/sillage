@@ -6,7 +6,7 @@ const method = source.slice(source.indexOf("  async uploadFile("), source.indexO
 const { default: Controller } = await import(`data:text/javascript;base64,${Buffer.from(`export default class { ${method} }`).toString("base64")}`)
 const controller = new Controller()
 controller.uploadUrlValue = "/api/v1/fdr-syncs"
-globalThis.document = { querySelector: () => ({ content: "csrf" }) }
+globalThis.document = { querySelector: () => ({ getAttribute: () => "csrf" }) }
 globalThis.window = { location: new URL("https://sillage.test/") }
 const manifest = { filename: "FDR000001.BIN", sha256: "a".repeat(64) }
 const device = { deviceId: "ECU-ABC123" }

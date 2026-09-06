@@ -37,6 +37,12 @@ class LocalEnvironmentTest < ActiveSupport::TestCase
     end
   end
 
+  test "parses spacing and quoted values without shell expansion" do
+    assert_equal [ "LOCAL_RUNTIME_VALUE", "spaces and # literal" ], Sillage::EnvironmentFile.parse('export LOCAL_RUNTIME_VALUE = "spaces and # literal"')
+    assert_equal [ "LOCAL_RUNTIME_VALUE", "$UNEXPANDED" ], Sillage::EnvironmentFile.parse("LOCAL_RUNTIME_VALUE=$UNEXPANDED")
+    assert_nil Sillage::EnvironmentFile.parse("not-an-env-name=value")
+  end
+
   private
 
   def with_clean_environment

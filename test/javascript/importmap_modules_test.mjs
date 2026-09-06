@@ -56,6 +56,7 @@ async function collectJavascriptFiles(directory) {
 }
 
 function importSpecifiers(source) {
+  source = source.replace(/\/\*[\s\S]*?\*\//g, "")
   return [
     ...source.matchAll(/\bfrom\s+["']([^"']+)["']/g),
     ...source.matchAll(/\bimport\s+["']([^"']+)["']/g),

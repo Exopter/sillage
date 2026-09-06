@@ -1,9 +1,11 @@
 module Forge
   class TestRunsController < BaseController
+    include Pagination
+
     before_action :set_test_run, only: %i[show validate]
 
     def index
-      @test_runs = TestRun.includes(:build, :part, :operator, :validated_by).recent
+      @test_runs = paginate(TestRun.includes(:build, :part, :operator, :validated_by).recent)
     end
 
     def show

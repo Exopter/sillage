@@ -32,11 +32,13 @@ assert.equal(scripts.length, 1)
 const controllerSource = (await readFile(new URL("../../app/javascript/controllers/flight_viewer_controller.js", import.meta.url), "utf8"))
   .replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
   .replace("extends Controller", "extends class {}")
+  .replace(/const TypedController = .*$/m, "const TypedController = class {}")
 globalThis.viewerResources = {
   ...resources,
   withTimeout: (promise, label) => resources.withTimeout(promise, label, label === "Cesium tiles" ? 30 : 15000)
 }
-const { default: Viewer } = await import(`data:text/javascript;base64,${Buffer.from(`const { withTimeout, loadCesiumLibrary } = globalThis.viewerResources;\n${controllerSource}`).toString("base64")}`)
+const pluginsURL = new URL("../../app/javascript/lib/flight_chart_plugins.js", import.meta.url).href
+const { default: Viewer } = await import(`data:text/javascript;base64,${Buffer.from(`import { OS_BOUNDS_PLUGIN, OS_PLAYBACK_PLUGIN, tooltipVerticalAlign } from "${pluginsURL}";\nconst { withTimeout, loadCesiumLibrary } = globalThis.viewerResources;\n${controllerSource}`).toString("base64")}`)
 const tick = () => new Promise((resolve) => setImmediate(resolve))
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject } }
 function viewer() {

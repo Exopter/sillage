@@ -1,13 +1,16 @@
 class FlightsController < ApplicationController
+  include Pagination
+
   before_action :set_flight, only: [ :show, :edit, :update, :destroy ]
 
   def index
     @query = params[:q].to_s.strip
     @flights = Current.user.flights.recent.includes(:flight_import, :aircraft)
-    return if @query.blank?
-
-    pattern = "%#{Flight.sanitize_sql_like(@query)}%"
-    @flights = @flights.where("flights.name LIKE :pattern OR flights.location LIKE :pattern", pattern:)
+    if @query.present?
+      pattern = "%#{Flight.sanitize_sql_like(@query)}%"
+      @flights = @flights.where("flights.name LIKE :pattern OR flights.location LIKE :pattern", pattern:)
+    end
+    @flights = paginate(@flights)
   end
 
   def new

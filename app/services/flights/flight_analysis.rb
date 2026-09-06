@@ -64,11 +64,15 @@ module Flights
     end
 
     def call
+      @degraded = degraded?
       bounds = degraded? ? degraded_bounds : gps_bounds
       altitude_points = degraded? ? @pressure_points : @track_points
-      timeline_values = (@track_points + @sensor_samples).filter_map { |point| point[:elapsed_seconds] }
-      timeline_start = timeline_values.min || 0.0
-      timeline_end = timeline_values.max || 0.0
+      timeline_values = [ @track_points, @sensor_samples ].lazy.flat_map(&:lazy).filter_map { |point| point[:elapsed_seconds] }
+      timeline_start, timeline_end = timeline_values.minmax
+      duration_seconds = timeline_start && timeline_end ? timeline_end - timeline_start : nil
+      timeline_start ||= 0.0
+      timeline_end ||= 0.0
+      altitude_min, altitude_max = altitude_points.lazy.filter_map { |point| point[:altitude_m] }.minmax
       replay_start, replay_end = replay_window(bounds, timeline_start, timeline_end)
 
       Result.new(
@@ -80,20 +84,21 @@ module Flights
         replay_start: replay_start,
         replay_end: replay_end,
         altitude_source: degraded? ? "pressure_altitude" : "gps",
-        altitude_min: altitude_points.filter_map { |point| point[:altitude_m] }.min,
-        altitude_max: altitude_points.filter_map { |point| point[:altitude_m] }.max,
-        duration_seconds: timeline_values.present? ? timeline_values.max - timeline_values.min : nil
+        altitude_min:,
+        altitude_max:,
+        duration_seconds:
       )
     end
 
     private
 
     def degraded?
+      return @degraded unless @degraded.nil?
       return true if @track_points.empty? && @pressure_points.any?
       return false if @pressure_points.empty?
 
-      pressure_max = @pressure_points.filter_map { |point| point[:altitude_m] }.max
-      gps_max = @track_points.filter_map { |point| point[:altitude_m] }.max
+      pressure_max = @pressure_points.lazy.filter_map { |point| point[:altitude_m] }.max
+      gps_max = @track_points.lazy.filter_map { |point| point[:altitude_m] }.max
       return false unless pressure_max && gps_max
 
       pressure_max - gps_max >= SENSOR_ALTITUDE_DOMINANCE_M
@@ -167,24 +172,21 @@ module Flights
     def detect_sensor_opening(exit_point)
       return nil unless exit_point
 
-      after_exit = @pressure_points.drop_while do |point|
-        point[:elapsed_seconds].to_f <= exit_point[:elapsed_seconds].to_f + 8.0
-      end
-      candidates = []
+      candidate_point = nil
       candidate_active = false
 
-      after_exit.each_with_index do |point, offset|
-        index = @pressure_points.length - after_exit.length + offset
+      @pressure_points.each_with_index do |point, index|
+        next if point[:elapsed_seconds].to_f <= exit_point[:elapsed_seconds].to_f + 8.0
         candidate = point[:altitude_m].to_f >= MIN_AIRCRAFT_OPENING_ALTITUDE_M &&
           recent_sensor_fast_descent?(index) &&
           sensor_point_slowed?(point) &&
           sensor_opening_slowdown?(index)
 
-        candidates << point if candidate && !candidate_active
+        candidate_point = point if candidate && !candidate_active
         candidate_active = candidate
       end
 
-      candidates.last
+      candidate_point
     end
 
     def sensor_point_slowed?(point)
@@ -222,11 +224,12 @@ module Flights
     end
 
     def detect_sensor_landing
-      active_points = @pressure_points.select do |point|
-        point[:vertical_speed_mps].to_f.abs >= LANDING_MAX_MOTION_MPS
+      active_point = nil
+      @pressure_points.each do |point|
+        active_point = point if point[:vertical_speed_mps].to_f.abs >= LANDING_MAX_MOTION_MPS
       end
 
-      active_points.last
+      active_point
     end
 
     def window_end(index, seconds)
@@ -235,7 +238,7 @@ module Flights
     end
 
     def normalize_track_points(records)
-      records.map do |record|
+      normalized = records.map do |record|
         {
           recorded_at: value(record, :recorded_at),
           elapsed_seconds: numeric(value(record, :elapsed_seconds)),
@@ -243,11 +246,12 @@ module Flights
           horizontal_speed_mps: numeric(value(record, :horizontal_speed_mps)),
           vertical_speed_mps: numeric(value(record, :vertical_speed_mps))
         }
-      end.compact.sort_by { |point| point[:elapsed_seconds] || 0.0 }
+      end
+      FlightImports::AnalysisStore.sort(normalized) { |point| point[:elapsed_seconds] || 0.0 }
     end
 
     def normalize_sensor_samples(records)
-      records.map do |record|
+      normalized = records.map do |record|
         recorded_at = value(record, :recorded_at)
         raw_elapsed = numeric(value(record, :elapsed_seconds))
         elapsed_seconds = if recorded_at && @origin_time
@@ -262,7 +266,8 @@ module Flights
           elapsed_seconds: elapsed_seconds,
           readings: readings(record).merge("sensor_time" => raw_elapsed)
         }
-      end.compact.sort_by { |sample| sample[:elapsed_seconds] || 0.0 }
+      end
+      FlightImports::AnalysisStore.sort(normalized) { |sample| sample[:elapsed_seconds] || 0.0 }
     end
 
     def pressure_altitude_points
@@ -285,7 +290,8 @@ module Flights
     end
 
     def dedupe_pressure_points(points)
-      points.sort_by { |point| point[:elapsed_seconds] }.each_with_object([]) do |point, deduped|
+      output = points.respond_to?(:store) ? points.store.sequence : []
+      FlightImports::AnalysisStore.sort(points) { |point| point[:elapsed_seconds] }.each_with_object(output) do |point, deduped|
         previous = deduped.last
         next if previous && (previous[:elapsed_seconds] - point[:elapsed_seconds]).abs < 0.001
 
@@ -298,7 +304,7 @@ module Flights
       next_index = 0
       half_window = PRESSURE_SPEED_WINDOW_SECONDS / 2.0
 
-      points.each_with_index.map do |point, index|
+      points.map.with_index do |point, index|
         elapsed = point[:elapsed_seconds].to_f
 
         while previous_index + 1 < index && points[previous_index + 1][:elapsed_seconds].to_f <= elapsed - half_window

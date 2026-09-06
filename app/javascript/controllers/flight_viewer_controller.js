@@ -1,3 +1,4 @@
+import { OS_BOUNDS_PLUGIN, OS_PLAYBACK_PLUGIN, tooltipVerticalAlign } from "flight_chart_plugins"
 import { Controller } from "@hotwired/stimulus"
 import {
   clamp,
@@ -13,7 +14,51 @@ import { loadCesiumLibrary, withTimeout } from "viewer_resources"
 
 const CESIUM_TILE_PROVIDER = "CESIUM_ION"
 
-export default class extends Controller {
+
+/**
+ * Stimulus accessors are installed at runtime.
+ * @typedef {Object} StimulusBindings
+ * @property {HTMLElement} sceneTarget
+ * @property {boolean} hasSceneTarget
+ * @property {HTMLElement} creditsTarget
+ * @property {HTMLCanvasElement} unifiedChartTarget
+ * @property {boolean} hasUnifiedChartTarget
+ * @property {HTMLButtonElement} phaseButtonTarget
+ * @property {HTMLButtonElement[]} phaseButtonTargets
+ * @property {HTMLElement} phaseNameTarget
+ * @property {boolean} hasPhaseNameTarget
+ * @property {HTMLElement} phaseRangeTarget
+ * @property {boolean} hasPhaseRangeTarget
+ * @property {HTMLButtonElement} metricToggleTarget
+ * @property {HTMLButtonElement[]} metricToggleTargets
+ * @property {HTMLElement} statTarget
+ * @property {HTMLElement[]} statTargets
+ * @property {HTMLInputElement} scrubberTarget
+ * @property {boolean} hasScrubberTarget
+ * @property {HTMLElement} timeLabelTarget
+ * @property {boolean} hasTimeLabelTarget
+ * @property {HTMLButtonElement} playButtonTarget
+ * @property {boolean} hasPlayButtonTarget
+ * @property {HTMLVideoElement} videoTarget
+ * @property {boolean} hasVideoTarget
+ * @property {HTMLInputElement} videoExitOffsetInputTarget
+ * @property {boolean} hasVideoExitOffsetInputTarget
+ * @property {HTMLElement} videoExitOffsetLabelTarget
+ * @property {boolean} hasVideoExitOffsetLabelTarget
+ * @property {Array} pointsValue
+ * @property {Array} sensorsValue
+ * @property {Object} boundsValue
+ * @property {Object} analysisValue
+ * @property {boolean} hasAnalysisValue
+ * @property {string} cesiumTokenValue
+ * @property {string} cesiumBaseUrlValue
+ * @property {Object} labelsValue
+ * @property {number} videoExitOffsetValue
+ * @property {boolean} hasVideoExitOffsetValue
+ */
+const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller & StimulusBindings} */ (/** @type {unknown} */ (Controller))
+
+export default class extends TypedController {
   static targets = [
     "scene",
     "credits",
@@ -1320,7 +1365,7 @@ export default class extends Controller {
   }
 
   createChart(target, config) {
-    const chart = new this.Chart(target, config)
+    const chart = /** @type {import("chart.js").Chart<"line">} */ (new this.Chart(target, config))
     this.charts.push(chart)
     this.installChartSync(chart)
     return chart
@@ -1626,13 +1671,13 @@ export default class extends Controller {
     this.currentElapsed = clampedElapsed
 
     if (this.hasScrubberTarget && this.phaseSpan() > 0) {
-      this.scrubberTarget.value = Math.round(((clampedElapsed - this.phaseStart()) / this.phaseSpan()) * 1000)
+      this.scrubberTarget.value = String(Math.round(((clampedElapsed - this.phaseStart()) / this.phaseSpan()) * 1000))
     }
 
     if (visualPoint && this.cesiumMarker && window.Cesium) {
       this.cesiumMarker.position = window.Cesium.Cartesian3.fromDegrees(
-        visualPoint.lon,
-        visualPoint.lat,
+        Number(visualPoint.lon),
+        Number(visualPoint.lat),
         this.cesiumAltitude(visualPoint)
       )
       this.cesiumMarker.label.text = this.markerLabel(point)
@@ -1748,15 +1793,15 @@ export default class extends Controller {
 
         return {
           x: placeRight ? Math.min(point.x + gap, area.right - inset) : Math.max(point.x - gap, area.left + inset),
-          y: clampTooltipAnchor(point.y, area.top + inset, area.bottom - inset),
+          y: clamp(point.y, area.top + inset, area.bottom - inset),
           xAlign: placeRight ? "left" : "right",
-          yAlign: tooltipVerticalAlign(point.y, height, room)
+          yAlign: tooltipVerticalAlign(height, room)
         }
       }
 
       if (room.bottom >= height + gap || room.bottom >= room.top) {
         return {
-          x: clampTooltipAnchor(point.x, area.left + inset, area.right - inset),
+          x: clamp(point.x, area.left + inset, area.right - inset),
           y: Math.min(point.y + gap, area.bottom - inset),
           xAlign: "center",
           yAlign: "top"
@@ -1764,7 +1809,7 @@ export default class extends Controller {
       }
 
       return {
-        x: clampTooltipAnchor(point.x, area.left + inset, area.right - inset),
+        x: clamp(point.x, area.left + inset, area.right - inset),
         y: Math.max(point.y - gap, area.top + inset),
         xAlign: "center",
         yAlign: "bottom"
@@ -1999,129 +2044,5 @@ export default class extends Controller {
 
   defaultElapsed() {
     return this.clamp(this.exitElapsed(), this.timelineStart, this.flightDuration || 0)
-  }
-}
-
-function clampTooltipAnchor(value, min, max) {
-  return Math.min(max, Math.max(min, value))
-}
-
-function tooltipVerticalAlign(pointY, height, room) {
-  const halfHeight = height / 2
-  if (room.top < halfHeight) return "top"
-  if (room.bottom < halfHeight) return "bottom"
-
-  return "center"
-}
-
-const OS_BOUNDS_PLUGIN = {
-  id: "osBounds",
-  beforeDatasetsDraw(chart, _args, options) {
-    if (!options?.bounds) return
-
-    const area = chart.chartArea
-    const xScale = chart.scales?.x
-    if (!xScale || !area) return
-
-    const phases = [
-      ["Plane", xScale.min, Number(options.bounds.exit), "rgba(46, 168, 255, 0.045)"],
-      ["Jump", Number(options.bounds.exit), Number(options.bounds.opening), "rgba(47, 214, 198, 0.055)"],
-      ["Canopy", Number(options.bounds.opening), Number(options.bounds.landing), "rgba(79, 123, 78, 0.09)"]
-    ].filter(([, start, end]) => Number.isFinite(start) && Number.isFinite(end) && end > start)
-    const ctx = chart.ctx
-
-    ctx.save()
-    ctx.textBaseline = "top"
-    ctx.font = "600 10px ui-monospace, SFMono-Regular, Menlo, monospace"
-    phases.forEach(([ label, start, end, color ]) => {
-      const visibleStart = Math.max(start, xScale.min)
-      const visibleEnd = Math.min(end, xScale.max)
-      if (visibleEnd <= visibleStart) return
-
-      const x = xScale.getPixelForValue(visibleStart)
-      const width = xScale.getPixelForValue(visibleEnd) - x
-      ctx.fillStyle = color
-      ctx.fillRect(x, area.top, width, area.bottom - area.top)
-      if (width > 54) {
-        ctx.fillStyle = "rgba(36, 49, 51, 0.56)"
-        ctx.fillText(label.toUpperCase(), x + 8, area.top + 8)
-      }
-    })
-    ctx.restore()
-  },
-  afterDatasetsDraw(chart, _args, options) {
-    if (!options?.bounds) return
-
-    const area = chart.chartArea
-    const xScale = chart.scales?.x
-    if (!xScale || !area) return
-
-    const ctx = chart.ctx
-    const labels = options.labels || {}
-    const bounds = [
-      ["exit", options.bounds.exit],
-      ["opening", options.bounds.opening],
-      ["landing", options.bounds.landing]
-    ].filter(([, value]) => Number.isFinite(Number(value)))
-
-    ctx.save()
-    ctx.textBaseline = "top"
-    ctx.font = "11px sans-serif"
-    bounds.forEach(([key, value]) => {
-      const x = xScale.getPixelForValue(Number(value))
-      if (x < area.left || x > area.right) return
-
-      ctx.strokeStyle = "rgba(232, 93, 79, 0.48)"
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.moveTo(x, area.top)
-      ctx.lineTo(x, area.bottom)
-      ctx.stroke()
-
-      const placeAfterLine = key === "landing"
-      ctx.fillStyle = "rgba(36, 49, 51, 0.56)"
-      ctx.textAlign = placeAfterLine ? "left" : "right"
-      ctx.fillText(labels[key] || key, x + (placeAfterLine ? 5 : -5), area.top + 4)
-    })
-    ctx.restore()
-  }
-}
-
-const OS_PLAYBACK_PLUGIN = {
-  id: "osPlayback",
-  afterDatasetsDraw(chart, _args, options) {
-    const elapsed = Number(options?.elapsed)
-    if (!Number.isFinite(elapsed)) return
-
-    const area = chart.chartArea
-    const xScale = chart.scales?.x
-    if (!xScale || !area) return
-
-    const ctx = chart.ctx
-    ctx.save()
-    ctx.strokeStyle = options.color || "rgba(216, 145, 34, 0.9)"
-    ctx.lineWidth = 2
-    const x = xScale.getPixelForValue(elapsed)
-    if (x >= area.left && x <= area.right) {
-      ctx.beginPath()
-      ctx.moveTo(x, area.top)
-      ctx.lineTo(x, area.bottom)
-      ctx.stroke()
-    }
-
-    ctx.fillStyle = options.pointColor || options.color || "rgba(216, 145, 34, 0.9)"
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.92)"
-    chart.getActiveElements().forEach(({ datasetIndex, index }) => {
-      const point = chart.getDatasetMeta(datasetIndex)?.data?.[index]
-      if (!point) return
-      if (point.x < area.left || point.x > area.right || point.y < area.top || point.y > area.bottom) return
-
-      ctx.beginPath()
-      ctx.arc(point.x, point.y, 4, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.lineWidth = 1.5
-      ctx.stroke()
-    })
-    ctx.restore()
   }
 }

@@ -3,3 +3,5 @@
 <section class="workspace-panel">
   <% if @test_runs.any? %><div class="workspace-list"><% @test_runs.each do |run| %><%= link_to forge_test_run_path(run), class: "workspace-list-row" do %><span><strong><%= run.recipe_id %></strong><small><%= run.build.code %> · <%= l run.ran_at, format: :short %><%= " · #{run.part.internal_number}" if run.part %></small></span><span><span class="workspace-status is-<%= run.outcome %>"><%= run.outcome.titleize %></span> <span class="workspace-status <%= run.validated? ? "is-validated" : "is-draft" %>"><%= run.validated? ? "Validated" : "Pending" %></span></span><% end %><% end %></div><% else %><div class="workspace-empty">No test result synchronized yet.</div><% end %>
 </section>
+
+<%= render "shared/pagination" %>

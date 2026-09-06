@@ -181,6 +181,40 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_response :conflict
   end
 
+  test "bench requires complete evidence and returns verified receipts on retries" do
+    headers = { "Authorization" => "Bearer #{users(:operator).rotate_bench_token!}" }
+    payload = result_payload
+    payload[:artifacts] = [ { path: "nested/evidence.log", size: 8, sha256: Digest::SHA256.hexdigest("evidence") } ]
+    post api_v1_bench_test_runs_path, params: payload, as: :json, headers: headers
+    assert_response :bad_request
+    assert_not TestRun.exists?(uuid: payload[:uuid])
+
+    Tempfile.create([ "evidence", ".log" ]) do |file|
+      file.write("evidence")
+      file.flush
+      2.times do |index|
+        upload = Rack::Test::UploadedFile.new(file.path, "text/plain", original_filename: "evidence.log")
+        post api_v1_bench_test_runs_path, params: { result: payload.to_json, files: [ upload ] }, headers: headers
+        assert_response(index.zero? ? :created : :ok)
+        assert_equal payload[:artifacts].as_json, response.parsed_body.fetch("artifacts")
+        assert_equal 1, TestRun.find_by!(uuid: payload[:uuid]).artifacts.count
+      end
+      stored = TestRun.find_by!(uuid: payload[:uuid]).artifacts.first.blob
+      stored.service.delete(stored.key)
+      upload = Rack::Test::UploadedFile.new(file.path, "text/plain", original_filename: "evidence.log")
+      post api_v1_bench_test_runs_path, params: { result: payload.to_json, files: [ upload ] }, headers: headers
+      assert_response :ok
+      assert_equal payload[:artifacts].as_json, response.parsed_body.fetch("artifacts")
+
+      file.rewind
+      file.write("tampered")
+      file.flush
+      upload = Rack::Test::UploadedFile.new(file.path, "text/plain", original_filename: "evidence.log")
+      post api_v1_bench_test_runs_path, params: { result: payload.to_json, files: [ upload ] }, headers: headers
+      assert_response :bad_request
+    end
+  end
+
   test "admin can validate a passed synchronized test" do
     run = TestRun.create!(
       uuid: SecureRandom.uuid,
@@ -236,7 +270,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
       outcome: "passed",
       ran_at: "2026-07-23T20:00:00Z",
       measurements: { gps_hz: 20.0, accel_hz: 31.5, gyro_hz: 24.2 },
-      artifacts: [ { path: "observe_rates.log", size: 120, sha256: "d" * 64 } ],
+      artifacts: [],
       build_configuration: {
         source_revision: "bench-revision",
         source_dirty: false,

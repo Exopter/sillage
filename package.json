@@ -4,12 +4,14 @@
   "type": "module",
   "scripts": {
     "assets:prepare": "node script/prepare_cesium_assets.mjs",
-    "typecheck": "tsc --project tsconfig.json"
+    "typecheck": "tsc --project tsconfig.json && tsc --project tsconfig.controllers.json"
   },
   "devDependencies": {
     "@hotwired/stimulus": "3.2.2",
     "@types/w3c-web-serial": "1.0.8",
     "@types/web-bluetooth": "0.0.21",
+    "chart.js": "^4.4.9",
+    "fake-indexeddb": "^6.2.5",
     "typescript": "7.0.2"
   },
   "dependencies": {

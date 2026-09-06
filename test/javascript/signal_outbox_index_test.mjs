@@ -1,0 +1,39 @@
+import assert from "node:assert/strict"
+import "fake-indexeddb/auto"
+import { openDatabase, readOutbox, oldestOutbox, deleteOutbox } from "../../app/javascript/lib/signal_outbox.js"
+
+// Upgrade an actual v1 database with interleaved sessions and lexically misleading sequences.
+const old = await new Promise((resolve, reject) => {
+  const request = indexedDB.open("sillage-signal-v1", 1)
+  request.onupgradeneeded = () => {
+    request.result.createObjectStore("outbox", { keyPath: "id" })
+    request.result.createObjectStore("metadata", { keyPath: "key" })
+  }
+  request.onerror = () => reject(request.error)
+  request.onsuccess = () => resolve(request.result)
+})
+await new Promise((resolve) => {
+  const tx = old.transaction("outbox", "readwrite")
+  for (const session of ["first", "second"]) {
+    for (let sequence = 99; sequence >= 0; sequence--) {
+      tx.objectStore("outbox").put({ id: `${session}:batch:${sequence}`, session, kind: "batch", sequence, queuedAt: 100 + sequence })
+    }
+    tx.objectStore("outbox").put({ id: `${session}:complete`, session, kind: "complete", queuedAt: 1 })
+    tx.objectStore("outbox").put({ id: `${session}:event`, session, kind: "event", queuedAt: 2 })
+  }
+  tx.oncomplete = resolve
+})
+old.close()
+const db = await openDatabase()
+const first = await readOutbox(db, "first")
+assert.equal(first.length, 64)
+assert.deepEqual(first.map((record) => record.sequence), Array.from({ length: 64 }, (_, index) => index))
+assert.equal((await oldestOutbox(db, "first")).queuedAt, 1)
+for (const record of first) await deleteOutbox(db, record.id)
+const last = await readOutbox(db, "first")
+assert.equal(last.length, 38)
+assert.equal(last.at(-2).kind, "event")
+assert.equal(last.at(-1).kind, "complete")
+assert.equal((await readOutbox(db, "second")).length, 64)
+db.close()
+console.log("Signal outbox migration, session index, bounded batches and completion order passed")

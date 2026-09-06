@@ -1,3 +1,4 @@
+import { describeWifiUpload } from "../../app/javascript/lib/fdr_heartbeat.js"
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 
@@ -61,8 +62,8 @@ assert.match(connectivitySource, /renderWifiSynchronizationProgress\(status\.wif
 assert.match(connectivitySource, /WIFI_SYNCHRONIZATION_IN_PROGRESS\.has\(state\)/)
 assert.match(connectivitySource, /syncProgressTarget\.value = Math\.min\(offset, size\)/)
 assert.match(connectivitySource, /syncProgressTarget\.removeAttribute\("value"\)/)
-assert.match(connectivitySource, /Uploading \$\{filename\} · \$\{percent\}%/)
-assert.match(connectivitySource, /All sealed recordings synchronized/)
+assert.equal(describeWifiUpload({ state: "uploading", fileIndex: 1, sizeBytes: 100, offset: 25 }), "Uploading FDR000001.BIN · 25%")
+assert.equal(describeWifiUpload({ state: "complete" }), "All sealed recordings synchronized")
 assert.match(connectivityViewSource, /Automatic resumable recording upload/)
 assert.match(connectivityViewSource, /fdr-connectivity#interruptUsbSync/)
 assert.match(connectivityViewSource, /fdr-connectivity#eraseSdRecordings/)

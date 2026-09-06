@@ -1,4 +1,5 @@
 class ReadinessCheck
+  REQUIRED_QUEUES = %w[imports geocoding default].freeze
   REQUIRED_QUEUE_PROCESS_KINDS = {
     worker: ->(kind) { kind == "Worker" },
     dispatcher: ->(kind) { kind == "Dispatcher" },
@@ -26,12 +27,17 @@ class ReadinessCheck
 
   def self.queue_process_check(queue_processes:, now:)
     cutoff = now - SolidQueue.process_alive_threshold
-    fresh_kinds = queue_processes.filter_map do |process|
-      process.kind if process.last_heartbeat_at && process.last_heartbeat_at >= cutoff
-    end
+    fresh = queue_processes.select { |process| process.last_heartbeat_at && process.last_heartbeat_at >= cutoff }
+    fresh_kinds = fresh.map(&:kind)
     missing = REQUIRED_QUEUE_PROCESS_KINDS.filter_map do |name, matches|
       name unless fresh_kinds.any? { |kind| matches.call(kind) }
     end
+
+    queues = fresh.select { |process| process.kind == "Worker" }.flat_map do |process|
+      process.metadata.fetch("queues", "").split(",").map(&:strip)
+    end
+    missing_queues = REQUIRED_QUEUES.reject { |queue| queues.any? { |pattern| File.fnmatch?(pattern, queue) } }
+    return { status: "error", error: "MissingQueueWorkers", missing: missing_queues } if missing.empty? && missing_queues.any?
 
     return { status: "ok" } if missing.empty?
 

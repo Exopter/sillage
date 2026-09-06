@@ -8,6 +8,7 @@ module FlightImports
     ].freeze
     SENSOR_ATTRIBUTES = %i[sensor_type recorded_at elapsed_seconds readings fdr_recording_id fdr_sequence fdr_timestamp_us source_blob_id].freeze
     INSERT_BATCH_SIZE = 1_000
+    IN_MEMORY_ANALYSIS_SAMPLES = 20_000
 
     def initialize(flight_import:, name:, started_at:, track_points:, sensor_samples:, replace_target: false)
       @flight_import = flight_import
@@ -19,27 +20,36 @@ module FlightImports
     end
 
     def call
-      metrics = Flights::TrackMetrics.new(@track_points.to_a)
-      points = metrics.prepared_points
-      analysis = Flights::FlightAnalysis.new(track_points: points, sensor_samples: analysis_samples).call
-      bounds = analysis.bounds
-      summary = metrics.summary(points, sensor_count: @sensor_samples.size, bounds:)
-        .merge(analysis_summary(analysis))
-      summary[:ended_at] = @started_at + analysis.timeline_end if @started_at
-      flight = persist_flight(summary.compact, bounds)
+      AnalysisStore.open do |store|
+        metrics = Flights::TrackMetrics.new(analysis_sequence(@track_points, store))
+        points = metrics.prepared_points
+        analysis = Flights::FlightAnalysis.new(track_points: points, sensor_samples: analysis_sequence(analysis_samples(store), store)).call
+        bounds = analysis.bounds
+        summary = metrics.summary(points, sensor_count: @sensor_samples.size, bounds:)
+          .merge(analysis_summary(analysis))
+        summary[:ended_at] = @started_at + analysis.timeline_end if @started_at
+        flight = persist_flight(summary.compact, bounds)
 
-      insert_records(TrackPoint, flight, points, TRACK_ATTRIBUTES)
-      insert_records(SensorSample, flight, @sensor_samples, SENSOR_ATTRIBUTES)
-      flight.capture_configuration!
-      flight
+        insert_records(TrackPoint, flight, points, TRACK_ATTRIBUTES)
+        insert_records(SensorSample, flight, @sensor_samples, SENSOR_ATTRIBUTES)
+        flight.capture_configuration!
+        flight
+      end
     end
 
     private
 
+    def analysis_sequence(samples, store)
+      return samples.to_a if samples.size <= IN_MEMORY_ANALYSIS_SAMPLES
+      return samples if samples.is_a?(AnalysisStore::Sequence)
+
+      store.sequence(samples)
+    end
+
     # Phase detection uses pressure only. Other sensors contribute timeline endpoints,
     # not millions of readings that analysis cannot use.
-    def analysis_samples
-      pressure = []
+    def analysis_samples(store)
+      pressure = store.sequence
       first = last = nil
       @sensor_samples.each do |sample|
         if sample[:sensor_type] == "BARO"
@@ -55,8 +65,9 @@ module FlightImports
         first = sample if !first || elapsed < first[:elapsed_seconds]
         last = sample if !last || elapsed > last[:elapsed_seconds]
       end
-      pressure + [ first, last ].compact.reject { |sample| sample[:sensor_type] == "BARO" }
-        .map { |sample| sample.slice(:sensor_type, :recorded_at, :elapsed_seconds) }
+      [ first, last ].compact.reject { |sample| sample[:sensor_type] == "BARO" }
+        .each { |sample| pressure << sample.slice(:sensor_type, :recorded_at, :elapsed_seconds) }
+      pressure
     end
 
     def persist_flight(summary, bounds)

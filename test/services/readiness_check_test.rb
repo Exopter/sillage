@@ -1,7 +1,9 @@
 require "test_helper"
 
 class ReadinessCheckTest < ActiveSupport::TestCase
-  QueueProcess = Data.define(:kind, :last_heartbeat_at)
+  QueueProcess = Struct.new(:kind, :last_heartbeat_at, :metadata, keyword_init: true) do
+    def metadata = self[:metadata] || { "queues" => "*" }
+  end
 
   test "reports every essential local service as healthy" do
     now = Time.current
@@ -33,6 +35,19 @@ class ReadinessCheckTest < ActiveSupport::TestCase
       assert_equal "error", result.fetch(:status)
       assert_equal({ status: "error", error: "MissingOrStaleHeartbeat", missing: [ missing ] }, result.dig(:checks, :queue_processes))
     end
+  end
+
+  test "requires fresh workers for every application queue" do
+    now = Time.current
+    processes = [
+      QueueProcess.new(kind: "Supervisor(fork)", last_heartbeat_at: now),
+      QueueProcess.new(kind: "Dispatcher", last_heartbeat_at: now),
+      QueueProcess.new(kind: "Worker", last_heartbeat_at: now, metadata: { "queues" => "default,geocoding" }),
+      QueueProcess.new(kind: "Worker", last_heartbeat_at: now - 1.hour, metadata: { "queues" => "imports" })
+    ]
+    assert_equal({ status: "error", error: "MissingQueueWorkers", missing: [ "imports" ] }, ReadinessCheck.call(queue_processes: processes, now:).dig(:checks, :queue_processes))
+    processes.last.last_heartbeat_at = now
+    assert_equal "ok", ReadinessCheck.call(queue_processes: processes, now:).fetch(:status)
   end
 
   test "reports a sanitized database failure" do

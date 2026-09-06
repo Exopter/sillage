@@ -25,6 +25,7 @@ CI.run do
   step "Tests: FDR Wi-Fi provisioning contract", "node test/javascript/fdr_wifi_provisioning_test.mjs"
   step "Tests: Aircraft connection identity", "node test/javascript/aircraft_connection_test.mjs"
   step "Tests: Signal worker", "node test/javascript/signal_serial_worker_test.mjs"
+  step "Tests: Signal outbox indexed replay", "node test/javascript/signal_outbox_index_test.mjs"
   step "Tests: Signal outbox durability", "node test/javascript/signal_outbox_test.mjs"
   step "Tests: USB page lifecycle", "node test/javascript/usb_page_lifecycle_test.mjs"
   step "Security: Gem audit", "bin/bundler-audit"
@@ -33,12 +34,4 @@ CI.run do
   # Keep libpq out of forked test workers; PostgreSQL write concurrency has a dedicated threaded integration test.
   step "Tests: Rails", "env PARALLEL_WORKERS=1 bin/rails test"
   step "Tests: Seeds", "env RAILS_ENV=test bin/rails db:seed:replant"
-
-  # Optional: set a green GitHub commit status to unblock PR merge.
-  # Requires the `gh` CLI and `gh extension install basecamp/gh-signoff`.
-  # if success?
-  #   step "Signoff: All systems go. Ready for merge and deploy.", "gh signoff"
-  # else
-  #   failure "Signoff: CI failed. Do not merge or deploy.", "Fix the issues and try again."
-  # end
 end

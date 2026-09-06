@@ -103,10 +103,12 @@ module Signal
 
     def mark_flight_live
       flight = @signal_session.flight
-      attributes = { status: "live", started_at: flight.started_at || @signal_session.started_at }
-      attributes[:sample_count] = flight.track_points.count
-      attributes[:sensor_sample_count] = flight.sensor_samples.count
-      flight.update!(attributes)
+      flight.with_lock do
+        attributes = { status: "live", started_at: flight.started_at || @signal_session.started_at }
+        attributes[:sample_count] = flight.sample_count.to_i + samples.count { |sample| sample["kind"] == "gps" }
+        attributes[:sensor_sample_count] = flight.sensor_sample_count.to_i + samples.count { |sample| sample["kind"] == "sensor" }
+        flight.update!(attributes)
+      end
     end
 
     def identify_flight_source

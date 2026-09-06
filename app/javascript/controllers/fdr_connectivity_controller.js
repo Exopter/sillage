@@ -1,3 +1,4 @@
+import { normalizeSillageHeartbeatStatus, describeWifiUpload, normalizeSillageHeartbeatDiagnostics, sillageHeartbeatIdentity, formatSeenAt } from "fdr_heartbeat"
 import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
 import { PartialFdrFile } from "fdr_partial_file"
@@ -43,7 +44,72 @@ const ConnectionStatus = Object.freeze({
   ERROR: ["Error", "error"]
 })
 
-export default class extends Controller {
+
+/**
+ * Stimulus accessors are installed at runtime.
+ * @typedef {Object} StimulusBindings
+ * @property {HTMLButtonElement} usbButtonTarget
+ * @property {HTMLButtonElement} stopSyncButtonTarget
+ * @property {HTMLButtonElement} eraseSdButtonTarget
+ * @property {HTMLElement} usbStatusTarget
+ * @property {HTMLElement} usbDeviceTarget
+ * @property {HTMLElement} usbDetailTarget
+ * @property {HTMLElement} usbTechnicalTarget
+ * @property {HTMLElement} usbNoticeTarget
+ * @property {HTMLElement} usbNoticeLabelTarget
+ * @property {HTMLProgressElement} syncProgressTarget
+ * @property {HTMLElement} syncNoticeTarget
+ * @property {HTMLElement} syncNoticeLabelTarget
+ * @property {HTMLElement} syncDetailTarget
+ * @property {HTMLElement} syncTechnicalTarget
+ * @property {HTMLButtonElement} bleButtonTarget
+ * @property {HTMLElement} bleStatusTarget
+ * @property {HTMLElement} bleDeviceTarget
+ * @property {HTMLElement} bleDetailTarget
+ * @property {HTMLElement} bleNoticeTarget
+ * @property {HTMLElement} bleNoticeLabelTarget
+ * @property {HTMLElement} wifiStatusTarget
+ * @property {HTMLElement} wifiDeviceTarget
+ * @property {HTMLElement} wifiAutoLabelTarget
+ * @property {HTMLElement} wifiDetailTarget
+ * @property {HTMLElement} wifiNoticeTarget
+ * @property {HTMLElement} wifiNoticeLabelTarget
+ * @property {HTMLElement} recorderStatusTarget
+ * @property {HTMLElement} recorderSourceTarget
+ * @property {HTMLElement} recorderDeviceTarget
+ * @property {HTMLElement} recorderFirmwareGroupTarget
+ * @property {HTMLElement} recorderFirmwareTarget
+ * @property {HTMLElement} healthTarget
+ * @property {HTMLElement} storageTarget
+ * @property {HTMLElement} lastSyncTarget
+ * @property {HTMLElement} recordingControlTarget
+ * @property {HTMLButtonElement} recordingButtonTarget
+ * @property {HTMLElement} recordingButtonLabelTarget
+ * @property {HTMLElement} recordingResultTarget
+ * @property {HTMLButtonElement} debugButtonTarget
+ * @property {HTMLElement} debugTarget
+ * @property {HTMLElement} recorderToolsHintTarget
+ * @property {HTMLElement} recorderAlertTarget
+ * @property {HTMLElement} recorderAlertMessageTarget
+ * @property {HTMLElement} recorderAlertTechnicalTarget
+ * @property {HTMLElement} recorderOnboardingTarget
+ * @property {HTMLElement} recorderOnboardingTitleTarget
+ * @property {HTMLAnchorElement} wifiLinkTarget
+ * @property {HTMLElement} wifiLinkLabelTarget
+ * @property {HTMLButtonElement} wifiRegisterButtonTarget
+ * @property {HTMLElement} wifiRegisterLabelTarget
+ * @property {HTMLElement} wifiRegistrationStatusTarget
+ * @property {string} uploadUrlValue
+ * @property {string} registrationUrlValue
+ * @property {string} authenticationUrlValue
+ * @property {string} recordingCommandUrlValue
+ * @property {boolean} hasRecordingCommandUrlValue
+ * @property {string} sillageHeartbeatUrlValue
+ * @property {boolean} hasSillageHeartbeatUrlValue
+ */
+const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller & StimulusBindings} */ (/** @type {unknown} */ (Controller))
+
+export default class extends TypedController {
   static values = {
     uploadUrl: String,
     registrationUrl: String,
@@ -569,7 +635,7 @@ export default class extends Controller {
           headers: {
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || ""
+            "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || ""
           },
           body: JSON.stringify({
             device_id: this.wifiIdentity.deviceId,
@@ -677,19 +743,20 @@ export default class extends Controller {
     await client?.close()
   }
 
+  /** @param {{deviceId: string}} device @param {Awaited<ReturnType<UsbFdrClient["nextFile"]>>} manifest @param {Blob} blob @param {{signal?: AbortSignal}} options */
   async uploadFile(device, manifest, blob, { signal } = {}) {
     const form = new FormData()
     form.append("source_file", blob, manifest.filename)
     form.append("device_id", device.deviceId)
     form.append("filename", manifest.filename)
-    form.append("file_index", manifest.fileIndex)
-    form.append("boot_id", manifest.bootId)
-    form.append("format_version", manifest.formatVersion)
-    form.append("size_bytes", manifest.sizeBytes)
+    form.append("file_index", String(manifest.fileIndex))
+    form.append("boot_id", String(manifest.bootId))
+    form.append("format_version", String(manifest.formatVersion))
+    form.append("size_bytes", String(manifest.sizeBytes))
     form.append("sha256", manifest.sha256)
     const response = await fetch(this.uploadUrlValue, {
       method: "POST",
-      headers: { "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || "" },
+      headers: { "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "" },
       body: form,
       signal
     })
@@ -1212,7 +1279,7 @@ export default class extends Controller {
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || ""
+        "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || ""
       },
       body: JSON.stringify({ device_id: deviceId, nonce, transport })
     })
@@ -1226,6 +1293,7 @@ export default class extends Controller {
     target.dataset.state = state
   }
 
+  /** @param {HTMLElement} target @param {string[]} status */
   setConnectionStatus(target, [label, state]) {
     this.setTransportStatus(target, label, state)
   }
@@ -1348,7 +1416,7 @@ export default class extends Controller {
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || ""
+        "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || ""
       },
       body: JSON.stringify({
         device_id: identity.deviceId,
@@ -1376,7 +1444,7 @@ export default class extends Controller {
         headers: {
           "Accept": "application/json",
           "Content-Type": "application/json",
-          "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || ""
+          "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || ""
         },
         body: JSON.stringify({ device_id: identity.deviceId })
       })
@@ -1400,7 +1468,7 @@ export default class extends Controller {
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || ""
+        "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || ""
       },
       body: JSON.stringify({ device_id: identity.deviceId })
     })
@@ -1622,9 +1690,7 @@ export default class extends Controller {
 }
 
 function usbSyncInterruptedError() {
-  const error = new Error("Synchronization interrupted by operator.")
-  error.usbSyncInterrupted = true
-  return error
+  return Object.assign(new Error("Synchronization interrupted by operator."), { usbSyncInterrupted: true })
 }
 
 function samePort(info, saved) {
@@ -1640,114 +1706,14 @@ function formatBytes(value) {
 
 function describeAlerts(flags) {
   if (flags === 0) return "Nominal"
-  const alerts = [
+  /** @type {[number, string][]} */
+  const conditions = [
     [0x01, "GPS"],
     [0x02, "IMU"],
     [0x04, "Airspeed"],
     [0x08, "Storage"],
     [0x10, "Recording queue"]
-  ].filter(([flag]) => (flags & flag) !== 0).map(([, label]) => label)
+  ]
+  const alerts = conditions.filter(([flag]) => (flags & flag) !== 0).map(([, label]) => label)
   return alerts.length ? `${alerts.join(", ")} attention` : "Recorder attention"
-}
-
-function normalizeSillageHeartbeatStatus(status = {}) {
-  const upload = status.wifi_upload || {}
-  const recording = status.recording_control
-  return {
-    stateFlags: Number(status.state_flags || 0),
-    sensorValidity: Number(status.sensor_validity || 0),
-    alertFlags: Number(status.alert_flags || 0),
-    storageFreeMiB: Number(status.storage_free_mib || 0),
-    storageTotalMiB: Number(status.storage_total_mib || 0),
-    lastSyncResult: Number(status.last_sync_result || 0),
-    securityState: 2,
-    activeFileIndex: Number(status.active_file_index || 0),
-    lastSyncedFileIndex: Number(status.last_synced_file_index || 0),
-    wifiUpload: {
-      state: String(upload.state || "disconnected"),
-      fileIndex: Number(upload.file_index || 0),
-      offset: Number(upload.offset || 0),
-      sizeBytes: Number(upload.size_bytes || 0),
-      lastHttpStatus: Number(upload.last_http_status || 0),
-      rejectedFiles: Number(upload.rejected_files || 0),
-      deferredFiles: Number(upload.deferred_files || 0),
-      damagedFileIndex: Number(upload.damaged_file_index || 0)
-    },
-    recordingControl: recording && typeof recording === "object"
-      ? {
-          requestedEnabled: recording.requested_enabled === true,
-          effectiveEnabled: recording.effective_enabled === true,
-          lastCommandSequence: Number(recording.last_command_sequence || 0),
-          lastCommandResult: Number(recording.last_command_result || 0)
-        }
-      : null
-  }
-}
-
-function describeWifiUpload(upload = {}) {
-  const filename = upload.fileIndex
-    ? `FDR${String(upload.fileIndex).padStart(6, "0")}.BIN`
-    : "recordings"
-  const size = Math.max(0, Number(upload.sizeBytes) || 0)
-  const offset = Math.max(0, Number(upload.offset) || 0)
-  const percent = size > 0
-    ? Math.min(100, Math.round(offset / size * 100))
-    : 0
-  switch (upload.state) {
-    case "waiting_stable":
-      return "Waiting for stable Wi-Fi before upload"
-    case "preparing":
-    case "requesting":
-      return `Preparing ${filename} for automatic upload`
-    case "uploading":
-      return `Uploading ${filename} · ${percent}%`
-    case "finalizing":
-      return `Finalizing ${filename}`
-    case "verifying":
-      return `Verifying ${filename} in Sillage`
-    case "complete":
-      if (upload.deferredFiles > 0) return "Upload pass finished · temporary failures will retry automatically"
-      return upload.rejectedFiles > 0 || upload.damagedFileIndex > 0
-        ? "Upload finished · rejected recordings retained on the card"
-        : "All sealed recordings synchronized"
-    case "paused":
-      return size > 0
-        ? `Automatic upload paused · ${filename} · ${percent}%`
-        : "Automatic upload paused"
-    case "error":
-      return upload.lastHttpStatus
-        ? `Automatic upload retrying · HTTP ${upload.lastHttpStatus}`
-        : "Automatic upload retrying"
-    default:
-      return "Automatic upload waiting"
-  }
-}
-
-function normalizeSillageHeartbeatDiagnostics(diagnostics = {}) {
-  return {
-    gpsErrors: Number(diagnostics.gps_errors || 0),
-    imuErrors: Number(diagnostics.imu_errors || 0),
-    airspeedErrors: Number(diagnostics.airspeed_errors || 0),
-    storageWriteErrors: Number(diagnostics.storage_write_errors || 0),
-    droppedRecords: Number(diagnostics.dropped_records || 0)
-  }
-}
-
-function sillageHeartbeatIdentity(heartbeat) {
-  const recorder = heartbeat?.recorder || {}
-  const deviceId = String(recorder.device_id || "").trim().toUpperCase()
-  if (!deviceId) throw new Error("Sillage returned a heartbeat without a recorder identifier.")
-
-  return {
-    deviceId,
-    firmware: recorder.firmware,
-    model: recorder.model
-  }
-}
-
-function formatSeenAt(value) {
-  const timestamp = Date.parse(value)
-  if (!Number.isFinite(timestamp)) return "just now"
-  const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000))
-  return seconds < 2 ? "just now" : `${seconds}s ago`
 }

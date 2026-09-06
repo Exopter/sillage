@@ -96,3 +96,8 @@ sparse sequence bitmap, and 1,000-row inserts. GPS and pressure analysis still
 loads the relevant samples into memory; other sensor streams contribute only
 their timeline endpoints. Temporary files are removed on success and failure.
 Memory and temporary storage usage grow with the recording and worker concurrency.
+
+Local JavaScript validation checks the shared protocol and storage modules in strict
+mode, and checks the viewer, connectivity and Signal controllers with their Stimulus
+bindings declared explicitly. The controller check does not yet enforce strict null
+or implicit-parameter typing. No browser bundle or runtime transpilation is added.

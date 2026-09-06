@@ -18,18 +18,8 @@ REQUIRED = %w[
 abort "PRODUCTION_OPERATIONS_CONFIRM must equal #{CONFIRMATION}" unless ENV["PRODUCTION_OPERATIONS_CONFIRM"] == CONFIRMATION
 abort "Missing #{ENV_PATH}" unless File.file?(ENV_PATH)
 
-File.readlines(ENV_PATH, chomp: true).each do |line|
-  line = line.strip
-  next if line.empty? || line.start_with?("#")
-
-  key, value = line.sub(/\Aexport\s+/, "").split("=", 2)
-  next if key.to_s.empty? || value.nil?
-
-  value = value.strip
-  quote = value[0]
-  value = value[1...-1] if [ "'", '"' ].include?(quote) && value.end_with?(quote)
-  ENV[key.strip] ||= value
-end
+require_relative "../config/environment_file"
+Sillage::EnvironmentFile.load(ENV_PATH)
 
 missing = REQUIRED.select { |key| ENV[key].to_s.strip.empty? }
 abort "Missing production operation variables: #{missing.join(', ')}" if missing.any?

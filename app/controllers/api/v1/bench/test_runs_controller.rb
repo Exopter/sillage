@@ -5,14 +5,12 @@ module Api
   module V1
     module Bench
       class TestRunsController < BaseController
-        MAX_UPLOAD_BYTES = 10.megabytes
-
         def create
-          validate_upload_sizes!
           result = parsed_result
           fingerprint = Digest::SHA256.hexdigest(JSON.generate(canonicalize(result)))
           existing = TestRun.find_by(uuid: result.fetch("uuid"))
-          return render_existing(existing, fingerprint) if existing
+          evidence = ::Bench::ArtifactEvidence.new(result.fetch("artifacts", []), Array(params[:files]))
+          return render_existing(existing, fingerprint, evidence) if existing
 
           attributes = test_run_attributes(result)
           capture_build_configuration!(attributes.fetch(:build), result.fetch("build_configuration"))
@@ -20,7 +18,7 @@ module Api
             operator: current_bench_user,
             ingestion_sha256: fingerprint
           ))
-          test_run.artifacts.attach(Array(params[:files])) if params[:files].present?
+          evidence.attach_to(test_run)
           test_run.save!
           test_run.build.assembly.embedded_controller&.record_activity!(
             "test_run_synchronized",
@@ -35,7 +33,7 @@ module Api
             }
           )
 
-          render json: response_payload(test_run), status: :created
+          render json: response_payload(test_run, evidence.receipt(test_run)), status: :created
         rescue KeyError, JSON::ParserError, ArgumentError => error
           render json: { error: error.message }, status: :bad_request
         rescue ActiveRecord::RecordNotFound => error
@@ -122,24 +120,22 @@ module Api
           contents.force_encoding(Encoding::UTF_8).scrub
         end
 
-        def validate_upload_sizes!
-          oversized = Array(params[:files]).find { |file| file.size > MAX_UPLOAD_BYTES }
-          return unless oversized
-
-          raise ArgumentError, "#{oversized.original_filename} exceeds the 10 MB v1 upload limit."
-        end
-
-        def render_existing(existing, fingerprint)
-          if existing.ingestion_sha256 == fingerprint
-            render json: response_payload(existing), status: :ok
-          else
-            render json: { error: "This execution UUID was already used with different content." }, status: :conflict
+        def render_existing(existing, fingerprint, evidence)
+          if existing.ingestion_sha256 != fingerprint
+            return render json: { error: "This execution UUID was already used with different content." }, status: :conflict
           end
+
+          existing.with_lock do
+            evidence.attach_to(existing)
+            existing.save! if existing.changed?
+          end
+          render json: response_payload(existing, evidence.receipt(existing)), status: :ok
         end
 
-        def response_payload(test_run)
+        def response_payload(test_run, artifacts)
           {
             uuid: test_run.uuid,
+            artifacts: artifacts,
             build_code: test_run.build.code,
             outcome: test_run.outcome,
             test_run_url: forge_test_run_path(test_run)

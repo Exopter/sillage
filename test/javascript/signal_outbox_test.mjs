@@ -4,7 +4,11 @@ import { readFile } from "node:fs/promises"
 const source = (await readFile(new URL("../../app/javascript/controllers/signal_workspace_controller.js", import.meta.url), "utf8"))
   .replace(/^import .*$/gm, "")
   .replace("extends Controller", "extends class {}")
-const { default: Workspace, transactionRequest } = await import(`data:text/javascript;base64,${Buffer.from(`${source}\nexport { transactionRequest }`).toString("base64")}`)
+  .replace(/const TypedController = .*$/m, "const TypedController = class {}")
+const outboxURL = new URL("../../app/javascript/lib/signal_outbox.js", import.meta.url).href
+const { transactionRequest } = await import(outboxURL)
+const { default: Workspace } = await import(`data:text/javascript;base64,${Buffer.from(`import { OUTBOX_STORE, META_STORE, transactionRequest, putOutbox, readOutbox, oldestOutbox, deleteOutbox } from "${outboxURL}"\n${source}`).toString("base64")}`)
+globalThis.IDBKeyRange = { bound: () => ({}) }
 const tick = () => new Promise((resolve) => setImmediate(resolve))
 
 // Drive request success and transaction completion separately, including a late abort.
@@ -21,7 +25,10 @@ class Database {
           changes.push({ name, record })
           return { result: record.id || record.key }
         },
-        getAll: () => ({ result: [...this.values[name].values()] }),
+        index: () => ({
+          getAll: () => ({ result: [...this.values[name].values()] }),
+          get: () => ({ result: [...this.values[name].values()][0] })
+        }),
         delete: (key) => { changes.push({ name, key }); return {} }
       }),
       commit: () => {

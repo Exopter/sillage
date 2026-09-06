@@ -15,15 +15,15 @@ module Flights
     OPENING_TYPICAL_MAX_HEIGHT_M = 1_500.0
 
     def initialize(points)
-      @points = points.sort_by { |point| point[:elapsed_seconds] || 0 }
-      @next_invalid = Array.new(@points.size)
+      @points = FlightImports::AnalysisStore.sort(points) { |point| point[:elapsed_seconds] || 0 }
+      @next_invalid = sequence
       next_invalid = @points.size
       (@points.size - 1).downto(0) do |index|
         next_invalid = index unless elapsed_seconds(@points[index]) && altitude_m(@points[index])
-        @next_invalid[index] = next_invalid
+        @next_invalid << next_invalid
       end
-      @fast_counts = [ 0 ]
-      @speed_counts = [ 0 ]
+      @fast_counts = sequence << 0
+      @speed_counts = sequence << 0
       @points.each do |point|
         @fast_counts << @fast_counts.last + (fast_freefall?(point) ? 1 : 0)
         @speed_counts << @speed_counts.last + (vertical_speed_mps(point) ? 1 : 0)
@@ -45,6 +45,10 @@ module Flights
     end
 
     private
+
+    def sequence
+      @points.respond_to?(:store) ? @points.store.sequence : []
+    end
 
     def detect_exit
       detect_aircraft_exit || detect_movement_exit
@@ -90,7 +94,7 @@ module Flights
       start_elapsed = elapsed_seconds(point)
       return unless start_elapsed && altitude_m(point)
 
-      stop = @next_invalid[index]
+      stop = @next_invalid[@points.size - 1 - index]
       last = ((index...stop).bsearch { |i| elapsed_seconds(@points[i]) > start_elapsed + FREEFALL_LOOKAHEAD_SECONDS } || stop) - 1
       if last == index && elapsed_seconds(@points[index + 1]) && altitude_m(@points[index + 1])
         last += 1
@@ -107,37 +111,41 @@ module Flights
     end
 
     def detect_opening(exit_point)
-      after_exit = @points.drop_while { |point| point[:elapsed_seconds].to_f <= exit_point[:elapsed_seconds].to_f + 8.0 }
-      candidates = []
+      best = nil
+      best_score = nil
       candidate_active = false
-
       last_fast = nil
-      after_exit.each_with_index do |point, index|
-        slow_window = after_exit[index, OPENING_SLOW_POINTS].to_a
+      @points.each_with_index do |point, index|
+        next if point[:elapsed_seconds].to_f <= exit_point[:elapsed_seconds].to_f + 8.0
+        slow_window = @points[index, OPENING_SLOW_POINTS].to_a
         candidate = slow_window.size == OPENING_SLOW_POINTS &&
           last_fast && elapsed_seconds(last_fast).to_f >= elapsed_seconds(point).to_f - OPENING_FAST_LOOKBEHIND_SECONDS &&
           slow_window.all? { |window_point| vertical_speed_mps(window_point).to_f < OPENING_SLOW_DESCENT_MPS }
 
-        candidates << point if candidate && !candidate_active
+        if candidate && !candidate_active
+          score = opening_score(point, index)
+          if !best_score || (score <=> best_score).negative?
+            best = point
+            best_score = score
+          end
+        end
         candidate_active = candidate
         last_fast = point if vertical_speed_mps(point).to_f >= OPENING_FAST_DESCENT_MPS
       end
 
-      select_opening_candidate(candidates)
+      best
     end
 
-    def select_opening_candidate(candidates)
-      candidates.compact.min_by.with_index do |candidate, index|
-        height = height_m(candidate)
-        next [ 2, index ] unless height
+    def opening_score(candidate, index)
+      height = height_m(candidate)
+      return [ 2, index ] unless height
 
-        if height.between?(OPENING_TYPICAL_MIN_HEIGHT_M, OPENING_TYPICAL_MAX_HEIGHT_M)
-          [ 0, height ]
-        elsif height > OPENING_TYPICAL_MAX_HEIGHT_M
-          [ 1, height - OPENING_TYPICAL_MAX_HEIGHT_M ]
-        else
-          [ 1, OPENING_TYPICAL_MIN_HEIGHT_M - height ]
-        end
+      if height.between?(OPENING_TYPICAL_MIN_HEIGHT_M, OPENING_TYPICAL_MAX_HEIGHT_M)
+        [ 0, height ]
+      elsif height > OPENING_TYPICAL_MAX_HEIGHT_M
+        [ 1, height - OPENING_TYPICAL_MAX_HEIGHT_M ]
+      else
+        [ 1, OPENING_TYPICAL_MIN_HEIGHT_M - height ]
       end
     end
 
@@ -150,7 +158,7 @@ module Flights
     end
 
     def altitude_floor_m
-      @altitude_floor_m ||= @points.filter_map { |point| altitude_m(point) }.min
+      @altitude_floor_m ||= @points.lazy.filter_map { |point| altitude_m(point) }.min
     end
 
     def fallback_opening(exit_point)
@@ -161,18 +169,19 @@ module Flights
     end
 
     def detect_landing
-      active_points = @points.select do |point|
-        point[:horizontal_speed_mps].to_f >= 2.5 || point[:vertical_speed_mps].to_f.abs >= 1.0
+      active_point = nil
+      @points.each do |point|
+        active_point = point if point[:horizontal_speed_mps].to_f >= 2.5 || point[:vertical_speed_mps].to_f.abs >= 1.0
       end
 
-      active_points.last
+      active_point
     end
 
     def aircraft_climb?
       start_altitude = altitude_m(@points.first)
       return false unless start_altitude
 
-      max_altitude = @points.filter_map { |point| altitude_m(point) }.max
+      max_altitude = @points.lazy.filter_map { |point| altitude_m(point) }.max
       max_altitude && (max_altitude - start_altitude) >= AIRCRAFT_CLIMB_GAIN_M
     end
 

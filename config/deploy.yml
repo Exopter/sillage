@@ -1,20 +1,6 @@
 <%
-  deploy_env_path = File.expand_path(".env.deploy.local", Dir.pwd)
-  if File.file?(deploy_env_path)
-    File.readlines(deploy_env_path, chomp: true).each do |line|
-      line = line.strip
-      next if line.empty? || line.start_with?("#")
-
-      line = line.sub(/\Aexport\s+/, "")
-      key, value = line.split("=", 2)
-      next if key.to_s.empty? || value.nil?
-
-      value = value.strip
-      quote = value[0]
-      value = value[1...-1] if ["'", '"'].include?(quote) && value.end_with?(quote)
-      ENV[key.strip] ||= value
-    end
-  end
+  require File.expand_path("config/environment_file", Dir.pwd)
+  Sillage::EnvironmentFile.load(File.expand_path(".env.deploy.local", Dir.pwd))
 
   boolean = ->(value) { value.to_s.match?(/\A(?:1|true|yes|on)\z/i) }
   deploy_host = ENV.fetch("KAMAL_DEPLOY_HOST", "157.90.155.63")

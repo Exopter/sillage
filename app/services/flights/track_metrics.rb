@@ -4,9 +4,9 @@ module Flights
 
     def initialize(points)
       @points = if points.all? { |point| point[:elapsed_seconds] }
-        points.sort_by { |point| point[:elapsed_seconds] }
+        FlightImports::AnalysisStore.sort(points) { |point| point[:elapsed_seconds] }
       else
-        points.sort_by { |point| point[:recorded_at] || Time.at(0) }
+        FlightImports::AnalysisStore.sort(points) { |point| point[:recorded_at] || Time.at(0) }
       end
     end
 
@@ -35,24 +35,35 @@ module Flights
     end
 
     def summary(points = prepared_points, sensor_count: 0, bounds: nil)
-      altitudes = points.filter_map { |point| point[:altitude_m]&.to_f }
-      horizontal_speeds = points.filter_map { |point| point[:horizontal_speed_mps]&.to_f }
-      vertical_speeds = points.filter_map { |point| point[:vertical_speed_mps]&.to_f }
-      glide_ratios = points_for_glide_average(points, bounds)
-        .filter_map { |point| point[:glide_ratio]&.to_f }
-        .select(&:finite?)
+      minimum = maximum = max_horizontal = max_vertical = nil
+      glide_sum = 0.0
+      glide_count = 0
+      points.each do |point|
+        altitude = point[:altitude_m]&.to_f
+        horizontal = point[:horizontal_speed_mps]&.to_f
+        vertical = point[:vertical_speed_mps]&.to_f
+        minimum = altitude if altitude && (!minimum || altitude < minimum)
+        maximum = altitude if altitude && (!maximum || altitude > maximum)
+        max_horizontal = horizontal if horizontal && (!max_horizontal || horizontal > max_horizontal)
+        max_vertical = vertical if vertical && (!max_vertical || vertical > max_vertical)
+        glide = point[:glide_ratio]&.to_f
+        if glide&.finite? && within_glide_bounds?(point, bounds)
+          glide_sum += glide
+          glide_count += 1
+        end
+      end
 
       {
         started_at: points.first&.fetch(:recorded_at, nil),
         ended_at: points.last&.fetch(:recorded_at, nil),
         duration_seconds: duration(points),
-        min_altitude_m: altitudes.min,
-        max_altitude_m: altitudes.max,
-        altitude_loss_m: altitude_loss(altitudes),
+        min_altitude_m: minimum,
+        max_altitude_m: maximum,
+        altitude_loss_m: minimum && maximum ? maximum - minimum : nil,
         distance_m: points.last&.fetch(:distance_from_start_m, nil),
-        max_horizontal_speed_mps: horizontal_speeds.max,
-        max_vertical_speed_mps: vertical_speeds.max,
-        avg_glide_ratio: average(glide_ratios),
+        max_horizontal_speed_mps: max_horizontal,
+        max_vertical_speed_mps: max_vertical,
+        avg_glide_ratio: glide_count.positive? ? glide_sum / glide_count : nil,
         sample_count: points.size,
         sensor_sample_count: sensor_count
       }
@@ -60,19 +71,12 @@ module Flights
 
     private
 
-    def points_for_glide_average(points, bounds)
-      return points unless bounds
+    def within_glide_bounds?(point, bounds)
+      return true unless bounds && (bounds[:exit_at] || bounds[:opening_at])
 
-      exit_at = bounds[:exit_at]
-      opening_at = bounds[:opening_at]
-      return points unless exit_at || opening_at
-
-      points.select do |point|
-        recorded_at = point[:recorded_at]
-        recorded_at &&
-          (!exit_at || recorded_at >= exit_at) &&
-          (!opening_at || recorded_at <= opening_at)
-      end
+      recorded_at = point[:recorded_at]
+      recorded_at && (!bounds[:exit_at] || recorded_at >= bounds[:exit_at]) &&
+        (!bounds[:opening_at] || recorded_at <= bounds[:opening_at])
     end
 
     def duration(points)
@@ -94,18 +98,6 @@ module Flights
       return nil if vertical_speed < 0.3
 
       horizontal_speed / vertical_speed
-    end
-
-    def altitude_loss(altitudes)
-      return nil if altitudes.empty?
-
-      altitudes.max - altitudes.min
-    end
-
-    def average(values)
-      return nil if values.empty?
-
-      values.sum / values.size
     end
 
     def haversine_distance(a, b)

@@ -1,0 +1,7 @@
+<% if @page > 1 || @next_page %>
+  <nav class="workspace-actions" aria-label="Pagination">
+    <% if @page > 1 %><%= link_to "Previous", url_for(request.query_parameters.merge(page: @page - 1)), class: "button-secondary", rel: "prev" %><% end %>
+    <span class="workspace-muted">Page <%= @page %></span>
+    <% if @next_page %><%= link_to "Next", url_for(request.query_parameters.merge(page: @next_page)), class: "button-secondary", rel: "next" %><% end %>
+  </nav>
+<% end %>

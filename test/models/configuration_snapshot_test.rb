@@ -28,4 +28,21 @@ class ConfigurationSnapshotTest < ActiveSupport::TestCase
     flight.capture_configuration!
     assert_equal snapshot, flight.reload.configuration_snapshot
   end
+  test "captures an unsaved assembly without recursing into itself" do
+    assert_empty Assembly.new(name: "Draft").snapshot.fetch("assemblies")
+  end
+
+  test "captures nested current parts with bounded queries and prevents cycles" do
+    root = Assembly.create!(name: "Root")
+    branch = Assembly.create!(name: "Branch", parent: root)
+    leaf = Assembly.create!(name: "Leaf", parent: branch)
+    function = Function.create!(code: "TREE", name: "Tree")
+    part = Part.create!(function:, model: "Leaf sensor")
+    part.install_in!(leaf)
+    assert_equal [ branch.id, leaf.id ].sort, root.descendant_ids.sort
+    assert_equal [ part.internal_number ], root.snapshot_part_numbers
+    assert_equal "Leaf sensor", root.snapshot.fetch("assemblies").sole.fetch("assemblies").sole.fetch("parts").sole.fetch("model")
+    assert_not root.update(parent: leaf)
+    assert_includes root.errors[:parent], "cannot be one of its descendants"
+  end
 end
