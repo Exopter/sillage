@@ -91,11 +91,14 @@ count, or expanded ZIP volume. Format and integrity checks remain: CRC/SHA-256,
 manifest sizes, CSV lines of at most 16 KiB, V2 metadata of at most 256 lines/64 KiB,
 and ZIP paths of at most 1 KiB. ZIP64 and multi-volume archives are unsupported.
 
-Decoding uses 64 KiB reads, disk-backed temporary JSON sample buffers, a paged
-sparse sequence bitmap, and 1,000-row inserts. GPS and pressure analysis still
-loads the relevant samples into memory; other sensor streams contribute only
-their timeline endpoints. Temporary files are removed on success and failure.
-Memory and temporary storage usage grow with the recording and worker concurrency.
+Decoding uses 64 KiB reads, temporary JSON sample buffers, a paged sparse sequence
+bitmap, and 1,000-row inserts. GPS and pressure analysis uses arrays up to 20,000
+samples per stream, then indexed temporary files with a fixed cache and external
+sorting. This threshold changes storage strategy; it never rejects or truncates an
+import. Other sensor streams contribute only timeline endpoints. Temporary files
+are removed on success and failure. Disk use grows with the recording; analysis
+memory is bounded per worker. Large analyses trade additional disk I/O and CPU
+for lower memory use. Equal timestamps retain their input order.
 
 Local JavaScript validation checks the shared protocol and storage modules in strict
 mode, and checks the viewer, connectivity and Signal controllers with their Stimulus
