@@ -11,3 +11,5 @@
   decision in Notion.
 - Keep Kamal configured through `.env.deploy.local`, loadable by global
   `kamal`, `bin/kamal`, and `bundle exec kamal`.
+- Run validation locally with `bin/ci`. Do not
+  add or enable hosted CI unless explicitly requested by the user.

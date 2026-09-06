@@ -29,6 +29,10 @@ buildings load independently when configured; unavailable map data leaves the
 
 ## Validation
 
+Run the checks locally before committing or deploying. GitHub Actions is disabled.
+Keep the sibling `../fdr` and `../design_system` checkouts available, or set
+`EXOPTER_FDR_PATH` and `EXOPTER_DESIGN_SYSTEM_PATH` to their local paths.
+
 ```sh
 bin/ci
 ```
