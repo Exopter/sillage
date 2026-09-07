@@ -1,0 +1,13 @@
+<% content_for :title, "ExoFDR #{@configuration.label}" %><%= render "hangar/tabs" %>
+<header class="workspace-header">
+  <div><span class="section-eyebrow">Functional configuration</span><h2>ExoFDR <%= @configuration.label %></h2></div>
+  <div class="workspace-actions">
+    <% if @assemblies.empty? %><%= link_to "Edit", edit_hangar_fdr_functional_configuration_path(@configuration), class: "button-secondary" %><%= button_to "Delete", hangar_fdr_functional_configuration_path(@configuration), method: :delete, class: "button-danger", form: { data: { turbo_confirm: "Delete this unused functional configuration?" } } %><% end %>
+    <%= link_to "New assembly", new_hangar_assembly_path(assembly: { assembly_type: "ExoFDR", fdr_functional_configuration_id: @configuration.id }), class: "button-primary" %>
+  </div>
+</header>
+<section class="workspace-panel"><h2>Planned capabilities</h2><%= simple_format @configuration.planned_capabilities %><p class="workspace-muted"><%= @assemblies.any? ? "This capability baseline is fixed. Create a new version for different capabilities." : "This version remains editable until an assembly uses it." %> Planned capabilities do not imply qualification.</p></section>
+<section class="workspace-panel">
+  <div class="workspace-panel-header"><h2>Assemblies</h2><span><%= pluralize @assemblies.size, "assembly" %></span></div>
+  <% if @assemblies.any? %><div class="workspace-list"><% @assemblies.each do |assembly| %><%= link_to hangar_assembly_path(assembly), class: "workspace-list-row" do %><strong><%= assembly.display_name %></strong><span><%= assembly.serviceability_label %></span><% end %><% end %></div><% else %><div class="workspace-empty">No assemblies use this configuration yet.</div><% end %>
+</section>

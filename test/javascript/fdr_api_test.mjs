@@ -2,13 +2,13 @@ import assert from "node:assert/strict"
 import {authenticationHex, commandSequence, heartbeatPayloads, importReceipt, readResponse, registrationPayload} from "../../app/javascript/lib/fdr_api.js"
 
 const sha256 = "a".repeat(64)
-const assembly = {name: "ExoFDR", identity_label: "S/N FDR-0003", serial_number: "FDR-0003", hardware_definition: "FDR-V0-PERF-01"}
+const assembly = {name: "EXOFDR-V0-PERF-03", identity_label: "EXOFDR-V0-PERF-03", serial_number: "EXOFDR-V0-PERF-03", functional_configuration: "V0", assembly_method: "PERF"}
 const recorder = {device_id: "ECU-A172E0", assembly, initialization_confirmed: true, connectivity_url: "/hangar/controllers/1/connectivity", initialization_url: "/hangar/controllers/1/initialize"}
 assert.deepEqual(registrationPayload({registered: false}), {registered: false})
 assert.deepEqual(registrationPayload({registered: true, recorder}).recorder, recorder)
 assert.equal(registrationPayload({registered: true, recorder: {...recorder, assembly: null}}).recorder.assembly, null)
 assert.equal(registrationPayload({registered: true, recorder: {...recorder, assembly: undefined}}).recorder.assembly, undefined)
-assert.throws(() => registrationPayload({registered: true, recorder: {...recorder, assembly: {name: "ExoFDR"}}}))
+assert.throws(() => registrationPayload({registered: true, recorder: {...recorder, assembly: {name: "EXOFDR-V0-PERF-03"}}}))
 for (const payload of [null, [], {}, {registered: true, recorder: {}}, {registered: true, recorder: {...recorder, connectivity_url: "//untrusted.example/"}}]) {
   assert.throws(() => registrationPayload(payload))
 }

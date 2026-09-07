@@ -30,7 +30,7 @@ class EmbeddedController < ApplicationRecord
   scope :ordered, -> { order(Arel.sql("device_id IS NULL, device_id")) }
 
   def display_name
-    assembly ? "#{assembly.display_name} · #{assembly.identity_label}" : "Unassigned ECU"
+    assembly ? assembly.selection_label : "Unassigned ECU"
   end
 
   def recorder_identity(at: nil)
@@ -43,7 +43,8 @@ class EmbeddedController < ApplicationRecord
         name: recorded_assembly.display_name,
         identity_label: recorded_assembly.identity_label,
         serial_number: recorded_assembly.serial_number,
-        hardware_definition: recorded_assembly.hardware_definition&.canonical_identifier
+        functional_configuration: recorded_assembly.functional_configuration,
+        assembly_method: recorded_assembly.assembly_method
       }
     }
   end

@@ -57,19 +57,18 @@ class HangarForgeTest < ActiveSupport::TestCase
   end
 
   test "a controlled ExoFDR receives a generated unique immutable serial number" do
-    definition = create_hardware_definition
-    first = Assembly.create!(name: "Serialized FDR", hardware_definition: definition)
-    second = Assembly.create!(name: "Another FDR", hardware_definition: definition)
+    first = create_exofdr_assembly
+    second = create_exofdr_assembly
     first_serial_number = first.serial_number
 
     assert_match Assembly::EXOFDR_SERIAL_PATTERN, first_serial_number
-    assert_equal first_serial_number.delete_prefix("FDR-").to_i + 1,
-      second.serial_number.delete_prefix("FDR-").to_i
-    assert_not first.update(serial_number: "FDR-9999")
+    assert_equal first_serial_number.split("-").last.to_i + 1,
+      second.serial_number.split("-").last.to_i
+    assert_not first.update(serial_number: "EXOFDR-V0-PERF-9999")
     assert_includes first.errors[:serial_number], "cannot be changed"
     assert_equal first_serial_number, first.reload.serial_number
 
-    manual = Assembly.new(name: "Manual serial", hardware_definition: definition, serial_number: "FDR-9999")
+    manual = Assembly.new(assembly_type: "ExoFDR", fdr_functional_configuration: create_fdr_functional_configuration, assembly_method: "PERF", serial_number: "EXOFDR-V0-PERF-9999")
     assert_not manual.valid?
     assert_includes manual.errors[:serial_number], "is assigned automatically"
   end
@@ -82,26 +81,14 @@ class HangarForgeTest < ActiveSupport::TestCase
     assert_equal "Generic equipment", assembly.display_name
   end
 
-  test "a third-party recorder does not consume the ExoFDR serial sequence" do
-    third_party_definition = HardwareDefinition.create!(
-      product_name: "Third-party recorder",
-      family_code: "FDR",
-      functional_version: 0,
-      implementation_kind: "perfboard",
-      implementation_revision: "99",
-      qualification_state: "prototype"
-    )
-    previous_value = IdentifierSequence.find_by(name: Assembly::EXOFDR_SERIAL_SEQUENCE)&.last_value.to_i
-
-    assembly = Assembly.create!(name: "Third-party FDR", hardware_definition: third_party_definition)
-
-    assert_nil assembly.serial_number
-    assert_equal previous_value,
-      IdentifierSequence.find_by(name: Assembly::EXOFDR_SERIAL_SEQUENCE)&.last_value.to_i
+  test "legacy generic equipment does not consume ExoFDR serial sequences" do
+    assert_no_difference -> { IdentifierSequence.count } do
+      assert_nil Assembly.create!(name: "Legacy equipment").serial_number
+    end
   end
 
   test "an ExoFDR serial remains stable when its controller is replaced" do
-    @assembly.update!(hardware_definition: create_hardware_definition)
+    @assembly = create_exofdr_assembly
     serial_number = @assembly.serial_number
     original = create_embedded_controller(assembly: @assembly, device_id: "ECU-A172E0")
     replacement_part = Part.create!(function: original.part.function, manufacturer: "Seeed Studio", model: "XIAO ESP32S3")

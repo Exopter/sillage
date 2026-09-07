@@ -17,20 +17,15 @@ module AuthenticationTestHelper
 end
 
 module EmbeddedControllerTestHelper
-  def create_hardware_definition(**attributes)
-    attributes = {
-      product_name: "ExoFDR",
-      family_code: "FDR",
-      functional_version: 0,
-      implementation_kind: "perfboard",
-      implementation_revision: "01",
-      qualification_state: "prototype"
-    }.merge(attributes)
-    candidate = HardwareDefinition.new(attributes)
-
-    HardwareDefinition.find_or_create_by!(canonical_identifier: candidate.expected_canonical_identifier) do |definition|
-      definition.assign_attributes(attributes)
+  def create_fdr_functional_configuration(version: 0, **attributes)
+    FdrFunctionalConfiguration.find_or_create_by!(version:) do |configuration|
+      configuration.assign_attributes(planned_capabilities: "ECU, IMU, airspeed, GNSS and microSD; no radio.", **attributes)
     end
+  end
+
+  def create_exofdr_assembly(**attributes)
+    Assembly.create!(assembly_type: "ExoFDR", fdr_functional_configuration: create_fdr_functional_configuration,
+      assembly_method: "PERF", **attributes)
   end
 
   def create_installed_part(assembly:, **attributes)

@@ -14,8 +14,12 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
     get hangar_assemblies_path(assembly_id: @assembly.id)
 
     assert_response :success
-    assert_select "a[href='#{edit_hangar_assembly_path(@assembly)}']", text: "Edit"
+    assert_select "a[href='#{edit_hangar_assembly_path(@assembly)}']", count: 0
+    assert_select "a[href='#{hangar_assembly_path(@assembly)}']", text: "Open"
     assert_delete_form hangar_assembly_path(@assembly)
+
+    get hangar_assembly_path(@assembly)
+    assert_select "a[href='#{edit_hangar_assembly_path(@assembly)}']", text: "Edit"
 
     get hangar_parts_path
 

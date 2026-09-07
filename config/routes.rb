@@ -49,6 +49,7 @@ Rails.application.routes.draw do
       end
     end
     resources :functions
+    resources :fdr_functional_configurations, path: "configuration/exofdr-functional-configurations"
   end
 
   resources :signal_sessions, only: :create

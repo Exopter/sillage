@@ -125,10 +125,7 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "finds the exact registered recorder by its physical identity" do
-    recorder = create_fdr(name: "Known recorder", device_id: "ECU-F00D01")
-    recorder.assembly.update!(
-      hardware_definition: create_hardware_definition
-    )
+    recorder = create_embedded_controller(assembly: create_exofdr_assembly, device_id: "ECU-F00D01")
     installation = Installation.create!(
       aircraft: aircraft(:pilatus),
       installable: recorder.assembly,
@@ -142,7 +139,9 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
     assert_equal recorder.assembly.internal_number, response.parsed_body.dig("recorder", "internal_number")
     assert_equal recorder.assembly.serial_number, response.parsed_body.dig("recorder", "serial_number")
     assert_equal recorder.recorder_identity[:assembly].stringify_keys, response.parsed_body.dig("recorder", "assembly")
-    assert_equal "FDR-V0-PERF-01", response.parsed_body.dig("recorder", "hardware_definition")
+    assert_equal "V0", response.parsed_body.dig("recorder", "functional_configuration")
+    assert_equal "PERF", response.parsed_body.dig("recorder", "assembly_method")
+    assert_not response.parsed_body.fetch("recorder").key?("hardware_definition")
     assert_equal recorder.part.internal_number, response.parsed_body.dig("recorder", "controller_part_internal_number")
     assert_equal connectivity_forge_fdr_path(recorder), response.parsed_body.dig("recorder", "connectivity_url")
     assert_equal aircraft(:pilatus).registration, response.parsed_body.dig("aircraft", "registration")

@@ -101,16 +101,6 @@ DEFAULT_FUNCTIONS = {
   "RADIO" => [ "Radio", "Telemetry radio link" ]
 }.freeze
 
-DEFAULT_HARDWARE_DEFINITIONS = [
-  { product_name: "ExoFDR", family_code: "FDR", functional_version: 0, implementation_kind: "perfboard", implementation_revision: "01", variant: nil },
-  { product_name: "ExoFDR", family_code: "FDR", functional_version: 0, implementation_kind: "pcb", implementation_revision: "A", variant: "GH" },
-  { product_name: "ExoFDR", family_code: "FDR", functional_version: 0, implementation_kind: "pcb", implementation_revision: "A", variant: "XH" }
-].freeze
-
-DEFAULT_IDENTIFIER_SEQUENCES = [ Assembly::EXOFDR_SERIAL_SEQUENCE ].freeze
-
-FDR_HARDWARE_CONVENTION_URL = "https://app.notion.com/p/3d1e497e504f8128be4cd30a29db7732"
-
 def seed_default_functions
   DEFAULT_FUNCTIONS.each do |code, (name, description)|
     function = Function.find_or_initialize_by(code:)
@@ -119,34 +109,6 @@ def seed_default_functions
   end
 
   puts "Seeded #{DEFAULT_FUNCTIONS.size} default functions"
-end
-
-def seed_default_hardware_definitions
-  DEFAULT_HARDWARE_DEFINITIONS.each do |attributes|
-    definition = HardwareDefinition.find_or_initialize_by(
-      canonical_identifier: HardwareDefinition.new(attributes).expected_canonical_identifier
-    )
-    definition.assign_attributes(**attributes, qualification_state: "prototype", notion_url: FDR_HARDWARE_CONVENTION_URL)
-    definition.save!
-  end
-
-  puts "Seeded #{DEFAULT_HARDWARE_DEFINITIONS.size} FDR hardware definitions"
-end
-
-def seed_default_identifier_sequences
-  DEFAULT_IDENTIFIER_SEQUENCES.each do |name|
-    sequence = IdentifierSequence.find_or_initialize_by(name:)
-    existing_serial_maximum = Assembly.joins(:hardware_definition)
-      .where(hardware_definitions: { product_name: "ExoFDR", family_code: "FDR" })
-      .where("serial_number ~ ?", "^FDR-[0-9]{4}$")
-      .pluck(:serial_number)
-      .filter_map { |serial_number| serial_number.delete_prefix("FDR-").to_i }
-      .max.to_i
-    sequence.last_value = [ sequence.last_value.to_i, existing_serial_maximum ].max
-    sequence.save!
-  end
-
-  puts "Seeded #{DEFAULT_IDENTIFIER_SEQUENCES.size} identifier sequence"
 end
 
 def seed_demo_operational_context
@@ -295,8 +257,6 @@ def seed_synthetic_flight(config, default_user:)
 end
 
 seed_default_functions
-seed_default_hardware_definitions
-seed_default_identifier_sequences
 
 if ActiveModel::Type::Boolean.new.cast(ENV["LOAD_DEMO_DATA"])
   default_user = User.default_admin

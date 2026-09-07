@@ -5,6 +5,7 @@ class PartInstallation < ApplicationRecord
   validates :installed_at, presence: true
   validate :removed_after_installation
   validate :part_has_no_other_active_installation
+  validate :assembly_accepts_parts, on: :create
 
   scope :active, -> { where(removed_at: nil) }
   scope :covering, ->(time) { where("installed_at <= ? AND (removed_at IS NULL OR removed_at > ?)", time, time) }
@@ -19,6 +20,10 @@ class PartInstallation < ApplicationRecord
   end
 
   private
+
+  def assembly_accepts_parts
+    errors.add(:assembly, "cannot be retired") if active? && assembly&.serviceability_state == "retired"
+  end
 
   def removed_after_installation
     errors.add(:removed_at, "must be after installation") if removed_at && installed_at && removed_at <= installed_at

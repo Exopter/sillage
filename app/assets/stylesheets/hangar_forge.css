@@ -2,6 +2,38 @@
   margin-bottom: 12px;
 }
 
+.workspace-navigation-groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 32px;
+  margin-bottom: 20px;
+}
+
+.workspace-navigation-groups > div {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.workspace-navigation-groups .workspace-tabs {
+  margin: 6px 0 0;
+}
+
+.workspace-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border-rule);
+  border-radius: 8px;
+}
+
+.workspace-fieldset > * + * { margin-top: 16px; }
+.workspace-fieldset > .workspace-muted { margin: 12px 0; }
+.workspace-preserve-lines { white-space: pre-line; overflow-wrap: anywhere; }
+.workspace-choice-table caption { text-align: left; font-weight: 600; padding-bottom: 12px; }
+.workspace-form .workspace-radio-choice { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.workspace-choice-table tr:has(input:checked) { background: var(--surface-panel); }
+
 .hangar-page-heading h1 {
   margin: 4px 0 4px;
   color: var(--text-strong, #10181a);

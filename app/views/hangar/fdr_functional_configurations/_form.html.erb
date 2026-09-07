@@ -1,0 +1,9 @@
+<%= form_with model: [ :hangar, configuration ], class: "workspace-form" do |form| %>
+  <% if configuration.errors.any? %><div class="workspace-errors"><%= configuration.errors.full_messages.to_sentence %></div><% end %>
+  <% fixed = configuration.persisted? && configuration.assemblies.exists? %>
+  <% if fixed %><p class="workspace-muted">This version is used by an assembly and is fixed. Create a new version for different capabilities.</p><% end %>
+  <label><span>Version number</span><%= form.number_field :version, min: 0, step: 1, required: true, placeholder: "0", disabled: fixed %><small class="workspace-muted">Enter 0 for V0, 1 for V1, and so on.</small></label>
+  <label><span>Planned capabilities</span><%= form.text_area :planned_capabilities, rows: 6, required: true, disabled: fixed, placeholder: "Describe the intended sensors, recording, radio and power capabilities, including any exclusions." %></label>
+  <p class="workspace-muted">The version and capabilities become fixed when the first assembly uses them. Planned capabilities do not imply qualification.</p>
+  <div class="workspace-actions"><%= link_to "Cancel", hangar_fdr_functional_configurations_path, class: "button-secondary" %><%= form.submit "Save functional configuration", class: "button-primary", disabled: fixed %></div>
+<% end %>

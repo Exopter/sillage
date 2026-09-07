@@ -24,13 +24,13 @@ const {currentAircraftConnections, aircraftConnectionLabel} = await import(await
 globalThis.window = {location: {origin: "http://localhost"}, dispatchEvent() {}, clearInterval() {}}
 globalThis.CustomEvent = class {constructor(type, options) {this.type = type; this.detail = options.detail}}
 
-const assembly = {name: "ExoFDR", serial_number: "FDR-0003", identity_label: "S/N FDR-0003", hardware_definition: "FDR-V0-PERF-01"}
+const assembly = {name: "EXOFDR-V0-PERF-03", serial_number: "EXOFDR-V0-PERF-03", identity_label: "EXOFDR-V0-PERF-03", functional_configuration: "V0", assembly_method: "PERF"}
 const recorder = {device_id: "ECU-A172E0", assembly, initialization_confirmed: true, connectivity_url: "/forge/fdrs/1/connectivity", initialization_url: "/api/v1/fdrs/1/initialization"}
-const label = "ExoFDR · S/N FDR-0003"
+const label = "EXOFDR-V0-PERF-03"
 assert.equal(recorderLabel({assembly}), label)
 assert.equal(recorderLabel({assembly: null}), "Unassigned ECU")
 assert.equal(recorderLabel({}), "Recorder not identified")
-assert.equal(recorderTechnicalLabel({deviceId: recorder.device_id, assembly}), "ECU-A172E0 · FDR-V0-PERF-01")
+assert.equal(recorderTechnicalLabel({deviceId: recorder.device_id, assembly}), "ECU-A172E0")
 
 function element() {
   return {textContent: "", title: "", hidden: false, dataset: {},
@@ -61,7 +61,7 @@ for (const transport of ["usb", "ble", "wifi"]) {
 assert.equal(connected.recorderDeviceTarget.textContent, label)
 assert.equal(connected.recorderEcuTarget.textContent, recorder.device_id)
 assert.equal(aircraftConnectionLabel(currentAircraftConnections()), `${label} connected`)
-assert.match(connected.wifiLinkLabelTarget.textContent, /FDR-0003.*ECU-A172E0/)
+assert.match(connected.wifiLinkLabelTarget.textContent, /EXOFDR-V0-PERF-03.*ECU-A172E0/)
 
 // Heartbeats refresh an assignment even while a USB registration is cached.
 connected.renderSillageHeartbeat({recorder: {...recorder, assembly: null, firmware: "fdr/26"}, seen_at: new Date().toISOString(), status: {}})

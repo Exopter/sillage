@@ -9,6 +9,7 @@ class Installation < ApplicationRecord
   validate :asset_has_no_other_active_installation
   validate :part_is_serviceable
   validate :asset_is_not_nested
+  validate :assembly_is_not_retired
 
   scope :active, -> { where(removed_at: nil) }
   scope :covering, ->(time) { where("installed_at <= ? AND (removed_at IS NULL OR removed_at > ?)", time, time) }
@@ -23,6 +24,10 @@ class Installation < ApplicationRecord
   end
 
   private
+
+  def assembly_is_not_retired
+    errors.add(:installable, "cannot be retired") if active? && installable.is_a?(Assembly) && installable.serviceability_state == "retired"
+  end
 
   def removed_after_installation
     errors.add(:removed_at, "must be after installation") if removed_at && installed_at && removed_at < installed_at

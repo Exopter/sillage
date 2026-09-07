@@ -1,0 +1,18 @@
+<% content_for :title, "ExoFDR functional configurations" %>
+<%= render "hangar/tabs" %>
+<header class="hangar-section-head">
+  <div><h2>ExoFDR functional configurations</h2><p>Define the planned capabilities of each version, independently of its assembly method.</p></div>
+  <%= link_to "New functional configuration", new_hangar_fdr_functional_configuration_path, class: "button-primary" %>
+</header>
+<% if @configurations.any? %>
+  <section class="hangar-panel hangar-table-wrap">
+    <table class="hangar-table">
+      <thead><tr><th>Version</th><th>Planned capabilities</th><th>Assemblies</th></tr></thead>
+      <tbody><% @configurations.each do |configuration| %>
+        <tr><td><%= link_to configuration.label, hangar_fdr_functional_configuration_path(configuration), class: "hangar-table-primary" %></td><td class="workspace-preserve-lines"><%= configuration.planned_capabilities %></td><td><%= configuration.assemblies.size %></td></tr>
+      <% end %></tbody>
+    </table>
+  </section>
+<% else %>
+  <div class="workspace-empty">No functional configurations yet. Define a version and its planned capabilities before creating an ExoFDR.</div>
+<% end %>

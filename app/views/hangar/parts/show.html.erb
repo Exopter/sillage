@@ -53,7 +53,7 @@
     <div class="workspace-list">
       <% @part_installations.each do |installation| %>
         <div class="workspace-list-row is-static">
-          <span><strong><%= installation.assembly.display_name %> · <%= installation.assembly.identity_label %></strong><small><%= l installation.installed_at, format: :short %><%= " (estimated migration date)" if installation.installed_at_estimated? %> → <%= installation.removed_at ? l(installation.removed_at, format: :short) : "Active" %></small></span>
+          <span><strong><%= installation.assembly.selection_label %></strong><small><%= l installation.installed_at, format: :short %><%= " (estimated migration date)" if installation.installed_at_estimated? %> → <%= installation.removed_at ? l(installation.removed_at, format: :short) : "Active" %></small></span>
         </div>
       <% end %>
     </div>

@@ -21,7 +21,7 @@ module Api
       def index
         presences = SignalPresence
           .fresh(HEARTBEAT_FRESHNESS.ago)
-          .includes(embedded_controller: { part: { active_part_installation: { assembly: [ :hardware_definition, { installations: :aircraft } ] } } })
+          .includes(embedded_controller: { part: { active_part_installation: { assembly: [ :fdr_functional_configuration, { installations: :aircraft } ] } } })
           .recent
         response.headers["Cache-Control"] = "no-store, max-age=0"
         render json: { heartbeats: presences.map { |presence| heartbeat_payload(presence) } }

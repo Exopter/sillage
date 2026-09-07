@@ -21,10 +21,10 @@ assert.equal(connection.aircraftConnectionLabel([
   { transport: "usb-c", deviceId: "ECU-A172E0", aircraftRegistration: null }
 ]), "Recorder connected · identity unavailable")
 assert.equal(connection.aircraftConnectionLabel([
-  { transport: "usb-c", deviceId: "ECU-A172E0", recorderLabel: "ExoFDR · S/N FDR-0003", aircraftRegistration: "F-GOCC" },
-  { transport: "ble", deviceId: "ECU-A172E0", recorderLabel: "ExoFDR · S/N FDR-0003", aircraftRegistration: "F-GOCC" },
-  { transport: "wifi", deviceId: "ECU-A172E0", recorderLabel: "ExoFDR · S/N FDR-0003", aircraftRegistration: "F-GOCC" }
-]), "ExoFDR · S/N FDR-0003 connected")
+  { transport: "usb-c", deviceId: "ECU-A172E0", recorderLabel: "EXOFDR-V0-PERF-03", aircraftRegistration: "F-GOCC" },
+  { transport: "ble", deviceId: "ECU-A172E0", recorderLabel: "EXOFDR-V0-PERF-03", aircraftRegistration: "F-GOCC" },
+  { transport: "wifi", deviceId: "ECU-A172E0", recorderLabel: "EXOFDR-V0-PERF-03", aircraftRegistration: "F-GOCC" }
+]), "EXOFDR-V0-PERF-03 connected")
 assert.equal(connection.aircraftConnectionLabel([{transport: "usb-c", deviceId: "ECU-A172E0", recorderLabel: "Unassigned ECU"}]), "Unassigned ECU connected")
 assert.equal(connection.aircraftConnectionDetails([{transport: "usb-c", deviceId: "ECU-A172E0", aircraftRegistration: "F-GOCC"}]), "ECU-A172E0 · F-GOCC")
 assert.equal(connection.aircraftConnectionLabel([

@@ -1,6 +1,6 @@
-<% content_for :title, "Edit #{@assembly.internal_number}" %>
+<% content_for :title, "Edit #{@assembly.display_name}" %>
 <%= render "hangar/tabs" %>
 <div class="workspace-form-page">
-  <header class="workspace-header"><div><span class="section-eyebrow">Assemblies</span><h2>Edit <%= @assembly.internal_number %></h2><p>Update the name, hierarchy, and configuration notes.</p></div></header>
+  <header class="workspace-header"><div><span class="section-eyebrow">Assemblies</span><h2>Edit <%= @assembly.display_name %></h2><p>Update serviceability, hierarchy and notes. ExoFDR identity and configuration are fixed.</p></div></header>
   <section class="workspace-panel workspace-form-panel"><%= render "form", assembly: @assembly %></section>
 </div>

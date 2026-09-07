@@ -3,15 +3,16 @@
 
 <header class="workspace-header">
   <% if @assembly.controlled_fdr? %>
-    <div><span class="section-eyebrow"><%= @assembly.functional_configuration %></span><h2>ExoFDR</h2><p><%= @assembly.serial_label %> · <%= @assembly.hardware_label %></p></div>
+    <div><span class="section-eyebrow">Assembly</span><h2><%= @assembly.display_name %></h2></div>
   <% else %>
     <div><span class="section-eyebrow">Assembly</span><h2><%= @assembly.name %></h2><p>Asset ID <%= @assembly.internal_number %></p></div>
   <% end %>
   <div class="workspace-actions">
-    <% if @assembly.embedded_controller %><%= link_to "Open controller in Forge", forge_fdr_path(@assembly.embedded_controller), class: "button-primary" %><% end %>
+    <% if @assembly.embedded_controller %><%= link_to "Open in Forge", forge_fdr_path(@assembly.embedded_controller), class: "button-primary" %><% end %>
     <%= link_to "Edit", edit_hangar_assembly_path(@assembly), class: "button-secondary" %>
-    <%= button_to "Delete", hangar_assembly_path(@assembly), method: :delete, class: "button-danger",
-      form: { data: { turbo_confirm: "Delete #{@assembly.internal_number} permanently? This cannot be undone." } } %>
+    <% unless @assembly.controlled_fdr? %>
+      <%= button_to "Delete", hangar_assembly_path(@assembly), method: :delete, class: "button-danger", form: { data: { turbo_confirm: "Delete #{@assembly.internal_number} permanently? This cannot be undone." } } %>
+    <% end %>
   </div>
 </header>
 
@@ -19,14 +20,14 @@
   <div class="workspace-panel-header"><h2>Identity</h2><span>Physical assembly</span></div>
   <dl class="workspace-details">
     <% if @assembly.controlled_fdr? %>
-      <div><dt>Product</dt><dd>ExoFDR</dd></div>
-      <div><dt>Serial number</dt><dd class="workspace-mono"><%= @assembly.serial_number %></dd></div>
-      <div><dt>Hardware definition</dt><dd class="workspace-mono"><%= @assembly.hardware_label %></dd></div>
+      <div><dt>Functional configuration</dt><dd><%= link_to @assembly.functional_configuration, hangar_fdr_functional_configuration_path(@assembly.fdr_functional_configuration) %></dd></div>
+      <div><dt>Assembly method</dt><dd><%= @assembly.assembly_method_label %></dd></div>
       <div><dt>ECU ID</dt><dd class="workspace-mono"><%= @assembly.embedded_controller&.device_id || "Not identified" %></dd></div>
     <% end %>
     <div><dt>Serviceability</dt><dd><%= @assembly.serviceability_label %></dd></div>
     <div><dt>Internal Asset ID</dt><dd class="workspace-mono"><%= @assembly.internal_number %></dd></div>
   </dl>
+  <% if @assembly.controlled_fdr? %><p class="workspace-muted workspace-preserve-lines"><%= @assembly.fdr_functional_configuration.planned_capabilities %></p><% end %>
   <% if @assembly.notes.present? %><p class="workspace-notes"><%= simple_format @assembly.notes %></p><% end %>
 </section>
 
@@ -87,7 +88,7 @@
     <h2>Direct subassemblies</h2>
     <div class="workspace-list">
       <% @assembly.children.ordered.each do |child| %>
-        <div class="workspace-list-row is-static"><span><strong><%= child.internal_number %></strong><small><%= child.name %></small></span><%= button_to "Detach", detach_assembly_hangar_assembly_path(@assembly, child_id: child.id), method: :delete, class: "button-secondary" %></div>
+        <div class="workspace-list-row is-static"><span><strong><%= child.selection_label %></strong></span><%= button_to "Detach", detach_assembly_hangar_assembly_path(@assembly, child_id: child.id), method: :delete, class: "button-secondary" %></div>
       <% end %>
     </div>
   </section>

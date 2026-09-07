@@ -14,7 +14,6 @@
       <%= @fdr.technical_reference %> ·
       Hardware platform: <%= @fdr.device_model.presence || "not reported" %>
       <% if @controller_part %>· Part <%= @controller_part.internal_number %><% else %>· No controller part assigned<% end %>
-      <% if @assembly&.controlled_fdr? %>· <%= @assembly.hardware_label %><% end %>
       <% if @aircraft %>· Installed in <%= @aircraft.registration %><% end %>
     </p>
   </div>

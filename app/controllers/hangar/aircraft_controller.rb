@@ -13,7 +13,7 @@ module Hangar
 
     def show
       @installations = @aircraft.installations.includes(:installable).recent
-      @available_assemblies = Assembly.roots.where.not(id: Installation.active.where(installable_type: "Assembly").select(:installable_id)).ordered
+      @available_assemblies = Assembly.not_retired.roots.where.not(id: Installation.active.where(installable_type: "Assembly").select(:installable_id)).ordered
       @available_parts = Part.available.where.not(id: Installation.active.where(installable_type: "Part").select(:installable_id)).ordered
     end
 

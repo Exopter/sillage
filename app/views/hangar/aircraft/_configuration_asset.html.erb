@@ -3,7 +3,7 @@
   <% if asset.is_a?(Assembly) %>
     <%= link_to hangar_assembly_path(asset), class: "hangar-tree-primary" do %>
       <span class="hangar-tree-icon"><%= sillage_icon "layers", size: 15 %></span>
-      <span class="hangar-tree-copy"><strong><%= hangar_asset_code asset %> · <%= hangar_asset_name asset %></strong><small><%= [ (asset.hardware_label if asset.controlled_fdr?), pluralize(asset.parts.size, "direct part") ].compact.join(" · ") %></small></span>
+      <span class="hangar-tree-copy"><strong><%= asset.selection_label %></strong><small><%= pluralize(asset.parts.size, "direct part") %></small></span>
     <% end %>
   <% else %>
     <div class="hangar-tree-primary">

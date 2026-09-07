@@ -5,7 +5,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     @function = Function.create!(code: "GPS_FLOW", name: "GPS")
     @assembly = Assembly.create!(
       name: "Flow FDR",
-      hardware_definition: create_hardware_definition
+      assembly_type: "ExoFDR", assembly_method: "PERF", fdr_functional_configuration: create_fdr_functional_configuration
     )
     @fdr = create_embedded_controller(assembly: @assembly, device_id: "ECU-F10A01")
     @part = create_installed_part(
@@ -64,20 +64,22 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_select "label", text: /Internal Asset ID/
     assert_select "input[name='assembly[code]'], input[name='assembly[internal_number]']", count: 0
     assert_select "input[name='assembly[serial_number]']", count: 0
-    assert_select "input[disabled][value='Generated automatically for an ExoFDR']", count: 1
+    assert_select "select[name='assembly[assembly_type]']", count: 1
+    assert_select "table.workspace-choice-table", text: /Planned capabilities/
     assert_select "input[name='assembly[device_id]']", count: 0
 
     get hangar_assembly_path(@assembly)
     assert_response :success
-    assert_select "h2", @assembly.product_name
-    assert_select ".workspace-header", text: /S\/N #{@assembly.serial_number}/
-    assert_select ".workspace-details", text: /Hardware definition.*FDR-V0-PERF-01/m
+    assert_select "h2", @assembly.serial_number
+    assert_select ".workspace-header", text: /#{@assembly.serial_number}/
+    assert_select ".workspace-details", text: /Functional configuration.*V0.*Assembly method.*Perfboard/m
+    assert_select "main", text: /Hardware definition/, count: 0
     assert_select ".workspace-details", text: /Qualification/, count: 0
     assert_select ".workspace-details", text: /Internal Asset ID.*#{@assembly.internal_number}/m
     assert_select ".workspace-details", text: /ECU ID.*#{@fdr.device_id}/m
     assert_select ".assembly-function", "GPS"
     assert_select "h2", text: "Signal identity", count: 0
-    assert_select "a[href='#{forge_fdr_path(@fdr)}']", text: "Open controller in Forge"
+    assert_select "a[href='#{forge_fdr_path(@fdr)}']", text: "Open in Forge"
 
     get forge_fdr_path(@fdr)
     assert_response :success

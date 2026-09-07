@@ -1,7 +1,7 @@
 <article class="assembly-tree-node">
   <header>
     <%= link_to assembly.controlled_fdr? ? assembly.serial_label : assembly.name, hangar_assembly_path(assembly) %>
-    <span><%= assembly.controlled_fdr? ? "ExoFDR · #{assembly.hardware_label}" : "Asset ID #{assembly.internal_number}" %></span>
+    <span><%= assembly.controlled_fdr? ? assembly.serviceability_label : "Asset ID #{assembly.internal_number}" %></span>
   </header>
   <% if assembly.parts.any? %>
     <ul>

@@ -16,7 +16,7 @@
             <% @assemblies.each do |assembly| %>
               <% installed_aircraft = hangar_assembly_aircraft assembly %>
               <tr class="<%= "is-selected" if assembly == @selected_assembly %>">
-                <td><%= link_to hangar_assemblies_path(assembly_id: assembly.id), class: "hangar-table-primary" do %><strong><%= assembly.controlled_fdr? ? assembly.serial_label : assembly.name %></strong><% if assembly.controlled_fdr? %><small><%= [ assembly.display_name, assembly.functional_configuration ].compact.join(" · ") %></small><small><%= assembly.hardware_label %></small><% else %><small>Asset ID <%= assembly.internal_number %></small><% end %><% end %></td>
+                <td><%= link_to hangar_assemblies_path(assembly_id: assembly.id), class: "hangar-table-primary" do %><strong><%= assembly.display_name %></strong><% unless assembly.controlled_fdr? %><small>Asset ID <%= assembly.internal_number %></small><% end %><% end %></td>
                 <td><%= installed_aircraft&.registration || "Not installed" %></td>
                 <td><%= assembly.parts.size %></td>
                 <% state_style, state_label = hangar_asset_status assembly %>
@@ -34,11 +34,11 @@
       <div class="hangar-details-body">
         <span class="section-eyebrow"><%= @selected_assembly.parent ? "Subassembly" : "Root assembly" %></span>
         <h3><%= @selected_assembly.display_name %></h3>
-        <p><%= @selected_assembly.controlled_fdr? ? @selected_assembly.serial_label : (@selected_assembly.notes.presence || "Reusable configuration managed in the Sillage Hangar.") %></p>
+        <% if @selected_assembly.notes.present? %><p><%= @selected_assembly.notes %></p><% end %>
         <dl>
           <% if @selected_assembly.controlled_fdr? %>
             <div><dt>Functional configuration</dt><dd><%= @selected_assembly.functional_configuration %></dd></div>
-            <div><dt>Hardware definition</dt><dd><%= @selected_assembly.hardware_label %></dd></div>
+            <div><dt>Assembly method</dt><dd><%= @selected_assembly.assembly_method_label %></dd></div>
             <div><dt>ECU ID</dt><dd><%= @selected_assembly.embedded_controller&.device_id || "Not identified" %></dd></div>
           <% else %>
             <div><dt>Internal Asset ID</dt><dd><%= @selected_assembly.internal_number %></dd></div>
@@ -47,14 +47,12 @@
           <div><dt>Installed in</dt><dd><%= selected_aircraft&.registration || "Not installed" %></dd></div>
           <% if @selected_assembly.controlled_fdr? %><div><dt>Internal Asset ID</dt><dd><%= @selected_assembly.internal_number %></dd></div><% end %>
           <div><dt>Direct parts</dt><dd><%= @selected_assembly.parts.size %></dd></div>
-          <div><dt>Parent</dt><dd><%= @selected_assembly.parent&.internal_number || "—" %></dd></div>
+          <div><dt>Parent</dt><dd><%= @selected_assembly.parent&.display_name || "—" %></dd></div>
         </dl>
         <div class="workspace-actions">
           <%= link_to "Open", hangar_assembly_path(@selected_assembly), class: "button-secondary is-compact" %>
-          <% if @selected_assembly.embedded_controller %><%= link_to "Open controller in Forge", forge_fdr_path(@selected_assembly.embedded_controller), class: "button-secondary is-compact" %><% end %>
-          <%= link_to "Edit", edit_hangar_assembly_path(@selected_assembly), class: "button-secondary is-compact" %>
-          <%= button_to "Delete", hangar_assembly_path(@selected_assembly), method: :delete, class: "button-danger is-compact",
-            form: { data: { turbo_confirm: "Delete #{@selected_assembly.internal_number} permanently? This cannot be undone." } } %>
+          <% if @selected_assembly.embedded_controller %><%= link_to "Open in Forge", forge_fdr_path(@selected_assembly.embedded_controller), class: "button-secondary is-compact" %><% end %>
+          <% unless @selected_assembly.controlled_fdr? %><%= button_to "Delete", hangar_assembly_path(@selected_assembly), method: :delete, class: "button-danger is-compact", form: { data: { turbo_confirm: "Delete #{@selected_assembly.internal_number} permanently? This cannot be undone." } } %><% end %>
         </div>
       </div>
       <footer class="hangar-detail-note"><%= @selected_assembly.controlled_fdr? ? "The ExoFDR serial number remains stable when Parts, including the ECU, are replaced." : "Parts and nested Assemblies can be moved while their installation history remains traceable." %></footer>

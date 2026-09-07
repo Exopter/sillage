@@ -8,7 +8,7 @@ module Forge
     def index
       @fdrs = EmbeddedController.includes(
         :signal_presence,
-        part: { active_part_installation: { assembly: [ :hardware_definition, { installations: :aircraft } ] } }
+        part: { active_part_installation: { assembly: [ :fdr_functional_configuration, { installations: :aircraft } ] } }
       ).ordered
       live_fdrs = @fdrs.select { |fdr| fdr.signal_presence&.fresh? }
       @default_wifi_configuration_fdr = live_fdrs.one? ? live_fdrs.first : (@fdrs.one? ? @fdrs.first : nil)

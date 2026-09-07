@@ -1,16 +1,45 @@
-<%= form_with model: [ :hangar, assembly ], class: "workspace-form" do |form| %>
+<%= form_with model: [ :hangar, assembly ], class: "workspace-form", data: { controller: "assembly-form" } do |form| %>
   <% if assembly.errors.any? %><div class="workspace-errors"><%= assembly.errors.full_messages.to_sentence %></div><% end %>
+  <% if assembly.new_record? %>
+    <label><span>Assembly type</span><%= form.select :assembly_type, Assembly::ASSEMBLY_TYPES, { include_blank: "Select an assembly type" }, required: true, data: { assembly_form_target: "type", action: "assembly-form#update" } %></label>
+    <fieldset class="workspace-fieldset" data-assembly-form-target="parameters">
+      <legend>ExoFDR parameters</legend>
+      <p class="workspace-muted">Choose a capability baseline and an assembly method. Both are fixed after creation.</p>
+      <% if @functional_configurations.any? %>
+        <div class="hangar-table-wrap">
+          <table class="hangar-table workspace-choice-table">
+            <caption>Functional configuration</caption>
+            <thead><tr><th>Select version</th><th>Planned capabilities</th></tr></thead>
+            <tbody><% @functional_configurations.each do |configuration| %>
+              <tr><td><label class="workspace-radio-choice"><%= form.radio_button :fdr_functional_configuration_id, configuration.id, required: true, data: { action: "assembly-form#update", version: configuration.label, assembly_form_target: "configuration" } %><strong><%= configuration.label %></strong></label></td><td class="workspace-preserve-lines"><%= configuration.planned_capabilities %></td></tr>
+            <% end %></tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="workspace-empty">No functional configurations available. <%= link_to "Create a functional configuration", new_hangar_fdr_functional_configuration_path %> first.</div>
+      <% end %>
+      <label><span>Assembly method</span><%= form.select :assembly_method, Assembly::ASSEMBLY_METHODS.map { |code, label| ["#{label} (#{code})", code] }, { include_blank: "Select an assembly method" }, required: true, data: { assembly_form_target: "method", action: "assembly-form#update" } %></label>
+      <p class="workspace-muted" aria-live="polite" data-assembly-form-target="preview">The name and serial number are generated on creation.</p>
+    </fieldset>
+  <% elsif assembly.controlled_fdr? %>
+    <dl class="workspace-details">
+      <div><dt>Name / serial number</dt><dd><%= assembly.display_name %></dd></div>
+      <div><dt>Assembly type</dt><dd><%= assembly.assembly_type %></dd></div>
+      <div><dt>Functional configuration</dt><dd><%= assembly.functional_configuration %></dd></div>
+      <div><dt>Assembly method</dt><dd><%= assembly.assembly_method_label %></dd></div>
+    </dl>
+    <p class="workspace-muted">Identity, configuration and assembly method are fixed. For a different configuration or method, retire this assembly and create a new one. Parts can be removed and reused.</p>
+  <% else %>
+    <label><span>Name</span><%= form.text_field :name, required: true %></label>
+  <% end %>
   <div class="workspace-form-grid">
-    <label><span>Name</span><%= form.text_field :name, required: true, placeholder: "Equipment assembly" %></label>
-    <label><span>Serial number</span><%= text_field_tag nil, assembly.serial_number || "Generated automatically for an ExoFDR", disabled: true %></label>
-    <label class="is-wide"><span>Hardware definition</span><%= form.collection_select :hardware_definition_id, @hardware_definitions, :id, ->(definition) { "#{definition.product_name} · #{definition.canonical_identifier}" }, { include_blank: "No controlled definition" } %></label>
-    <label><span>Serviceability</span><%= form.select :serviceability_state, Assembly::SERVICEABILITY_STATES.map { |state| [state.humanize, state] } %></label>
+    <label><span>Serviceability</span><%= form.select :serviceability_state, Assembly::SERVICEABILITY_STATES.map { |state| [state.humanize, state] }, {}, disabled: assembly.serviceability_state == "retired" %></label>
     <label class="is-wide"><span>Parent assembly</span><%= form.collection_select :parent_id, @parent_options, :id, :selection_label, { include_blank: "No parent" } %></label>
     <label><span>Internal Asset ID</span><%= text_field_tag nil, assembly.internal_number || "Assigned automatically", disabled: true %></label>
   </div>
   <label><span>Notes</span><%= form.text_area :notes, rows: 4 %></label>
   <div class="workspace-actions">
     <%= link_to "Cancel", assembly.persisted? ? hangar_assembly_path(assembly) : hangar_assemblies_path, class: "button-secondary" %>
-    <%= form.submit class: "button-primary" %>
+    <%= form.submit class: "button-primary", disabled: assembly.new_record? && @functional_configurations.empty?, data: { assembly_form_target: "submit" } %>
   </div>
 <% end %>

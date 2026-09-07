@@ -8,28 +8,29 @@ module Hangar
       @assemblies = Assembly.includes(
         :parent,
         :children,
-        :hardware_definition,
+        :fdr_functional_configuration,
         active_part_installations: { part: [ :function, :embedded_controller ] }
       ).ordered.to_a
       @selected_assembly = @assemblies.find { |assembly| assembly.id == params[:assembly_id].to_i } || @assemblies.first
     end
 
     def show
-      @available_parts = Part.available.includes(:function).ordered
+      @available_parts = @assembly.serviceability_state == "retired" ? Part.none : Part.available.includes(:function).ordered
       excluded_ids = [ @assembly.id, *@assembly.descendant_ids ]
-      @available_assemblies = Assembly.where(parent_id: nil).where.not(id: excluded_ids).ordered
+      @available_assemblies = @assembly.serviceability_state == "retired" ? Assembly.none : Assembly.not_retired.roots.where.not(id: excluded_ids).ordered
     end
 
     def new
-      @assembly = Assembly.new
+      @assembly = Assembly.new(params.fetch(:assembly, ActionController::Parameters.new).permit(:assembly_type, :fdr_functional_configuration_id))
       load_parent_options
     end
 
     def create
       @assembly = Assembly.new(assembly_params)
-      if @assembly.save
+      if @assembly.assembly_type.in?(Assembly::ASSEMBLY_TYPES) && @assembly.save
         redirect_to hangar_assembly_path(@assembly), notice: "Assembly created."
       else
+        @assembly.errors.add(:assembly_type, "must be selected") unless @assembly.assembly_type.in?(Assembly::ASSEMBLY_TYPES)
         load_parent_options
         render :new, status: :unprocessable_entity
       end
@@ -112,13 +113,13 @@ module Hangar
 
     def load_parent_options
       excluded_ids = @assembly.persisted? ? [ @assembly.id, *@assembly.descendant_ids ] : []
-      @parent_options = Assembly.where.not(id: excluded_ids).ordered
-      @hardware_definitions = HardwareDefinition.ordered
+      @parent_options = Assembly.not_retired.where.not(id: excluded_ids).ordered
+      @functional_configurations = FdrFunctionalConfiguration.ordered
     end
 
     def assembly_params
       params.require(:assembly).permit(
-        :name, :parent_id, :hardware_definition_id, :serviceability_state, :notes
+        :name, :parent_id, :assembly_type, :fdr_functional_configuration_id, :assembly_method, :serviceability_state, :notes
       )
     end
 

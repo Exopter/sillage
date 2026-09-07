@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_05_131000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_07_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -53,9 +53,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_05_131000) do
   end
 
   create_table "assemblies", force: :cascade do |t|
+    t.string "assembly_method"
+    t.string "assembly_type"
     t.datetime "created_at", null: false
-    t.bigint "hardware_definition_id"
+    t.bigint "fdr_functional_configuration_id"
     t.string "internal_number"
+    t.jsonb "legacy_identity", default: {}, null: false
     t.string "name", null: false
     t.text "notes"
     t.bigint "parent_id"
@@ -63,9 +66,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_05_131000) do
     t.string "serviceability_state", default: "in_preparation", null: false
     t.datetime "updated_at", null: false
     t.index "lower((serial_number)::text)", name: "index_assemblies_on_lower_serial_number", unique: true, where: "((serial_number IS NOT NULL) AND ((serial_number)::text <> ''::text))"
-    t.index ["hardware_definition_id"], name: "index_assemblies_on_hardware_definition_id"
+    t.index ["fdr_functional_configuration_id"], name: "index_assemblies_on_fdr_functional_configuration_id"
     t.index ["internal_number"], name: "index_assemblies_on_internal_number", unique: true
     t.index ["parent_id"], name: "index_assemblies_on_parent_id"
+    t.check_constraint "assembly_type IS NULL OR assembly_type::text = 'ExoFDR'::text AND fdr_functional_configuration_id IS NOT NULL AND (assembly_method::text = ANY (ARRAY['PERF'::character varying, 'PCB'::character varying]::text[])) AND serial_number IS NOT NULL AND name::text = serial_number::text", name: "assemblies_exofdr_identity"
   end
 
   create_table "asset_identifiers", force: :cascade do |t|
@@ -128,6 +132,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_05_131000) do
     t.datetime "updated_at", null: false
     t.index ["device_id"], name: "index_embedded_controllers_on_device_id", unique: true, where: "((device_id IS NOT NULL) AND ((device_id)::text <> ''::text))"
     t.index ["part_id"], name: "index_embedded_controllers_on_part_id", unique: true
+  end
+
+  create_table "fdr_functional_configurations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "planned_capabilities", null: false
+    t.datetime "updated_at", null: false
+    t.integer "version", null: false
+    t.index ["version"], name: "index_fdr_functional_configurations_on_version", unique: true
+    t.check_constraint "version >= 0", name: "fdr_configuration_version_nonnegative"
   end
 
   create_table "fdr_recording_commands", force: :cascade do |t|
@@ -264,21 +277,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_05_131000) do
     t.string "name", null: false
     t.datetime "updated_at", null: false
     t.index ["code"], name: "index_functions_on_code", unique: true
-  end
-
-  create_table "hardware_definitions", force: :cascade do |t|
-    t.string "canonical_identifier", null: false
-    t.datetime "created_at", null: false
-    t.string "family_code", null: false
-    t.integer "functional_version", null: false
-    t.string "implementation_kind", null: false
-    t.string "implementation_revision", null: false
-    t.string "notion_url"
-    t.string "product_name", null: false
-    t.string "qualification_state", default: "prototype", null: false
-    t.datetime "updated_at", null: false
-    t.string "variant"
-    t.index ["canonical_identifier"], name: "index_hardware_definitions_on_canonical_identifier", unique: true
   end
 
   create_table "identifier_sequences", force: :cascade do |t|
@@ -660,7 +658,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_05_131000) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "assemblies", "assemblies", column: "parent_id"
-  add_foreign_key "assemblies", "hardware_definitions"
+  add_foreign_key "assemblies", "fdr_functional_configurations"
   add_foreign_key "builds", "assemblies"
   add_foreign_key "builds", "builds", column: "previous_build_id"
   add_foreign_key "builds", "users", column: "created_by_id"

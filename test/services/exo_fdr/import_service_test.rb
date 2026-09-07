@@ -5,7 +5,7 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
   include ExoFdrBinary
 
   test "imports GPS without UTC and preserves relative sample times" do
-    current = Assembly.create!(name: "Current recorder", hardware_definition: create_hardware_definition)
+    current = Assembly.create!(name: "Current recorder", assembly_type: "ExoFDR", assembly_method: "PERF", fdr_functional_configuration: create_fdr_functional_configuration)
     create_embedded_controller(assembly: current, device_id: "ECU-ABC123")
     payload = [ 123_456, 2026, 7, 29, 10, 11, 12, 0, 80, 0, 3, 1, 0, 12,
       57_168_000, 441_994_000, 700_000, 642_000, 1_000, 1_500,
@@ -53,8 +53,8 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
   end
 
   test "a late UTC fix anchors the full recording including earlier and later sensor samples" do
-    original = Assembly.create!(name: "Original recorder", hardware_definition: create_hardware_definition)
-    current = Assembly.create!(name: "Current recorder", hardware_definition: original.hardware_definition)
+    original = Assembly.create!(name: "Original recorder", assembly_type: "ExoFDR", assembly_method: "PERF", fdr_functional_configuration: create_fdr_functional_configuration)
+    current = Assembly.create!(name: "Current recorder", assembly_type: "ExoFDR", assembly_method: "PERF", fdr_functional_configuration: original.fdr_functional_configuration)
     function = Function.find_or_create_by!(code: "CONTROLLER") { |record| record.name = "Controller" }
     part = Part.create!(function:, model: "XIAO ESP32S3")
     create_embedded_controller(part:, device_id: "ECU-ABC123")
@@ -82,7 +82,7 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
     assert_equal 7, flight.duration_seconds
     assert_equal original.serial_number, flight_import.details.dig("files", 0, "recorder_identity", "assembly", "serial_number")
     assert_equal "ECU-ABC123", flight_import.details.dig("files", 0, "recorder_identity", "device_id")
-    assert_equal "ExoFDR · S/N #{original.serial_number}", flight_import.recorder_label
+    assert_equal "#{original.serial_number}", flight_import.recorder_label
   end
 
   test "a replayed UTC anchor preserves the physical origin of a rotated file" do

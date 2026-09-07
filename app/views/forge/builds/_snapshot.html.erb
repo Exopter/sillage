@@ -1,6 +1,6 @@
 <article class="build-snapshot-node">
-  <% definition = node["hardware_definition"] || {} %>
-  <header><strong><%= node["serial_number"].present? ? "S/N #{node["serial_number"]}" : "Asset ID #{node["internal_number"]}" %></strong><span><%= [ definition["product_name"].presence || node["name"], definition["canonical_identifier"].presence, ("Asset ID #{node["internal_number"]}" if node["serial_number"].present?) ].compact.join(" · ") %></span></header>
+  <header><strong><%= node["serial_number"].presence || node["name"] %></strong><span>Asset ID <%= node["internal_number"] %><%= " · Historical identifier" if node["serial_number"].to_s.start_with?("FDR-") %></span></header>
+  <% if node["functional_configuration"] %><p class="workspace-muted workspace-preserve-lines"><%= node.dig("functional_configuration", "planned_capabilities") %></p><% end %>
   <% if Array(node["parts"]).any? %>
     <ul>
       <% Array(node["parts"]).each do |part| %>

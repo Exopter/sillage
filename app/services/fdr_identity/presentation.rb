@@ -4,7 +4,10 @@ module FdrIdentity
       return "Historical FDR identity unavailable" unless identity&.key?("assembly")
 
       assembly = identity["assembly"]
-      assembly ? "#{assembly.fetch('name')} · #{assembly.fetch('identity_label')}" : "Unassigned ECU"
+      return "Unassigned ECU" unless assembly
+
+      # Captured historical serials must never be inferred from the current ECU assignment.
+      assembly["serial_number"].presence || [ assembly.fetch("name"), assembly.fetch("identity_label") ].uniq.join(" · ")
     end
   end
 end
