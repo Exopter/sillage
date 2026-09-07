@@ -1,4 +1,4 @@
-<% content_for :title, "#{@fdr.technical_reference} connectivity" %>
+<% content_for :title, "#{@fdr.display_name} · #{@fdr.technical_reference} connectivity" %>
 <%= render "forge/tabs" %>
 
 <div
@@ -7,6 +7,8 @@
   data-fdr-wifi-configuration-provisioning-url-value="<%= api_v1_fdr_wifi_provisioning_path(@fdr) %>"
   data-fdr-wifi-configuration-confirmation-url-value="<%= api_v1_fdr_wifi_provisioning_path(@fdr) %>"
   data-fdr-wifi-configuration-authentication-url-value="<%= api_v1_fdr_authentication_path %>"
+  data-fdr-wifi-configuration-registration-url-value="<%= api_v1_fdr_registration_path %>"
+  data-fdr-wifi-configuration-expected-device-id-value="<%= @fdr.device_id %>"
   data-fdr-wifi-configuration-preview-value="<%= @preview_wifi %>"
 >
   <%= render "shell", active_tab: :connectivity %>
@@ -32,7 +34,7 @@
       <%= sillage_icon "clock", size: 18 %>
       <span>Last read <strong data-fdr-wifi-configuration-target="lastRead">never</strong></span>
     </div>
-    <span class="fdr-device-id" data-fdr-wifi-configuration-target="bleDevice"><%= @fdr.technical_reference %></span>
+    <span class="fdr-device-id" data-fdr-wifi-configuration-target="bleDevice" title="<%= @fdr.technical_reference %>"><%= @fdr.display_name %></span>
   </section>
 
   <div class="fdr-wifi-layout">

@@ -110,7 +110,11 @@ module ExoFdr
           started_at:, track_points: points, sensor_samples: sensors, replace_target: index == 1
         ).call
       end
-      { "filename" => blob.filename.to_s, "source_blob_id" => blob.id, "header" => header, "recovery" => stats }
+      identity = if started_at && @flight_import.device_id.present?
+        EmbeddedController.find_by(device_id: @flight_import.device_id)&.recorder_identity(at: started_at)&.slice(:device_id, :assembly)
+      end
+      { "filename" => blob.filename.to_s, "source_blob_id" => blob.id, "header" => header, "recovery" => stats,
+        "recorder_identity" => identity }
     ensure
       records&.close
       points&.close

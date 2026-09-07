@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { aircraftConnectionLabel, currentAircraftConnections } from "aircraft_connection"
+import { aircraftConnectionLabel, aircraftConnectionDetails, currentAircraftConnections } from "aircraft_connection"
 
 const TRANSPORT_LABELS = {
   "usb-c": "USB-C",
@@ -39,9 +39,11 @@ export default class extends TypedController {
     })
 
     const labels = transports.map((transport) => TRANSPORT_LABELS[transport]).filter(Boolean)
+    const details = aircraftConnectionDetails(connections)
+    this.element.title = details
     this.element.setAttribute(
       "aria-label",
-      connected ? `${aircraftConnectionLabel(connections)} via ${labels.join(", ")}` : "No aircraft connected"
+      connected ? `${aircraftConnectionLabel(connections)} via ${labels.join(", ")}${details ? ` · ${details}` : ""}` : "No recorder connected"
     )
   }
 }

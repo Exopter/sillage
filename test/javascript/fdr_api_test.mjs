@@ -2,9 +2,13 @@ import assert from "node:assert/strict"
 import {authenticationHex, commandSequence, heartbeatPayloads, importReceipt, readResponse, registrationPayload} from "../../app/javascript/lib/fdr_api.js"
 
 const sha256 = "a".repeat(64)
-const recorder = {device_id: "ECU-A172E0", initialization_confirmed: true, connectivity_url: "/hangar/controllers/1/connectivity", initialization_url: "/hangar/controllers/1/initialize"}
+const assembly = {name: "ExoFDR", identity_label: "S/N FDR-0003", serial_number: "FDR-0003", hardware_definition: "FDR-V0-PERF-01"}
+const recorder = {device_id: "ECU-A172E0", assembly, initialization_confirmed: true, connectivity_url: "/hangar/controllers/1/connectivity", initialization_url: "/hangar/controllers/1/initialize"}
 assert.deepEqual(registrationPayload({registered: false}), {registered: false})
 assert.deepEqual(registrationPayload({registered: true, recorder}).recorder, recorder)
+assert.equal(registrationPayload({registered: true, recorder: {...recorder, assembly: null}}).recorder.assembly, null)
+assert.equal(registrationPayload({registered: true, recorder: {...recorder, assembly: undefined}}).recorder.assembly, undefined)
+assert.throws(() => registrationPayload({registered: true, recorder: {...recorder, assembly: {name: "ExoFDR"}}}))
 for (const payload of [null, [], {}, {registered: true, recorder: {}}, {registered: true, recorder: {...recorder, connectivity_url: "//untrusted.example/"}}]) {
   assert.throws(() => registrationPayload(payload))
 }
@@ -19,7 +23,8 @@ assert.equal(commandSequence(1), 1)
 assert.equal(authenticationHex(sha256), sha256)
 await assert.rejects(readResponse(new Response(JSON.stringify({error: "Import failed"}), {status: 422}), "Fallback"), /Import failed/)
 await assert.rejects(readResponse(new Response("null"), "Fallback"), /invalid response object/)
-const heartbeat = {recorder: {device_id: recorder.device_id}, seen_at: "2026-09-06T12:00:00Z", status: {recording: true, wifi_upload: {active: false, bytes: 10}}}
+const heartbeat = {recorder: {device_id: recorder.device_id, assembly}, seen_at: "2026-09-06T12:00:00Z", status: {recording: true, wifi_upload: {active: false, bytes: 10}}}
+assert.deepEqual(heartbeatPayloads({heartbeats: [heartbeat]})[0].recorder.assembly, assembly)
 assert.equal(heartbeatPayloads({heartbeats: [heartbeat]})[0].status.recording, true)
 assert.throws(() => heartbeatPayloads({heartbeats: [{...heartbeat, status: {wifi_upload: {nested: {}}}}]}))
 assert.throws(() => heartbeatPayloads({heartbeats: "invalid"}))

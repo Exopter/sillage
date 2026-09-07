@@ -1,8 +1,8 @@
 class DeviceActivity < ApplicationRecord
   TITLES = {
-    "registered" => "FDR registered",
+    "registered" => "ECU registered",
     "authentication_prepared" => "Authentication prepared",
-    "initialized" => "FDR initialized",
+    "initialized" => "ECU initialized",
     "assembly_linked" => "Legacy physical asset assignment changed",
     "controller_part_linked" => "Controller part assignment changed",
     "wifi_profile_added" => "Wi-Fi network added",
@@ -33,6 +33,10 @@ class DeviceActivity < ApplicationRecord
 
   def title
     TITLES.fetch(event_type, event_type.to_s.humanize)
+  end
+
+  def recorder_label
+    FdrIdentity::Presentation.label(details["recorder_identity"])
   end
 
   def description

@@ -390,6 +390,21 @@ body {
   color: var(--ex-vapor-50);
 }
 
+.sillage-home-link {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  border-radius: var(--ds-radius);
+  color: inherit;
+}
+
+.sillage-home-link:focus-visible {
+  outline: 2px solid var(--ex-aqua-500);
+  outline-offset: 3px;
+}
+
 .sillage-room-nav {
   display: grid;
   gap: 6px;
@@ -3089,6 +3104,10 @@ body.flight-analysis-theme,
     overflow-x: auto;
     border-right: 0;
     border-bottom: 1px solid var(--ex-carbon-700);
+  }
+
+  .sillage-home-link {
+    margin-bottom: 0;
   }
 
   .sillage-room-nav {

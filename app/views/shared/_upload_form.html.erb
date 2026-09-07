@@ -5,13 +5,13 @@
     <legend>Data source</legend>
     <label class="import-source-card">
       <%= form.radio_button :import_type, "exofdr", checked: true %>
-      <%= sillage_icon "file-text", size: 21 %>
+      <%= sillage_icon "exopter", size: 21 %>
       <strong>ExoFDR</strong>
       <span>Binary recorder file copied from the FDR microSD card.</span>
     </label>
     <label class="import-source-card">
       <%= form.radio_button :import_type, "flysight" %>
-      <%= sillage_icon "activity", size: 21 %>
+      <%= sillage_icon "flysight", size: 21 %>
       <strong>FlySight</strong>
       <span>TRACK.CSV and SENSOR.CSV, a V1 CSV, or a ZIP archive.</span>
     </label>

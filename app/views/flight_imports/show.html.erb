@@ -20,8 +20,8 @@
     <strong><%= t("imports.status.#{@flight_import.status}") %></strong>
   </div>
   <div>
-    <span><%= t("flight_lab.device") %></span>
-    <strong><%= @flight_import.device_id.presence || t("flight_lab.unknown") %></strong>
+    <span>Recorder</span>
+    <strong><%= @flight_import.recorder_label %></strong>
   </div>
   <div>
     <span><%= t("flight_lab.created_flights") %></span>
@@ -31,7 +31,7 @@
 
 <section class="tool-panel wide">
   <dl class="details-grid">
-    <div><dt><%= t("imports.show.device") %></dt><dd><%= @flight_import.device_id.presence || "-" %></dd></div>
+    <div><dt><%= @flight_import.import_type == "exofdr" ? "ECU ID" : t("imports.show.device") %></dt><dd><%= @flight_import.device_id.presence || "-" %></dd></div>
     <div><dt><%= t("imports.show.firmware") %></dt><dd><%= @flight_import.firmware_version.presence || "-" %></dd></div>
     <div><dt><%= t("imports.show.session") %></dt><dd><%= @flight_import.session_id.presence || "-" %></dd></div>
     <div><dt><%= t("imports.show.started_at") %></dt><dd><%= l(@flight_import.log_started_at, format: :long) if @flight_import.log_started_at %></dd></div>

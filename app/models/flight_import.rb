@@ -32,4 +32,13 @@ class FlightImport < ApplicationRecord
   def failed?
     status == "failed"
   end
+
+  def recorder_label
+    return device_id.presence || "Unknown" unless import_type == "exofdr"
+
+    files = details.to_h["files"]
+    return "Historical FDR identity unavailable" if files.blank?
+
+    files.map { |file| FdrIdentity::Presentation.label(file["recorder_identity"]) }.uniq.join(" / ")
+  end
 end

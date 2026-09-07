@@ -26,6 +26,7 @@ CI.run do
   step "Tests: FDR upload validation", "node test/javascript/fdr_upload_validation_test.mjs"
   step "Tests: FDR Wi-Fi provisioning contract", "node test/javascript/fdr_wifi_provisioning_test.mjs"
   step "Tests: Aircraft connection identity", "node test/javascript/aircraft_connection_test.mjs"
+  step "Tests: Recorder identity lifecycle", "node test/javascript/recorder_identity_test.mjs"
   step "Tests: Signal asynchronous lifecycle", "node test/javascript/signal_lifecycle_test.mjs"
   step "Tests: Signal worker", "node test/javascript/signal_serial_worker_test.mjs"
   step "Tests: Signal outbox indexed replay", "node test/javascript/signal_outbox_index_test.mjs"

@@ -29,7 +29,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
     get connectivity_forge_fdr_path(@fdr)
 
     assert_response :success
-    assert_select "h2", text: /#{Regexp.escape(@fdr.technical_reference)}/
+    assert_select "h2", text: @fdr.display_name
     assert_select "#saved-wifi-title", "Saved Wi-Fi networks"
     assert_select "[data-wifi-ssid='EXOPTER-LAB']"
     assert_select "button[data-action='fdr-wifi-configuration#connectUsb']", text: "Connect USB-C"
@@ -51,7 +51,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".fdr-connectivity"
-    assert_select ".fdr-connectivity-heading h2", text: /#{Regexp.escape(@fdr.technical_reference)}/
+    assert_select ".fdr-connectivity-heading h2", text: @fdr.display_name
     assert_select ".fdr-recorder-tabs[aria-label='FDR sections']" do
       assert_select "a.is-active[aria-current='page'][href='#{forge_fdr_path(@fdr)}']", text: "Overview"
       assert_select "a[href='#{connectivity_forge_fdr_path(@fdr)}']", text: "Connectivity"
@@ -60,7 +60,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
     get connectivity_forge_fdr_path(@fdr)
 
     assert_response :success
-    assert_select ".fdr-connectivity-heading h2", text: /#{Regexp.escape(@fdr.technical_reference)}/
+    assert_select ".fdr-connectivity-heading h2", text: @fdr.display_name
     assert_select ".fdr-recorder-tabs[aria-label='FDR sections']" do
       assert_select "a[href='#{forge_fdr_path(@fdr)}']", text: "Overview"
       assert_select "a.is-active[aria-current='page'][href='#{connectivity_forge_fdr_path(@fdr)}']", text: "Connectivity"

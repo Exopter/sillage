@@ -1,4 +1,4 @@
-<% content_for :title, "#{@fdr.technical_reference} activity" %>
+<% content_for :title, "#{@fdr.display_name} · #{@fdr.technical_reference} activity" %>
 <%= render "forge/tabs" %>
 
 <div class="fdr-connectivity">
@@ -7,7 +7,7 @@
   <section class="workspace-panel">
     <div class="workspace-panel-header">
       <h2>Activity</h2>
-      <span>Append-only audit trail</span>
+      <span>ECU audit trail across recorder assignments</span>
     </div>
     <% if @activities.any? %>
       <div class="workspace-list">
@@ -16,6 +16,7 @@
             <span>
               <strong><%= activity.title %></strong>
               <small><%= activity.description %></small>
+              <small><%= activity.recorder_label %><% if activity.details.dig("recorder_identity", "device_id") %> · <%= activity.details.dig("recorder_identity", "device_id") %><% end %></small>
             </span>
             <span class="device-activity-meta">
               <strong><%= l activity.occurred_at, format: :long %></strong>

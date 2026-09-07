@@ -24,6 +24,19 @@ export async function readResponse(response, fallback) {
   return payload
 }
 
+/** @param {unknown} value @returns {import("../types/recorder").RecorderAssembly|null|undefined} */
+function recorderAssembly(value) {
+  // Omitted identity means unresolved (for older responses), not unassigned.
+  if (value === undefined || value === null) return value
+  const assembly = objectPayload(value)
+  return {
+    name: requiredString(assembly.name, "assembly name"),
+    identity_label: requiredString(assembly.identity_label, "assembly identity"),
+    serial_number: assembly.serial_number == null ? null : requiredString(assembly.serial_number, "assembly serial number"),
+    hardware_definition: assembly.hardware_definition == null ? null : requiredString(assembly.hardware_definition, "hardware definition")
+  }
+}
+
 /** @param {unknown} value */
 export function registrationPayload(value) {
   const payload = objectPayload(value)
@@ -35,6 +48,7 @@ export function registrationPayload(value) {
     registered: true,
     recorder: {
       device_id: requiredString(recorder.device_id, "recorder identifier"),
+      assembly: recorderAssembly(recorder.assembly),
       connectivity_url: localPath(recorder.connectivity_url, "connectivity URL"),
       initialization_url: localPath(recorder.initialization_url, "initialization URL"),
       initialization_confirmed: recorder.initialization_confirmed
@@ -94,7 +108,7 @@ export function heartbeatPayloads(value) {
     }
     const command = heartbeat.recording_command == null ? null : objectPayload(heartbeat.recording_command)
     return {
-      recorder: {device_id: requiredString(recorder.device_id, "recorder identifier"), firmware: typeof recorder.firmware === "string" ? recorder.firmware : undefined, model: typeof recorder.model === "string" ? recorder.model : undefined},
+      recorder: {device_id: requiredString(recorder.device_id, "recorder identifier"), assembly: recorderAssembly(recorder.assembly), firmware: typeof recorder.firmware === "string" ? recorder.firmware : undefined, model: typeof recorder.model === "string" ? recorder.model : undefined},
       seen_at: requiredString(heartbeat.seen_at, "heartbeat timestamp"), status,
       aircraft: heartbeat.aircraft == null ? null : {registration: requiredString(objectPayload(heartbeat.aircraft).registration, "aircraft registration")},
       recording_command: command ? {sequence: commandSequence(command.sequence), status: requiredString(command.status, "recording command status")} : null

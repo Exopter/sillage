@@ -11,12 +11,14 @@ export const AircraftConnectionTransport = Object.freeze({
  * @property {string | null | undefined} [aircraftRegistration]
  * @property {string | null | undefined} [deviceId]
  * @property {Array<string | null | undefined>} [deviceIds]
+ * @property {string | null} [recorderLabel]
  */
 /**
  * @typedef {Object} AircraftConnection
  * @property {string | null} aircraftRegistration
  * @property {string | null} deviceId
  * @property {string[]} deviceIds
+ * @property {string | null} recorderLabel
  * @property {AircraftConnectionTransportValue} transport
  */
 
@@ -44,13 +46,20 @@ export function setAircraftConnection(transport, connected, identity = {}) {
 
   if (connected) {
     const deviceIds = uniqueValues(identity.deviceIds || [identity.deviceId])
-    activeConnections.set(transport, {
+    const connection = {
       deviceId: deviceIds.length === 1 ? (deviceIds[0] || null) : null,
       deviceIds,
+      recorderLabel: identity.recorderLabel || null,
       aircraftRegistration: identity.aircraftRegistration || null
-    })
+    }
+    const previous = activeConnections.get(transport)
+    if (previous && previous.recorderLabel === connection.recorderLabel &&
+        previous.aircraftRegistration === connection.aircraftRegistration &&
+        previous.deviceIds.length === connection.deviceIds.length &&
+        previous.deviceIds.every((deviceId, index) => deviceId === connection.deviceIds[index])) return
+    activeConnections.set(transport, connection)
   } else {
-    activeConnections.delete(transport)
+    if (!activeConnections.delete(transport)) return
   }
 
   window.dispatchEvent(new CustomEvent("sillage:aircraft-connection", {
@@ -60,16 +69,24 @@ export function setAircraftConnection(transport, connected, identity = {}) {
 
 /** @param {AircraftConnection[]} connections */
 export function aircraftConnectionLabel(connections) {
-  if (!connections.length) return "No aircraft connected"
+  if (!connections.length) return "No recorder connected"
 
   const recorders = uniqueValues(connections.flatMap((connection) => connection.deviceIds || [connection.deviceId]))
   if (recorders.length > 1) return "Multiple recorders connected"
 
-  const aircraft = uniqueValues(connections.map((connection) => connection.aircraftRegistration))
-  if (aircraft.length === 1) return `${aircraft[0]} connected`
-  if (recorders.length === 1) return `${recorders[0]} connected`
+  const labels = uniqueValues(connections.map((connection) => connection.recorderLabel))
+  if (labels.length > 1) return "Recorder identity mismatch"
+  if (labels.length === 1) return `${labels[0]} connected`
+  if (recorders.length === 1) return "Recorder connected · identity unavailable"
 
   return "Connected"
+}
+
+/** @param {AircraftConnection[]} connections */
+export function aircraftConnectionDetails(connections) {
+  return uniqueValues(connections.flatMap((connection) => [
+    ...(connection.deviceIds || [connection.deviceId]), connection.aircraftRegistration
+  ])).join(" · ")
 }
 
 /**

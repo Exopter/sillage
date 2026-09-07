@@ -30,7 +30,22 @@ class EmbeddedController < ApplicationRecord
   scope :ordered, -> { order(Arel.sql("device_id IS NULL, device_id")) }
 
   def display_name
-    part&.display_name.presence || device_id.presence || "Unassigned controller"
+    assembly ? "#{assembly.display_name} · #{assembly.identity_label}" : "Unassigned ECU"
+  end
+
+  def recorder_identity(at: nil)
+    recorded_assembly = at ? assembly_at(at) : assembly
+    {
+      device_id: device_id,
+      model: device_model,
+      firmware: last_seen_firmware,
+      assembly: recorded_assembly && {
+        name: recorded_assembly.display_name,
+        identity_label: recorded_assembly.identity_label,
+        serial_number: recorded_assembly.serial_number,
+        hardware_definition: recorded_assembly.hardware_definition&.canonical_identifier
+      }
+    }
   end
 
   def technical_reference
@@ -116,6 +131,7 @@ class EmbeddedController < ApplicationRecord
   end
 
   def record_activity!(event_type, source:, actor: nil, details: {}, occurred_at: Time.current)
+    details = details.merge(recorder_identity: recorder_identity(at: occurred_at).slice(:device_id, :assembly))
     device_activities.create!(event_type:, source:, actor:, details:, occurred_at:)
   end
 

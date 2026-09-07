@@ -5,6 +5,8 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
   include ExoFdrBinary
 
   test "imports GPS without UTC and preserves relative sample times" do
+    current = Assembly.create!(name: "Current recorder", hardware_definition: create_hardware_definition)
+    create_embedded_controller(assembly: current, device_id: "ECU-ABC123")
     payload = [ 123_456, 2026, 7, 29, 10, 11, 12, 0, 80, 0, 3, 1, 0, 12,
       57_168_000, 441_994_000, 700_000, 642_000, 1_000, 1_500,
       20_000, 5_000, -1_000, 20_600, 3_600_000, 500, 10_000, 125 ].pack("VvC6Vl<C4l<4V2l<5V2v")
@@ -23,6 +25,8 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
     assert_equal [ 0, 5, 10 ], flight.track_points.ordered.pluck(:elapsed_seconds)
     assert_equal 10, flight.duration_seconds
     assert_match(/no absolute timestamp/, flight.configuration_snapshot.fetch("unavailable_reason"))
+    assert_nil flight_import.details.dig("files", 0, "recorder_identity")
+    assert_equal "Historical FDR identity unavailable", flight_import.recorder_label
   end
 
   test "imports sensor-only recordings and deduplicates shared recovery segments across imports" do
@@ -49,6 +53,14 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
   end
 
   test "a late UTC fix anchors the full recording including earlier and later sensor samples" do
+    original = Assembly.create!(name: "Original recorder", hardware_definition: create_hardware_definition)
+    current = Assembly.create!(name: "Current recorder", hardware_definition: original.hardware_definition)
+    function = Function.find_or_create_by!(code: "CONTROLLER") { |record| record.name = "Controller" }
+    part = Part.create!(function:, model: "XIAO ESP32S3")
+    create_embedded_controller(part:, device_id: "ECU-ABC123")
+    part.install_in!(original, at: Time.utc(2026, 7, 1))
+    part.remove_from_assembly!(at: Time.utc(2026, 8, 1))
+    part.install_in!(current, at: Time.utc(2026, 8, 2))
     gps_payload = [ 123_456, 2026, 7, 29, 10, 11, 6, 1, 80, 0, 3, 1, 0, 12,
       57_168_000, 441_994_000, 700_000, 642_000, 1_000, 1_500,
       20_000, 5_000, -1_000, 20_600, 3_600_000, 500, 10_000, 125 ].pack("VvC6Vl<C4l<4V2l<5V2v")
@@ -68,6 +80,9 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
     assert_equal [ 1, 6 ], flight.track_points.ordered.pluck(:elapsed_seconds)
     assert_equal [ 0, 7 ], flight.sensor_samples.ordered.pluck(:elapsed_seconds)
     assert_equal 7, flight.duration_seconds
+    assert_equal original.serial_number, flight_import.details.dig("files", 0, "recorder_identity", "assembly", "serial_number")
+    assert_equal "ECU-ABC123", flight_import.details.dig("files", 0, "recorder_identity", "device_id")
+    assert_equal "ExoFDR · S/N #{original.serial_number}", flight_import.recorder_label
   end
 
   test "a replayed UTC anchor preserves the physical origin of a rotated file" do

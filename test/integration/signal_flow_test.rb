@@ -281,7 +281,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select ".workspace-table", text: /Model not reported/, count: 0
     assert_select "#aircraft-connection-indicator.aircraft-connection-pill[data-turbo-permanent][data-controller='aircraft-connection-indicator'][data-aircraft-connection-state='disconnected']"
     assert_select "#aircraft-connection-indicator[data-turbo='false']", count: 0
-    assert_select "[data-aircraft-connection-indicator-target='label']", text: "No aircraft connected"
+    assert_select "[data-aircraft-connection-indicator-target='label']", text: "No recorder connected"
     assert_select "[data-aircraft-connection-indicator-target='icon'][hidden]", count: 4
     assert_select "#sillage-fdr-connectivity[data-controller='fdr-connectivity'][data-fdr-connectivity-registration-url-value='#{api_v1_fdr_registration_path}'][data-fdr-connectivity-authentication-url-value='#{api_v1_fdr_authentication_path}'][data-fdr-connectivity-sillage-heartbeat-url-value='#{api_v1_fdr_sillage_heartbeats_path}']"
     assert_select "#sillage-fdr-connectivity[data-turbo-permanent]", count: 0
@@ -295,7 +295,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "button.signal-tool-button:not(.is-primary)[data-action='fdr-connectivity#connectUsb']", text: "Connect USB-C"
     assert_select "button[data-action='fdr-connectivity#connectBle']", text: "Connect BLE"
     assert_select "button.signal-tool-button.signal-fdr-auto-label[data-fdr-connectivity-target='wifiAutoLabel'][aria-label='Automatic Wi-Fi connection: waiting for signed Sillage heartbeat'][disabled]", text: "Automatic"
-    wifi_configuration_label = "Configure Wi-Fi for #{@fdr.technical_reference}"
+    wifi_configuration_label = "Configure Wi-Fi for #{@fdr.display_name} · #{@fdr.technical_reference}"
     assert_select ".signal-fdr-transport:nth-of-type(3) a.signal-fdr-wifi-settings-link[data-fdr-connectivity-target='wifiLink'][href='#{connectivity_forge_fdr_path(@fdr)}'][aria-label='#{wifi_configuration_label}'][title='#{wifi_configuration_label}']" do
       assert_select "svg"
       assert_select ".sr-only[data-fdr-connectivity-target='wifiLinkLabel']", text: wifi_configuration_label
@@ -322,16 +322,19 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     usb_feedback_children = css_select(".signal-fdr-transport:first-of-type .signal-fdr-transport-feedback > *")
     assert_equal [
       "signal-fdr-device-row",
+      "usbIdentityDetail",
       "usbNotice"
     ], usb_feedback_children.map { |node| node["data-fdr-connectivity-target"] || node["class"] }
     ble_feedback_children = css_select(".signal-fdr-transport:nth-of-type(2) .signal-fdr-transport-feedback > *")
     assert_equal [
       "signal-fdr-device-row",
+      "bleIdentityDetail",
       "bleNotice"
     ], ble_feedback_children.map { |node| node["data-fdr-connectivity-target"] || node["class"] }
     wifi_feedback_children = css_select(".signal-fdr-transport:nth-of-type(3) .signal-fdr-transport-feedback > *")
     assert_equal [
       "signal-fdr-device-row",
+      "wifiIdentityDetail",
       "wifiNotice"
     ], wifi_feedback_children.map { |node| node["data-fdr-connectivity-target"] || node["class"] }
     assert_select "[data-fdr-connectivity-target='usbNotice'][data-state='status'][role='status'][hidden]"
@@ -346,8 +349,9 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-fdr-connectivity-target='recorderSource'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderAlert'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderAlertTechnical'][hidden]"
-    assert_select ".signal-fdr-status-list > div", count: 4
-    assert_equal %w[Recorder Synchronization Health Storage], css_select(".signal-fdr-status-list dt").map(&:text)
+    assert_select ".signal-fdr-status-list > div", count: 5
+    assert_equal %w[Recorder ECU Synchronization Health Storage], css_select(".signal-fdr-status-list dt").map(&:text)
+    assert_select "[data-fdr-connectivity-target='recorderEcu']", text: "—"
     assert_select ".signal-fdr-status-list dt", text: "Security", count: 0
     assert_select ".signal-fdr-status-list > div:first-child" do
       assert_select "[data-fdr-connectivity-target='recorderDevice']", text: "—"

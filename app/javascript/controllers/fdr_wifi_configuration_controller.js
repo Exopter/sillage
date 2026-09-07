@@ -16,6 +16,9 @@ import {
   parseFdrWifiProvisioningBundle
 } from "fdr_wifi_provisioning"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
+import { readResponse, registrationPayload } from "fdr_api"
+import { recorderLabel } from "recorder_identity"
+import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
 
 const BLE_DEVICE_STORAGE_KEY = "sillage:fdr-ble-device"
 const USB_PORT_STORAGE_KEY = "sillage:fdr-usb-port"
@@ -61,6 +64,8 @@ const SECURITY_LABELS = new Map([
  * @property {string} provisioningUrlValue
  * @property {string} confirmationUrlValue
  * @property {string} authenticationUrlValue
+ * @property {string} registrationUrlValue
+ * @property {string} expectedDeviceIdValue
  * @property {boolean} previewValue
  */
 
@@ -77,6 +82,8 @@ const SECURITY_LABELS = new Map([
  * @property {"USB-C" | "BLE" | null} activeTransport
  * @property {boolean} bleAuthenticated
  * @property {string} initialDeviceLabel
+ * @property {import("../types/recorder").Recorder|null} resolvedRecorder
+ * @property {import("../types/recorder").Aircraft|null} resolvedAircraft
  * @property {(() => void) | null} unregisterUsbPageRelease
  */
 
@@ -101,10 +108,14 @@ const TypedController = /** @type {new (context: import("@hotwired/stimulus").Co
 )
 
 export default class extends TypedController {
+  connectionGeneration = 0
+
   static values = {
     provisioningUrl: String,
     confirmationUrl: String,
     authenticationUrl: String,
+    registrationUrl: String,
+    expectedDeviceId: String,
     preview: Boolean
   }
 
@@ -115,6 +126,7 @@ export default class extends TypedController {
   ]
 
   connect() {
+    this.connectionGeneration += 1
     this.usbClient = null
     this.usbAuthenticated = false
     this.usbKeepaliveTimer = undefined
@@ -126,6 +138,8 @@ export default class extends TypedController {
     this.activeTransport = null
     this.bleAuthenticated = false
     this.initialDeviceLabel = this.bleDeviceTarget.textContent || ""
+    this.resolvedRecorder = null
+    this.resolvedAircraft = null
     this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.disconnectUsb())
     this.handleDisconnect = this.handleDisconnect.bind(this)
     this.handleSerialDisconnect = this.handleSerialDisconnect.bind(this)
@@ -136,6 +150,7 @@ export default class extends TypedController {
   }
 
   disconnect() {
+    this.connectionGeneration += 1
     this.unregisterUsbPageRelease?.()
     this.unregisterUsbPageRelease = null
     navigator.serial?.removeEventListener("disconnect", this.handleSerialDisconnect)
@@ -219,11 +234,13 @@ export default class extends TypedController {
 
   /** @param {SerialPort} port */
   async openUsbPort(port) {
+    const connectionGeneration = this.connectionGeneration
     this.setConnectionPending("Connecting over USB-C")
     const client = new UsbFdrClient(port)
     try {
       await client.open()
       const deviceInfo = await client.hello()
+      await this.resolveRecorderIdentity(deviceInfo.deviceId)
       const status = await client.status()
       const challenge = await client.usbAuthenticationChallenge()
       if (challenge.configured) {
@@ -234,6 +251,7 @@ export default class extends TypedController {
         await client.authenticateUsbSession(proof)
         this.usbAuthenticated = true
       }
+      this.requireCurrentConnection(connectionGeneration)
       this.usbClient = client
       this.usbPort = port
       this.deviceInfo = deviceInfo
@@ -249,6 +267,7 @@ export default class extends TypedController {
 
   /** @param {BluetoothDevice} device */
   async openDevice(device) {
+    const connectionGeneration = this.connectionGeneration
     this.setConnectionPending("Connecting over BLE")
     this.device = device
     device.addEventListener("gattserverdisconnected", this.handleDisconnect)
@@ -267,6 +286,7 @@ export default class extends TypedController {
       deviceCharacteristic.readValue()
     ])
     this.deviceInfo = parseBleDeviceInfo(deviceValue)
+    await this.resolveRecorderIdentity(this.deviceInfo.deviceId)
     const authentication = new BleAuthenticationClient(authenticationCharacteristic)
     const challenge = await authentication.challenge()
     if (!challenge.configured) {
@@ -277,6 +297,7 @@ export default class extends TypedController {
       body: JSON.stringify({ device_id: this.deviceInfo.deviceId, nonce: challenge.nonce, transport: "ble" })
     }))
     await authentication.authenticate(proof)
+    this.requireCurrentConnection(connectionGeneration)
     this.bleAuthenticated = true
     this.wifiClient = new BleWifiClient(wifiCharacteristic)
     this.renderConnection(parseBleStatus(statusValue), "BLE")
@@ -469,7 +490,14 @@ export default class extends TypedController {
         ? "Connected over Sillage-authenticated USB-C"
         : "Connected over USB-C · secure initialization required"
     this.bleStatusTarget.dataset.state = "connected"
-    this.bleDeviceTarget.textContent = deviceInfo.deviceId
+    const label = recorderLabel(this.resolvedRecorder || {})
+    this.bleDeviceTarget.textContent = label
+    this.bleDeviceTarget.title = deviceInfo.deviceId
+    if (!this.previewValue) {
+      setAircraftConnection(transport === "USB-C" ? AircraftConnectionTransport.USB_C : AircraftConnectionTransport.BLE, true, {
+        deviceId: deviceInfo.deviceId, recorderLabel: label, aircraftRegistration: this.resolvedAircraft?.registration
+      })
+    }
     this.firmwareTarget.textContent = deviceInfo.firmware
     this.healthTarget.textContent = status.alertFlags === 0 ? "Healthy" : `Alerts 0x${status.alertFlags.toString(16)}`
     this.lastReadTarget.textContent = "just now"
@@ -496,6 +524,12 @@ export default class extends TypedController {
   }
 
   resetConnectionState() {
+    this.connectionGeneration += 1
+    if (this.activeTransport) {
+      setAircraftConnection(this.activeTransport === "USB-C" ? AircraftConnectionTransport.USB_C : AircraftConnectionTransport.BLE, false)
+    }
+    this.resolvedRecorder = null
+    this.resolvedAircraft = null
     window.clearInterval(this.usbKeepaliveTimer)
     this.usbKeepaliveTimer = undefined
     this.wifiClient = null
@@ -514,11 +548,35 @@ export default class extends TypedController {
     this.bleStatusTarget.textContent = "Recorder disconnected"
     this.bleStatusTarget.dataset.state = "disconnected"
     this.bleDeviceTarget.textContent = this.initialDeviceLabel
+    this.bleDeviceTarget.title = this.expectedDeviceIdValue
     this.firmwareTarget.textContent = "not read"
     this.healthTarget.textContent = "Not read"
     this.lastReadTarget.textContent = "never"
     this.applyButtonTarget.disabled = true
     this.scanButtonTarget.disabled = true
+  }
+
+  /** @param {string} deviceId */
+  async resolveRecorderIdentity(deviceId) {
+    const connectionGeneration = this.connectionGeneration
+    if (this.expectedDeviceIdValue && deviceId !== this.expectedDeviceIdValue) {
+      throw new Error(`This workspace belongs to ${this.expectedDeviceIdValue}; the connected ECU is ${deviceId}. Open its workspace from Forge.`)
+    }
+    const url = new URL(this.registrationUrlValue, window.location.origin)
+    url.searchParams.set("device_id", deviceId)
+    const response = await fetch(url, {cache: "no-store", credentials: "same-origin", headers: {Accept: "application/json"}})
+    const payload = registrationPayload(await readResponse(response, "Sillage could not identify the connected recorder."))
+    this.requireCurrentConnection(connectionGeneration)
+    if ((!payload.recorder && this.expectedDeviceIdValue) || (payload.recorder && payload.recorder.device_id !== deviceId)) {
+      throw new Error("The connected ECU no longer matches this Forge workspace.")
+    }
+    this.resolvedRecorder = payload.recorder || null
+    this.resolvedAircraft = payload.aircraft || null
+  }
+
+  /** @param {number} connectionGeneration */
+  requireCurrentConnection(connectionGeneration) {
+    if (connectionGeneration !== this.connectionGeneration) throw new Error("The recorder connection ended before identification completed.")
   }
 
   /**

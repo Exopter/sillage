@@ -3,17 +3,18 @@
   <%= sillage_icon "chevron-right", size: 13 %>
   <%= link_to "Embedded controllers", forge_fdrs_path %>
   <%= sillage_icon "chevron-right", size: 13 %>
-  <span aria-current="page"><%= @fdr.technical_reference %></span>
+  <span aria-current="page"><%= @fdr.display_name %></span>
 </nav>
 
 <header class="fdr-connectivity-heading">
   <div>
     <span class="section-eyebrow">Embedded controller</span>
-    <h2><%= @fdr.technical_reference %></h2>
+    <h2><%= @fdr.display_name %></h2>
     <p>
+      <%= @fdr.technical_reference %> ·
       Hardware platform: <%= @fdr.device_model.presence || "not reported" %>
       <% if @controller_part %>· Part <%= @controller_part.internal_number %><% else %>· No controller part assigned<% end %>
-      <% if @assembly %>· <%= @assembly.display_name %> · <%= @assembly.identity_label %><% end %>
+      <% if @assembly&.controlled_fdr? %>· <%= @assembly.hardware_label %><% end %>
       <% if @aircraft %>· Installed in <%= @aircraft.registration %><% end %>
     </p>
   </div>

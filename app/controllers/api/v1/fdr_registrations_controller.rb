@@ -67,7 +67,7 @@ module Api
         {
           registered: true,
           created: created,
-          recorder: {
+          recorder: recorder.recorder_identity.merge(
             id: recorder.id,
             internal_number: recorder.assembly&.internal_number,
             serial_number: recorder.assembly&.serial_number,
@@ -80,7 +80,7 @@ module Api
             connectivity_url: connectivity_forge_fdr_path(recorder),
             initialization_url: api_v1_fdr_initialization_path(recorder),
             initialization_confirmed: recorder.initialized?
-          },
+          ),
           aircraft: aircraft && {
             id: aircraft.id,
             registration: aircraft.registration,

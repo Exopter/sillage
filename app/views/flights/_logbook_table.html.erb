@@ -49,7 +49,7 @@
             <td class="flights-data"><%= duration(flight.duration_seconds) %></td>
             <td>
               <span class="flights-source">
-                <%= sillage_icon(flight.flight_import&.import_type == "flysight" ? "activity" : flight.flight_import ? "file-text" : flight.live? ? "radio" : "clock", size: 14) %>
+                <%= sillage_icon(flight.flight_import&.import_type == "flysight" ? "flysight" : flight.flight_import ? "exopter" : flight.live? ? "radio" : "clock", size: 14) %>
                 <%= flight.flight_import&.import_type&.then { |type| type == "exofdr" ? "ExoFDR" : "FlySight" } || (flight.live? ? "Live session" : "No data yet") %>
               </span>
             </td>

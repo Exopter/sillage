@@ -2,6 +2,7 @@ import { objectPayload, readResponse, registrationPayload, importReceipt, authen
 import { normalizeSillageHeartbeatStatus, describeWifiUpload, normalizeSillageHeartbeatDiagnostics, sillageHeartbeatIdentity, formatSeenAt } from "fdr_heartbeat"
 import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
+import { recorderLabel, recorderTechnicalLabel } from "recorder_identity"
 import { PartialFdrFile } from "fdr_partial_file"
 import {
   BleUuid,
@@ -56,6 +57,7 @@ const ConnectionStatus = Object.freeze({
  * @property {HTMLButtonElement} eraseSdButtonTarget
  * @property {HTMLElement} usbStatusTarget
  * @property {HTMLElement} usbDeviceTarget
+ * @property {HTMLElement} usbIdentityDetailTarget
  * @property {HTMLElement} usbDetailTarget
  * @property {HTMLElement} usbTechnicalTarget
  * @property {HTMLElement} usbNoticeTarget
@@ -68,11 +70,13 @@ const ConnectionStatus = Object.freeze({
  * @property {HTMLButtonElement} bleButtonTarget
  * @property {HTMLElement} bleStatusTarget
  * @property {HTMLElement} bleDeviceTarget
+ * @property {HTMLElement} bleIdentityDetailTarget
  * @property {HTMLElement} bleDetailTarget
  * @property {HTMLElement} bleNoticeTarget
  * @property {HTMLElement} bleNoticeLabelTarget
  * @property {HTMLElement} wifiStatusTarget
  * @property {HTMLElement} wifiDeviceTarget
+ * @property {HTMLElement} wifiIdentityDetailTarget
  * @property {HTMLElement} wifiAutoLabelTarget
  * @property {HTMLElement} wifiDetailTarget
  * @property {HTMLElement} wifiNoticeTarget
@@ -80,6 +84,7 @@ const ConnectionStatus = Object.freeze({
  * @property {HTMLElement} recorderStatusTarget
  * @property {HTMLElement} recorderSourceTarget
  * @property {HTMLElement} recorderDeviceTarget
+ * @property {HTMLElement} recorderEcuTarget
  * @property {HTMLElement} recorderFirmwareGroupTarget
  * @property {HTMLElement} recorderFirmwareTarget
  * @property {HTMLElement} healthTarget
@@ -131,6 +136,9 @@ export default class extends TypedController {
   registrationIdentity = null
   /** @type {string|null} */
   registrationLookupDeviceId = null
+  registrationLookupStartedAt = 0
+  registrationLookupPending = false
+  connectionGeneration = 0
   /** @type {import("../types/recorder").Recorder|null} */
   registeredRecorder = null
   /** @type {import("../types/recorder").Aircraft|null} */
@@ -198,7 +206,8 @@ export default class extends TypedController {
     "bleButton", "bleStatus", "bleDevice", "bleDetail",
     "bleNotice", "bleNoticeLabel", "wifiStatus", "wifiDevice", "wifiAutoLabel", "wifiDetail",
     "wifiNotice", "wifiNoticeLabel", "recorderStatus",
-    "recorderSource", "recorderDevice", "recorderFirmwareGroup", "recorderFirmware", "health", "storage",
+    "recorderSource", "recorderDevice", "recorderEcu", "recorderFirmwareGroup", "recorderFirmware", "health", "storage",
+    "usbIdentityDetail", "bleIdentityDetail", "wifiIdentityDetail",
     "lastSync", "recordingControl", "recordingButton", "recordingButtonLabel", "recordingResult",
     "debugButton", "debug", "recorderToolsHint", "recorderAlert",
     "recorderAlertMessage", "recorderAlertTechnical", "recorderOnboarding",
@@ -210,6 +219,7 @@ export default class extends TypedController {
     if (this.initialized) return
 
     this.initialized = true
+    this.connectionGeneration += 1
     this.usbBusy = false
     this.usbClient = null
     this.usbSession = null
@@ -244,7 +254,8 @@ export default class extends TypedController {
     this.wifiRecordingControlSupported = false
     this.registrationIdentity = null
     this.registrationLookupDeviceId = null
-    this.registrationRequestToken = 0
+    this.registrationRequestToken += 1
+    this.registrationLookupPending = false
     this.registrationState = "idle"
     this.registrationSubmitting = false
     this.registeredRecorder = null
@@ -274,6 +285,8 @@ export default class extends TypedController {
     if (!this.initialized) return
 
     this.initialized = false
+    this.connectionGeneration += 1
+    this.registrationRequestToken += 1
     setAircraftConnection(AircraftConnectionTransport.USB_C, false)
     setAircraftConnection(AircraftConnectionTransport.BLE, false)
     setAircraftConnection(AircraftConnectionTransport.WIFI, false)
@@ -991,6 +1004,8 @@ export default class extends TypedController {
   }
 
   async refreshSillageHeartbeat() {
+    if (!this.initialized) return
+    const connectionGeneration = this.connectionGeneration
     if (!this.hasSillageHeartbeatUrlValue) {
       this.disconnectSillageHeartbeat("Sillage heartbeat endpoint unavailable")
       return
@@ -1004,6 +1019,7 @@ export default class extends TypedController {
         headers: { "Accept": "application/json" }
       })
       const payload = await readResponse(response, "Sillage could not read recorder heartbeats.")
+      if (!this.initialized || connectionGeneration !== this.connectionGeneration) return
 
       const heartbeats = heartbeatPayloads(payload)
       if (heartbeats.length === 0) return this.disconnectSillageHeartbeat("Waiting for signed Sillage heartbeat")
@@ -1011,6 +1027,7 @@ export default class extends TypedController {
 
       this.renderSillageHeartbeat(heartbeats[0])
     } catch (caught) {
+      if (!this.initialized || connectionGeneration !== this.connectionGeneration) return
       const error = protocolError(caught)
       this.disconnectSillageHeartbeat("Sillage heartbeat status unavailable", { error: error.message })
     }
@@ -1021,6 +1038,10 @@ export default class extends TypedController {
     const status = normalizeSillageHeartbeatStatus(heartbeat.status)
     this.wifiIdentity = sillageHeartbeatIdentity(heartbeat)
     this.wifiIdentities = [this.wifiIdentity]
+    if (this.registeredRecorder?.device_id === this.wifiIdentity.deviceId && this.wifiIdentity.assembly !== undefined) {
+      this.registeredRecorder.assembly = this.wifiIdentity.assembly
+      this.registeredAircraft = heartbeat.aircraft || null
+    }
     this.wifiDeviceTarget.textContent = this.wifiIdentity.deviceId
     this.wifiDeviceTarget.removeAttribute("title")
     this.setConnectionStatus(this.wifiStatusTarget, ConnectionStatus.CONNECTED)
@@ -1417,13 +1438,17 @@ export default class extends TypedController {
   }
 
   async refreshRecorderRegistration() {
+    if (!this.initialized || this.registrationSubmitting) return
     const usb = this.usbIdentity
     const ble = this.bleIdentity
     const identities = [usb, ble, ...this.wifiIdentities].filter((value) => value != null)
     if (new Set(identities.map((identity) => identity.deviceId)).size > 1) {
       this.registrationRequestToken += 1
       this.registrationLookupDeviceId = null
+      this.registrationLookupPending = false
       this.registrationIdentity = null
+      this.registeredRecorder = null
+      this.registeredAircraft = null
       this.registrationState = "mismatch"
       this.wifiLinkTarget.hidden = true
       this.recorderOnboardingTarget.hidden = true
@@ -1434,18 +1459,30 @@ export default class extends TypedController {
     const identity = usb || ble || this.wifiIdentity
     if (!identity) return this.resetWifiRegistration()
 
+    const sameDevice = this.registrationIdentity?.deviceId === identity.deviceId
     this.registrationIdentity = {
-      ...this.registrationIdentity,
+      ...(sameDevice ? this.registrationIdentity : {}),
       ...identity,
-      model: identity.model || this.registrationIdentity?.model
+      model: identity.model || (sameDevice ? this.registrationIdentity?.model : undefined)
     }
-    if (this.registrationLookupDeviceId === identity.deviceId) return
+    if (this.registrationLookupDeviceId === identity.deviceId &&
+        (this.registrationLookupPending || Date.now() - this.registrationLookupStartedAt < 5000)) return
+
+    if (this.registeredRecorder?.device_id !== identity.deviceId) {
+      this.registeredRecorder = null
+      this.registeredAircraft = null
+      this.registrationState = "idle"
+    }
 
     this.registrationLookupDeviceId = identity.deviceId
+    this.registrationLookupStartedAt = Date.now()
+    this.registrationLookupPending = true
     const requestToken = ++this.registrationRequestToken
-    this.wifiLinkTarget.hidden = true
-    this.recorderOnboardingTarget.hidden = true
-    this.setWifiRegistrationStatus("")
+    if (!sameDevice) {
+      this.wifiLinkTarget.hidden = true
+      this.recorderOnboardingTarget.hidden = true
+      this.setWifiRegistrationStatus("")
+    }
 
     try {
       const url = new URL(this.registrationUrlValue, window.location.origin)
@@ -1459,12 +1496,14 @@ export default class extends TypedController {
       if (requestToken !== this.registrationRequestToken) return
 
       if (payload.recorder) {
+        if (payload.recorder.device_id !== identity.deviceId) throw new Error("Sillage returned a different ECU identity.")
         if (this.usbAuthenticated && !payload.recorder.initialization_confirmed) {
           try {
             await this.confirmRecorderInitialization(payload.recorder, identity)
             payload.recorder.initialization_confirmed = true
           } catch (_) {}
         }
+        if (requestToken !== this.registrationRequestToken) return
         this.renderRegisteredRecorder(payload.recorder, payload.aircraft)
       } else {
         this.renderUnregisteredRecorder(identity)
@@ -1472,11 +1511,13 @@ export default class extends TypedController {
     } catch (caught) {
       const error = protocolError(caught)
       if (requestToken !== this.registrationRequestToken) return
-      this.wifiLinkTarget.hidden = false
+      this.wifiLinkTarget.hidden = true
       this.recorderOnboardingTarget.hidden = true
       this.registrationState = "error"
       this.setWifiRegistrationStatus(error.message, "error")
       this.renderRecorderInformation()
+    } finally {
+      if (requestToken === this.registrationRequestToken) this.registrationLookupPending = false
     }
   }
 
@@ -1497,7 +1538,7 @@ export default class extends TypedController {
     try {
       if (!recorder) {
         this.wifiRegisterLabelTarget.textContent = "Adding to Forge…"
-        this.setWifiRegistrationStatus("Creating the FDR in Forge…")
+        this.setWifiRegistrationStatus("Registering the ECU in Forge…")
         const registration = await this.createRecorderRegistration(identity)
         recorder = registration.recorder
         aircraft = registration.aircraft
@@ -1625,7 +1666,7 @@ export default class extends TypedController {
     this.registrationSubmitting = false
     this.updateResolvedConnections(recorder.device_id, aircraft)
     this.wifiLinkTarget.href = recorder.connectivity_url
-    this.setWifiLinkLabel(`Configure Wi-Fi for ${recorder.device_id}`)
+    this.setWifiLinkLabel(`Configure Wi-Fi for ${recorderLabel(recorder)} · ${recorder.device_id}`)
     this.wifiLinkTarget.hidden = false
     this.recorderOnboardingTarget.hidden = true
     this.wifiRegisterButtonTarget.disabled = false
@@ -1680,6 +1721,7 @@ export default class extends TypedController {
   updateResolvedConnections(deviceId, aircraft) {
     const identity = {
       deviceId: deviceId,
+      recorderLabel: recorderLabel(this.resolvedIdentity({deviceId})),
       aircraftRegistration: aircraft?.registration
     }
     if (this.usbIdentity?.deviceId === deviceId) {
@@ -1697,6 +1739,7 @@ export default class extends TypedController {
     this.registrationRequestToken += 1
     this.registrationIdentity = null
     this.registrationLookupDeviceId = null
+    this.registrationLookupPending = false
     this.registrationState = "idle"
     this.registrationSubmitting = false
     this.registeredRecorder = null
@@ -1725,6 +1768,7 @@ export default class extends TypedController {
   }
 
   renderRecorderInformation() {
+    this.renderConnectionIdentities()
     const usb = this.usbIdentity
     const ble = this.bleIdentity
     const identity = usb || ble || this.wifiIdentity
@@ -1737,7 +1781,7 @@ export default class extends TypedController {
         this.recorderSourceTarget.textContent = `Wi-Fi · ${this.wifiIdentities.length} recorders`
         this.recorderSourceTarget.dataset.state = "error"
         this.recorderSourceTarget.hidden = false
-        this.recorderDeviceTarget.textContent = this.wifiIdentities.map(({ deviceId }) => deviceId).join(" · ")
+        this.recorderDeviceTarget.textContent = this.wifiIdentities.map((identity) => recorderLabel(this.resolvedIdentity(identity))).join(" / ")
       } else {
         this.recorderStatusTarget.textContent = ""
         this.recorderStatusTarget.hidden = true
@@ -1746,6 +1790,7 @@ export default class extends TypedController {
         this.recorderSourceTarget.hidden = true
         this.recorderDeviceTarget.textContent = "—"
       }
+      this.recorderEcuTarget.textContent = multipleWifiRecorders ? this.wifiIdentities.map(({deviceId}) => deviceId).join(" · ") : "—"
       this.recorderFirmwareTarget.textContent = "—"
       this.recorderFirmwareGroupTarget.hidden = true
       this.healthTarget.textContent = "—"
@@ -1758,7 +1803,8 @@ export default class extends TypedController {
     const identities = [usb, ble, ...this.wifiIdentities].filter((value) => value != null)
     const mismatch = new Set(identities.map(({ deviceId }) => deviceId)).size > 1 ||
       new Set(identities.map(({ firmware }) => firmware).filter((value) => value != null)).size > 1
-    this.recorderDeviceTarget.textContent = identity.deviceId
+    this.recorderDeviceTarget.textContent = mismatch ? "Multiple recorder identities" : recorderLabel(this.resolvedIdentity(identity))
+    this.recorderEcuTarget.textContent = [...new Set(identities.map(({deviceId}) => deviceId))].join(" · ")
     this.recorderFirmwareTarget.textContent = identity.firmware || "—"
     this.recorderFirmwareGroupTarget.hidden = !identity.firmware
 
@@ -1797,6 +1843,40 @@ export default class extends TypedController {
     this.storageTarget.textContent = storage
     this.lastSyncTarget.textContent = synchronization
     this.renderRecorderAlert(this.usbRecorderError || this.usbFacts?.issue || this.bleFacts?.issue || this.wifiFacts?.issue)
+  }
+
+  /** @param {import("../types/recorder").Identity} identity @returns {import("../types/recorder").Identity} */
+  resolvedIdentity(identity) {
+    const heartbeat = this.wifiIdentities.find(({deviceId}) => deviceId === identity.deviceId)
+    const registered = this.registeredRecorder?.device_id === identity.deviceId ? this.registeredRecorder : null
+    const assembly = heartbeat?.assembly !== undefined ? heartbeat.assembly
+      : registered ? registered.assembly
+        : this.registrationState === "unregistered" && this.registrationIdentity?.deviceId === identity.deviceId ? null : identity.assembly
+    return {...identity, assembly}
+  }
+
+  renderConnectionIdentities() {
+    if (!this.initialized) return
+    /** @type {[import("aircraft_connection").AircraftConnectionTransportValue, import("../types/recorder").Identity[], HTMLElement, HTMLElement][]} */
+    const transports = [
+      [AircraftConnectionTransport.USB_C, this.usbIdentity ? [this.usbIdentity] : [], this.usbDeviceTarget, this.usbIdentityDetailTarget],
+      [AircraftConnectionTransport.BLE, this.bleIdentity ? [this.bleIdentity] : [], this.bleDeviceTarget, this.bleIdentityDetailTarget],
+      [AircraftConnectionTransport.WIFI, this.wifiIdentities, this.wifiDeviceTarget, this.wifiIdentityDetailTarget]
+    ]
+    for (const [transport, identities, target, detail] of transports) {
+      const resolved = identities.map((identity) => this.resolvedIdentity(identity))
+      detail.textContent = resolved.map(recorderTechnicalLabel).join(" / ")
+      detail.hidden = !resolved.length
+      target.title = detail.textContent
+      if (!resolved.length) continue
+      target.textContent = resolved.map(recorderLabel).join(" / ")
+      setAircraftConnection(transport, true, {
+        deviceIds: resolved.map(({deviceId}) => deviceId),
+        recorderLabel: resolved.length === 1 ? recorderLabel(resolved[0]) : null,
+        aircraftRegistration: resolved.length === 1 && this.registeredRecorder?.device_id === resolved[0]?.deviceId
+          ? this.registeredAircraft?.registration : null
+      })
+    }
   }
 
   /** @param {import("../types/recorder").Issue|null|undefined} issue */

@@ -58,6 +58,9 @@
       ],
       "fdr_api": [
         "./app/javascript/lib/fdr_api.js"
+      ],
+      "recorder_identity": [
+        "./app/javascript/lib/recorder_identity.js"
       ]
     },
     "strict": true,

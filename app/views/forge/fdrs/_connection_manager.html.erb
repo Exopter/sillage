@@ -56,6 +56,7 @@
         <div class="signal-fdr-device-row">
           <strong data-fdr-connectivity-target="usbDevice">No recorder selected</strong>
         </div>
+        <small class="signal-fdr-technical" data-fdr-connectivity-target="usbIdentityDetail" hidden></small>
         <div class="signal-fdr-transport-notice" data-fdr-connectivity-target="usbNotice" data-state="status" role="status" hidden>
           <span class="signal-fdr-transport-notice-label" data-fdr-connectivity-target="usbNoticeLabel">Connection status</span>
           <small class="signal-fdr-transport-message" data-fdr-connectivity-target="usbDetail" hidden></small>
@@ -94,6 +95,7 @@
         <div class="signal-fdr-device-row">
           <strong data-fdr-connectivity-target="bleDevice">No recorder selected</strong>
         </div>
+        <small class="signal-fdr-technical" data-fdr-connectivity-target="bleIdentityDetail" hidden></small>
         <div class="signal-fdr-transport-notice" data-fdr-connectivity-target="bleNotice" data-state="status" role="status" hidden>
           <span class="signal-fdr-transport-notice-label" data-fdr-connectivity-target="bleNoticeLabel">Connection status</span>
           <small class="signal-fdr-transport-message" data-fdr-connectivity-target="bleDetail" hidden></small>
@@ -129,7 +131,7 @@
         </div>
         <div class="signal-fdr-channel-actions signal-fdr-channel-actions--wifi">
           <% wifi_configuration_url = @default_wifi_configuration_fdr ? connectivity_forge_fdr_path(@default_wifi_configuration_fdr) : "#{forge_fdrs_path}#registered-recorders" %>
-          <% wifi_configuration_label = @default_wifi_configuration_fdr ? "Configure Wi-Fi for #{@default_wifi_configuration_fdr.technical_reference}" : "Select a recorder for Wi-Fi configuration" %>
+          <% wifi_configuration_label = @default_wifi_configuration_fdr ? "Configure Wi-Fi for #{@default_wifi_configuration_fdr.display_name} · #{@default_wifi_configuration_fdr.technical_reference}" : "Select a recorder for Wi-Fi configuration" %>
           <%= link_to wifi_configuration_url,
             class: "signal-fdr-wifi-settings-link",
             title: wifi_configuration_label,
@@ -150,6 +152,7 @@
         <div class="signal-fdr-device-row">
           <strong data-fdr-connectivity-target="wifiDevice">No recorder detected</strong>
         </div>
+        <small class="signal-fdr-technical" data-fdr-connectivity-target="wifiIdentityDetail" hidden></small>
         <div class="signal-fdr-transport-notice" data-fdr-connectivity-target="wifiNotice" data-state="status" role="status" hidden>
           <span class="signal-fdr-transport-notice-label" data-fdr-connectivity-target="wifiNoticeLabel">Automatic connection</span>
           <small class="signal-fdr-transport-message" data-fdr-connectivity-target="wifiDetail" hidden></small>
@@ -217,6 +220,10 @@
           <span data-fdr-connectivity-target="recorderDevice">—</span>
           <span class="signal-fdr-firmware" data-fdr-connectivity-target="recorderFirmwareGroup" hidden>(<span data-fdr-connectivity-target="recorderFirmware">—</span>)</span>
         </dd>
+      </div>
+      <div>
+        <dt>ECU</dt>
+        <dd data-fdr-connectivity-target="recorderEcu">—</dd>
       </div>
       <div>
         <dt>Synchronization</dt>

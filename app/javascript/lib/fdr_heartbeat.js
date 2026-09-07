@@ -86,7 +86,7 @@ export function normalizeSillageHeartbeatDiagnostics(diagnostics = {}) {
   }
 }
 
-/** @param {{recorder?: {device_id?: string, firmware?: string, model?: string}}} heartbeat */
+/** @param {{recorder?: {device_id?: string, firmware?: string, model?: string, assembly?: import("../types/recorder").RecorderAssembly|null}}} heartbeat */
 export function sillageHeartbeatIdentity(heartbeat) {
   const recorder = heartbeat?.recorder || {}
   const deviceId = String(recorder.device_id || "").trim().toUpperCase()
@@ -94,6 +94,7 @@ export function sillageHeartbeatIdentity(heartbeat) {
 
   return {
     deviceId,
+    assembly: recorder.assembly,
     firmware: recorder.firmware,
     model: recorder.model
   }

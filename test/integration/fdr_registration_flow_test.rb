@@ -27,7 +27,8 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :created
     recorder = EmbeddedController.find_by!(device_id: "ECU-ABC123")
-    assert_equal "ECU-ABC123", recorder.display_name
+    assert_equal "Unassigned ECU", recorder.display_name
+    assert_nil response.parsed_body.dig("recorder", "assembly")
     assert_equal "XIAO ESP32S3", recorder.device_model
     assert_equal "fdr_integrated/26", recorder.last_seen_firmware
     assert_equal 42, recorder.mavlink_system_id
@@ -43,7 +44,7 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
 
     get connectivity_forge_fdr_path(recorder)
     assert_response :success
-    assert_select "h2", text: /#{recorder.device_id}/
+    assert_select "h2", text: "Unassigned ECU"
     assert_select ".fdr-connectivity-heading", text: /ECU-ABC123/
     assert_select ".fdr-connectivity-heading", text: /XIAO ESP32S3/
   end
@@ -140,6 +141,7 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
     assert response.parsed_body.fetch("registered")
     assert_equal recorder.assembly.internal_number, response.parsed_body.dig("recorder", "internal_number")
     assert_equal recorder.assembly.serial_number, response.parsed_body.dig("recorder", "serial_number")
+    assert_equal recorder.recorder_identity[:assembly].stringify_keys, response.parsed_body.dig("recorder", "assembly")
     assert_equal "FDR-V0-PERF-01", response.parsed_body.dig("recorder", "hardware_definition")
     assert_equal recorder.part.internal_number, response.parsed_body.dig("recorder", "controller_part_internal_number")
     assert_equal connectivity_forge_fdr_path(recorder), response.parsed_body.dig("recorder", "connectivity_url")
