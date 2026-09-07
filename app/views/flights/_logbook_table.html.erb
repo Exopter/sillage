@@ -5,7 +5,9 @@
       <p>Prepare a flight, acquire it live, or import data from the field.</p>
     </div>
     <%= form_with url: flights_path, method: :get, class: "flights-search" do |form| %>
+      <%= form.hidden_field :filter, value: @filter || "flights" %>
       <label class="search-control">
+        <span class="sr-only">Search flights and recordings</span>
         <%= sillage_icon "search", size: 16 %>
         <%= form.search_field :q, value: local_assigns[:query], placeholder: "Search flight, aircraft, location", autocomplete: "off" %>
       </label>
@@ -18,11 +20,34 @@
     <% end %>
   </header>
 
-  <div class="flights-table-wrap">
+  <nav class="workspace-tabs workspace-segmented-tabs" aria-label="Flights filters">
+    <% { "flights" => "Flights", "set_aside" => "Set aside", "all" => "All" }.each do |value, label| %>
+      <%= link_to label, flights_path(filter: value, q: local_assigns[:query].presence),
+        class: ["workspace-tab", ("is-active" if (@filter || "flights") == value)],
+        aria: { current: ((@filter || "flights") == value ? "page" : nil) } %>
+    <% end %>
+  </nav>
+
+  <%= form_with url: bulk_destroy_flights_path, method: :delete, class: "flights-table-wrap",
+    data: { controller: "table-selection", action: "submit->table-selection#submit turbo:before-cache@document->table-selection#reset" } do |form| %>
+    <%= form.hidden_field :filter, value: @filter || "flights", id: nil %>
+    <%= form.hidden_field :q, value: local_assigns[:query], id: nil %>
+    <div class="exds-selection-toolbar" role="group" aria-label="Selection actions">
+      <span role="status" aria-live="polite" data-table-selection-target="count">0 selected</span>
+      <button type="button" class="button-secondary" disabled data-table-selection-target="clear" data-action="table-selection#reset">Clear selection</button>
+      <button type="submit" class="button-danger" disabled data-table-selection-target="delete"><%= sillage_icon "trash", size: 16 %> Delete selected</button>
+    </div>
+    <div class="flights-table-scroll">
     <table class="flights-table">
       <thead>
         <tr>
-          <th>Flight</th>
+          <th scope="col">
+            <label class="flights-selection-checkbox">
+              <input type="checkbox" data-table-selection-target="all" data-action="change->table-selection#toggleAll">
+              <span class="sr-only">Select all entries on this page</span>
+            </label>
+          </th>
+          <th>Flight / recording</th>
           <th>Aircraft</th>
           <th>Location</th>
           <th>Date</th>
@@ -34,24 +59,36 @@
       </thead>
       <tbody>
         <% flights.each do |flight| %>
+          <% if flight.is_a?(FlightImport) %>
+            <%= render "flights/recording_row", flight_import: flight %>
+            <% next %>
+          <% end %>
           <% status_state, status_label = logbook_status(flight) %>
           <tr
             class="flights-row <%= "is-preparation" if flight.preparation? %>"
-            role="link"
-            tabindex="0"
             data-controller="row-link"
             data-row-link-url-value="<%= flight_path(flight) %>"
-            data-action="click->row-link#open keydown->row-link#openWithKeyboard">
-            <td><%= link_to flight.code, flight, class: "flights-code" %></td>
-            <td><strong class="flights-data"><%= flight.aircraft&.registration || "To complete" %></strong></td>
-            <td><%= flight.display_location %></td>
-            <td class="flights-muted flights-data"><%= logbook_date(flight) %></td>
-            <td class="flights-data"><%= duration(flight.duration_seconds) %></td>
+            data-action="click->row-link#open">
             <td>
-              <span class="flights-source">
-                <%= sillage_icon(flight.flight_import&.import_type == "flysight" ? "flysight" : flight.flight_import ? "exopter" : flight.live? ? "radio" : "clock", size: 14) %>
-                <%= flight.flight_import&.import_type&.then { |type| type == "exofdr" ? "ExoFDR" : "FlySight" } || (flight.live? ? "Live session" : "No data yet") %>
-              </span>
+              <label class="flights-selection-checkbox">
+                <input type="checkbox" name="entries[]" value="flight:<%= flight.id %>" data-table-selection-target="item" data-action="change->table-selection#update">
+                <span class="sr-only">Select <%= flight.code %></span>
+              </label>
+            </td>
+            <td><%= link_to flight.code, flight, class: "flights-code" %></td>
+            <td><strong class="flights-data"><%= logbook_value(flight.aircraft&.registration) %></strong></td>
+            <td><%= logbook_value(flight.location) %></td>
+            <td class="flights-muted flights-data"><%= logbook_date(flight) %></td>
+            <td class="flights-data"><%= logbook_duration(flight.duration_seconds) %></td>
+            <td>
+              <% if flight.flight_import || flight.live? %>
+                <span class="flights-source">
+                  <%= sillage_icon(flight.flight_import&.import_type == "flysight" ? "flysight" : flight.flight_import ? "exopter" : "radio", size: 14) %>
+                  <%= flight.flight_import&.import_type&.then { |type| type == "exofdr" ? "ExoFDR" : "FlySight" } || "Live session" %>
+                </span>
+              <% else %>
+                <%= logbook_value(nil) %>
+              <% end %>
             </td>
             <td><span class="status-dot is-<%= status_state %>"><span></span><%= status_label %></span></td>
             <td class="flights-open"><%= link_to sillage_icon("chevron-right", size: 16), flight, aria: { label: "Open #{flight.code}" } %></td>
@@ -59,6 +96,9 @@
         <% end %>
       </tbody>
     </table>
-    <% if flights.empty? %><div class="workspace-empty">No flight yet.</div><% end %>
-  </div>
+    <% if flights.empty? %>
+      <div class="workspace-empty"><%= local_assigns[:query].present? ? "No matching flights or recordings." : @filter == "set_aside" ? "No recordings set aside." : "No flight or recording yet." %></div>
+    <% end %>
+    </div>
+  <% end %>
 </section>

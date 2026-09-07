@@ -71,7 +71,7 @@ en:
       samples: "Samples"
       danger: "Delete"
       delete: "Delete this flight"
-      confirm_delete: "Delete this flight permanently?"
+      confirm_delete: "Permanently delete this flight, its recording data, captures and videos?"
     video:
       title: "Synced video"
       hint: "Upload a video, move the playhead to the exit, then mark that point to align video playback with the FlySight data."

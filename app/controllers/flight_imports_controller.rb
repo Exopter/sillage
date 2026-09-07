@@ -29,6 +29,24 @@ class FlightImportsController < ApplicationController
     @flights = @flight_import.flights.recent
   end
 
+  def include_in_flights
+    flight_import = Current.user.flight_imports.where(import_type: "exofdr").find(params[:id])
+    flight_import.include_in_flights!
+    redirect_to flight_import, notice: "Recording included in Flights."
+  rescue ExoFdr::Error => error
+    redirect_to flight_import, alert: error.message
+  rescue ActiveJob::EnqueueError
+    redirect_to flight_import, alert: "The recording could not be queued. Please try again."
+  end
+
+  def destroy
+    flight_import = Current.user.flight_imports.find(params[:id])
+    Flights::DeleteRecording.new(flight_import:).call
+    redirect_to flights_path, notice: "Recording deleted."
+  rescue ActiveJob::EnqueueError
+    redirect_to flight_import, alert: "The recording could not be deleted. Please try again."
+  end
+
   private
 
   def source_files

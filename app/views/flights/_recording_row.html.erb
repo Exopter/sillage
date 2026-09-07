@@ -1,0 +1,22 @@
+<% status_state, status_label = recording_logbook_status(flight_import) %>
+<tr class="flights-row"
+    data-controller="row-link" data-row-link-url-value="<%= flight_import_path(flight_import) %>"
+    data-action="click->row-link#open">
+  <td>
+    <label class="flights-selection-checkbox">
+      <input type="checkbox" name="entries[]" value="import:<%= flight_import.id %>" data-table-selection-target="item" data-action="change->table-selection#update">
+      <span class="sr-only">Select <%= flight_import.source_filename.presence || "recording #{flight_import.id}" %></span>
+    </label>
+  </td>
+  <td><%= link_to flight_import.source_filename.presence || "Recording", flight_import, class: "flights-code" %></td>
+  <td><strong class="flights-data"><%= logbook_value(flight_import.aircraft&.registration) %></strong></td>
+  <td><%= logbook_value(nil) %></td>
+  <td class="flights-muted flights-data"><%= logbook_date(flight_import) %></td>
+  <td class="flights-data"><%= logbook_duration(flight_import.activity_summary["duration_seconds"] || flight_import.details.to_h["duration_seconds"]) %></td>
+  <td><span class="flights-source"><%= sillage_icon(flight_import.import_type == "exofdr" ? "exopter" : "flysight", size: 14) %><%= flight_import.import_type == "exofdr" ? "ExoFDR" : "FlySight" %></span><% if flight_import.device_id.present? %><span class="flights-cell-note"><%= flight_import.device_id %></span><% end %></td>
+  <td>
+    <span class="status-dot is-<%= status_state %>"><span></span><%= status_label %></span>
+    <% if flight_import.activity_classification.present? %><span class="flights-cell-note"><%= recording_activity_reason(flight_import) %></span><% end %>
+  </td>
+  <td class="flights-open"><%= link_to sillage_icon("chevron-right", size: 16), flight_import, aria: { label: "Open #{flight_import.source_filename}" } %></td>
+</tr>

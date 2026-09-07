@@ -3,8 +3,21 @@ module MetricsHelper
     flight.code
   end
 
-  def logbook_date(flight)
-    flight.display_started_at&.strftime("%d %b · %H:%M") || "Date unknown"
+  def logbook_value(value)
+    return value if value.present?
+
+    content_tag(:span, class: "flights-muted flights-data") do
+      safe_join([ tag.span("—", aria: { hidden: true }), tag.span("Data unavailable", class: "sr-only") ])
+    end
+  end
+
+  def logbook_date(entry)
+    timestamp = entry.is_a?(FlightImport) ? entry.log_started_at : entry.display_started_at
+    logbook_value(timestamp&.strftime("%d %b · %H:%M"))
+  end
+
+  def logbook_duration(value)
+    logbook_value(value.present? ? duration(value) : nil)
   end
 
   def logbook_status(flight)
@@ -15,18 +28,20 @@ module MetricsHelper
     return [ "caution", "Review" ] if flight.review?
     return [ "live", "Processing" ] if flight.video_processing?
     return [ "fault", "Video fault" ] if flight.video_failed?
+    return [ "fault", "Source missing" ] if flight.flight_import&.source_missing?
+    return [ "caution", "Needs review" ] if flight.flight_import&.needs_activity_review?
 
     [ "ready", "Analysed" ]
   end
 
   def meters(value)
-    return "-" if value.blank?
+    return "—" if value.blank?
 
     number_to_human(value, units: { unit: "m", thousand: "km" }, precision: 3)
   end
 
   def duration(value)
-    return "-" if value.blank?
+    return "—" if value.blank?
 
     minutes = value.to_i / 60
     seconds = value.to_i % 60
@@ -34,7 +49,7 @@ module MetricsHelper
   end
 
   def glide(value)
-    return "-" if value.blank?
+    return "—" if value.blank?
 
     number_with_precision(value, precision: 2)
   end

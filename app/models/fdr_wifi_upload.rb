@@ -19,7 +19,7 @@ class FdrWifiUpload < ApplicationRecord
   belongs_to :flight_import, optional: true
 
   before_validation :assign_token, on: :create
-  after_destroy :purge_staged_file
+  after_destroy_commit :purge_staged_file
 
   validates :token, presence: true, uniqueness: true, format: { with: TOKEN_PATTERN }
   validates :status, inclusion: { in: STATUSES }

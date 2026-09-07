@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_07_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_07_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -69,7 +69,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_120000) do
     t.index ["fdr_functional_configuration_id"], name: "index_assemblies_on_fdr_functional_configuration_id"
     t.index ["internal_number"], name: "index_assemblies_on_internal_number", unique: true
     t.index ["parent_id"], name: "index_assemblies_on_parent_id"
-    t.check_constraint "assembly_type IS NULL OR assembly_type::text = 'ExoFDR'::text AND fdr_functional_configuration_id IS NOT NULL AND (assembly_method::text = ANY (ARRAY['PERF'::character varying, 'PCB'::character varying]::text[])) AND serial_number IS NOT NULL AND name::text = serial_number::text", name: "assemblies_exofdr_identity"
+    t.check_constraint "assembly_type IS NULL OR assembly_type::text = 'ExoFDR'::text AND fdr_functional_configuration_id IS NOT NULL AND (assembly_method::text = ANY (ARRAY['PERF'::character varying::text, 'PCB'::character varying::text])) AND serial_number IS NOT NULL AND name::text = serial_number::text", name: "assemblies_exofdr_identity"
   end
 
   create_table "asset_identifiers", force: :cascade do |t|
@@ -204,6 +204,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_120000) do
   end
 
   create_table "flight_imports", force: :cascade do |t|
+    t.string "activity_classification"
+    t.jsonb "activity_summary", default: {}, null: false
     t.bigint "aircraft_id"
     t.datetime "created_at", null: false
     t.json "details"
@@ -211,6 +213,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_120000) do
     t.text "error_message"
     t.string "firmware_version"
     t.string "import_type", default: "flysight", null: false
+    t.datetime "included_in_flights_at"
     t.datetime "log_started_at"
     t.string "session_id"
     t.string "source_filename"
@@ -224,8 +227,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_120000) do
     t.index ["session_id"], name: "index_flight_imports_on_session_id"
     t.index ["status"], name: "index_flight_imports_on_status"
     t.index ["target_flight_id"], name: "index_flight_imports_on_target_flight_id"
+    t.index ["user_id", "activity_classification"], name: "index_flight_imports_on_user_id_and_activity_classification"
     t.index ["user_id", "source_sha256"], name: "index_flight_imports_on_user_and_source_sha256", unique: true, where: "(source_sha256 IS NOT NULL)"
     t.index ["user_id"], name: "index_flight_imports_on_user_id"
+    t.check_constraint "activity_classification::text = ANY (ARRAY['moving'::character varying, 'stationary'::character varying, 'technical'::character varying, 'needs_review'::character varying]::text[])", name: "flight_imports_activity_classification"
   end
 
   create_table "flights", force: :cascade do |t|

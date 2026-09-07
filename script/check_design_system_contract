@@ -4,6 +4,8 @@
 require "set"
 
 ROOT = File.expand_path("..", __dir__)
+selection_toolbar = File.join(ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(ROOT, "..", "design_system")), "components/data/SelectionToolbar.css")
+abort "SelectionToolbar CSS differs from the shared component." unless File.binread(selection_toolbar) == File.binread(File.join(ROOT, "app/assets/stylesheets/selection_toolbar.css"))
 VIEW_GLOB = File.join(ROOT, "app/views/**/*.erb")
 RUBY_GLOBS = [ File.join(ROOT, "app/helpers/**/*.rb") ].freeze
 JAVASCRIPT_GLOB = File.join(ROOT, "app/javascript/**/*.js")

@@ -5,12 +5,11 @@ class FlightsController < ApplicationController
 
   def index
     @query = params[:q].to_s.strip
-    @flights = Current.user.flights.recent.includes(:flight_import, :aircraft)
-    if @query.present?
-      pattern = "%#{Flight.sanitize_sql_like(@query)}%"
-      @flights = @flights.where("flights.name LIKE :pattern OR flights.location LIKE :pattern", pattern:)
-    end
-    @flights = paginate(@flights)
+    @filter = params[:filter].presence_in(Flights::Logbook::FILTERS) || "flights"
+    @page = [ params[:page].to_i, 1 ].max
+    entries = Flights::Logbook.new(user: Current.user, filter: @filter, query: @query).page(@page)
+    @next_page = @page + 1 if entries.size > Flights::Logbook::PER_PAGE
+    @flights = entries.first(Flights::Logbook::PER_PAGE)
   end
 
   def new
@@ -80,11 +79,26 @@ class FlightsController < ApplicationController
   end
 
   def destroy
-    @flight.destroy!
+    Flights::DeleteRecording.new(flight: @flight).call
     redirect_to flights_path, notice: t(".success")
+  rescue ActiveJob::EnqueueError
+    redirect_to @flight, alert: "The flight could not be deleted. Please try again."
+  end
+
+  def bulk_destroy
+    count = Flights::DeleteSelection.new(user: Current.user, entries: params[:entries]).call
+    redirect_to selection_return_path, status: :see_other, notice: "#{count} #{'entry'.pluralize(count)} deleted."
+  rescue Flights::DeleteSelection::InvalidSelection => error
+    redirect_to selection_return_path, status: :see_other, alert: error.message
+  rescue ActiveJob::EnqueueError
+    redirect_to selection_return_path, status: :see_other, alert: "The selection could not be deleted. Please try again."
   end
 
   private
+
+  def selection_return_path
+    flights_path(filter: params[:filter].presence_in(Flights::Logbook::FILTERS) || "flights", q: params[:q].to_s.strip.presence)
+  end
 
   def set_flight
     @flight = Current.user.flights.find(params[:id])

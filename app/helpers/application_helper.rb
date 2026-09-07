@@ -130,7 +130,7 @@ module ApplicationHelper
 
   def sillage_current_flight_tab
     return "hud" if controller_name == "dashboard" && action_name == "hud"
-    return "prep" if controller_name == "flight_imports"
+    return "prep" if controller_name == "flight_imports" && %w[new create].include?(action_name)
     return "replay" if controller_name == "flights" && action_name == "show"
 
     "logbook"

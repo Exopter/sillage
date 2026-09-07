@@ -3,6 +3,7 @@ class FdrWifiUploadFinalizeJob < ApplicationJob
 
   queue_as :imports
   self.enqueue_after_transaction_commit = false
+  discard_on ActiveJob::DeserializationError
 
   def perform(upload)
     upload.with_lock do

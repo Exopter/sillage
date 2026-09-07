@@ -30,6 +30,8 @@ module ExoFdr
       ).call do
         import!
       end
+      FdrRecordingActivityJob.perform_later(@flight_import) if @flight_import.activity_classification == "moving"
+      @flight_import
     end
 
     private
@@ -46,34 +48,40 @@ module ExoFdr
         [ boot_id, FdrRecording.create_or_find_by!(user: @flight_import.user, recorder_key:, boot_id:) ]
       end
       recordings.values.uniq.sort_by(&:id).each(&:lock!)
-      @flight_import.flights.where.not(id: @flight_import.target_flight_id).destroy_all
-      blobs.zip(headers).each.with_index(1) do |(blob, header), index|
-        files << import_file(blob, header, recordings.fetch(header.fetch("boot_id")), index)
+      sources = []
+      blobs.zip(headers).each do |blob, header|
+        sources << decode_source(blob, header)
+      end
+      activity = RecordingActivity.new(@flight_import).summarize(sources.map { |source| source.fetch(:activity) })
+      @flight_import.update!(activity_classification: activity.fetch("classification"), activity_summary: activity)
+      set_aside = @flight_import.automatically_set_aside?
+      @flight_import.flights.where.not(id: @flight_import.target_flight_id).destroy_all unless set_aside
+      sources.each.with_index(1) do |source, index|
+        header = source.fetch(:header)
+        files << import_file(source, recordings.fetch(header.fetch("boot_id")), index, set_aside:)
       end
       @flight_import.update!(
         status: "imported",
         firmware_version: headers.first["firmware"],
-        log_started_at: @first_started_at,
+        log_started_at: sources.first&.fetch(:clock)&.started_at,
         details: @flight_import.details.to_h.merge(
-          "format" => "exofdr_binary_v#{headers.first.fetch('format_version')}", "files" => files
+          "format" => "exofdr_binary_v#{headers.first.fetch('format_version')}", "files" => files,
+          "ignored" => set_aside, "duration_seconds" => activity.fetch("duration_seconds")
         )
       )
     ensure
+      sources&.each { |source| source.fetch(:records).close }
       @seen_sequences&.each_value(&:close)
     end
 
-    def import_file(blob, header, recording, index)
+    def decode_source(blob, header)
       records = FlightImports::SampleBuffer.new(symbolize_keys: false)
-      points = FlightImports::SampleBuffer.new
-      sensors = FlightImports::SampleBuffer.new
       sync = @flight_import.details.to_h["sync"]
-      min_us = max_us = nil
       clock = RecordingClock.new
+      assessment = ActivityAssessment.new
       observe = lambda do |record|
         clock.observe(record)
-        timestamp = record.fetch("timestamp_us")
-        min_us = timestamp if !min_us || timestamp < min_us
-        max_us = timestamp if !max_us || timestamp > max_us
+        assessment.observe(record)
       end
       stats = blob.open do |io|
         decoder = Decoder.new(io, recover: !sync, source_file: blob.filename.to_s,
@@ -84,39 +92,45 @@ module ExoFdr
       if sync && %w[skipped_bytes partial_tail_bytes].any? { |key| stats.fetch(key).positive? }
         raise Error, "The synchronized ExoFDR file contains damaged or truncated data."
       end
-      duration = min_us ? (max_us - min_us) / 1_000_000.0 : 0.0
-      if sync && duration < FdrSync::Ingest::MIN_RECORDING_DURATION_SECONDS
-        @flight_import.update!(details: @flight_import.details.merge("ignored" => true, "duration_seconds" => duration))
-        return { "filename" => blob.filename.to_s, "source_blob_id" => blob.id, "header" => header, "recovery" => stats }
-      end
+      activity = assessment.result(stats:).merge("boot_id" => header.fetch("boot_id"), "filename" => blob.filename.to_s)
+      { blob:, header:, records:, clock:, stats:, activity: }
+    rescue StandardError
+      records&.close
+      raise
+    end
+
+    def import_file(source, recording, index, set_aside:)
+      blob, header, records, clock, stats = source.values_at(:blob, :header, :records, :clock, :stats)
       started_at = clock.started_at
-      @first_started_at = started_at if index == 1
-      if sync
+      if @flight_import.details.to_h["sync"]
         resolution = FdrIdentity::Resolve.new(@flight_import.device_id, at: started_at).call
         @flight_import.update!(aircraft: resolution.aircraft)
       end
-      origin_us = clock.origin_us.to_i
-      records.each_slice(FlightImports::FlightWriter::INSERT_BATCH_SIZE) do |batch|
-        unique = unreplayed_records(batch, recording)
-        stats["duplicate_records"] += batch.size - unique.size
-        batch_points, batch_sensors = records_to_samples(unique, recording:, blob:, origin_us:, recording_started_at: started_at)
-        batch_points.each { |point| points << point }
-        batch_sensors.each { |sample| sensors << sample }
-      end
-      if !points.empty? || !sensors.empty?
-        FlightImports::FlightWriter.new(
-          flight_import: @flight_import,
-          name: [ "ExoFDR", started_at&.in_time_zone&.strftime("%Y-%m-%d %H:%M") || "session #{index}" ].join(" "),
-          started_at:, track_points: points, sensor_samples: sensors, replace_target: index == 1
-        ).call
+      unless set_aside
+        points = FlightImports::SampleBuffer.new
+        sensors = FlightImports::SampleBuffer.new
+        origin_us = clock.origin_us.to_i
+        records.each_slice(FlightImports::FlightWriter::INSERT_BATCH_SIZE) do |batch|
+          unique = unreplayed_records(batch, recording)
+          stats["duplicate_records"] += batch.size - unique.size
+          batch_points, batch_sensors = records_to_samples(unique, recording:, blob:, origin_us:, recording_started_at: started_at)
+          batch_points.each { |point| points << point }
+          batch_sensors.each { |sample| sensors << sample }
+        end
+        if !points.empty? || !sensors.empty?
+          FlightImports::FlightWriter.new(
+            flight_import: @flight_import,
+            name: [ "ExoFDR", started_at&.in_time_zone&.strftime("%Y-%m-%d %H:%M") || "session #{index}" ].join(" "),
+            started_at:, track_points: points, sensor_samples: sensors, replace_target: index == 1
+          ).call
+        end
       end
       identity = if started_at && @flight_import.device_id.present?
         EmbeddedController.find_by(device_id: @flight_import.device_id)&.recorder_identity(at: started_at)&.slice(:device_id, :assembly)
       end
       { "filename" => blob.filename.to_s, "source_blob_id" => blob.id, "header" => header, "recovery" => stats,
-        "recorder_identity" => identity }
+        "activity" => source.fetch(:activity), "recorder_identity" => identity }
     ensure
-      records&.close
       points&.close
       sensors&.close
     end

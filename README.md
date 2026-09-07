@@ -80,6 +80,13 @@ is single-threaded and results are cached before being persisted on the flight.
 
 ## Recording imports
 
+After migrating an existing installation, classify retained ExoFDR sources with
+`bin/rails runner 'puts ExoFdr::BackfillActivity.new.call.to_json'`.
+This idempotent backfill changes classification metadata only; existing flights,
+samples and attachments remain intact. Missing sources stay visible for review.
+It does not run from page reads. Related recording boundaries can then be reconciled
+with `bin/rails runner 'FlightImport.where(activity_classification: "moving").find_each { |entry| FdrRecordingActivityJob.perform_later(entry) }'`.
+
 Imports use the dedicated `imports` queue. USB synchronization first stores a
 SHA-256-verified source and a queued receipt; the browser polls that receipt and
 acknowledges the recorder only after successful validation/import. Wi-Fi

@@ -14,6 +14,8 @@
   <strong class="status <%= @flight_import.status %>"><%= t("imports.status.#{@flight_import.status}") %></strong>
 </section>
 
+<%= render "flight_imports/recording_activity", flight_import: @flight_import %>
+
 <section class="flight-readiness-strip compact" aria-label="<%= t("flight_lab.import_status_label") %>">
   <div>
     <span><%= t("flight_lab.import_state") %></span>
@@ -57,4 +59,11 @@
     <h2><%= t("imports.show.flights") %></h2>
   </div>
   <%= render "flights/list", flights: @flights %>
+</section>
+
+<section class="workspace-panel">
+  <h2>Delete recording</h2>
+  <p>Permanently delete this recording and its flights, measurements, captures and videos.</p>
+  <%= button_to "Delete recording", flight_import_path(@flight_import), method: :delete,
+    class: "button-danger", form: { data: { turbo_confirm: "Permanently delete this recording and all its flight data?" } } %>
 </section>

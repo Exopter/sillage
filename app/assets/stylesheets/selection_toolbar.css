@@ -1,0 +1,19 @@
+.exds-selection-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface-panel);
+  border-bottom: 1px solid var(--border-rule);
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 12px;
+}
+
+.exds-selection-toolbar > [role="status"] {
+  flex: 1;
+  min-width: 8ch;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}

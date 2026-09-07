@@ -51,6 +51,9 @@
       <span><%= @flight.name %></span>
     </div>
     <span class="mode-badge is-neutral">Replay</span>
+    <% if @flight.flight_import %>
+      <%= link_to "Recording details", flight_import_path(@flight.flight_import), class: "button-secondary" %>
+    <% end %>
   </header>
 
   <div class="flight-replay-content">

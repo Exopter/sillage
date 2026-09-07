@@ -19,7 +19,7 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
     assert_nil flight.started_at
     assert_nil flight.ended_at
     assert_nil flight.display_started_at
-    assert_equal "Date unknown", ApplicationController.helpers.logbook_date(flight)
+    assert_includes ApplicationController.helpers.logbook_date(flight), "Data unavailable"
     flight_import.update!(log_started_at: Time.utc(2026, 7, 29))
     assert_nil flight.reload.display_started_at, "a timestamp from another source segment must not date this flight"
     assert_equal [ 0, 5, 10 ], flight.track_points.ordered.pluck(:elapsed_seconds)

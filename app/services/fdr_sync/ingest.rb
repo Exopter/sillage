@@ -4,7 +4,6 @@ module FdrSync
   class Ingest
     Result = Data.define(:flight_import, :duplicate, :sha256)
 
-    MIN_RECORDING_DURATION_SECONDS = 5.0
     FILENAME_PATTERN = /\AFDR\d{6}\.BIN\z/i
     SHA256_PATTERN = /\A[0-9a-f]{64}\z/
 

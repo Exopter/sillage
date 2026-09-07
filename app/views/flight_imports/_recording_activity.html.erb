@@ -1,0 +1,24 @@
+<% if flight_import.import_type == "exofdr" %>
+  <section class="workspace-panel" aria-label="Recording activity">
+    <h2><%= recording_activity_label(flight_import) %></h2>
+    <p><%= recording_activity_reason(flight_import) %></p>
+    <% if flight_import.set_aside? %>
+      <p>This recording is set aside in Flights. Its original file is retained.</p>
+    <% elsif flight_import.included_in_flights_at? %>
+      <p>Your decision to include this recording takes precedence over automatic classification.</p>
+    <% end %>
+    <div class="workspace-actions">
+      <%= link_to "Back to Flights", flights_path(filter: flight_import.set_aside? ? "set_aside" : "flights"), class: "button-secondary" %>
+      <% if !flight_import.source_missing? && flight_import.imported? && !flight_import.included_in_flights_at? && flight_import.activity_classification != "moving" %>
+        <%= button_to "Include in flights", include_in_flights_flight_import_path(flight_import), class: "button-primary" %>
+      <% elsif !flight_import.source_missing? && flight_import.failed? && flight_import.included_in_flights_at? && flight_import.flights.empty? %>
+        <%= button_to "Retry import", include_in_flights_flight_import_path(flight_import), class: "button-primary" %>
+      <% end %>
+      <% unless flight_import.source_missing? %>
+        <% flight_import.source_files.each do |source| %>
+          <%= link_to "Download #{source.filename}", rails_blob_path(source, disposition: "attachment"), class: "button-secondary" %>
+        <% end %>
+      <% end %>
+    </div>
+  </section>
+<% end %>
