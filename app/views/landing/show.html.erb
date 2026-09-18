@@ -22,52 +22,20 @@
 
   <main>
     <section class="landing-hero" aria-labelledby="landing-hero-title">
-      <div class="landing-grid" aria-hidden="true"></div>
-      <div class="landing-hero-wing" aria-hidden="true">
-        <svg class="landing-wing-svg" viewBox="0 0 1200 520">
-          <defs>
-            <linearGradient id="landingHeroWing" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#26332f"></stop>
-              <stop offset="1" stop-color="#0c1315"></stop>
-            </linearGradient>
-          </defs>
-          <line x1="600" y1="36" x2="600" y2="486" stroke="var(--landing-accent)" stroke-width="1" stroke-dasharray="2 7" opacity=".38"></line>
-          <path d="M600,72 C762,84 948,150 1092,248 C1101,256 1101,270 1089,279 C940,300 772,366 600,436 C428,366 260,300 111,279 C99,270 99,256 108,248 C252,150 438,84 600,72 Z" fill="url(#landingHeroWing)" stroke="#3a4a4c" stroke-width="1.5"></path>
-          <path d="M600,96 C652,104 672,150 672,210 C672,300 645,392 600,452 C555,392 528,300 528,210 C528,150 548,104 600,96 Z" fill="none" stroke="#4a5a5c" stroke-width="1.2" opacity=".85"></path>
-          <path d="M600,72 C762,84 948,150 1092,248" fill="none" stroke="var(--landing-accent)" stroke-width="1.6" opacity=".7"></path>
-          <path d="M600,72 C438,84 252,150 108,248" fill="none" stroke="var(--landing-accent)" stroke-width="1.6" opacity=".7"></path>
-          <g stroke="#46585a" stroke-width="1" stroke-dasharray="3 5" opacity=".7">
-            <line x1="300" y1="150" x2="300" y2="345"></line>
-            <line x1="450" y1="120" x2="450" y2="408"></line>
-            <line x1="750" y1="120" x2="750" y2="408"></line>
-            <line x1="900" y1="150" x2="900" y2="345"></line>
-          </g>
-          <line x1="1089" y1="279" x2="1112" y2="318" stroke="#3a4a4c" stroke-width="3"></line>
-          <line x1="111" y1="279" x2="88" y2="318" stroke="#3a4a4c" stroke-width="3"></line>
-          <g fill="var(--landing-accent)">
-            <circle cx="600" cy="72" r="3"></circle>
-            <circle cx="1089" cy="279" r="3"></circle>
-            <circle cx="111" cy="279" r="3"></circle>
-            <circle cx="600" cy="452" r="3"></circle>
-          </g>
-        </svg>
-        <div class="landing-scan-line"></div>
-      </div>
-      <div class="landing-reticle" aria-hidden="true">
-        <span></span>
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
-
-      <div class="landing-container landing-hero-copy">
-        <span class="landing-kicker">Personal rigid-wing flight system</span>
-        <h1 id="landing-hero-title">Human flight, <span>next generation.</span></h1>
-        <p class="landing-lede">A rigid carbon wing engineered for precision and control, instrumented end to end, assisted in the air, and exploited on the ground through Sillage.</p>
-        <div class="landing-hero-actions">
-          <a class="landing-button is-primary" href="#engagement">Request a technical brief</a>
-          <a class="landing-button" href="#airframe">Explore the system</a>
+      <div class="landing-container landing-hero-layout">
+        <div class="landing-hero-copy">
+          <span class="landing-kicker">Personal rigid-wing flight system</span>
+          <h1 id="landing-hero-title">Human flight, <span>next generation.</span></h1>
+          <p class="landing-lede">A rigid carbon wing engineered for precision and control, instrumented end to end, assisted in the air, and exploited on the ground through Sillage.</p>
+          <div class="landing-hero-actions">
+            <a class="landing-button is-primary" href="#engagement">Request a technical brief</a>
+            <a class="landing-button" href="#airframe">Explore the system</a>
+          </div>
         </div>
+        <figure class="exds-blueprint">
+          <%= image_tag "blueprints/exowing-axonometric.svg", class: "exds-blueprint-image", width: 1200, height: 700, fetchpriority: "high", alt: "Exowing rigid wing and twin ventral fins, shown as a detailed axonometric blueprint" %>
+          <figcaption class="exds-blueprint-caption"><span>EXOWING / V115</span></figcaption>
+        </figure>
       </div>
 
       <div class="landing-hero-meta" aria-label="Program summary">
@@ -118,40 +86,20 @@
 
     <section class="landing-section is-soft" id="airframe" aria-labelledby="airframe-title">
       <div class="landing-container landing-split">
-        <div class="landing-planform" aria-hidden="true">
-          <div class="landing-planform-label">Planform top view 1:12</div>
-          <svg viewBox="0 0 1200 600">
-            <line x1="600" y1="40" x2="600" y2="520" stroke="var(--landing-accent)" stroke-width="1" stroke-dasharray="2 7" opacity=".5"></line>
-            <line x1="50" y1="258" x2="1150" y2="258" stroke="#243133" stroke-width="1" stroke-dasharray="2 6"></line>
-            <path d="M600,76 C762,88 948,154 1092,252 C1101,260 1101,274 1089,283 C940,304 772,370 600,440 C428,370 260,304 111,283 C99,274 99,260 108,252 C252,154 438,88 600,76 Z" fill="#0e1517" stroke="#46585a" stroke-width="1.5"></path>
-            <path d="M600,100 C652,108 672,154 672,214 C672,304 645,396 600,456 C555,396 528,304 528,214 C528,154 548,108 600,100 Z" fill="none" stroke="#3a4a4c" stroke-width="1.2"></path>
-            <g stroke="#2c3a3c" stroke-width="1" stroke-dasharray="4 4">
-              <line x1="300" y1="154" x2="300" y2="349"></line>
-              <line x1="450" y1="124" x2="450" y2="412"></line>
-              <line x1="750" y1="124" x2="750" y2="412"></line>
-              <line x1="900" y1="154" x2="900" y2="349"></line>
-            </g>
-            <path d="M600,76 C762,88 948,154 1092,252" fill="none" stroke="var(--landing-accent)" stroke-width="1.6" opacity=".8"></path>
-            <line x1="1089" y1="283" x2="1116" y2="326" stroke="#46585a" stroke-width="3"></line>
-            <line x1="111" y1="283" x2="84" y2="326" stroke="#46585a" stroke-width="3"></line>
-            <g stroke="var(--landing-accent)" stroke-width="1">
-              <circle cx="600" cy="76" r="3.5" fill="none"></circle>
-              <line x1="600" y1="76" x2="600" y2="44"></line>
-            </g>
-            <text x="610" y="48" font-family="Aptos Mono, monospace" font-size="15" fill="var(--landing-accent)">leading edge sweep 38 deg</text>
-            <g stroke="var(--landing-accent)" stroke-width="1">
-              <circle cx="1089" cy="283" r="3.5" fill="none"></circle>
-              <line x1="1089" y1="283" x2="1146" y2="283"></line>
-            </g>
-            <text x="1006" y="308" font-family="Aptos Mono, monospace" font-size="15" fill="var(--landing-accent)">winglet</text>
-            <g stroke="#71817e" stroke-width="1">
-              <line x1="111" y1="540" x2="1089" y2="540"></line>
-              <line x1="111" y1="530" x2="111" y2="550"></line>
-              <line x1="1089" y1="530" x2="1089" y2="550"></line>
-            </g>
-            <text x="600" y="534" text-anchor="middle" font-family="Aptos Mono, monospace" font-size="15" fill="#97a1a0">b = 2.50 m</text>
-          </svg>
-        </div>
+        <figure class="exds-blueprint">
+          <div class="exds-blueprint-heading"><span>Plan view</span></div>
+          <%= image_tag "blueprints/exowing-plan.svg", class: "exds-blueprint-image", width: 1200, height: 640, loading: "lazy", decoding: "async", alt: "Exowing viewed from above, showing the swept planform and central pilot recess" %>
+          <div class="exds-blueprint-views">
+            <div class="exds-blueprint-view">
+              <span class="exds-blueprint-view-label">Front</span>
+              <%= image_tag "blueprints/exowing-front.svg", class: "exds-blueprint-image", width: 1200, height: 260, loading: "lazy", decoding: "async", alt: "Exowing front elevation with its two fins extending below the wing" %>
+            </div>
+            <div class="exds-blueprint-view">
+              <span class="exds-blueprint-view-label">Profile</span>
+              <%= image_tag "blueprints/exowing-profile.svg", class: "exds-blueprint-image", width: 640, height: 360, loading: "lazy", decoding: "async", alt: "Exowing side profile showing the aerofoil curvature and ventral fin" %>
+            </div>
+          </div>
+        </figure>
 
         <div>
           <span class="landing-eyebrow">The airframe</span>

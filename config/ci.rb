@@ -5,6 +5,7 @@ CI.run do
 
   step "Style: Ruby", "bin/rubocop"
   step "Style: Canonical design-system tokens", "ruby script/sync_design_system_tokens --check"
+  step "Style: Canonical landing assets", "ruby script/sync_landing_assets --check"
   step "Style: Canonical FDR EXS1 contract", "ruby script/sync_fdr_exs1_contract --check"
   step "Style: Design system contract", "ruby script/check_design_system_contract"
   step "Style: No unused CSS selectors", "ruby script/check_unused_css_selectors"

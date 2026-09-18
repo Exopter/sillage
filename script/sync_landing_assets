@@ -1,0 +1,30 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "fileutils"
+
+root = File.expand_path("..", __dir__)
+source_root = File.expand_path(ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(root, "..", "design_system")))
+mode = ARGV.fetch(0, "--check")
+abort "Usage: ruby script/sync_landing_assets [--check|--write]" unless %w[--check --write].include?(mode)
+
+files = {
+  "assets/logo-wordmark.svg" => "app/assets/images/logo-wordmark.svg",
+  "components/illustration/WingBlueprint.css" => "app/assets/stylesheets/wing_blueprint.css"
+}
+%w[axonometric plan front profile].each do |view|
+  files["assets/blueprints/exowing-#{view}.svg"] = "app/assets/images/blueprints/exowing-#{view}.svg"
+end
+
+files.each do |source_path, target_path|
+  source = File.binread(File.join(source_root, source_path))
+  target = File.join(root, target_path)
+  if mode == "--write"
+    FileUtils.mkdir_p(File.dirname(target))
+    File.binwrite(target, source)
+  else
+    abort "Landing asset differs: #{target_path}. Run ruby script/sync_landing_assets --write." unless File.file?(target) && File.binread(target) == source
+  end
+end
+
+puts "Landing assets #{mode == '--write' ? 'synchronized' : 'verified'} against the shared design system."
