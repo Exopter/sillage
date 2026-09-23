@@ -51,7 +51,6 @@
     <div class="flight-replay-title">
       <span><%= @flight.name %></span>
     </div>
-    <span class="mode-badge is-neutral">Replay</span>
     <span class="mode-badge is-neutral"><%= @flight.visibility.capitalize %></span>
   </header>
 
@@ -94,11 +93,11 @@
       </div>
     </section>
 
-    <section class="flight-instrument-panel" aria-labelledby="flight-data-title">
+    <section class="flight-instrument-panel" data-flight-viewer-target="instrumentPanel" aria-labelledby="flight-data-title">
       <div class="flight-section-heading flight-analysis-heading">
         <div>
           <span class="flight-section-kicker">Telemetry</span>
-          <h2 id="flight-data-title">Unified flight data</h2>
+          <h2 id="flight-data-title" data-flight-viewer-target="analysisTitle">Unified flight data</h2>
           <p>Every signal shares one timeline. Select a phase to zoom automatically.</p>
         </div>
         <div class="flight-analysis-toolbar">
@@ -117,31 +116,39 @@
         </div>
       </div>
 
-      <div class="flight-analysis-visuals">
+      <div class="flight-analysis-visuals" data-flight-viewer-target="analysisVisuals">
         <div class="flight-chart-stage">
           <canvas data-flight-viewer-target="unifiedChart" class="unified-analysis-chart" aria-label="Combined flight telemetry chart"></canvas>
         </div>
 
-        <section class="trajectory trajectory-compact" aria-labelledby="trajectory-title">
+        <section class="trajectory trajectory-compact" id="flight-trajectory" aria-labelledby="trajectory-title">
           <div class="trajectory-header">
             <div>
               <span class="flight-section-kicker">Spatial replay</span>
               <h2 id="trajectory-title"><%= t("flights.show.trajectory") %></h2>
             </div>
-            <div class="trajectory-toolbar">
-              <button type="button" class="trajectory-icon-button trajectory-play-button" data-flight-viewer-target="playButton" data-action="flight-viewer#togglePlayback" aria-label="<%= t("flights.charts.play") %>" title="<%= t("flights.charts.play") %>">
-                <span class="play-icon is-play"><%= sillage_icon "play", size: 16 %></span>
-                <span class="play-icon is-pause"><%= sillage_icon "pause", size: 16 %></span>
-              </button>
-              <output data-flight-viewer-target="timeLabel" class="trajectory-time">00:00</output>
+          </div>
+          <div class="trajectory-viewport">
+            <div data-flight-viewer-target="scene" class="trajectory-scene"></div>
+            <div class="trajectory-camera-controls">
               <button type="button" class="trajectory-icon-button" data-action="flight-viewer#resetCamera" aria-label="<%= t("flights.charts.reset_camera") %>" title="<%= t("flights.charts.reset_camera") %>">
                 <%= sillage_icon "rotate-ccw", size: 16 %>
               </button>
+              <button type="button" class="trajectory-icon-button trajectory-expand-button" data-flight-viewer-target="expandButton" data-action="flight-viewer#toggleExpanded" aria-expanded="false" aria-controls="flight-trajectory" aria-label="Expand 3D" title="Expand 3D">
+                <span class="trajectory-expand-icon"><%= sillage_icon "maximize", size: 16 %></span>
+                <span class="trajectory-collapse-icon"><%= sillage_icon "minimize", size: 16 %></span>
+              </button>
             </div>
           </div>
-          <div data-flight-viewer-target="scene" class="trajectory-scene"></div>
           <div data-flight-viewer-target="credits" class="trajectory-credits" aria-label="Map data attribution"></div>
-          <input data-flight-viewer-target="scrubber" data-action="input->flight-viewer#scrub" class="scrubber" type="range" min="0" max="1000" value="0" aria-label="Replay position">
+          <div class="trajectory-playback">
+            <button type="button" class="trajectory-icon-button trajectory-play-button" data-flight-viewer-target="playButton" data-action="flight-viewer#togglePlayback" aria-label="<%= t("flights.charts.play") %>" title="<%= t("flights.charts.play") %>">
+              <span class="play-icon is-play"><%= sillage_icon "play", size: 16 %></span>
+              <span class="play-icon is-pause"><%= sillage_icon "pause", size: 16 %></span>
+            </button>
+            <output data-flight-viewer-target="timeLabel" class="trajectory-time">00:00</output>
+            <input data-flight-viewer-target="scrubber" data-action="input->flight-viewer#scrub" class="scrubber" type="range" min="0" max="1000" value="0" aria-label="Replay position">
+          </div>
         </section>
       </div>
 

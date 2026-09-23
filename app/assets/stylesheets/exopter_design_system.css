@@ -55,4 +55,5 @@
   --ex-shadow-raised: 0 18px 42px rgba(16, 24, 26, 0.12);
   --ex-shadow-panel: 0 10px 28px rgba(16, 24, 26, 0.08);
   --ex-page-width: min(1220px, calc(100vw - 36px)); /* @kind spacing */
+  --ex-analysis-scene-expanded-height: clamp(360px, 55vh, 680px); /* @kind spacing */
 }

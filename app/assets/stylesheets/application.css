@@ -1809,12 +1809,6 @@ body {
   margin: 0;
 }
 
-.trajectory-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 .trajectory-time {
   min-width: 112px;
   color: var(--ex-vapor-50);
@@ -2546,6 +2540,7 @@ body {
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   padding: 9px;
   box-shadow: none;
+  min-width: 0;
 }
 
 .trajectory-compact .trajectory-header {
@@ -2558,10 +2553,6 @@ body {
   letter-spacing: -0.01em;
 }
 
-.trajectory-compact .trajectory-toolbar {
-  gap: 5px;
-}
-
 .trajectory-compact .trajectory-icon-button {
   width: 30px;
   height: 30px;
@@ -2572,10 +2563,103 @@ body {
   font-size: 10px;
 }
 
-.trajectory-compact .trajectory-scene {
-  height: auto;
+.trajectory-viewport {
+  position: relative;
   min-height: 0;
   margin: 7px 0 0;
+}
+
+.trajectory-compact .trajectory-scene {
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+}
+
+.trajectory-camera-controls {
+  position: absolute;
+  top: var(--ex-space-2);
+  right: var(--ex-space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--ex-space-2);
+}
+
+.trajectory-icon-button:focus-visible {
+  outline: 2px solid var(--ex-aqua-500);
+  outline-offset: 2px;
+}
+
+.trajectory-camera-controls .trajectory-icon-button {
+  background: var(--ex-white);
+}
+
+.trajectory-expand-icon,
+.trajectory-collapse-icon {
+  display: grid;
+  place-items: center;
+}
+
+.trajectory-expand-button[aria-expanded="false"] .trajectory-collapse-icon,
+.trajectory-expand-button[aria-expanded="true"] .trajectory-expand-icon {
+  display: none;
+}
+
+.trajectory-playback {
+  display: flex;
+  align-items: center;
+  gap: var(--ex-space-2);
+  min-width: 0;
+  padding-top: var(--ex-space-2);
+}
+
+.trajectory-playback .scrubber {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+}
+
+.trajectory-playback .trajectory-icon-button {
+  flex-shrink: 0;
+}
+
+.flight-analysis-visuals.is-expanded {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.flight-instrument-panel.is-expanded .flight-analysis-heading {
+  align-items: center;
+  margin-bottom: var(--ex-space-3);
+}
+
+.flight-instrument-panel.is-expanded .flight-analysis-heading h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.flight-instrument-panel.is-expanded .flight-analysis-heading p,
+.flight-instrument-panel.is-expanded .flight-section-kicker,
+.flight-analysis-visuals.is-expanded .trajectory-header {
+  display: none;
+}
+
+.flight-analysis-toolbar .flight-phase-range {
+  grid-column: 1 / -1;
+}
+
+.flight-analysis-visuals.is-expanded .trajectory-compact {
+  grid-row: 1;
+  height: auto;
+  grid-template-rows: var(--ex-analysis-scene-expanded-height) auto auto;
+  padding: 0;
+  border: 0;
+}
+
+.flight-analysis-visuals.is-expanded .trajectory-viewport {
+  margin: 0;
+}
+
+.flight-analysis-visuals.is-expanded .trajectory-time {
+  font-size: 12px;
 }
 
 .trajectory-credits {
@@ -3334,6 +3418,15 @@ body.flight-analysis-theme,
   .flight-phase-button {
     min-width: 0;
     padding-inline: 8px;
+  }
+
+  .flight-analysis-toolbar {
+    width: 100%;
+  }
+
+  .flight-analysis-toolbar .flight-phase-range {
+    justify-self: start;
+    font-size: 10px;
   }
 
   .flight-chart-stage {

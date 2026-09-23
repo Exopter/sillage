@@ -111,6 +111,8 @@ export const OS_PLAYBACK_PLUGIN = {
     ctx.fillStyle = options.pointColor || options.color || "rgba(216, 145, 34, 0.9)"
     ctx.strokeStyle = "rgba(255, 255, 255, 0.92)"
     chart.getActiveElements().forEach(({ datasetIndex, index }) => {
+      if (!chart.isDatasetVisible(datasetIndex)) return
+
       const point = chart.getDatasetMeta(datasetIndex)?.data?.[index]
       if (!point) return
       if (point.x < area.left || point.x > area.right || point.y < area.top || point.y > area.bottom) return

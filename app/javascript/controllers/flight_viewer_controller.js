@@ -42,6 +42,10 @@ const CESIUM_TILE_PROVIDER = "CESIUM_ION"
  * @property {boolean} hasTimeLabelTarget
  * @property {HTMLButtonElement} playButtonTarget
  * @property {boolean} hasPlayButtonTarget
+ * @property {HTMLElement} analysisVisualsTarget
+ * @property {HTMLElement} instrumentPanelTarget
+ * @property {HTMLElement} analysisTitleTarget
+ * @property {HTMLButtonElement} expandButtonTarget
  * @property {HTMLVideoElement} videoTarget
  * @property {boolean} hasVideoTarget
  * @property {HTMLInputElement} videoExitOffsetInputTarget
@@ -129,6 +133,7 @@ export default class extends TypedController {
   playbackLastCameraAt = 0
   videoSyncLastRenderAt = 0
   isPlaying = false
+  isExpanded = false
   syncingVideo = false
   colors = {
       night: "#071817",
@@ -158,6 +163,10 @@ export default class extends TypedController {
     "scrubber",
     "timeLabel",
     "playButton",
+    "analysisVisuals",
+    "instrumentPanel",
+    "analysisTitle",
+    "expandButton",
     "video",
     "videoExitOffsetInput",
     "videoExitOffsetLabel"
@@ -194,6 +203,7 @@ export default class extends TypedController {
     this.cesiumVisualPoints = null
     this.timelineStart = this.timelineStartFromData()
     this.flightDuration = this.timelineEndFromData()
+    this.trimTelemetryToTimeline()
     this.activePhase = "all"
     this.currentElapsed = this.timelineStart
     this.isPlaying = false
@@ -268,6 +278,7 @@ export default class extends TypedController {
     this.unifiedChart.setDatasetVisibility(datasetIndex, event.currentTarget.checked)
     this.refreshUnifiedAxes()
     this.unifiedChart.update("none")
+    this.updateChartsPlaybackCursor(this.currentElapsed)
   }
 
   togglePlayback() {
@@ -371,7 +382,6 @@ export default class extends TypedController {
     if (!this.videoCanSync()) return
 
     this.updateScrubbedElapsed(this.elapsedForVideoTime(this.videoTarget.currentTime), {
-      followCamera: false,
       syncVideo: false
     })
   }
@@ -398,9 +408,16 @@ export default class extends TypedController {
       return
     }
 
+    const elapsed = this.elapsedForVideoTime(this.videoTarget.currentTime)
+    if (elapsed >= this.phaseEnd()) {
+      this.updateScrubbedElapsed(this.phaseEnd())
+      this.pausePlayback()
+      return
+    }
+
     if (timestamp - this.videoSyncLastRenderAt > 80) {
       this.videoSyncLastRenderAt = timestamp
-      this.updateScrubbedElapsed(this.elapsedForVideoTime(this.videoTarget.currentTime), {
+      this.updateScrubbedElapsed(elapsed, {
         followCamera: true,
         syncVideo: false
       })
@@ -420,9 +437,26 @@ export default class extends TypedController {
 
   resetCamera() {
     if (this.cesiumViewer && window.Cesium && this.cesiumOrbitHome) {
-      this.cesiumOrbit = { ...this.cesiumOrbitHome }
+      this.cesiumOrbit = {
+        ...this.cesiumOrbitHome,
+        targetPoint: this.coordinatePointAtElapsed(this.currentElapsed, this.cesiumPoints()) || this.cesiumOrbitHome.targetPoint
+      }
       this.applyCesiumOrbit(window.Cesium, this.cesiumViewer)
     }
+  }
+
+  toggleExpanded() {
+    this.isExpanded = !this.isExpanded
+    this.analysisVisualsTarget.classList.toggle("is-expanded", this.isExpanded)
+    this.instrumentPanelTarget.classList.toggle("is-expanded", this.isExpanded)
+    this.analysisTitleTarget.textContent = this.isExpanded ? "3D trajectory" : "Unified flight data"
+    this.expandButtonTarget.setAttribute("aria-expanded", String(this.isExpanded))
+    const label = this.isExpanded ? "Collapse 3D" : "Expand 3D"
+    this.expandButtonTarget.setAttribute("aria-label", label)
+    this.expandButtonTarget.title = label
+    this.charts.forEach((chart) => chart.resize())
+    this.cesiumViewer?.resize()
+    this.cesiumViewer?.scene.requestRender()
   }
 
   /** @param {MouseEvent} event */
@@ -554,7 +588,7 @@ export default class extends TypedController {
 
     this.updatePhaseLabels()
     this.updatePhaseStatistics()
-    if (options.movePlayhead !== false) this.updateScrubbedElapsed(this.phaseStart(), { followCamera: false })
+    if (options.movePlayhead !== false) this.updateScrubbedElapsed(this.phaseStart())
   }
 
   phaseRanges() {
@@ -814,7 +848,7 @@ export default class extends TypedController {
       this.setupSceneFallback(this.label("cesium_unavailable"))
     }
     if (!this.isCurrentConnection(generation)) return
-    this.updateScrubbedElapsed(this.currentElapsed, { followCamera: false })
+    this.updateScrubbedElapsed(this.currentElapsed)
   }
 
   disposeSceneHandlers() {
@@ -1180,7 +1214,7 @@ export default class extends TypedController {
     this.cesiumVisualPoints = visualPoints
     this.refreshCesiumTrajectory(Cesium, viewer)
     this.refreshCesiumOrbitTargets()
-    this.updateScrubbedElapsed(this.currentElapsed, { followCamera: false })
+    this.updateScrubbedElapsed(this.currentElapsed)
     viewer.scene.requestRender()
   }
 
@@ -1400,7 +1434,20 @@ export default class extends TypedController {
 
     const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas)
     this.cesiumInteractionHandler = handler
-    this.addSceneHandler("wheel", (event) => event.preventDefault(), viewer.scene.canvas, { passive: false })
+    this.addSceneHandler("wheel", (event) => {
+      // Cesium's internal wheel handlers cancel scrolling even with camera inputs disabled.
+      event.stopImmediatePropagation()
+      if (!event.metaKey || !this.cesiumOrbit || event.deltaY === 0) return
+
+      event.preventDefault()
+      const factor = event.deltaY > 0 ? 1.12 : 0.88
+      this.cesiumOrbit.range = this.clamp(
+        this.cesiumOrbit.range * factor,
+        this.cesiumOrbit.minRange,
+        this.cesiumOrbit.maxRange
+      )
+      this.applyCesiumOrbit(Cesium, viewer)
+    }, viewer.scene.canvas, { capture: true, passive: false })
 
     handler.setInputAction((/** @type {import("cesium").ScreenSpaceEventHandler.PositionedEvent} */ movement) => {
       this.cesiumDrag = {
@@ -1429,18 +1476,6 @@ export default class extends TypedController {
 
     handler.setInputAction(() => this.endCesiumDrag(), Cesium.ScreenSpaceEventType.LEFT_UP)
     handler.setInputAction(() => this.resetCamera(), Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK)
-    handler.setInputAction((/** @type {number} */ delta) => {
-      if (!this.cesiumOrbit) return
-
-      const wheel = delta
-      const factor = wheel > 0 ? 1.12 : 0.88
-      this.cesiumOrbit.range = this.clamp(
-        this.cesiumOrbit.range * factor,
-        this.cesiumOrbit.minRange,
-        this.cesiumOrbit.maxRange
-      )
-      this.applyCesiumOrbit(Cesium, viewer)
-    }, Cesium.ScreenSpaceEventType.WHEEL)
   }
 
   endCesiumDrag() {
@@ -1591,7 +1626,7 @@ export default class extends TypedController {
     const elapsed = this.elapsedFromChartEvent(chart, event)
     if (!isFiniteNumber(elapsed)) return
 
-    this.updateScrubbedElapsed(elapsed, { followCamera: false })
+    this.updateScrubbedElapsed(elapsed)
   }
 
   /** @param {import("../types/flight").FlightChart} chart @param {PointerEvent} event */
@@ -1885,8 +1920,9 @@ export default class extends TypedController {
 
   /** @param {import("../types/flight").FlightChart} chart @param {number} elapsed */
   chartActiveElementsAtElapsed(chart, elapsed) {
-    return chart.data.datasets.filter((dataset) => dataset.data.length > 0).map((dataset) => {
-      const datasetIndex = chart.data.datasets.indexOf(dataset)
+    return chart.data.datasets.map((dataset, datasetIndex) => {
+      if (!chart.isDatasetVisible(datasetIndex) || dataset.data.length === 0) return null
+
       const index = this.nearestDataIndexAtElapsed(dataset.data, elapsed)
       if (index === null) return null
 
@@ -2240,7 +2276,22 @@ export default class extends TypedController {
     const fallbackEnd = values.length > 0 ? Math.max(...values) : 0
     const end = isFiniteNumber(analyzedEnd) ? analyzedEnd : fallbackEnd
 
-    return Math.max(end, this.timelineStart)
+    const recordingEnd = Math.max(end, this.timelineStart)
+    const landing = this.number(this.boundsValue?.landing)
+    const opening = this.number(this.boundsValue?.opening)
+    if (!isFiniteNumber(landing) || landing <= this.timelineStart || (isFiniteNumber(opening) && landing < opening)) return recordingEnd
+
+    return Math.min(landing, recordingEnd)
+  }
+
+  trimTelemetryToTimeline() {
+    const last = this.points[this.points.length - 1]
+    const touchdown = last && last.t > this.flightDuration && this.points[0].t < this.flightDuration
+      ? this.samplePointAtElapsed(this.flightDuration)
+      : null
+    this.points = this.points.filter((point) => point.t <= this.flightDuration)
+    if (touchdown && this.points[this.points.length - 1]?.t < touchdown.t) this.points.push(touchdown)
+    this.sensors = this.sensors.filter((sample) => sample.t <= this.flightDuration)
   }
 
   defaultElapsed() {

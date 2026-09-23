@@ -49,7 +49,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_select ".flight-replay-title span", text: flight.name
     assert_select ".flight-replay-title", text: /FLT-\d{4}-\d{3}/, count: 0
     assert_select ".flight-recorded-at", count: 0
-    assert_select ".mode-badge", text: "Replay"
+    assert_select ".flight-replay-header .mode-badge", text: "Private", count: 1
     assert_select ".flight-phase-button", count: 4
     assert_select ".flight-phase-button[data-phase='all']", text: "All"
     assert_select ".flight-phase-button[data-phase='plane']", text: "Plane"
