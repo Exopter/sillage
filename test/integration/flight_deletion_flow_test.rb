@@ -33,6 +33,21 @@ class FlightDeletionFlowTest < ActionDispatch::IntegrationTest
     assert_not FlightImport.exists?(import_id)
   end
 
+  test "deleting a flight whose source import also targets it removes both records" do
+    flight = flights(:one)
+    import = flight.flight_import
+    import.update!(target_flight: flight)
+
+    delete flight_path(flight), headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_redirected_to flights_path
+    assert_not Flight.exists?(flight.id)
+    assert_not FlightImport.exists?(import.id)
+    assert_empty TrackPoint.where(flight_id: flight.id)
+    assert_empty SensorSample.where(flight_id: flight.id)
+    assert Flight.exists?(flights(:two).id)
+  end
+
   test "one user cannot delete another user's flight or recording" do
     flight = flights(:one)
     import = flight.flight_import
