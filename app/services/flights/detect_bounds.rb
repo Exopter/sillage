@@ -35,7 +35,7 @@ module Flights
 
       exit_point = detect_exit || @points.first
       opening_point = detect_opening(exit_point) || fallback_opening(exit_point)
-      landing_point = detect_landing || @points.last
+      landing_point = DetectLanding.new(@points, after: elapsed_seconds(opening_point || exit_point).to_f).call || @points.last
 
       {
         exit_at: exit_point[:recorded_at],
@@ -162,15 +162,6 @@ module Flights
 
       target_elapsed = exit_point[:elapsed_seconds].to_f + ((@points.last[:elapsed_seconds].to_f - exit_point[:elapsed_seconds].to_f) * 0.7)
       @points.min_by { |point| (point[:elapsed_seconds].to_f - target_elapsed).abs }
-    end
-
-    def detect_landing
-      active_point = nil
-      @points.each do |point|
-        active_point = point if point[:horizontal_speed_mps].to_f >= 2.5 || point[:vertical_speed_mps].to_f.abs >= 1.0
-      end
-
-      active_point
     end
 
     def aircraft_climb?

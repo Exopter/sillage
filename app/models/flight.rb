@@ -3,6 +3,7 @@ class Flight < ApplicationRecord
   VIDEO_PROCESSING_STATUSES = %w[empty processing ready failed].freeze
   VIDEO_UPLOAD_EXTENSIONS = %w[.avi .m4v .mkv .mov .mp4 .webm].freeze
   LOCATION_SOURCES = %w[manual openstreetmap].freeze
+  VISIBILITIES = %w[private team].freeze
 
   belongs_to :user
   belongs_to :flight_import, optional: true, inverse_of: :flights
@@ -19,6 +20,7 @@ class Flight < ApplicationRecord
   validates :code, :name, presence: true
   validates :code, uniqueness: true
   validates :status, inclusion: { in: STATUSES }
+  validates :visibility, inclusion: { in: VISIBILITIES }
   validates :video_processing_status, inclusion: { in: VIDEO_PROCESSING_STATUSES }
   validates :location_source, inclusion: { in: LOCATION_SOURCES }, allow_nil: true
   validates :video_exit_offset_seconds, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
@@ -26,6 +28,15 @@ class Flight < ApplicationRecord
   validate :video_upload_must_be_video
 
   scope :recent, -> { order(started_at: :desc, created_at: :desc) }
+  scope :visible_to, ->(user) { user ? where(user_id: user.id).or(where(visibility: "team")) : none }
+
+  def owned_by?(user)
+    user.present? && user_id == user.id
+  end
+
+  def visible_to?(user)
+    user.present? && (owned_by?(user) || visibility == "team")
+  end
 
   STATUSES.each do |value|
     define_method("#{value}?") { status == value }

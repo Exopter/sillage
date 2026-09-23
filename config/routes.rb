@@ -126,4 +126,5 @@ Rails.application.routes.draw do
   resources :flights do
     collection { delete :bulk_destroy }
   end
+  resources :attachments, only: :show
 end

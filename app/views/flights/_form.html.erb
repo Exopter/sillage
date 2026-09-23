@@ -22,6 +22,10 @@
     </label>
   </div>
 
+  <div class="details-form">
+    <%= render "flights/visibility_field", form: form %>
+  </div>
+
   <p class="operations-help">The flight starts in Preparation. Attach FlySight or ExoFDR data later, or open a linked Signal session.</p>
   <div class="operations-form-actions">
     <%= link_to "Cancel", flights_path, class: "button-secondary" %>

@@ -150,6 +150,39 @@ module Flights
       assert_operator cleaned[2][:vertical_speed_mps].abs, :<, 20.0
     end
 
+    test "GPS canopy and replay end at touchdown rather than later ground movement" do
+      started_at = Time.utc(2026, 9, 1)
+      track_points = (0..180).map do |elapsed|
+        altitude = elapsed <= 20 ? 1_400 - elapsed * 45 : [ 500 - (elapsed - 20) * 5, 100 ].max
+        vertical = elapsed < 20 ? 45 : elapsed < 100 ? 5 : 0.1
+        horizontal = elapsed < 100 ? 14 : elapsed >= 150 ? 4 : 1
+        track_point(started_at, elapsed, altitude, horizontal, vertical)
+      end
+
+      analysis = FlightAnalysis.new(track_points:, sensor_samples: [], origin_time: started_at).call
+
+      assert_equal started_at + 100, analysis.bounds[:landing_at]
+      assert_equal 110, analysis.replay_end
+      assert_equal 180, analysis.timeline_end
+      assert_operator analysis.bounds[:opening_at], :<, analysis.bounds[:landing_at]
+    end
+
+    test "pressure canopy ends at the stable ground segment despite later pressure noise" do
+      started_at = Time.utc(2026, 9, 1)
+      rows = (0..180).map do |elapsed|
+        altitude = elapsed <= 20 ? 1_400 - elapsed * 45 : [ 500 - (elapsed - 20) * 5, 100 ].max
+        altitude += 8 if elapsed == 160
+        [ elapsed, altitude ]
+      end
+
+      analysis = FlightAnalysis.new(track_points: [], sensor_samples: baro_profile(started_at, rows), origin_time: started_at).call
+
+      assert_equal "degraded", analysis.mode
+      assert_in_delta 100, analysis.bounds[:landing_at] - started_at, 2
+      assert_in_delta 110, analysis.replay_end, 2
+      assert_equal 180, analysis.timeline_end
+    end
+
     private
 
     def aircraft_profile(started_at)

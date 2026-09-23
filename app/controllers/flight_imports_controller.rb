@@ -27,6 +27,10 @@ class FlightImportsController < ApplicationController
   def show
     @flight_import = Current.user.flight_imports.find(params[:id])
     @flights = @flight_import.flights.recent
+
+    if @flight_import.imported? && !@flight_import.set_aside? && @flights.one?
+      redirect_to @flights.first
+    end
   end
 
   def include_in_flights

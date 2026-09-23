@@ -33,11 +33,15 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
 
     flight = flight_import.reload.flights.first
     assert_equal "imported", flight_import.status
+    assert_equal "private", flight.visibility
 
-    get flight_path(flight)
+    get flight_import_path(flight_import)
+    assert_redirected_to flight_path(flight)
+    follow_redirect!
     assert_response :success
     assert_select "h1", flight.name
     assert_select ".flight-replay-page"
+    assert_select "a", text: "Recording details", count: 0
     cesium_base_url = Rails.application.config.x.cesium_base_url
     assert_select ".flight-replay-page[data-flight-viewer-cesium-base-url-value=?]", cesium_base_url
     assert_select "link[rel='preload'][href=?]", "#{cesium_base_url}Cesium.js"
@@ -114,8 +118,45 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_response :created
     assert_equal flight_import_path(flight_import), JSON.parse(response.body).fetch("redirect_url")
     assert_equal "pending", flight_import.status
+
+    perform_enqueued_jobs only: FlySightImportJob
+    get JSON.parse(response.body).fetch("redirect_url")
+    assert_redirected_to flight_path(flight_import.reload.flights.sole)
   ensure
     clear_enqueued_jobs
+    clear_performed_jobs
+  end
+
+  test "unfinished or failed imports keep their status visible even when a flight exists" do
+    import = flight_imports(:one)
+    %w[pending processing failed].each do |status|
+      import.update!(status:, error_message: "Recording could not be decoded")
+      get flight_import_path(import)
+      assert_response :success
+      if status == "failed"
+        assert_includes response.body, "Recording could not be decoded"
+        assert_select "meta[http-equiv='refresh']", count: 0
+      else
+        assert_select "meta[http-equiv='refresh'][content='3']"
+      end
+    end
+  end
+
+  test "imports with multiple flights keep the flight choice visible" do
+    import = flight_imports(:one)
+    second = import.flights.create!(user: users(:julien), name: "Second flight")
+    get flight_import_path(import)
+    assert_response :success
+    assert_select "a.flight-card[href=?]", flight_path(flights(:one))
+    assert_select "a.flight-card[href=?]", flight_path(second)
+  end
+
+  test "set aside recordings with retained flights keep their recovery actions" do
+    import = flight_imports(:one)
+    import.update!(import_type: "exofdr", activity_classification: "stationary")
+    get flight_import_path(import)
+    assert_response :success
+    assert_select "form[action=?]", include_in_flights_flight_import_path(import)
   end
 
   test "creates a prepared flight with an aircraft and optional location" do

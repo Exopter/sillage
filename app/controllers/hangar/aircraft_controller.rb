@@ -3,7 +3,8 @@ module Hangar
     before_action :set_aircraft, only: %i[show edit update destroy]
 
     def index
-      @aircraft = Aircraft.includes(:flights, installations: :installable).ordered.to_a
+      @aircraft = Aircraft.includes(installations: :installable).ordered.to_a
+      @flight_counts = Flight.visible_to(Current.user).group(:aircraft_id).count
       @aircraft.sort_by! { |aircraft| [ -aircraft.installations.count(&:active?), aircraft.registration ] }
       @selected_aircraft = @aircraft.find { |aircraft| aircraft.id == params[:aircraft_id].to_i } || @aircraft.first
       @active_installations = @selected_aircraft&.installations&.select(&:active?) || []

@@ -35,7 +35,7 @@
 
 <section class="workspace-panel">
   <h2>Artifacts</h2>
-  <% if @test_run.artifacts.attached? %><div class="workspace-list"><% @test_run.artifacts.each do |artifact| %><%= link_to rails_blob_path(artifact, disposition: "attachment"), class: "workspace-list-row" do %><span><strong><%= artifact.filename %></strong><small><%= number_to_human_size artifact.byte_size %></small></span><span>Download</span><% end %><% end %></div><% end %>
+  <% if @test_run.artifacts.attached? %><div class="workspace-list"><% @test_run.artifacts.each do |artifact| %><%= link_to attachment_path(artifact), class: "workspace-list-row" do %><span><strong><%= artifact.filename %></strong><small><%= number_to_human_size artifact.byte_size %></small></span><span>Download</span><% end %><% end %></div><% end %>
   <% if @test_run.artifact_manifest.any? %><div class="artifact-manifest"><% @test_run.artifact_manifest.each do |artifact| %><div><code><%= artifact["path"] || artifact["name"] %></code><span><%= number_to_human_size artifact["size"].to_i %> · <%= artifact["sha256"] %></span></div><% end %></div><% elsif !@test_run.artifacts.attached? %><div class="workspace-empty">No artifact recorded.</div><% end %>
 </section>
 

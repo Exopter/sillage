@@ -21,6 +21,9 @@ module Sillage
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.1
+    # Serve attachments only through authenticated, record-authorized downloads.
+    config.active_storage.draw_routes = false
+    config.active_storage.content_types_allowed_inline += %w[video/mp4]
 
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.

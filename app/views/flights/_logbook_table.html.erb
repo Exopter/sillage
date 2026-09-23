@@ -6,6 +6,7 @@
     </div>
     <%= form_with url: flights_path, method: :get, class: "flights-search" do |form| %>
       <%= form.hidden_field :filter, value: @filter || "flights" %>
+      <%= form.hidden_field :visibility, value: @visibility || "all" %>
       <label class="search-control">
         <span class="sr-only">Search flights and recordings</span>
         <%= sillage_icon "search", size: 16 %>
@@ -20,18 +21,29 @@
     <% end %>
   </header>
 
-  <nav class="workspace-tabs workspace-segmented-tabs" aria-label="Flights filters">
-    <% { "flights" => "Flights", "set_aside" => "Set aside", "all" => "All" }.each do |value, label| %>
-      <%= link_to label, flights_path(filter: value, q: local_assigns[:query].presence),
-        class: ["workspace-tab", ("is-active" if (@filter || "flights") == value)],
-        aria: { current: ((@filter || "flights") == value ? "page" : nil) } %>
-    <% end %>
-  </nav>
+  <div class="workspace-navigation-groups">
+    <nav class="workspace-tabs workspace-segmented-tabs" aria-label="Flights filters">
+      <% { "flights" => "Flights", "set_aside" => "Set aside", "all" => "All" }.each do |value, label| %>
+        <%= link_to label, flights_path(filter: value, q: local_assigns[:query].presence, visibility: @visibility.presence_in(Flight::VISIBILITIES)),
+          class: ["workspace-tab", ("is-active" if (@filter || "flights") == value)],
+          aria: { current: ((@filter || "flights") == value ? "page" : nil) } %>
+      <% end %>
+    </nav>
+
+    <nav class="workspace-tabs workspace-segmented-tabs" aria-label="Flight visibility">
+      <% { "all" => "All", "private" => "Private", "team" => "Team" }.each do |value, label| %>
+        <%= link_to label, flights_path(filter: @filter || "flights", q: local_assigns[:query].presence, visibility: value),
+          class: ["workspace-tab", ("is-active" if (@visibility || "all") == value)],
+          aria: { current: ((@visibility || "all") == value ? "page" : nil) } %>
+      <% end %>
+    </nav>
+  </div>
 
   <%= form_with url: bulk_destroy_flights_path, method: :delete, class: "flights-table-wrap",
     data: { controller: "table-selection", action: "submit->table-selection#submit turbo:before-cache@document->table-selection#reset" } do |form| %>
     <%= form.hidden_field :filter, value: @filter || "flights", id: nil %>
     <%= form.hidden_field :q, value: local_assigns[:query], id: nil %>
+    <%= form.hidden_field :visibility, value: @visibility.presence_in(Flight::VISIBILITIES), id: nil %>
     <div class="exds-selection-toolbar" role="group" aria-label="Selection actions">
       <span role="status" aria-live="polite" data-table-selection-target="count">0 selected</span>
       <button type="button" class="button-secondary" disabled data-table-selection-target="clear" data-action="table-selection#reset">Clear selection</button>
@@ -54,6 +66,7 @@
           <th>Duration</th>
           <th>Source</th>
           <th>Status</th>
+          <th>Visibility</th>
           <th aria-label="Open flight"></th>
         </tr>
       </thead>
@@ -70,10 +83,12 @@
             data-row-link-url-value="<%= flight_path(flight) %>"
             data-action="click->row-link#open">
             <td>
-              <label class="flights-selection-checkbox">
-                <input type="checkbox" name="entries[]" value="flight:<%= flight.id %>" data-table-selection-target="item" data-action="change->table-selection#update">
-                <span class="sr-only">Select <%= flight.code %></span>
-              </label>
+              <% if flight.owned_by?(Current.user) %>
+                <label class="flights-selection-checkbox">
+                  <input type="checkbox" name="entries[]" value="flight:<%= flight.id %>" data-table-selection-target="item" data-action="change->table-selection#update">
+                  <span class="sr-only">Select <%= flight.code %></span>
+                </label>
+              <% end %>
             </td>
             <td><%= link_to flight.code, flight, class: "flights-code" %></td>
             <td><strong class="flights-data"><%= logbook_value(flight.aircraft&.registration) %></strong></td>
@@ -91,6 +106,7 @@
               <% end %>
             </td>
             <td><span class="status-dot is-<%= status_state %>"><span></span><%= status_label %></span></td>
+            <td><span class="mode-badge is-neutral"><%= flight.visibility.capitalize %></span></td>
             <td class="flights-open"><%= link_to sillage_icon("chevron-right", size: 16), flight, aria: { label: "Open #{flight.code}" } %></td>
           </tr>
         <% end %>

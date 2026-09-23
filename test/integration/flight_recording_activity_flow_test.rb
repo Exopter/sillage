@@ -133,11 +133,12 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "an explicitly targeted flight remains included even for stationary data" do
-    target = users(:julien).flights.create!(name: "Prepared flight", status: "preparation")
+    target = users(:julien).flights.create!(name: "Prepared flight", status: "preparation", visibility: "team")
     import = stationary_import(target_flight: target)
     ExoFdr::ImportService.new(import).call
     assert_not import.reload.set_aside?
     assert_equal target.id, import.flights.sole.id
+    assert_equal "team", target.reload.visibility
   end
 
   test "pagination and search retain the selected filter without duplicating rows" do

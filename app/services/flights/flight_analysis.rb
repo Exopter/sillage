@@ -43,7 +43,6 @@ module Flights
     OPENING_FAST_LOOKBEHIND_SECONDS = 12.0
     OPENING_MAX_AVG_DESCENT_MPS = 8.0
     OPENING_FAST_DESCENT_MPS = 18.0
-    LANDING_MAX_MOTION_MPS = 1.0
     PRESSURE_SPEED_WINDOW_SECONDS = 4.0
     PRESSURE_SPEED_MAX_MPS = 140.0
     PRESSURE_SPEED_MIN_PAIR_SECONDS = 0.25
@@ -138,7 +137,8 @@ module Flights
 
       exit_point = detect_sensor_exit || @pressure_points.first
       opening_point = detect_sensor_opening(exit_point) || fallback_opening(exit_point)
-      landing_point = detect_sensor_landing || @pressure_points.last
+      landing_point = DetectLanding.new(@pressure_points,
+        after: (opening_point || exit_point)[:elapsed_seconds].to_f, horizontal_speed: false).call || @pressure_points.last
 
       {
         exit_at: exit_point[:recorded_at],
@@ -223,15 +223,6 @@ module Flights
       after_exit = @pressure_points.select { |point| point[:elapsed_seconds].to_f > exit_point[:elapsed_seconds].to_f }
       after_exit.find { |point| point[:altitude_m].to_f <= 1_200.0 && point[:altitude_m].to_f >= MIN_AIRCRAFT_OPENING_ALTITUDE_M } ||
         after_exit[(after_exit.length * 0.7).floor]
-    end
-
-    def detect_sensor_landing
-      active_point = nil
-      @pressure_points.each do |point|
-        active_point = point if point[:vertical_speed_mps].to_f.abs >= LANDING_MAX_MOTION_MPS
-      end
-
-      active_point
     end
 
     def window_end(index, seconds)

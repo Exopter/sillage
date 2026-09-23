@@ -3,8 +3,9 @@ module Flights
     FILTERS = %w[flights set_aside all].freeze
     PER_PAGE = 30
 
-    def initialize(user:, filter:, query: nil)
+    def initialize(user:, filter:, query: nil, visibility: nil)
       @user, @filter, @query = user, filter, query.to_s.strip
+      @visibility = visibility.presence_in(Flight::VISIBILITIES)
     end
 
     def page(number)
@@ -16,7 +17,7 @@ module Flights
         .order(entries[:started_at].desc.nulls_last, entries[:created_at].desc, entries[:kind].asc, entries[:id].desc)
         .take(PER_PAGE + 1).skip(([ number.to_i, 1 ].max - 1) * PER_PAGE)
       rows = ApplicationRecord.connection.select_all(query)
-      flights = @user.flights.where(id: rows.select { |row| row["kind"] == "flight" }.map { |row| row["id"] })
+      flights = Flight.visible_to(@user).where(id: rows.select { |row| row["kind"] == "flight" }.map { |row| row["id"] })
         .includes(:flight_import, :aircraft).index_by(&:id)
       imports = @user.flight_imports.where(id: rows.select { |row| row["kind"] == "import" }.map { |row| row["id"] })
         .includes(:aircraft).index_by(&:id)
@@ -26,18 +27,21 @@ module Flights
     private
 
     def flight_scope
-      scope = @user.flights.where.not(flight_import_id: @user.flight_imports.set_aside.select(:id))
-        .or(@user.flights.where(flight_import_id: nil))
+      visible = Flight.visible_to(@user)
+      scope = visible.where.not(flight_import_id: FlightImport.set_aside.select(:id))
+        .or(visible.where(flight_import_id: nil))
+      scope = scope.where(visibility: @visibility) if @visibility
       scope = scope.none if @filter == "set_aside"
       if @query.present?
         scope = scope.left_joins(:aircraft, :flight_import).where(
-          "flights.name ILIKE :q OR flights.code ILIKE :q OR flights.location ILIKE :q OR aircraft.registration ILIKE :q OR flight_imports.source_filename ILIKE :q", q: pattern)
+          "flights.name ILIKE :q OR flights.code ILIKE :q OR flights.location ILIKE :q OR aircraft.registration ILIKE :q OR (flights.user_id = :user_id AND flight_imports.source_filename ILIKE :q)", q: pattern, user_id: @user.id)
       end
       scope.select("flights.id, 'flight' AS kind, flights.started_at, flights.created_at")
     end
 
     def import_scope
       scope = @user.flight_imports
+      scope = scope.none if @visibility == "team"
       with_flights = @user.flights.where.not(flight_import_id: nil).select(:flight_import_id)
       scope = scope.where.not(id: with_flights).or(scope.set_aside)
       scope = scope.set_aside if @filter == "set_aside"

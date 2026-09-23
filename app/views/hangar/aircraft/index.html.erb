@@ -56,7 +56,7 @@
 
       <div class="hangar-asset-meta">
         <div><span class="section-eyebrow">Current configuration</span><strong><%= @active_installations.any? ? "Configuration since #{l @active_installations.map(&:installed_at).min.to_date, format: :long}" : "No active configuration" %></strong></div>
-        <div><span class="section-eyebrow">Usage</span><strong><%= pluralize @selected_aircraft.flights.size, "test flight" %></strong></div>
+        <div><span class="section-eyebrow">Usage</span><strong><%= pluralize @flight_counts.fetch(@selected_aircraft.id, 0), "test flight" %></strong></div>
         <div><span class="section-eyebrow">Installed content</span><strong><%= hangar_aircraft_summary @selected_aircraft %></strong></div>
       </div>
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_07_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_23_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -265,6 +265,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_140000) do
     t.float "video_exit_offset_seconds"
     t.text "video_processing_error"
     t.string "video_processing_status", default: "empty", null: false
+    t.string "visibility", default: "private", null: false
     t.index ["aircraft_id"], name: "index_flights_on_aircraft_id"
     t.index ["code"], name: "index_flights_on_code", unique: true
     t.index ["exit_at"], name: "index_flights_on_exit_at"
@@ -273,6 +274,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_140000) do
     t.index ["status"], name: "index_flights_on_status"
     t.index ["user_id"], name: "index_flights_on_user_id"
     t.index ["video_processing_status"], name: "index_flights_on_video_processing_status"
+    t.index ["visibility"], name: "index_flights_on_team_visibility", where: "((visibility)::text = 'team'::text)"
+    t.check_constraint "visibility::text = ANY (ARRAY['private'::character varying, 'team'::character varying]::text[])", name: "flights_visibility_check"
   end
 
   create_table "functions", force: :cascade do |t|

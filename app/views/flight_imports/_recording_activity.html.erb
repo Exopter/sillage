@@ -16,7 +16,7 @@
       <% end %>
       <% unless flight_import.source_missing? %>
         <% flight_import.source_files.each do |source| %>
-          <%= link_to "Download #{source.filename}", rails_blob_path(source, disposition: "attachment"), class: "button-secondary" %>
+          <%= link_to "Download #{source.filename}", attachment_path(source), class: "button-secondary" %>
         <% end %>
       <% end %>
     </div>

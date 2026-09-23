@@ -1,0 +1,3 @@
+<%= form.label :visibility, "Visibility" %>
+<%= form.select :visibility, [["Private", "private"], ["Team", "team"]], {}, aria: { describedby: "flight-visibility-help" } %>
+<p class="operations-help" id="flight-visibility-help">Private: only you. Team: everyone signed in to Sillage can view. Only you can edit, delete or change visibility.</p>

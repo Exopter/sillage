@@ -1,4 +1,5 @@
 <% content_for :title, @flight.code %>
+<% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><% end %>
 
 <section class="operations-page is-narrow">
   <header class="operations-heading">
@@ -7,35 +8,42 @@
       <h1><%= @flight.code %> · Preparation</h1>
       <p>No telemetry has been attached yet.</p>
     </div>
-    <%= link_to "Edit", edit_flight_path(@flight), class: "button-secondary" %>
+    <%= link_to "Edit", edit_flight_path(@flight), class: "button-secondary" if @flight.owned_by?(Current.user) %>
   </header>
 
   <section class="operations-panel preparation-card">
     <div class="preparation-status-row">
       <span class="status-dot is-unknown"><span></span>Preparation</span>
       <span class="mode-badge is-neutral">No source attached</span>
+      <span class="mode-badge is-neutral"><%= @flight.visibility.capitalize %></span>
     </div>
     <dl class="preparation-grid">
       <div><dt>Aircraft</dt><dd><%= @flight.display_aircraft %></dd></div>
       <div><dt>Location</dt><dd><%= @flight.display_location %></dd></div>
       <div><dt>Flight ID</dt><dd><%= @flight.code %></dd></div>
       <div><dt>Configuration</dt><dd><%= @flight.configuration_snapshot.present? ? "Captured" : "To complete" %></dd></div>
+      <div><dt>Name</dt><dd><%= @flight.name %></dd></div>
+      <div><dt>Notes</dt><dd><%= @flight.notes.presence || "—" %></dd></div>
     </dl>
   </section>
 
-  <section class="operations-empty-action">
-    <%= sillage_icon "radio", size: 24 %>
-    <h2>Ready for acquisition</h2>
-    <p>Start Signal to attach live telemetry automatically, or import FlySight / ExoFDR files from removable media.</p>
-    <div class="workspace-actions">
-      <%= link_to new_flight_import_path(flight_id: @flight.id), class: "button-secondary" do %>
-        <%= sillage_icon "upload", size: 17 %><span>Import data</span>
-      <% end %>
-      <%= link_to signal_path(flight_id: @flight.id), class: "button-primary", data: { turbo: false } do %>
-        <%= sillage_icon "radio", size: 17 %><span>Start Signal session</span>
-      <% end %>
-    </div>
-  </section>
+  <% if @flight.owned_by?(Current.user) %>
+    <section class="operations-empty-action">
+      <%= sillage_icon "radio", size: 24 %>
+      <h2>Ready for acquisition</h2>
+      <p>Start Signal to attach live telemetry automatically, or import FlySight / ExoFDR files from removable media.</p>
+      <div class="workspace-actions">
+        <%= link_to new_flight_import_path(flight_id: @flight.id), class: "button-secondary" do %>
+          <%= sillage_icon "upload", size: 17 %><span>Import data</span>
+        <% end %>
+        <%= link_to signal_path(flight_id: @flight.id), class: "button-primary", data: { turbo: false } do %>
+          <%= sillage_icon "radio", size: 17 %><span>Start Signal session</span>
+        <% end %>
+      </div>
+    </section>
 
-  <p class="operations-help">Signal inherits this Flight ID, aircraft, and installed Hangar assets. The microSD recorder remains authoritative.</p>
+    <p class="operations-help">Signal inherits this Flight ID, aircraft, and installed Hangar assets. The microSD recorder remains authoritative.</p>
+  <% else %>
+    <p class="operations-help">Shared with the team. Only the owner can edit this flight or attach data.</p>
+  <% end %>
 </section>

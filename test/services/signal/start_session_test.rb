@@ -3,7 +3,7 @@ require "test_helper"
 class Signal::StartSessionTest < ActiveSupport::TestCase
   test "starts a live session on an existing flight" do
     flight = flights(:one)
-    flight.update!(status: "preparation", configuration_snapshot: {})
+    flight.update!(status: "preparation", configuration_snapshot: {}, visibility: "team")
     started_at = Time.zone.parse("2026-08-18 10:00:00")
 
     session = Signal::StartSession.new(
@@ -16,6 +16,7 @@ class Signal::StartSessionTest < ActiveSupport::TestCase
 
     assert_equal flight, session.flight
     assert_equal "live", flight.reload.status
+    assert_equal "team", flight.visibility
     assert_equal({ "source" => "test" }, session.station_metadata)
     assert_equal flight.aircraft.configuration_snapshot, flight.configuration_snapshot
   end
@@ -28,6 +29,7 @@ class Signal::StartSessionTest < ActiveSupport::TestCase
 
     assert_difference [ "Flight.count", "SignalSession.count" ], 1 do
       first = service.call
+      assert_equal "private", first.flight.visibility
       assert_equal first, service.call
       assert_nil first.flight.aircraft
     end

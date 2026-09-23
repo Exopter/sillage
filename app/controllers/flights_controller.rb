@@ -2,12 +2,15 @@ class FlightsController < ApplicationController
   include Pagination
 
   before_action :set_flight, only: [ :show, :edit, :update, :destroy ]
+  before_action :require_flight_owner, only: [ :edit, :update, :destroy ]
+  before_action :disable_caching
 
   def index
     @query = params[:q].to_s.strip
     @filter = params[:filter].presence_in(Flights::Logbook::FILTERS) || "flights"
+    @visibility = params[:visibility].presence_in(Flight::VISIBILITIES) || "all"
     @page = [ params[:page].to_i, 1 ].max
-    entries = Flights::Logbook.new(user: Current.user, filter: @filter, query: @query).page(@page)
+    entries = Flights::Logbook.new(user: Current.user, filter: @filter, query: @query, visibility: @visibility).page(@page)
     @next_page = @page + 1 if entries.size > Flights::Logbook::PER_PAGE
     @flights = entries.first(Flights::Logbook::PER_PAGE)
   end
@@ -97,11 +100,20 @@ class FlightsController < ApplicationController
   private
 
   def selection_return_path
-    flights_path(filter: params[:filter].presence_in(Flights::Logbook::FILTERS) || "flights", q: params[:q].to_s.strip.presence)
+    flights_path(filter: params[:filter].presence_in(Flights::Logbook::FILTERS) || "flights",
+      q: params[:q].to_s.strip.presence, visibility: params[:visibility].presence_in(Flight::VISIBILITIES))
   end
 
   def set_flight
-    @flight = Current.user.flights.find(params[:id])
+    @flight = Flight.visible_to(Current.user).find(params[:id])
+  end
+
+  def require_flight_owner
+    raise ActiveRecord::RecordNotFound unless @flight.owned_by?(Current.user)
+  end
+
+  def disable_caching
+    no_store
   end
 
   def cesium_ion_token
@@ -112,6 +124,7 @@ class FlightsController < ApplicationController
   def flight_params
     params.require(:flight).permit(
       :name,
+      :visibility,
       :location,
       :aircraft_id,
       :notes,
