@@ -128,9 +128,9 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
   test "team visibility never exposes unshared raw recordings" do
     recording = @owner.flight_imports.create!(source_filename: "Private source", import_type: "exofdr", status: "pending")
     get flights_path(filter: "all", visibility: "team")
-    assert_select "a.flights-code[href=?]", flight_import_path(recording), count: 0
+    assert_select "a.flights-code[href*=?]", "recording=#{recording.id}", count: 0
     get flights_path(filter: "all", visibility: "private")
-    assert_select "a.flights-code[href=?]", flight_import_path(recording)
+    assert_select "a.flights-code[href*=?]", "recording=#{recording.id}"
 
     source = @other.flight_imports.create!(source_filename: "Unshared source filename", import_type: "flysight", status: "imported")
     @shared.update!(flight_import: source)

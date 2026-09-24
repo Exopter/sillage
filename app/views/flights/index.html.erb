@@ -4,3 +4,6 @@
 <%= render "flights/logbook_table", flights: @flights, query: @query %>
 
 <%= render "shared/pagination" %>
+<% if @flight_import&.pending? || @flight_import&.processing? %>
+  <% content_for :head do %><meta http-equiv="refresh" content="3"><% end %>
+<% end %>

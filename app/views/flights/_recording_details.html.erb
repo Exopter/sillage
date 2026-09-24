@@ -1,0 +1,53 @@
+<section class="workspace-panel" aria-label="Recording details" id="recording-details">
+  <header class="section-header">
+    <h2><%= @flight_import.source_filename %></h2>
+    <div class="workspace-actions">
+      <strong class="status <%= @flight_import.status %>"><%= t("imports.status.#{@flight_import.status}") %></strong>
+      <%= link_to "Close details", flights_path(filter: @filter, q: @query.presence, visibility: @visibility, page: @page), class: "button-secondary" %>
+    </div>
+  </header>
+
+  <% if @flight_import.failed? %>
+    <p class="error-text" role="alert"><%= @flight_import.error_message %></p>
+  <% elsif @flight_import.pending? || @flight_import.processing? %>
+    <p role="status"><%= t("imports.show.processing") %></p>
+  <% end %>
+
+  <% if @flight_import.import_type == "exofdr" %>
+    <h2><%= recording_activity_label(@flight_import) %></h2>
+    <p><%= recording_activity_reason(@flight_import) %></p>
+    <% if @flight_import.set_aside? %>
+      <p>This recording is set aside in Flights. Its original file is retained.</p>
+    <% elsif @flight_import.included_in_flights_at? %>
+      <p>Your decision to include this recording takes precedence over automatic classification.</p>
+    <% end %>
+  <% end %>
+
+  <dl class="preparation-grid">
+    <div><dt>Recorder</dt><dd><%= @flight_import.recorder_label %><% if @flight_import.device_id.present? %><br><%= @flight_import.device_id %><% end %></dd></div>
+    <div><dt>Firmware</dt><dd><%= @flight_import.firmware_version.presence || "—" %></dd></div>
+    <div><dt>Session</dt><dd><%= @flight_import.session_id.presence || "—" %></dd></div>
+    <div><dt>Started at</dt><dd><%= @flight_import.log_started_at ? l(@flight_import.log_started_at, format: :long) : "—" %></dd></div>
+  </dl>
+
+  <% if @recording_flights.any? %>
+    <%= render "flights/list", flights: @recording_flights %>
+  <% end %>
+
+  <div class="workspace-actions">
+    <% if @flight_import.import_type == "exofdr" && !@flight_import.source_missing? %>
+      <% if @flight_import.imported? && !@flight_import.included_in_flights_at? && @flight_import.activity_classification != "moving" %>
+        <%= button_to "Include in flights", include_in_flights_flight_import_path(@flight_import), class: "button-primary" %>
+      <% elsif @flight_import.failed? && @flight_import.included_in_flights_at? && @recording_flights.empty? %>
+        <%= button_to "Retry import", include_in_flights_flight_import_path(@flight_import), class: "button-primary" %>
+      <% end %>
+    <% end %>
+    <% unless @flight_import.source_missing? %>
+      <% @flight_import.source_files.each do |source| %>
+        <%= link_to "Download #{source.filename}", attachment_path(source), class: "button-secondary" %>
+      <% end %>
+    <% end %>
+    <%= button_to "Delete recording", flight_import_path(@flight_import), method: :delete,
+      class: "button-danger", form: { data: { turbo_confirm: "Permanently delete this recording and all its flight data, measurements, captures and videos?" } } %>
+  </div>
+</section>

@@ -10,6 +10,8 @@ class FlightDeletionFlowTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Source missing"
     assert_not_includes response.body, "Needs review"
     get flight_import_path(import)
+    assert_response :redirect
+    follow_redirect!
     assert_select "h2", text: "Source missing"
     assert_select "button", text: "Include in flights", count: 0
     assert_select "button", text: "Delete recording"

@@ -19,14 +19,16 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
     assert_equal Time.utc(2026, 9, 7, 10), import.log_started_at
 
     get flights_path
-    assert_select "a[href=?]", flight_import_path(import), count: 0
+    assert_select "a[href*=?]", "recording=#{import.id}", count: 0
     get flights_path(filter: "set_aside")
     assert_select "nav[aria-label='Flights filters'] a[aria-current='page']", text: "Set aside"
-    assert_select "a.flights-code[href=?]", flight_import_path(import), text: "FDR000001.BIN"
+    assert_select "a.flights-code[href*=?]", "recording=#{import.id}", text: "FDR000001.BIN"
     assert_includes response.body, "Stationary"
     get flights_path(filter: "all")
-    assert_select "a.flights-code[href=?]", flight_import_path(import), count: 1
+    assert_select "a.flights-code[href*=?]", "recording=#{import.id}", count: 1
     get flight_import_path(import)
+    assert_response :redirect
+    follow_redirect!
     assert_select ".sillage-subtabs a[aria-current='page']", text: "Flights"
     assert_select "form[action=?]", include_in_flights_flight_import_path(import)
     assert_includes response.body, "Download FDR000001.BIN"
@@ -72,6 +74,8 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
     included_at = import.reload.included_in_flights_at
     import.update!(status: "failed", error_message: "Temporary source read failure")
     get flight_import_path(import)
+    assert_response :redirect
+    follow_redirect!
     assert_select "button", text: "Retry import"
     assert_enqueued_jobs 1, only: ExoFdrImportJob do
       post include_in_flights_flight_import_path(import)
@@ -86,7 +90,7 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
     [ "' OR 1=1 --", "%", "_", "'; DROP TABLE flights; --" ].each do |query|
       get flights_path(filter: "all", q: query, page: "1; DROP TABLE flights")
       assert_response :success
-      assert_select "a.flights-code[href=?]", flight_import_path(import), count: 0
+      assert_select "a.flights-code[href*=?]", "recording=#{import.id}", count: 0
     end
     assert Flight.table_exists?
   end
@@ -97,7 +101,7 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
     other = User.create!(email_address: "recording-owner@example.com", password: "secure-password")
     import.update!(user: other)
     get flights_path(filter: "all")
-    assert_select "a[href=?]", flight_import_path(import), count: 0
+    assert_select "a[href*=?]", "recording=#{import.id}", count: 0
     get flight_import_path(import)
     assert_response :not_found
     post include_in_flights_flight_import_path(import)
@@ -112,7 +116,7 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
     flight = import.flights.sole
     import.update!(included_in_flights_at: nil)
     get flights_path(filter: "all", q: "FDR000001")
-    assert_select "a.flights-code[href=?]", flight_import_path(import), count: 1
+    assert_select "a.flights-code[href*=?]", "recording=#{import.id}", count: 1
     assert_select "a.flights-code[href=?]", flight_path(flight), count: 0
     assert_no_difference [ -> { Flight.count }, -> { TrackPoint.count } ] do
       assert_no_enqueued_jobs only: ExoFdrImportJob do

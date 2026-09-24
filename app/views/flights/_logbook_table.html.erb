@@ -21,6 +21,8 @@
     <% end %>
   </header>
 
+  <%= render "flights/recording_details" if @flight_import %>
+
   <div class="workspace-navigation-groups">
     <nav class="workspace-tabs workspace-segmented-tabs" aria-label="Flights filters">
       <% { "flights" => "Flights", "set_aside" => "Set aside", "all" => "All" }.each do |value, label| %>
@@ -105,7 +107,13 @@
                 <%= logbook_value(nil) %>
               <% end %>
             </td>
-            <td><span class="status-dot is-<%= status_state %>"><span></span><%= status_label %></span></td>
+            <td>
+              <span class="status-dot is-<%= status_state %>"><span></span><%= status_label %></span>
+              <% if flight.owned_by?(Current.user) && flight.flight_import && !flight.flight_import.imported? %>
+                <%= link_to recording_logbook_status(flight.flight_import).last, flights_path(recording: flight.flight_import_id, anchor: "recording-details"), class: "flights-cell-note" %>
+                <% if flight.flight_import.failed? %><span class="flights-cell-note"><%= flight.flight_import.error_message %></span><% end %>
+              <% end %>
+            </td>
             <td><span class="mode-badge is-neutral"><%= flight.visibility.capitalize %></span></td>
             <td class="flights-open"><%= link_to sillage_icon("chevron-right", size: 16), flight, aria: { label: "Open #{flight.code}" } %></td>
           </tr>

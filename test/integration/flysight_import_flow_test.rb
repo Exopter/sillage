@@ -20,13 +20,14 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     end
 
     flight_import = FlightImport.order(:created_at).last
-    assert_redirected_to flight_import_path(flight_import)
+    assert_redirected_to flights_path(recording: flight_import.id)
     assert_equal "pending", flight_import.status
     assert flight_import.source_files.attached?
 
     follow_redirect!
     assert_response :success
-    assert_select "h1", flight_import.source_filename
+    assert_select "h1", "Flights"
+    assert_select "#recording-details h2", flight_import.source_filename
     assert_select ".status.pending", text: "Pending"
 
     perform_enqueued_jobs only: FlySightImportJob
@@ -116,7 +117,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
 
     flight_import = FlightImport.order(:created_at).last
     assert_response :created
-    assert_equal flight_import_path(flight_import), JSON.parse(response.body).fetch("redirect_url")
+    assert_equal flights_path(recording: flight_import.id), JSON.parse(response.body).fetch("redirect_url")
     assert_equal "pending", flight_import.status
 
     perform_enqueued_jobs only: FlySightImportJob
@@ -132,6 +133,8 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     %w[pending processing failed].each do |status|
       import.update!(status:, error_message: "Recording could not be decoded")
       get flight_import_path(import)
+      assert_response :redirect
+      follow_redirect!
       assert_response :success
       if status == "failed"
         assert_includes response.body, "Recording could not be decoded"
@@ -142,10 +145,33 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "recording panels remain owner only regardless of flight visibility" do
+    import = flight_imports(:one)
+    other = User.create!(email_address: "other-import@example.com", password: "password123456")
+    import.update!(user: other, status: "failed", error_message: "Private decoding details")
+    get flights_path(recording: import.id, visibility: "team")
+    assert_response :not_found
+  end
+
+  test "failed recording rows expose errors and open details within Flights" do
+    import = users(:julien).flight_imports.create!(import_type: "flysight", status: "failed",
+      source_filename: "BROKEN.CSV", error_message: "Invalid telemetry header")
+    get flights_path
+    assert_select "tbody", text: /Invalid telemetry header/
+    get flights_path(recording: import.id)
+    assert_response :success
+    assert_select "h1", "Flights"
+    assert_select "#recording-details", text: /Invalid telemetry header/
+    assert_select "#recording-details form[action=?]", flight_import_path(import)
+    assert_select "meta[http-equiv='refresh']", count: 0
+  end
+
   test "imports with multiple flights keep the flight choice visible" do
     import = flight_imports(:one)
     second = import.flights.create!(user: users(:julien), name: "Second flight")
     get flight_import_path(import)
+    assert_response :redirect
+    follow_redirect!
     assert_response :success
     assert_select "a.flight-card[href=?]", flight_path(flights(:one))
     assert_select "a.flight-card[href=?]", flight_path(second)
@@ -155,6 +181,8 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     import = flight_imports(:one)
     import.update!(import_type: "exofdr", activity_classification: "stationary")
     get flight_import_path(import)
+    assert_response :redirect
+    follow_redirect!
     assert_response :success
     assert_select "form[action=?]", include_in_flights_flight_import_path(import)
   end

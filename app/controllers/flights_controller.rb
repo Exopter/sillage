@@ -6,8 +6,16 @@ class FlightsController < ApplicationController
   before_action :disable_caching
 
   def index
+    if params[:recording].present?
+      @flight_import = Current.user.flight_imports.find(params[:recording])
+      @recording_flights = @flight_import.flights.recent
+      if @flight_import.imported? && !@flight_import.set_aside? && @recording_flights.one?
+        redirect_to @recording_flights.first
+        return
+      end
+    end
     @query = params[:q].to_s.strip
-    @filter = params[:filter].presence_in(Flights::Logbook::FILTERS) || "flights"
+    @filter = params[:filter].presence_in(Flights::Logbook::FILTERS) || (@flight_import&.set_aside? ? "set_aside" : "flights")
     @visibility = params[:visibility].presence_in(Flight::VISIBILITIES) || "all"
     @page = [ params[:page].to_i, 1 ].max
     entries = Flights::Logbook.new(user: Current.user, filter: @filter, query: @query, visibility: @visibility).page(@page)

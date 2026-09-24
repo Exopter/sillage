@@ -792,21 +792,6 @@ body {
   padding: 24px 0 64px;
 }
 
-.page-heading {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 24px;
-}
-
-.page-heading h1 {
-  max-width: 780px;
-  margin: 0;
-  font-size: 3.65rem;
-  line-height: 0.98;
-}
-
 .search-control {
   display: inline-flex;
   align-items: center;
@@ -882,26 +867,7 @@ body {
   background: var(--ex-graphite-500);
 }
 
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 10px;
-  color: var(--ds-teal-dark);
-  font-size: 0.78rem;
-  font-weight: 820;
-  text-transform: uppercase;
-}
 
-.eyebrow::before {
-  width: 28px;
-  height: 2px;
-  content: "";
-  background: linear-gradient(90deg, var(--ds-aqua), var(--ds-lime));
-}
-
-
-.tool-panel,
 .flight-card {
   border: 1px solid var(--ds-line);
   border-radius: var(--ds-radius);
@@ -909,15 +875,6 @@ body {
   box-shadow: var(--ds-shadow-soft);
 }
 
-.tool-panel {
-  padding: 20px;
-}
-
-.tool-panel.wide {
-  width: min(760px, 100%);
-}
-
-.tool-panel h2,
 .section-header h2,
 .trajectory h2 {
   margin: 0 0 16px;
@@ -944,48 +901,6 @@ body {
   display: block;
   color: var(--ds-muted);
   font-size: 0.82rem;
-}
-
-.flight-readiness-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1px;
-  margin: -8px 0 24px;
-  overflow: hidden;
-  border: 1px solid rgba(16, 24, 26, 0.12);
-  border-radius: var(--ds-radius);
-  background: var(--ds-night);
-  box-shadow: var(--ds-shadow-soft);
-}
-
-.flight-readiness-strip.compact {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-top: -6px;
-}
-
-.flight-readiness-strip div {
-  min-height: 78px;
-  padding: 15px 16px;
-  background:
-    linear-gradient(180deg, rgba(47, 214, 198, 0.07), transparent),
-    var(--ds-night);
-}
-
-.flight-readiness-strip span {
-  display: block;
-  color: rgba(245, 248, 246, 0.6);
-  font-size: 0.72rem;
-  font-weight: 820;
-  text-transform: uppercase;
-}
-
-.flight-readiness-strip strong {
-  display: block;
-  margin-top: 8px;
-  color: var(--ds-lime);
-  font-size: 1.02rem;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
 }
 
 .upload-drop {
@@ -1240,16 +1155,6 @@ body {
 .status.failed {
   background: var(--ex-state-fault-bg);
   color: var(--ex-state-fault-text);
-}
-
-.import-progress-text {
-  margin: 18px 0 0;
-  color: var(--ds-muted);
-}
-
-.import-actions {
-  display: flex;
-  margin-top: 20px;
 }
 
 .row-chevron {
@@ -3259,7 +3164,6 @@ body.flight-analysis-theme,
     overflow-x: auto;
   }
 
-  .page-heading,
   .upload-actions,
   .video-sync-header,
   .video-sync-controls {
@@ -3300,14 +3204,8 @@ body.flight-analysis-theme,
     justify-content: stretch;
   }
 
-  .page-heading h1 {
-    font-size: 2.35rem;
-  }
 
-
-  .core-users-grid,
-  .flight-readiness-strip,
-  .flight-readiness-strip.compact {
+  .core-users-grid {
     grid-template-columns: 1fr;
   }
 
