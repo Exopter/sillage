@@ -92,7 +92,12 @@
                 </label>
               <% end %>
             </td>
-            <td><%= link_to flight.code, flight, class: "flights-code" %></td>
+            <td>
+              <%= link_to flight.name.presence || flight.code, flight, class: "flights-name" %>
+              <% if flight.name.present? && flight.name != flight.code %>
+                <span class="flights-cell-note flights-data"><%= flight.code %></span>
+              <% end %>
+            </td>
             <td><strong class="flights-data"><%= logbook_value(flight.aircraft&.registration) %></strong></td>
             <td><%= logbook_value(flight.location) %></td>
             <td class="flights-muted flights-data"><%= logbook_date(flight) %></td>

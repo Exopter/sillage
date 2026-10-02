@@ -286,6 +286,8 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_select ".flights-table"
     assert_select ".flights-table tbody tr", minimum: 1
     assert_select ".flights-row[data-controller='row-link'][data-row-link-url-value='#{flight_path(flight)}']"
+    assert_select "a.flights-name[href=?]", flight_path(flight), text: flight.name
+    assert_select ".flights-row[data-row-link-url-value=?] .flights-cell-note", flight_path(flight), text: flight.code
     assert_select "a[href='#{flights_path}']", text: "Flights"
     assert_select "a[href='#{new_flight_import_path}']", text: "Import data"
     assert_select ".sillage-room-link", text: /Signal/

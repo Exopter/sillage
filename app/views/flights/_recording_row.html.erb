@@ -9,7 +9,7 @@
       <span class="sr-only">Select <%= flight_import.source_filename.presence || "recording #{flight_import.id}" %></span>
     </label>
   </td>
-  <td><%= link_to flight_import.source_filename.presence || "Recording", details_path, class: "flights-code" %></td>
+  <td><%= link_to flight_import.source_filename.presence || "Recording", details_path, class: "flights-name" %></td>
   <td><strong class="flights-data"><%= logbook_value(flight_import.aircraft&.registration) %></strong></td>
   <td><%= logbook_value(nil) %></td>
   <td class="flights-muted flights-data"><%= logbook_date(flight_import) %></td>

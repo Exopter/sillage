@@ -13,25 +13,25 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
   test "logbook filters and search include team flights without exposing another owner's private data" do
     get flights_path
     assert_response :success
-    assert_select "a.flights-code[href=?]", flight_path(@private)
-    assert_select "a.flights-code[href=?]", flight_path(@shared)
-    assert_select "a.flights-code[href=?]", flight_path(@hidden), count: 0
+    assert_select "a.flights-name[href=?]", flight_path(@private)
+    assert_select "a.flights-name[href=?]", flight_path(@shared)
+    assert_select "a.flights-name[href=?]", flight_path(@hidden), count: 0
     assert_select "input[name='entries[]'][value=?]", "flight:#{@shared.id}", count: 0
     assert_select "input[name='entries[]'][value=?]", "flight:#{@private.id}", count: 1
     assert_includes response.headers["Cache-Control"], "no-store"
 
     get flights_path(visibility: "private")
-    assert_select "a.flights-code[href=?]", flight_path(@private)
-    assert_select "a.flights-code[href=?]", flight_path(@shared), count: 0
-    assert_select "a.flights-code[href=?]", flight_path(@hidden), count: 0
+    assert_select "a.flights-name[href=?]", flight_path(@private)
+    assert_select "a.flights-name[href=?]", flight_path(@shared), count: 0
+    assert_select "a.flights-name[href=?]", flight_path(@hidden), count: 0
 
     get flights_path(visibility: "team", q: "mission")
-    assert_select "a.flights-code", count: 1
-    assert_select "a.flights-code[href=?]", flight_path(@shared)
+    assert_select "a.flights-name", count: 1
+    assert_select "a.flights-name[href=?]", flight_path(@shared)
     assert_select "input[name='visibility'][value='team']"
 
     get flights_path(q: "Confidential")
-    assert_select "a.flights-code", count: 0
+    assert_select "a.flights-name", count: 0
   end
 
   test "private flights are inaccessible even to another administrator" do
@@ -102,7 +102,7 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
     get flight_path(@private)
     assert_response :not_found
     get flights_path
-    assert_select "a.flights-code[href=?]", flight_path(@private), count: 0
+    assert_select "a.flights-name[href=?]", flight_path(@private), count: 0
   end
 
   test "creation defaults to private and accepts only the two supported visibility values" do
@@ -128,17 +128,17 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
   test "team visibility never exposes unshared raw recordings" do
     recording = @owner.flight_imports.create!(source_filename: "Private source", import_type: "exofdr", status: "pending")
     get flights_path(filter: "all", visibility: "team")
-    assert_select "a.flights-code[href*=?]", "recording=#{recording.id}", count: 0
+    assert_select "a.flights-name[href*=?]", "recording=#{recording.id}", count: 0
     get flights_path(filter: "all", visibility: "private")
-    assert_select "a.flights-code[href*=?]", "recording=#{recording.id}"
+    assert_select "a.flights-name[href*=?]", "recording=#{recording.id}"
 
     source = @other.flight_imports.create!(source_filename: "Unshared source filename", import_type: "flysight", status: "imported")
     @shared.update!(flight_import: source)
     get flights_path(q: "Unshared source filename")
-    assert_select "a.flights-code", count: 0
+    assert_select "a.flights-name", count: 0
     sign_in_as @other
     get flights_path(q: "Unshared source filename")
-    assert_select "a.flights-code[href=?]", flight_path(@shared)
+    assert_select "a.flights-name[href=?]", flight_path(@shared)
   end
 
   test "team pagination retains visibility query and status filter" do

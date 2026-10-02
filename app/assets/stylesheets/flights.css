@@ -83,17 +83,26 @@
 
 .flights-table th:nth-child(2),
 .flights-table td:nth-child(2) {
-  width: 132px;
+  width: 26%;
+  min-width: 200px;
+  max-width: 360px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .flights-table th:nth-child(3),
 .flights-table td:nth-child(3) {
-  width: 228px;
+  width: 110px;
 }
 
 .flights-table th:nth-child(4),
 .flights-table td:nth-child(4) {
-  width: 144px;
+  width: 20%;
+  min-width: 150px;
+  max-width: 280px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
 }
 
 .flights-selection-checkbox {
@@ -141,15 +150,17 @@
   background: var(--surface-hover);
 }
 
-.flights-code,
 .flights-data {
   color: var(--text-strong);
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
 }
 
-.flights-code {
+.flights-name {
+  display: block;
+  color: var(--text-strong);
   font-weight: 650;
+  line-height: 1.5;
 }
 
 .flights-muted {
