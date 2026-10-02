@@ -1,4 +1,5 @@
 require "test_helper"
+require "csv"
 
 module Flights
   class DetectBoundsTest < ActiveSupport::TestCase
@@ -40,6 +41,54 @@ module Flights
       bounds = DetectBounds.new(points).call
 
       assert_equal started_at + 128.0, bounds[:exit_at]
+    end
+
+    test "rejects GPS recovery spikes before the aircraft climb at full and display sample rates" do
+      started_at = Time.utc(2026, 10, 2)
+      # Flight 27's GPS briefly reported fast descent below ground during takeoff.
+      points = CSV.read(file_fixture("flight_exit_gps_recovery.csv"), headers: true).map do |row|
+        point(started_at, *row.fields.map(&:to_f))
+      end
+
+      [ 1, 5 ].each do |step|
+        bounds = DetectBounds.new(points.each_slice(step).map(&:first)).call
+
+        assert_in_delta 1_204.0, bounds[:exit_at] - started_at, 2.0
+      end
+    end
+
+    test "does not use an isolated fast descent as the movement fallback during a climb" do
+      started_at = Time.utc(2026, 10, 2)
+      points = [
+        point(started_at, 0.0, 100.0, 0.0, 0.0),
+        point(started_at, 10.0, 160.0, 30.0, -6.0),
+        point(started_at, 11.0, 161.0, 30.0, 15.0),
+        point(started_at, 12.0, 172.0, 30.0, -6.0),
+        point(started_at, 13.0, 178.0, 30.0, -6.0)
+      ]
+
+      assert_equal started_at, DetectBounds.new(points).call[:exit_at]
+    end
+
+    test "does not confirm fast descent across missing telemetry" do
+      started_at = Time.utc(2026, 10, 2)
+      points = [
+        point(started_at, 0.0, 100.0, 0.0, 0.0),
+        point(started_at, 10.0, 200.0, 30.0, 15.0),
+        point(started_at, 20.0, 100.0, 30.0, 15.0),
+        point(started_at, 21.0, 210.0, 30.0, -6.0)
+      ]
+
+      assert_equal started_at, DetectBounds.new(points).call[:exit_at]
+    end
+
+    test "duplicate fast samples do not count as sustained descent" do
+      started_at = Time.utc(2026, 10, 2)
+      points = [ point(started_at, 0.0, 100.0, 0.0, 0.0) ] +
+        Array.new(20) { point(started_at, 10.0, 200.0, 30.0, 15.0) } +
+        [ point(started_at, 11.0, 210.0, 30.0, -6.0) ]
+
+      assert_equal started_at, DetectBounds.new(points).call[:exit_at]
     end
 
     test "keeps first point when descent starts immediately" do

@@ -2,6 +2,8 @@ module Flights
   class DetectBounds
     HORIZONTAL_EXIT_SPEED_MPS = 20.0
     FREEFALL_VERTICAL_SPEED_MPS = 12.0
+    FREEFALL_CONFIRMATION_SECONDS = 2.0
+    FREEFALL_MAX_SAMPLE_GAP_SECONDS = 5.0
     EXIT_ONSET_VERTICAL_SPEED_MPS = 2.5
     FREEFALL_LOOKAHEAD_SECONDS = 4.0
     FREEFALL_MIN_ALTITUDE_LOSS_M = 20.0
@@ -22,10 +24,12 @@ module Flights
         next_invalid = index unless elapsed_seconds(@points[index]) && altitude_m(@points[index])
         @next_invalid[index] = next_invalid
       end
+      confirmed_fast = confirmed_freefall_points
+      @first_confirmed_fast = @points[confirmed_fast.index(true)] if confirmed_fast.any?
       @fast_counts = [ 0 ]
       @speed_counts = [ 0 ]
-      @points.each do |point|
-        @fast_counts << @fast_counts.last + (fast_freefall?(point) ? 1 : 0)
+      @points.each_with_index do |point, index|
+        @fast_counts << @fast_counts.last + (confirmed_fast[index] ? 1 : 0)
         @speed_counts << @speed_counts.last + (vertical_speed_mps(point) ? 1 : 0)
       end
     end
@@ -61,13 +65,39 @@ module Flights
     end
 
     def detect_movement_exit
-      vertical_exit = @points.find { |point| fast_freefall?(point) }
-      return vertical_exit if vertical_exit
+      return @first_confirmed_fast if @first_confirmed_fast
       return nil if aircraft_climb?
 
       @points.find do |point|
         point[:horizontal_speed_mps].to_f >= HORIZONTAL_EXIT_SPEED_MPS
       end
+    end
+
+    def confirmed_freefall_points
+      confirmed = Array.new(@points.size, false)
+      first = previous_elapsed = nil
+      @points.each_with_index do |point, index|
+        elapsed = elapsed_seconds(point)
+        fast = elapsed && fast_freefall?(point)
+        if first && (!fast || elapsed - previous_elapsed > FREEFALL_MAX_SAMPLE_GAP_SECONDS)
+          confirm_freefall_run(confirmed, first, index - 1)
+          first = nil
+        end
+        first ||= index if fast
+        previous_elapsed = elapsed
+      end
+      confirm_freefall_run(confirmed, first, @points.size - 1) if first
+      confirmed
+    end
+
+    def confirm_freefall_run(confirmed, first, last)
+      duration = elapsed_seconds(@points[last]) - elapsed_seconds(@points[first])
+      # A short recording may end during the initial acceleration. An observed
+      # recovery, unlike a truncated recording, must satisfy the full duration.
+      truncated = last == @points.size - 1 && duration.positive?
+      return unless duration >= FREEFALL_CONFIRMATION_SECONDS || truncated
+
+      (first..last).each { |index| confirmed[index] = true }
     end
 
     def sustained_freefall_from?(index)
