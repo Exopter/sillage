@@ -1,6 +1,9 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import { OS_PLAYBACK_PLUGIN } from "../../app/javascript/lib/flight_chart_plugins.js"
+import { createRequire } from "node:module"
+
+const Cesium = createRequire(import.meta.url)("cesium")
 
 const controllerSource = await readFile(
   new URL("../../app/javascript/controllers/flight_viewer_controller.js", import.meta.url),
@@ -276,5 +279,74 @@ for (const landing of [undefined, null, NaN, -10, 0, 5]) {
 }
 viewer.boundsValue = { landing: 200 }
 assert.equal(viewer.timelineEndFromData(), 100, "the cutoff cannot exceed the recording")
+
+const phaseWindow = globalThis.window
+globalThis.window = { Cesium }
+const phasePoints = [0, 10, 20, 30].map((t) => ({ t, lat: 44 + t / 1000, lon: 1, alt: 1000 - t * 20 }))
+const phaseViewer = Object.assign(new Viewer(), {
+  points: phasePoints, timelineStart: 0, flightDuration: 30,
+  boundsValue: { exit: 5, opening: 25, landing: 30 }, labelsValue: {},
+  phaseButtonTargets: [], statTargets: [],
+  cesiumViewer: { entities: new Cesium.EntityCollection(), scene: { requestRender() {} }, isDestroyed: () => false }
+})
+const phaseScene = phaseViewer.cesiumViewer
+phaseViewer.addCesiumTrajectory(Cesium, phaseScene)
+
+function assertPhasePath(times) {
+  const positions = phaseViewer.cesiumPath.polyline.positions.getValue(Cesium.JulianDate.now())
+  const expected = times.map((time) => {
+    const point = phaseViewer.samplePointAtElapsed(time, phaseViewer.cesiumPoints())
+    return Cesium.Cartesian3.fromDegrees(point.lon, point.lat, phaseViewer.cesiumAltitude(point))
+  })
+  assert.equal(positions.length, expected.length)
+  positions.forEach((position, index) => assert.ok(Cesium.Cartesian3.distance(position, expected[index]) < 0.001))
+}
+function phaseEventNames() {
+  return phaseScene.entities.values.filter((entity) => entity !== phaseViewer.cesiumPath && entity !== phaseViewer.cesiumMarker)
+    .map((entity) => entity.name)
+}
+
+assertPhasePath([0, 10, 20, 30])
+phaseViewer.applyPhase("jump")
+assertPhasePath([5, 10, 20, 25])
+assert.deepEqual(phaseEventNames(), ["exit", "opening"], "events outside the selected phase are hidden")
+assert.equal(phaseViewer.currentElapsed, 5)
+phaseViewer.updateScrubbedElapsed(100)
+assert.equal(phaseViewer.currentElapsed, 25)
+assertPhasePath([5, 10, 20, 25])
+phaseViewer.applyPhase("plane")
+assertPhasePath([0, 5])
+assert.deepEqual(phaseEventNames(), ["exit"])
+phaseViewer.applyPhase("canopy")
+assertPhasePath([25, 30])
+assert.deepEqual(phaseEventNames(), ["opening", "landing"])
+phaseViewer.applyPhase("all")
+assertPhasePath([0, 10, 20, 30])
+assert.deepEqual(phaseEventNames(), ["exit", "opening", "landing"])
+assert.deepEqual(phaseViewer.points, phasePoints, "switching phases preserves the complete GPS recording")
+
+let finishSurfaceRefinement
+phaseViewer.pointsLiftedAboveCesiumSurface = () => new Promise((resolve) => { finishSurfaceRefinement = resolve })
+const surfaceRefinement = phaseViewer.refineCesiumSurface(Cesium, phaseScene, {})
+phaseViewer.applyPhase("jump")
+finishSurfaceRefinement(phasePoints.map((point) => ({ ...point, visualAlt: point.alt + 20 })))
+await surfaceRefinement
+assertPhasePath([5, 10, 20, 25])
+assert.deepEqual(phaseEventNames(), ["exit", "opening"], "late terrain refinement preserves the current phase")
+
+phaseViewer.points = phasePoints.slice(1)
+phaseViewer.cesiumVisualPoints = null
+phaseViewer.applyPhase("plane")
+assert.equal(phaseViewer.cesiumPath.show, false, "a phase before the first GPS fix cannot invent a trajectory")
+assert.equal(phaseViewer.cesiumMarker.show, false)
+assert.deepEqual(phaseEventNames(), [])
+phaseViewer.applyPhase("jump")
+assertPhasePath([10, 20, 25])
+phaseViewer.updateScrubbedElapsed(12)
+assert.equal(phaseViewer.cesiumMarker.show, true, "the playhead appears once GPS data is available")
+phaseViewer.applyPhase("all")
+assertPhasePath([10, 20, 30])
+if (phaseWindow === undefined) delete globalThis.window
+else globalThis.window = phaseWindow
 
 console.log("Unified flight analysis tests passed")

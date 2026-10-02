@@ -39,13 +39,14 @@ globalThis.viewerResources = {
 }
 const geometryURL = new URL("../../app/javascript/lib/flight_geometry.js", import.meta.url).href
 const pluginsURL = new URL("../../app/javascript/lib/flight_chart_plugins.js", import.meta.url).href
-const { default: Viewer } = await import(`data:text/javascript;base64,${Buffer.from(`import { isFiniteNumber, normalizeFlightPoints, normalizeSensorSamples } from "${geometryURL}";
+const { default: Viewer } = await import(`data:text/javascript;base64,${Buffer.from(`import { clamp, finiteNumber, isFiniteNumber, normalizeFlightPoints, normalizeSensorSamples, sampleFlightPoint } from "${geometryURL}";
 import { OS_BOUNDS_PLUGIN, OS_PLAYBACK_PLUGIN, tooltipVerticalAlign } from "${pluginsURL}";\nconst { withTimeout, loadCesiumLibrary } = globalThis.viewerResources;\n${controllerSource}`).toString("base64")}`)
 const tick = () => new Promise((resolve) => setImmediate(resolve))
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject } }
 function viewer() {
   return Object.assign(new Viewer(), {
     pointsValue: [], sensorsValue: [], hasSceneTarget: false,
+    boundsValue: {}, timelineStart: 0, flightDuration: 1,
     colors: { daySky: "#b9dcf2", aqua: "#28bfb8" },
     heightFromGround: (point) => point.alt, label: (key) => key,
     groundAltitudeFromAnalysis: () => 0, timelineStartFromData: () => 0, timelineEndFromData: () => 1,

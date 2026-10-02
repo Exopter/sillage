@@ -13,6 +13,9 @@ module Flights
     OPENING_FAST_LOOKBEHIND_SECONDS = 8.0
     OPENING_SLOW_DESCENT_MPS = 10.0
     OPENING_SLOW_POINTS = 4
+    CANOPY_CONFIRMATION_SECONDS = 15.0
+    CANOPY_MAX_HORIZONTAL_SPEED_MPS = 20.0
+    CANOPY_MAX_SAMPLE_GAP_SECONDS = 5.0
     OPENING_TYPICAL_MIN_HEIGHT_M = 600.0
     OPENING_TYPICAL_MAX_HEIGHT_M = 1_500.0
 
@@ -140,6 +143,7 @@ module Flights
       best = nil
       best_score = nil
       candidate_active = false
+      candidate_point = nil
       last_fast = nil
       @points.each_with_index do |point, index|
         next if point[:elapsed_seconds].to_f <= exit_point[:elapsed_seconds].to_f + 8.0
@@ -149,17 +153,48 @@ module Flights
           slow_window.all? { |window_point| vertical_speed_mps(window_point).to_f < OPENING_SLOW_DESCENT_MPS }
 
         if candidate && !candidate_active
+          candidate_point = point
           score = opening_score(point, index)
           if !best_score || (score <=> best_score).negative?
             best = point
             best_score = score
           end
         end
+        # A sustained slowdown on both axes identifies canopy flight before
+        # later turns can introduce lower opening-like candidates.
+        return candidate_point if candidate && sustained_canopy_from?(index)
+
         candidate_active = candidate
         last_fast = point if vertical_speed_mps(point).to_f >= OPENING_FAST_DESCENT_MPS
       end
 
       best
+    end
+
+    def sustained_canopy_from?(index)
+      run_end = canopy_run_ends[index]
+      run_end && run_end - elapsed_seconds(@points[index]) >= CANOPY_CONFIRMATION_SECONDS
+    end
+
+    def canopy_run_ends
+      @canopy_run_ends ||= begin
+        ends = Array.new(@points.size)
+        (@points.size - 1).downto(0) do |index|
+          point = @points[index]
+          elapsed = elapsed_seconds(point)
+          vertical = vertical_speed_mps(point)
+          horizontal = numeric(point, :horizontal_speed_mps)
+          next unless elapsed && vertical && horizontal &&
+            vertical.abs < OPENING_SLOW_DESCENT_MPS && horizontal < CANOPY_MAX_HORIZONTAL_SPEED_MPS
+
+          ends[index] = if ends[index + 1] && elapsed_seconds(@points[index + 1]) - elapsed <= CANOPY_MAX_SAMPLE_GAP_SECONDS
+            ends[index + 1]
+          else
+            elapsed
+          end
+        end
+        ends
+      end
     end
 
     def opening_score(candidate, index)

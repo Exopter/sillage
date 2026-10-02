@@ -588,6 +588,12 @@ export default class extends TypedController {
 
     this.updatePhaseLabels()
     this.updatePhaseStatistics()
+    if (this.cesiumViewer && window.Cesium) {
+      this.refreshCesiumTrajectory(window.Cesium, this.cesiumViewer)
+      this.cesiumViewer.scene.requestRender()
+    } else if (this.sceneCanvas) {
+      this.showSceneFallback(this.sceneCanvas)
+    }
     if (options.movePlayhead !== false) this.updateScrubbedElapsed(this.phaseStart())
   }
 
@@ -867,6 +873,7 @@ export default class extends TypedController {
     this.cesiumInteractionHandler = null
     if (this.cesiumViewer && !this.cesiumViewer.isDestroyed()) this.cesiumViewer.destroy()
     this.cesiumViewer = null
+    this.cesiumPath = null
     this.cesiumMarker = null
     this.sceneCanvas = null
     if (this.cesiumTileset && !this.cesiumTileset.isDestroyed()) this.cesiumTileset.destroy()
@@ -1115,15 +1122,17 @@ export default class extends TypedController {
   /** @param {typeof import("cesium")} Cesium @param {import("cesium").Viewer} viewer */
   addCesiumTrajectory(Cesium, viewer) {
     const points = this.cesiumPoints()
-    const positions = points.flatMap((point) => [point.lon, point.lat, this.cesiumAltitude(point)])
+    const phasePoints = this.pointsInActivePhase(points)
+    const positions = phasePoints.flatMap((point) => [point.lon, point.lat, this.cesiumAltitude(point)])
     const markerElapsed = this.currentElapsed
     const markerPoint = this.samplePointAtElapsed(markerElapsed, points) || points[0]
     const markerLabelPoint = this.samplePointAtElapsed(markerElapsed, this.points) || this.points[0]
 
     this.cesiumPath = viewer.entities.add({
       name: this.label("trajectory"),
+      show: phasePoints.length > 1,
       polyline: {
-        positions: Cesium.Cartesian3.fromDegreesArrayHeights(positions),
+        positions: positions.length ? Cesium.Cartesian3.fromDegreesArrayHeights(positions) : [],
         width: 5,
         material: new Cesium.PolylineGlowMaterialProperty({
           glowPower: 0.22,
@@ -1134,6 +1143,7 @@ export default class extends TypedController {
 
     this.cesiumMarker = viewer.entities.add({
       name: this.label("current_position"),
+      show: phasePoints.length > 0,
       position: Cesium.Cartesian3.fromDegrees(markerPoint.lon, markerPoint.lat, this.cesiumAltitude(markerPoint)),
       point: {
         pixelSize: 14,
@@ -1166,7 +1176,10 @@ export default class extends TypedController {
 
   /** @param {typeof import("cesium")} Cesium @param {import("cesium").Viewer} viewer @param {string} key @param {number|null|undefined} elapsed */
   addCesiumEventMarker(Cesium, viewer, key, elapsed) {
-    const point = this.coordinatePointAtElapsed(elapsed, this.cesiumPoints())
+    const points = this.cesiumPoints()
+    if (!points.length || !this.timeInsideRange(elapsed, this.phaseStart(), this.phaseEnd()) ||
+        !this.timeInsideRange(elapsed, points[0].t, points[points.length - 1].t)) return
+    const point = this.coordinatePointAtElapsed(elapsed, points)
     if (!point) return
 
     viewer.entities.add({
@@ -1854,9 +1867,10 @@ export default class extends TypedController {
     context.strokeStyle = this.colors.aqua
     context.lineWidth = 2
     context.beginPath()
-    const heightSpan = this.points.reduce((maximum, point) => Math.max(maximum, this.heightFromGround(point) ?? 0), 1)
-    this.points.forEach((point, index) => {
-      const x = (index / Math.max(this.points.length - 1, 1)) * width
+    const points = this.pointsInActivePhase(this.points)
+    const heightSpan = points.reduce((maximum, point) => Math.max(maximum, this.heightFromGround(point) ?? 0), 1)
+    points.forEach((point, index) => {
+      const x = (index / Math.max(points.length - 1, 1)) * width
       const y = height - ((this.heightFromGround(point) ?? 0) / heightSpan) * height * 0.78 - 24
       if (index === 0) context.moveTo(x, y)
       else context.lineTo(x, y)
@@ -1878,8 +1892,14 @@ export default class extends TypedController {
     const syncVideo = options.syncVideo !== false
     const clampedElapsed = this.clamp(elapsed || 0, this.phaseStart(), this.phaseEnd())
     const point = this.telemetryPointAtElapsed(clampedElapsed)
-    const visualPoint = this.coordinatePointAtElapsed(clampedElapsed, this.cesiumPoints())
+    const visualPoints = this.cesiumPoints()
+    const visualPoint = this.coordinatePointAtElapsed(clampedElapsed, visualPoints)
     this.currentElapsed = clampedElapsed
+
+    if (this.cesiumMarker) {
+      this.cesiumMarker.show = visualPoints.length > 0 &&
+        this.timeInsideRange(clampedElapsed, visualPoints[0].t, visualPoints[visualPoints.length - 1].t)
+    }
 
     if (this.hasScrubberTarget && this.phaseSpan() > 0) {
       this.scrubberTarget.value = String(Math.round(((clampedElapsed - this.phaseStart()) / this.phaseSpan()) * 1000))
@@ -2115,6 +2135,23 @@ export default class extends TypedController {
 
   cesiumPoints() {
     return this.cesiumVisualPoints || this.points
+  }
+
+  /** @param {import("../types/flight").FlightPoint[]} points */
+  pointsInActivePhase(points) {
+    if (!points.length) return []
+
+    const start = Math.max(this.phaseStart(), points[0].t)
+    const end = Math.min(this.phaseEnd(), points[points.length - 1].t)
+    if (end < start) return []
+    if (start === points[0].t && end === points[points.length - 1].t) return points
+
+    // Keep exact phase boundaries even when they fall between GPS samples.
+    return [
+      this.samplePointAtElapsed(start, points),
+      ...points.filter((point) => point.t > start && point.t < end),
+      ...(end > start ? [this.samplePointAtElapsed(end, points)] : [])
+    ].filter((point) => point !== null)
   }
 
   /** @param {import("../types/flight").FlightPoint} point */

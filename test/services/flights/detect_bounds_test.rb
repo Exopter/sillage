@@ -135,6 +135,59 @@ module Flights
       assert_equal started_at + 51.0, bounds[:opening_at]
     end
 
+    test "detects canopy before later turns despite a GPS altitude outlier at full and display sample rates" do
+      started_at = Time.utc(2026, 10, 2)
+      # Flight 27 includes the opening, two canopy turns and a false ground floor.
+      points = CSV.read(file_fixture("flight_opening_canopy_turns.csv"), headers: true).map do |row|
+        point(started_at, *row.fields.map(&:to_f))
+      end
+
+      [ 1, 5 ].each do |step|
+        bounds = DetectBounds.new(points.each_slice(step).map(&:first)).call
+
+        assert_in_delta 1_272.0, bounds[:opening_at] - started_at, 1.0
+        assert_in_delta 1_202.8, bounds[:exit_at] - started_at, 1.0
+      end
+    end
+
+    test "does not confirm a sustained vertical flare while horizontal flight remains fast" do
+      started_at = Time.utc(2026, 10, 2)
+      flare = (21..41).map { |elapsed| point(started_at, elapsed, 1_400 - (elapsed - 21) * 5, 35.0, 5.0) }
+
+      bounds = DetectBounds.new(opening_sequence(started_at, flare)).call
+
+      assert_equal started_at + 61, bounds[:opening_at]
+    end
+
+    test "requires continuous observed canopy duration rather than sample count" do
+      started_at = Time.utc(2026, 10, 2)
+      scenarios = {
+        short_slowdown: (21..25).to_a,
+        missing_telemetry: [ 21, 22, 40, 41 ],
+        duplicate_samples: Array.new(100, 21) + [ 22, 23, 24 ]
+      }
+      scenarios.each do |name, times|
+        flare = times.map { |elapsed| point(started_at, elapsed, 1_400 - (elapsed - 21) * 5, 12.0, 5.0) }
+
+        bounds = DetectBounds.new(opening_sequence(started_at, flare)).call
+
+        assert_equal started_at + 61, bounds[:opening_at], name.to_s
+      end
+    end
+
+    test "missing speed observations do not confirm canopy flight" do
+      started_at = Time.utc(2026, 10, 2)
+      [ :horizontal_speed_mps, :vertical_speed_mps ].each do |missing|
+        flare = (21..41).map do |elapsed|
+          point(started_at, elapsed, 1_400 - (elapsed - 21) * 5, 12.0, 5.0).merge(missing => nil)
+        end
+
+        bounds = DetectBounds.new(opening_sequence(started_at, flare)).call
+
+        assert_equal started_at + 61, bounds[:opening_at], missing.to_s
+      end
+    end
+
     test "keeps production-like lower opening when the final fast descent is moderate" do
       started_at = Time.zone.parse("2026-07-07 12:57:14 UTC")
       points = [
@@ -171,6 +224,19 @@ module Flights
     end
 
     private
+
+    def opening_sequence(started_at, flare)
+      [
+        point(started_at, 0, 2_000, 30, 25),
+        point(started_at, 5, 1_875, 30, 25),
+        point(started_at, 20, 1_425, 30, 25),
+        *flare,
+        point(started_at, 50, 1_000, 30, 25),
+        point(started_at, 60, 750, 30, 25),
+        *(61..81).map { |elapsed| point(started_at, elapsed, 740 - (elapsed - 61) * 5, 12, 5) },
+        point(started_at, 200, 10, 0, 0)
+      ]
+    end
 
     def point(started_at, elapsed_seconds, altitude_m, horizontal_speed_mps, vertical_speed_mps)
       {
