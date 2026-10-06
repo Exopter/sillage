@@ -10,21 +10,32 @@ abort "Usage: ruby script/sync_landing_assets [--check|--write]" unless %w[--che
 
 files = {
   "assets/logo-wordmark.svg" => "app/assets/images/logo-wordmark.svg",
+  "assets/logo-mark.svg" => "app/assets/images/logo-mark.svg",
+  "assets/logo-shell.svg" => "app/assets/images/logo-shell.svg",
+  "assets/app-icon.svg" => [ "app/assets/images/app-icon.svg", "public/icon.svg" ],
   "components/illustration/WingBlueprint.css" => "app/assets/stylesheets/wing_blueprint.css"
 }
 %w[axonometric plan front profile].each do |view|
   files["assets/blueprints/exowing-#{view}.svg"] = "app/assets/images/blueprints/exowing-#{view}.svg"
 end
 
-files.each do |source_path, target_path|
+files.each do |source_path, target_paths|
   source = File.binread(File.join(source_root, source_path))
-  target = File.join(root, target_path)
-  if mode == "--write"
-    FileUtils.mkdir_p(File.dirname(target))
-    File.binwrite(target, source)
-  else
-    abort "Landing asset differs: #{target_path}. Run ruby script/sync_landing_assets --write." unless File.file?(target) && File.binread(target) == source
+  Array(target_paths).each do |target_path|
+    target = File.join(root, target_path)
+    if mode == "--write"
+      FileUtils.mkdir_p(File.dirname(target))
+      File.binwrite(target, source)
+    else
+      abort "Design-system asset differs: #{target_path}. Run ruby script/sync_landing_assets --write." unless File.file?(target) && File.binread(target) == source
+    end
   end
 end
 
-puts "Landing assets #{mode == '--write' ? 'synchronized' : 'verified'} against the shared design system."
+source_icons = File.read(File.join(source_root, "ui_kits/os-flight/icons.jsx"))
+target_icons = File.read(File.join(root, "app/helpers/application_helper.rb"))
+source_mark = source_icons[/exopter: '([^']+)'/, 1]
+target_mark = target_icons[/"exopter" => '([^']+)'/, 1]
+abort "Exopter source icon differs from the shared design system." unless source_mark && source_mark == target_mark
+
+puts "Brand and landing assets #{mode == '--write' ? 'synchronized' : 'verified'} against the shared design system."

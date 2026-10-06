@@ -11,7 +11,7 @@
 
     <%= yield :head %>
 
-    <link rel="icon" href="/icon.svg?v=exopter-e" type="image/svg+xml">
+    <link rel="icon" href="/icon.svg?v=exopter-ex-20261006" type="image/svg+xml">
 
     <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag "exopter_fonts", "exopter_design_system", "application", "selection_toolbar", "flights", "signal", "hangar_forge", "data-turbo-track": "reload" %>
@@ -22,7 +22,7 @@
     <div class="sillage-workbench">
       <aside class="sillage-rail" aria-label="Sillage rooms">
         <%= link_to root_path, class: "sillage-home-link", aria: { label: "Sillage home" }, title: "Sillage home" do %>
-          <%= image_tag "logo-shell.svg", width: 30, height: 30, alt: "" %>
+          <%= image_tag "logo-shell.svg", width: 44, height: 30, alt: "" %>
         <% end %>
         <nav class="sillage-room-nav" aria-label="Primary rooms">
           <% sillage_room_items.each do |item| %>
