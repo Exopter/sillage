@@ -45,6 +45,7 @@ CI.run do
   step "Tests: Signal outbox durability", "node test/javascript/signal_outbox_test.mjs"
   step "Tests: USB page lifecycle", "node test/javascript/usb_page_lifecycle_test.mjs"
   step "Security: Gem audit", "bin/bundler-audit"
+  step "Security: Production npm dependency audit", "npm audit --omit=dev --audit-level=low"
   step "Security: Importmap vulnerability audit", "bin/importmap audit"
   step "Security: Brakeman code analysis", "bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error"
   # Keep libpq out of forked test workers; PostgreSQL write concurrency has a dedicated threaded integration test.
