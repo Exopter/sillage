@@ -179,7 +179,7 @@ module ExoFdr
             satellite_count: record["satellites"]
           )
         when "imu"
-          sensors << sensor_sample("IMU:#{record['sensor']}", record, recorded_at, elapsed, %w[accuracy x y z w]).merge(provenance(record, recording, blob))
+          sensors << sensor_sample("IMU:#{record['sensor']}", record, recorded_at, elapsed, %w[accuracy frame_id coordinate_frame x y z w]).merge(provenance(record, recording, blob))
         when "airspeed"
           sensors << sensor_sample("AIRSPEED", record, recorded_at, elapsed,
             %w[sensor_pressure_pa differential_pressure_pa temperature_c airspeed_m_s]).merge(provenance(record, recording, blob))

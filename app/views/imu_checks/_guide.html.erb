@@ -1,0 +1,47 @@
+<section data-controller="imu-check" data-imu-check-device-value="<%= fdr.device_id %>" data-imu-check-kind-value="<%= kind %>" data-imu-check-flight-value="<%= local_assigns[:flight]&.id %>">
+  <div class="calibration-quality" aria-live="polite">
+    <span>ATTITUDE <strong data-imu-check-target="attitude" data-state="unknown">Unknown</strong></span>
+    <span>HEADING <strong data-imu-check-target="heading" data-state="unknown">Unknown</strong></span>
+    <small data-imu-check-target="qualityReason">Connect the ground radio to read this recorder.</small>
+    <button type="button" class="button-secondary" data-action="imu-check#connectRadio" data-imu-check-target="connectButton">Connect ground radio</button>
+  </div>
+  <div class="calibration-guide">
+    <div class="calibration-visual" data-imu-check-target="visual" data-state="waiting">
+      <div class="calibration-stage-header">
+        <span data-imu-check-target="stepLabel">PROCEDURE NOT STARTED</span>
+        <div class="calibration-legend"><span data-kind="live">Live IMU</span><span data-kind="target">Target</span></div>
+      </div>
+      <div class="calibration-scene" data-imu-check-target="scene" role="img" aria-label="Live IMU orientation with a translucent target orientation"></div>
+      <div class="calibration-hold" data-imu-check-target="hold" role="progressbar" aria-label="Stable hold" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0">
+        <svg viewBox="0 0 96 96" aria-hidden="true"><circle class="calibration-ring-track" cx="48" cy="48" r="42"/><circle class="calibration-ring-fill" cx="48" cy="48" r="42" pathLength="100" data-imu-check-target="holdRing"/></svg>
+        <span class="calibration-countdown" data-imu-check-target="countdown">3.0<span>s</span></span>
+      </div>
+      <div class="calibration-scene-label">
+        <strong data-imu-check-target="sceneLabel">Live IMU orientation</strong>
+        <span data-imu-check-target="sceneHint">Connect the ground radio to display the IMU orientation estimate.</span>
+      </div>
+    </div>
+    <div class="calibration-controls">
+      <span class="section-eyebrow"><%= kind == "calibration" ? "Forge / IMU calibration" : "Flight / Preflight check" %></span>
+      <h2 data-imu-check-target="title"><%= kind == "calibration" ? "IMU calibration" : "IMU preflight check" %></h2>
+      <p data-imu-check-target="instruction"><%= kind == "calibration" ? "Hold each of the six orientations for 3 seconds, rotate about all three axes, then record a 15-second static reference." : "Place the enclosure on a level reference. Leave the radio and normal equipment powered. Keep it still for 15 seconds." %></p>
+      <% if kind == "calibration" %>
+        <div class="calibration-faces" aria-label="Measured orientations">
+          <% %w[x+ x- y+ y- z+ z-].each_with_index do |face, index| %>
+            <span class="calibration-face" data-face="<%= face %>" data-complete="false" data-active="false">
+              <span class="calibration-face-mark"><%= index + 1 %></span><span><%= face.upcase %></span>
+            </span>
+          <% end %>
+        </div>
+      <% end %>
+      <label class="calibration-confirm" data-imu-check-target="confirmation"><input type="checkbox" data-imu-check-target="confirmed"> <span>On the ground, clear of magnets and tools. The enclosure reference is level in both directions.</span></label>
+      <progress class="calibration-progress" data-imu-check-target="progress" max="100" value="0" aria-label="Measured progress"></progress>
+      <div class="workspace-actions">
+        <button type="button" class="button-primary" data-action="imu-check#advance" data-imu-check-target="actionButton" disabled>Start</button>
+        <button type="button" class="button-secondary" data-action="imu-check#cancel" data-imu-check-target="cancelButton">Cancel</button>
+      </div>
+      <div class="calibration-result" data-imu-check-target="result" role="status"></div>
+      <p class="workspace-muted">Static consistency check, not flight qualification. No axis remapping or automatic zeroing.</p>
+    </div>
+  </div>
+</section>

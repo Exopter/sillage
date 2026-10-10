@@ -38,6 +38,15 @@
       "signal_layout": [
         "./app/javascript/lib/signal_layout.js"
       ],
+      "signal_telemetry": [
+        "./app/javascript/lib/signal_telemetry.js"
+      ],
+      "signal_instruments": [
+        "./app/javascript/lib/signal_instruments.js"
+      ],
+      "signal_map": [
+        "./app/javascript/lib/signal_map.js"
+      ],
       "flight_geometry": [
         "./app/javascript/lib/flight_geometry.js"
       ],
@@ -61,6 +70,18 @@
       ],
       "recorder_identity": [
         "./app/javascript/lib/recorder_identity.js"
+      ],
+      "landing_scene": [
+        "./app/javascript/lib/landing_scene.js"
+      ],
+      "landing_flow": [
+        "./app/javascript/lib/landing_flow.js"
+      ],
+      "imu_health": [
+        "./app/javascript/lib/imu_health.js"
+      ],
+      "imu_tutorial": [
+        "./app/javascript/lib/imu_tutorial.js"
       ]
     },
     "strict": true,

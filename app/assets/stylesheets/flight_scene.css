@@ -1,0 +1,104 @@
+/* Shared progressive 3D illustration. The static image remains the fallback. */
+.exds-flight-scene {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+  isolation: isolate;
+  color: var(--ex-scene-edge);
+}
+
+.exds-flight-scene canvas,
+.exds-flight-scene-fallback {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.exds-flight-scene canvas {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--ex-motion-reveal-duration) ease;
+}
+
+.exds-flight-scene-fallback {
+  object-fit: contain;
+  transition: opacity var(--ex-motion-reveal-duration) ease;
+}
+
+.exds-flight-scene[data-scene-state="ready"] canvas { opacity: 1; }
+.exds-flight-scene[data-scene-state="ready"] .exds-flight-scene-fallback { opacity: 0; }
+
+.exds-flight-scene-caption {
+  position: absolute;
+  left: var(--ex-space-6);
+  right: var(--ex-space-6);
+  bottom: var(--ex-space-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ex-space-4);
+  font: 10px/1.5 var(--ex-font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ex-line-300);
+}
+
+.exds-flight-scene-caption strong {
+  display: block;
+  color: var(--ex-scene-light);
+  font-weight: 400;
+}
+
+.exds-scene-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ex-space-2);
+}
+
+.exds-scene-controls[hidden] { display: none; }
+
+.exds-scene-controls button {
+  min-height: 44px;
+  padding: 0 var(--ex-space-3);
+  border: 1px solid var(--ex-carbon-700);
+  border-radius: var(--ex-radius-instrument);
+  background: color-mix(in srgb, var(--ex-carbon-950) 85%, transparent);
+  color: var(--ex-line-300);
+  font: 10px/1 var(--ex-font-mono);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 180ms ease, border-color 180ms ease;
+}
+
+.exds-scene-controls button:hover,
+.exds-scene-controls button[aria-pressed="true"] {
+  border-color: var(--ex-scene-edge);
+  color: var(--ex-scene-edge);
+}
+
+.exds-scene-controls button:focus-visible {
+  outline: 2px solid var(--ex-scene-edge);
+  outline-offset: 4px;
+}
+
+[data-reveal="pending"] {
+  opacity: 0;
+  transform: translateY(var(--ex-space-6));
+}
+
+[data-reveal="visible"] {
+  opacity: 1;
+  transform: none;
+  transition: opacity var(--ex-motion-reveal-duration) var(--ex-motion-reveal-ease),
+    transform var(--ex-motion-reveal-duration) var(--ex-motion-reveal-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .exds-flight-scene canvas,
+  .exds-flight-scene-fallback,
+  [data-reveal] { transition: none; }
+  [data-reveal="pending"] { opacity: 1; transform: none; }
+}

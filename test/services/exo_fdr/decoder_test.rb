@@ -6,6 +6,17 @@ require "tempfile"
 require "zlib"
 
 class ExoFdr::DecoderTest < ActiveSupport::TestCase
+  test "identifies native body and unknown IMU frames without rotating stored values" do
+    { 0 => "sensor_native", 1 => "body_frd_ned", 99 => "unknown_99" }.each do |frame_id, frame_name|
+      payload = [ 5, 3, frame_id, -0.4, 0.2, -0.4, 0.8 ].pack("CCve4")
+      binary = file_header + record(type: 2, sequence: 0, timestamp_us: 1_000_000, payload:)
+      sample = ExoFdr::Decoder.new(StringIO.new(binary)).call.records.sole
+      assert_equal frame_id, sample.fetch("frame_id")
+      assert_equal frame_name, sample.fetch("coordinate_frame")
+      %w[x y z w].zip([ -0.4, 0.2, -0.4, 0.8 ]).each { |axis, value| assert_in_delta value, sample.fetch(axis), 1e-6 }
+    end
+  end
+
   test "decodes the versioned binary format and all known record types" do
     result = ExoFdr::Decoder.new(StringIO.new(valid_file)).call
 

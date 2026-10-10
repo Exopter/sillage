@@ -52,6 +52,9 @@ export function registrationPayload(value) {
       assembly: recorderAssembly(recorder.assembly),
       connectivity_url: localPath(recorder.connectivity_url, "connectivity URL"),
       initialization_url: localPath(recorder.initialization_url, "initialization URL"),
+      ...(recorder.access_restoration_url == null ? {} : {
+        access_restoration_url: localPath(recorder.access_restoration_url, "access restoration URL")
+      }),
       initialization_confirmed: recorder.initialization_confirmed
     },
     aircraft: payload.aircraft == null ? null : {registration: requiredString(objectPayload(payload.aircraft).registration, "aircraft registration")}
@@ -73,6 +76,15 @@ export function importReceipt(value) {
 /** @param {unknown} value */
 export function authenticationHex(value) {
   if (typeof value !== "string" || !/^[a-fA-F0-9]{64}$/.test(value)) throw new Error("Sillage returned an invalid SHA-256 value.")
+  return value
+}
+
+/** @param {unknown} value */
+export function authenticationKey(value) {
+  // A 32-byte key uses unpadded, canonical Base64url, not a hexadecimal digest.
+  if (typeof value !== "string" || !/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(value)) {
+    throw new Error("Sillage returned an invalid recorder authentication key.")
+  }
   return value
 }
 

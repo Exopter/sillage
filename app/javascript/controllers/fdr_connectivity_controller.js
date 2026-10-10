@@ -1,4 +1,4 @@
-import { objectPayload, readResponse, registrationPayload, importReceipt, authenticationHex, commandSequence, heartbeatPayloads } from "fdr_api"
+import { objectPayload, readResponse, registrationPayload, importReceipt, authenticationHex, authenticationKey, commandSequence, heartbeatPayloads } from "fdr_api"
 import { normalizeSillageHeartbeatStatus, describeWifiUpload, normalizeSillageHeartbeatDiagnostics, sillageHeartbeatIdentity, formatSeenAt } from "fdr_heartbeat"
 import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
@@ -822,6 +822,7 @@ export default class extends TypedController {
     this.usbUploadController?.abort()
     this.usbClient = null
     this.usbSession = null
+    this.registrationSubmitting = false
     this.usbBusy = false
     this.usbAuthenticated = false
     this.usbAuthenticationConfigured = false
@@ -1529,6 +1530,13 @@ export default class extends TypedController {
       return
     }
 
+    const restoreAccess = Boolean(this.registeredRecorder?.initialization_confirmed) && !this.usbAuthenticationConfigured
+    if (restoreAccess && this.registeredRecorder && !window.confirm(
+      `Restore access to ${recorderLabel(this.registeredRecorder)} (${identity.deviceId})? Keep this recorder connected over USB-C. Its existing key will be reinstalled. Its assembly assignment, flights and recordings will be preserved.`
+    )) return
+
+    const client = this.usbClient
+    const session = this.usbSession
     this.registrationSubmitting = true
     this.wifiRegisterButtonTarget.disabled = true
     window.clearInterval(this.usbPollTimer)
@@ -1546,20 +1554,34 @@ export default class extends TypedController {
         this.registeredAircraft = aircraft
       }
 
-      this.wifiRegisterLabelTarget.textContent = this.usbAuthenticationConfigured ? "Authenticating…" : "Installing key…"
+      this.assertRecorderUsbSession(client, session, identity.deviceId)
+      this.wifiRegisterLabelTarget.textContent = restoreAccess ? "Restoring access…" : (this.usbAuthenticationConfigured ? "Authenticating…" : "Installing key…")
       this.setWifiRegistrationStatus(
-        this.usbAuthenticationConfigured
+        restoreAccess
+          ? "Restoring this recorder's existing Sillage key over USB-C…"
+          : this.usbAuthenticationConfigured
           ? "Verifying this recorder with its Sillage key…"
           : "Installing the recorder-specific Sillage key over USB-C…"
       )
-      await this.establishRecorderAuthentication(recorder, identity)
+      const restorationToken = await this.establishRecorderAuthentication(recorder, identity, restoreAccess)
+      this.assertRecorderUsbSession(client, session, identity.deviceId)
       this.usbAuthenticated = true
-      await this.confirmRecorderInitialization(recorder, identity)
+      await this.confirmRecorderInitialization(recorder, identity, restorationToken)
+      this.assertRecorderUsbSession(client, session, identity.deviceId)
       recorder.initialization_confirmed = true
       this.renderRegisteredRecorder(recorder, aircraft)
+      if (restoreAccess) {
+        this.updateToolsAvailability()
+        this.startUsbPolling()
+        this.showSynchronizationNotice(restorationToken ? "The existing key was restored and USB-C authentication succeeded." : "USB-C authentication succeeded with the recorder's existing key.", {
+          state: "status", label: restorationToken ? "Recorder access restored" : "Recorder authenticated"
+        })
+        return
+      }
       await this.disconnectUsb()
       window.location.assign(recorder.connectivity_url)
     } catch (caught) {
+      if (client !== this.usbClient || session !== this.usbSession) return
       const error = protocolError(caught)
       this.registrationSubmitting = false
       if (recorder) this.renderRecorderInitializationRequired(recorder, aircraft, error.message)
@@ -1592,14 +1614,32 @@ export default class extends TypedController {
     return {recorder: payload.recorder, aircraft: payload.aircraft}
   }
 
-  /** @param {import("../types/recorder").Recorder} recorder @param {import("../types/recorder").Identity} identity */
-  async establishRecorderAuthentication(recorder, identity) {
-    if (!this.usbClient || this.usbIdentity?.deviceId !== identity.deviceId) {
-      throw new Error("Keep this recorder connected over USB-C during secure initialization.")
+  /** @param {UsbFdrClient|null} client @param {symbol|null} session @param {string} deviceId */
+  assertRecorderUsbSession(client, session, deviceId) {
+    if (!client || client !== this.usbClient || session !== this.usbSession || this.usbIdentity?.deviceId !== deviceId) {
+      throw new Error("The USB-C connection changed. Reconnect the recorder and try again.")
     }
+    if (!this.recordingIdentitiesMatch()) throw new Error("Disconnect the unrelated recorder before restoring access.")
+  }
 
-    if (!this.usbAuthenticationConfigured) {
-      const response = await fetch(recorder.initialization_url, {
+  /** @param {import("../types/recorder").Recorder} recorder @param {import("../types/recorder").Identity} identity @param {boolean} [restoreAccess] */
+  async establishRecorderAuthentication(recorder, identity, restoreAccess = false) {
+    const client = this.usbClient
+    const session = this.usbSession
+    this.assertRecorderUsbSession(client, session, identity.deviceId)
+    if (!client) throw new Error("Connect this recorder over USB-C first.")
+    let restorationToken = null
+    let challenge = await client.usbAuthenticationChallenge()
+    this.assertRecorderUsbSession(client, session, identity.deviceId)
+    this.usbAuthenticationConfigured = challenge.configured
+
+    if (!challenge.configured) {
+      if (recorder.initialization_confirmed && !restoreAccess) {
+        throw new Error("This recorder has lost its key. Confirm Restore recorder access to continue.")
+      }
+      const url = restoreAccess ? recorder.access_restoration_url : recorder.initialization_url
+      if (!url) throw new Error("Reload Sillage to enable recorder access restoration.")
+      const response = await fetch(url, {
         method: "POST",
         cache: "no-store",
         credentials: "same-origin",
@@ -1608,22 +1648,38 @@ export default class extends TypedController {
           "Content-Type": "application/json",
           "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || ""
         },
-        body: JSON.stringify({ device_id: identity.deviceId })
+        body: JSON.stringify({ device_id: identity.deviceId,
+          ...(restoreAccess ? { confirmed: true, transport: "usb", key_configured: false } : {}) })
       })
       const payload = await readResponse(response, "Sillage could not prepare this recorder's authentication key.")
-      await this.usbClient.installAuthenticationKey(authenticationHex(objectPayload(payload.authentication).key))
+      this.assertRecorderUsbSession(client, session, identity.deviceId)
+      if (restoreAccess) {
+        if (payload.device_id !== identity.deviceId || typeof payload.restoration_token !== "string" || !payload.restoration_token) {
+          throw new Error("Sillage returned an invalid access restoration response.")
+        }
+        restorationToken = payload.restoration_token
+      }
+      await client.installAuthenticationKey(authenticationKey(objectPayload(payload.authentication).key))
+      this.assertRecorderUsbSession(client, session, identity.deviceId)
       this.usbAuthenticationConfigured = true
+      challenge = await client.usbAuthenticationChallenge()
+      this.assertRecorderUsbSession(client, session, identity.deviceId)
+      this.usbAuthenticationConfigured = challenge.configured
     }
 
-    const challenge = await this.usbClient.usbAuthenticationChallenge()
     if (!challenge.configured) throw new Error("The recorder did not retain its Sillage authentication key.")
     const proof = await this.requestAuthenticationProof(identity.deviceId, challenge.nonce, "usb")
-    await this.usbClient.authenticateUsbSession(proof)
+    this.assertRecorderUsbSession(client, session, identity.deviceId)
+    await client.authenticateUsbSession(proof)
+    this.assertRecorderUsbSession(client, session, identity.deviceId)
+    return restorationToken
   }
 
-  /** @param {import("../types/recorder").Recorder} recorder @param {import("../types/recorder").Identity} identity */
-  async confirmRecorderInitialization(recorder, identity) {
-    const response = await fetch(recorder.initialization_url, {
+  /** @param {import("../types/recorder").Recorder} recorder @param {import("../types/recorder").Identity} identity @param {string|null} [restorationToken] */
+  async confirmRecorderInitialization(recorder, identity, restorationToken = null) {
+    const url = restorationToken ? recorder.access_restoration_url : recorder.initialization_url
+    if (!url) throw new Error("Sillage could not confirm recorder access restoration.")
+    const response = await fetch(url, {
       method: "PATCH",
       cache: "no-store",
       credentials: "same-origin",
@@ -1632,20 +1688,24 @@ export default class extends TypedController {
         "Content-Type": "application/json",
         "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || ""
       },
-      body: JSON.stringify({ device_id: identity.deviceId })
+      body: JSON.stringify({ device_id: identity.deviceId,
+        ...(restorationToken ? { restoration_token: restorationToken } : {}) })
     })
     const payload = await readResponse(response, "Sillage could not confirm recorder initialization.")
   }
 
   canOnboardRecorder(identity = this.registrationIdentity) {
     const usbConnected = Boolean(this.usbClient) && this.usbIdentity?.deviceId === identity?.deviceId
-    if (!usbConnected) return false
+    if (!usbConnected || !this.recordingIdentitiesMatch()) return false
     return this.registrationState !== "unregistered" || !this.usbAuthenticationConfigured
   }
 
   onboardingBlockedMessage(identity = this.registrationIdentity) {
     if (!this.usbClient || this.usbIdentity?.deviceId !== identity?.deviceId) {
       return "Connect this recorder over USB-C to initialize it securely."
+    }
+    if (!this.recordingIdentitiesMatch()) {
+      return "Disconnect the unrelated recorder before restoring access."
     }
     if (this.registrationState === "unregistered" && this.usbAuthenticationConfigured) {
       return "This recorder already contains another Sillage key. Factory-reset it before adding it here."
@@ -1679,18 +1739,21 @@ export default class extends TypedController {
   renderRecorderInitializationRequired(recorder, aircraft = null, error = null) {
     this.registeredRecorder = recorder
     this.registeredAircraft = aircraft
-    this.registrationState = this.usbAuthenticationConfigured ? "authentication_error" : "initialization_required"
+    const restoreAccess = recorder.initialization_confirmed && !this.usbAuthenticationConfigured
+    this.registrationState = this.usbAuthenticationConfigured ? "authentication_error" : (restoreAccess ? "restoration_required" : "initialization_required")
     this.registrationSubmitting = false
     this.updateResolvedConnections(recorder.device_id, aircraft)
     this.wifiLinkTarget.hidden = true
     this.recorderOnboardingTitleTarget.textContent = this.usbAuthenticationConfigured
       ? "Recorder authentication needs attention"
-      : "Finish secure recorder initialization"
+      : (restoreAccess ? "Restore access to this recorder" : "Finish secure recorder initialization")
     this.recorderOnboardingTarget.hidden = false
     this.wifiRegisterButtonTarget.disabled = !this.canOnboardRecorder()
-    this.wifiRegisterLabelTarget.textContent = this.usbAuthenticationConfigured ? "Retry authentication" : "Initialize recorder"
+    this.wifiRegisterLabelTarget.textContent = this.usbAuthenticationConfigured ? "Retry authentication" : (restoreAccess ? "Restore recorder access" : "Initialize recorder")
     this.setWifiRegistrationStatus(
-      error || (this.usbAuthenticationConfigured
+      error || (restoreAccess
+        ? "Sillage knows this recorder, but it reports no usable key. Restore its existing key over USB-C."
+        : this.usbAuthenticationConfigured
         ? "Sillage could not authenticate this recorder. Retry while keeping USB-C connected."
         : "Install and verify this recorder's unique Sillage key over USB-C."),
       error ? "error" : "status"
@@ -1820,6 +1883,9 @@ export default class extends TypedController {
         this.recorderStatusTarget.hidden = false
       } else if (this.registrationState === "initialization_required") {
         this.setTransportStatus(this.recorderStatusTarget, "Initialization required", "connecting")
+        this.recorderStatusTarget.hidden = false
+      } else if (this.registrationState === "restoration_required") {
+        this.setTransportStatus(this.recorderStatusTarget, "Access restoration required", "connecting")
         this.recorderStatusTarget.hidden = false
       } else if (this.registrationState === "authentication_error") {
         this.setTransportStatus(this.recorderStatusTarget, "Authentication failed", "error")

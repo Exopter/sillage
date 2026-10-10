@@ -4,7 +4,7 @@ export interface Identity {
   mavlinkSystemId?:number; mavlinkComponentId?:number;
   assembly?:RecorderAssembly|null;
 }
-export interface Recorder {device_id:string; assembly?:RecorderAssembly|null; connectivity_url:string; initialization_url:string; initialization_confirmed:boolean}
+export interface Recorder {device_id:string; assembly?:RecorderAssembly|null; connectivity_url:string; initialization_url:string; access_restoration_url?:string; initialization_confirmed:boolean}
 export interface Aircraft {registration:string}
 export interface Issue {message:string;technical:string}
 export interface Facts {recording:boolean;health:string;storage:string;synchronization:string;issue:Issue|null}

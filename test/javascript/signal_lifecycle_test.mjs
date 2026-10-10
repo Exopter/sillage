@@ -3,14 +3,17 @@ import {readFileSync} from "node:fs"
 const source = readFileSync(new URL("../../app/javascript/controllers/signal_workspace_controller.js", import.meta.url), "utf8")
   .replace(/^import .*$/gm, "")
   .replace(/const TypedController = .*$/m, "const TypedController = class {}")
+import {ImuHealth} from "../../app/javascript/lib/imu_health.js"
+import {SignalTelemetry} from "../../app/javascript/lib/signal_telemetry.js"
 const requests = []
 const metadata = []
 globalThis.signalLifecycleDependencies = {
+  ImuHealth, SignalTelemetry,
   openDatabase: () => new Promise((resolve, reject) => requests.push({resolve, reject})),
   readMetadata: () => new Promise((resolve) => metadata.push(resolve)),
   registerUsbPageRelease: () => () => {}
 }
-const prelude = "const {openDatabase, readMetadata, registerUsbPageRelease} = globalThis.signalLifecycleDependencies;\n"
+const prelude = "const {ImuHealth, SignalTelemetry, openDatabase, readMetadata, registerUsbPageRelease} = globalThis.signalLifecycleDependencies;\n"
 const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(prelude + source).toString("base64")}`)
 const tick = () => new Promise((resolve) => setImmediate(resolve))
 let closed = 0

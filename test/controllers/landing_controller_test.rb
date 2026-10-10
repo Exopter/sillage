@@ -21,6 +21,17 @@ class LandingControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", "Human flight, next generation."
     assert_select "a[href='http://localhost:3000']", "Open Sillage"
     assert_select ".sillage-workbench", count: 0
+    assert_select "[data-flight-scene][data-model-url][data-seat-url][data-pilot-url][data-flow-url]", count: 1
+    assert_select ".exds-flight-scene-fallback[alt]", count: 1
+    assert_select "[data-scene-controls][hidden]", count: 1
+    assert_select "button[data-scene-pause][aria-pressed='false']", count: 1
+    assert_select "button[data-scene-view][aria-pressed='false']", count: 1
+    assert_select "script[type='importmap']" do |scripts|
+      imports = JSON.parse(scripts.first.text).fetch("imports")
+      assert imports.key?("three")
+      assert imports.key?("landing")
+      assert_not imports.key?("application"), "The public landing must not load the authenticated application"
+    end
   end
 
   test "shows the landing page on the production apex host" do

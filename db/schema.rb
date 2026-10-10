@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_23_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_10_133000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -69,7 +69,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_140000) do
     t.index ["fdr_functional_configuration_id"], name: "index_assemblies_on_fdr_functional_configuration_id"
     t.index ["internal_number"], name: "index_assemblies_on_internal_number", unique: true
     t.index ["parent_id"], name: "index_assemblies_on_parent_id"
-    t.check_constraint "assembly_type IS NULL OR assembly_type::text = 'ExoFDR'::text AND fdr_functional_configuration_id IS NOT NULL AND (assembly_method::text = ANY (ARRAY['PERF'::character varying::text, 'PCB'::character varying::text])) AND serial_number IS NOT NULL AND name::text = serial_number::text", name: "assemblies_exofdr_identity"
+    t.check_constraint "assembly_type IS NULL OR assembly_type::text = 'ExoFDR'::text AND fdr_functional_configuration_id IS NOT NULL AND (assembly_method::text = ANY (ARRAY['PERF'::character varying, 'PCB'::character varying]::text[])) AND serial_number IS NOT NULL AND name::text = serial_number::text", name: "assemblies_exofdr_identity"
   end
 
   create_table "asset_identifiers", force: :cascade do |t|
@@ -293,6 +293,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_140000) do
     t.string "name", null: false
     t.datetime "updated_at", null: false
     t.index ["name"], name: "index_identifier_sequences_on_name", unique: true
+  end
+
+  create_table "imu_checks", force: :cascade do |t|
+    t.bigint "boot_id", null: false
+    t.bigint "calibration_id"
+    t.string "configuration_digest", null: false
+    t.datetime "created_at", null: false
+    t.bigint "embedded_controller_id", null: false
+    t.jsonb "evidence", default: {}, null: false
+    t.string "firmware", null: false
+    t.bigint "flight_id"
+    t.bigint "imu_epoch", null: false
+    t.datetime "invalidated_at"
+    t.string "invalidation_reason"
+    t.string "kind", null: false
+    t.string "outcome", null: false
+    t.jsonb "summary", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.string "uuid", null: false
+    t.index ["calibration_id"], name: "index_imu_checks_on_calibration_id"
+    t.index ["embedded_controller_id"], name: "index_imu_checks_on_embedded_controller_id"
+    t.index ["flight_id"], name: "index_imu_checks_on_flight_id"
+    t.index ["user_id"], name: "index_imu_checks_on_user_id"
+    t.index ["uuid"], name: "index_imu_checks_on_uuid", unique: true
   end
 
   create_table "installations", force: :cascade do |t|
@@ -686,6 +711,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_140000) do
   add_foreign_key "flights", "aircraft"
   add_foreign_key "flights", "flight_imports"
   add_foreign_key "flights", "users"
+  add_foreign_key "imu_checks", "embedded_controllers"
+  add_foreign_key "imu_checks", "flights"
+  add_foreign_key "imu_checks", "imu_checks", column: "calibration_id"
+  add_foreign_key "imu_checks", "users"
   add_foreign_key "installations", "aircraft"
   add_foreign_key "operator_events", "flights"
   add_foreign_key "operator_events", "signal_sessions"

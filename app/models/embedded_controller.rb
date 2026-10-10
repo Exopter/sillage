@@ -8,6 +8,7 @@ class EmbeddedController < ApplicationRecord
   class AuthenticationKeyError < StandardError; end
 
   belongs_to :part, optional: true, inverse_of: :embedded_controller
+  has_many :imu_checks, dependent: :restrict_with_error
   has_one :signal_presence, dependent: :destroy
   has_many :fdr_wifi_profiles, -> { ordered }, dependent: :destroy
   has_many :fdr_wifi_uploads, dependent: :restrict_with_error

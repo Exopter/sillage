@@ -43,6 +43,11 @@ module Api
           metadata: params[:metadata].presence || {}
         )
         event.save!
+        if event.metadata["source"] == "imu_health" && event.metadata["invalidate_preflight_id"].present?
+          @signal_session.flight.imu_checks.where(id: event.metadata["invalidate_preflight_id"],
+            user: Current.user, kind: "preflight", invalidated_at: nil).update_all(
+              invalidated_at: event.occurred_at, invalidation_reason: event.label.to_s.first(200))
+        end
         SignalSessionChannel.broadcast_to(@signal_session, type: "event", event: event.as_json)
         render json: { uuid: event.uuid }, status: :created
       end

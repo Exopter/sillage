@@ -1,0 +1,14 @@
+<% if checks.any? %>
+<section class="workspace-panel">
+  <div class="workspace-panel-header"><h2>IMU check history</h2><span>Recorded evidence</span></div>
+  <div class="hangar-table-wrap"><table class="hangar-table">
+    <thead><tr><th>Time</th><th>Check</th><th>Outcome at check</th><th>Roll / pitch</th><th>Recorder / boot</th></tr></thead>
+    <tbody><% checks.each do |check| %><tr>
+      <td><%= l check.created_at, format: :short %></td><td><%= check.kind.humanize %></td>
+      <td><%= check.outcome.capitalize %><%= " · Recheck required" if check.invalidated_at %><small class="workspace-muted"> · <%= check.summary["reason"] %></small></td>
+      <td><%= check.summary["roll_mean"]&.round(2) %>° / <%= check.summary["pitch_mean"]&.round(2) %>°</td>
+      <td class="workspace-mono"><%= check.embedded_controller.device_id %> / <%= check.boot_id %><small class="workspace-muted"> · <%= check.firmware %></small></td>
+    </tr><% end %></tbody>
+  </table></div>
+</section>
+<% end %>

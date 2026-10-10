@@ -80,6 +80,7 @@ module Api
             firmware: recorder.last_seen_firmware,
             connectivity_url: connectivity_forge_fdr_path(recorder),
             initialization_url: api_v1_fdr_initialization_path(recorder),
+            access_restoration_url: api_v1_fdr_access_restoration_path(recorder),
             initialization_confirmed: recorder.initialized?
           ),
           aircraft: aircraft && {

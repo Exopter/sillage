@@ -10,14 +10,14 @@ html {
   min-width: 320px;
   min-height: 100%;
   scroll-behavior: smooth;
-  background: #070b0d;
+  background: var(--ex-flight-night);
 }
 
 .landing-page {
   min-width: 320px;
   min-height: 100%;
   margin: 0;
-  background: #070b0d;
+  background: var(--ex-flight-night);
   color: #e5ece9;
   font-family: "Aptos", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0;
@@ -33,18 +33,19 @@ html {
 }
 
 .landing-shell {
-  --landing-accent: var(--ex-aqua-500);
-  --landing-green: var(--ex-hud-green);
-  --landing-bg: var(--ex-carbon-950);
-  --landing-bg-soft: #0a1012;
-  --landing-panel: #0d1416;
-  --landing-line: #182426;
-  --landing-line-strong: #243133;
+  --landing-accent: var(--ex-flight-orchid);
+  --ex-aqua-500: var(--ex-flight-orchid);
+  --landing-green: var(--ex-flight-orchid);
+  --landing-bg: var(--ex-flight-night);
+  --landing-bg-soft: var(--ex-flight-depth);
+  --landing-panel: var(--ex-flight-panel);
+  --landing-line: var(--ex-flight-border);
+  --landing-line-strong: var(--ex-flight-border-strong);
   --landing-muted: #97a1a0;
   --landing-muted-strong: #71817e;
   --landing-soft: #c7d2cf;
   --landing-ink: #ffffff;
-  overflow-x: hidden;
+  overflow-x: clip;
   background: var(--landing-bg);
 }
 
@@ -63,7 +64,7 @@ html {
   gap: 22px;
   padding: 16px 40px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(7, 11, 13, 0.78);
+  background: color-mix(in srgb, var(--ex-flight-night) 78%, transparent);
   backdrop-filter: blur(12px);
 }
 
@@ -161,7 +162,7 @@ html {
 .landing-button.is-primary {
   border-color: var(--landing-accent);
   background: var(--landing-accent);
-  color: #070b0d;
+  color: var(--ex-flight-night);
 }
 
 .landing-button.is-quiet {
@@ -175,7 +176,7 @@ html {
   align-items: center;
   overflow: hidden;
   border-bottom: 1px solid var(--landing-line);
-  background: radial-gradient(130% 100% at 74% 26%, #16221f 0%, #0a1012 48%, #070b0d 100%);
+  background: var(--ex-flight-backdrop);
 }
 
 .landing-grid {
@@ -202,9 +203,6 @@ html {
   min-width: 0;
 }
 
-.landing-hero-layout .exds-blueprint {
-  transform: translateY(-16px);
-}
 
 .landing-kicker {
   color: var(--landing-accent);
@@ -263,9 +261,6 @@ html {
   font-size: 10px;
 }
 
-.landing-meta.is-accent {
-  color: var(--landing-accent);
-}
 
 .landing-section {
   position: relative;
@@ -595,18 +590,12 @@ html {
   background: var(--landing-panel);
 }
 
-.landing-step.is-current {
-  border-top: 2px solid var(--landing-accent);
-}
 
 .landing-step-label {
   color: #5f6c6b;
   font-size: 10px;
 }
 
-.landing-step.is-current .landing-step-label {
-  color: var(--landing-accent);
-}
 
 .landing-step strong {
   display: block;
@@ -648,7 +637,7 @@ html {
   overflow: hidden;
   padding: 118px 0;
   border-top: 1px solid var(--landing-line);
-  background: radial-gradient(120% 120% at 50% 0%, #16221f 0%, #0a1012 55%, #070b0d 100%);
+  background: var(--ex-flight-backdrop);
   text-align: center;
 }
 
@@ -743,11 +732,6 @@ html {
     grid-template-columns: 1fr;
   }
 
-  .landing-hero-layout .exds-blueprint {
-    width: 100%;
-    max-width: 800px;
-    transform: none;
-  }
 
   .landing-hero h1 {
     font-size: clamp(3.5rem, 8vw, 5.25rem);
@@ -837,4 +821,155 @@ html {
     margin-left: 0;
     line-height: 1.5;
   }
+}
+
+/* Flight-scene composition consumes the canonical illustration contract. */
+.landing-hero {
+  min-height: min(900px, calc(100svh - 74px));
+  background: var(--ex-flight-backdrop);
+}
+
+.landing-hero-layout {
+  position: static;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 730px;
+  padding: 100px 0 140px;
+}
+
+.landing-hero-copy {
+  z-index: 2;
+  pointer-events: none;
+}
+
+.landing-hero-copy a { pointer-events: auto; }
+
+.landing-hero h1 {
+  max-width: 650px;
+  font-size: clamp(4rem, 6.4vw, 6.5rem);
+  font-weight: 600;
+  line-height: .99;
+  letter-spacing: -.055em;
+}
+
+.landing-hero h1 span {
+  color: var(--ex-flight-orchid);
+  background: var(--ex-flight-spectrum);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.landing-lede {
+  max-width: 390px;
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.landing-hero .exds-flight-scene {
+  position: absolute;
+  top: 0;
+  right: -2%;
+  width: 66%;
+  height: calc(100% - 68px);
+}
+
+.landing-hero .exds-flight-scene-fallback { padding: 0 4% 0 12%; }
+
+.landing-hero .exds-flight-scene-caption {
+  left: 18%;
+  right: 8%;
+  bottom: var(--ex-space-8);
+}
+
+.landing-hero-meta {
+  left: 40px;
+  right: 40px;
+  bottom: 0;
+  min-height: 68px;
+  border-top: 1px solid var(--ex-carbon-800);
+  align-items: center;
+}
+
+.landing-scroll-cue {
+  display: flex;
+  align-items: center;
+  gap: var(--ex-space-5);
+  margin-left: auto;
+  color: var(--ex-line-300);
+  font: 10px/1 var(--ex-font-mono);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.landing-scroll-cue span {
+  color: var(--ex-aqua-500);
+  font-size: 20px;
+}
+
+.landing-page :is(a, button):focus-visible {
+  outline: 2px solid var(--ex-aqua-500);
+  outline-offset: 5px;
+}
+
+.landing-section,
+.landing-cta { scroll-margin-top: 86px; }
+
+.landing-spec-value { font-variant-numeric: tabular-nums; }
+
+.landing-card {
+  transition: border-color 250ms ease, transform 250ms ease;
+}
+
+.landing-card:hover {
+  border-color: var(--ex-graphite-600);
+  transform: translateY(-4px);
+}
+
+@media (min-width: 1600px) {
+  .landing-hero .exds-flight-scene { right: 0; width: 66%; }
+}
+
+@media (max-width: 1120px) {
+  .landing-hero-layout {
+    min-height: 960px;
+    padding: 64px 0 520px;
+    grid-template-columns: 1fr;
+  }
+  .landing-hero h1 { max-width: 700px; font-size: clamp(4rem, 8vw, 5.5rem); }
+  .landing-hero .exds-flight-scene {
+    top: auto;
+    bottom: 68px;
+    right: 0;
+    width: 100%;
+    height: 500px;
+  }
+  .landing-hero .exds-flight-scene-caption { left: 24px; right: 24px; bottom: 8px; }
+  .landing-hero-meta { left: 24px; right: 24px; }
+}
+
+@media (max-width: 760px) {
+  .landing-hero-layout { min-height: 830px; padding: 40px 0 440px; }
+  .landing-hero h1 { max-width: 540px; font-size: clamp(3.1rem, 10.8vw, 5rem); }
+  .landing-hero .exds-flight-scene { height: 410px; }
+  .landing-hero .exds-flight-scene-caption { left: 16px; right: 16px; }
+  .landing-hero-meta { left: 16px; right: 16px; max-width: none; gap: 16px; }
+  .landing-hero-meta .landing-meta:nth-child(3) { display: none; }
+  .landing-scroll-cue { font-size: 9px; gap: 10px; }
+  .landing-lede { max-width: 420px; font-size: 16px; }
+  .landing-spec-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .landing-spec-value { font-size: 27px; }
+  .landing-spec-unit { font-size: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .landing-page *, .landing-page *::before, .landing-page *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .landing-card:hover, .landing-button:hover { transform: none; }
+}
+
+.landing-page .exds-blueprint-image,
+.landing-page .exds-flight-scene-fallback {
+  filter: hue-rotate(100deg) saturate(.85);
 }

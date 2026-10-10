@@ -13,7 +13,7 @@
       <a href="#evidence">Evidence</a>
     </nav>
     <div class="landing-spacer"></div>
-    <span class="landing-status">Flight validated</span>
+    <span class="landing-status">Flight engineering</span>
     <div class="landing-actions">
       <a class="landing-button is-quiet" href="<%= @sillage_url %>">Open Sillage</a>
       <a class="landing-button is-primary" href="#engagement">Request brief</a>
@@ -26,15 +26,22 @@
         <div class="landing-hero-copy">
           <span class="landing-kicker">Personal rigid-wing flight system</span>
           <h1 id="landing-hero-title">Human flight, <span>next generation.</span></h1>
-          <p class="landing-lede">A rigid carbon wing engineered for precision and control, instrumented end to end, assisted in the air, and exploited on the ground through Sillage.</p>
+          <p class="landing-lede">A rigid carbon wing. An integrated flight system. Every dimension of human flight, engineered together.</p>
           <div class="landing-hero-actions">
             <a class="landing-button is-primary" href="#engagement">Request a technical brief</a>
             <a class="landing-button" href="#airframe">Explore the system</a>
           </div>
         </div>
-        <figure class="exds-blueprint">
-          <%= image_tag "blueprints/exowing-axonometric.svg", class: "exds-blueprint-image", width: 1200, height: 700, fetchpriority: "high", alt: "Exowing rigid wing and twin ventral fins, shown as a detailed axonometric blueprint" %>
-          <figcaption class="exds-blueprint-caption"><span>EXOWING / V115</span></figcaption>
+        <figure class="exds-flight-scene" data-flight-scene data-scene-state="static" data-model-url="<%= asset_path("blueprints/exowing-scene.glb") %>" data-seat-url="<%= asset_path("blueprints/exowing-seat.glb") %>" data-pilot-url="<%= asset_path("blueprints/exowing-pilot.glb") %>" data-flow-url="<%= asset_path("blueprints/exowing-flow.json") %>" aria-label="Exowing V115 with pilot and airflow illustration">
+          <%= image_tag "blueprints/exowing-axonometric.svg", class: "exds-flight-scene-fallback", width: 1200, height: 700, fetchpriority: "high", alt: "Exowing rigid wing and twin ventral fins, shown as a detailed axonometric blueprint" %>
+          <figcaption class="exds-flight-scene-caption">
+            <span><strong>Exowing / V115</strong>Airflow study</span>
+            <div class="exds-scene-controls" data-scene-controls hidden>
+              <button type="button" data-scene-view aria-pressed="false">Underwing</button>
+              <button type="button" data-scene-mode aria-pressed="false">Contours</button>
+              <button type="button" data-scene-pause aria-pressed="false">Pause motion</button>
+            </div>
+          </figcaption>
         </figure>
       </div>
 
@@ -42,41 +49,41 @@
         <span class="landing-meta">EXOWING</span>
         <span class="landing-meta">b = 2.5 m</span>
         <span class="landing-meta">170-230 km/h</span>
-        <span class="landing-meta is-accent">Flight validated</span>
+        <a class="landing-scroll-cue" href="#airframe">Discover the airframe <span aria-hidden="true">↓</span></a>
       </div>
     </section>
 
     <section class="landing-section" aria-labelledby="envelope-title">
       <div class="landing-grid" aria-hidden="true"></div>
       <div class="landing-container">
-        <div class="landing-section-header">
+        <div class="landing-section-header" data-reveal>
           <span class="landing-eyebrow">Operational envelope</span>
-          <h2 class="landing-section-title" id="envelope-title">A measured flight envelope.</h2>
-          <p class="landing-section-copy">One pilot, 80-95 kg. A rigid carbon airframe, instrumented from the first flight and proven through a complete flight-test campaign, with figures stated as verified rather than projected.</p>
+          <h2 class="landing-section-title" id="envelope-title">A defined flight ambition.</h2>
+          <p class="landing-section-copy">A personal rigid-wing program, developed around an instrumented airframe. The figures below are design targets, subject to configuration and flight qualification.</p>
         </div>
 
         <div class="landing-spec-grid">
-          <div class="landing-spec">
-            <div class="landing-spec-label">Optimal speed</div>
+          <div class="landing-spec" data-reveal>
+            <div class="landing-spec-label">Target speed</div>
             <div class="landing-spec-value">170-230 <span class="landing-spec-unit">km/h</span></div>
           </div>
-          <div class="landing-spec">
+          <div class="landing-spec" data-reveal>
             <div class="landing-spec-label">Wingspan</div>
             <div class="landing-spec-value">2.5 <span class="landing-spec-unit">m</span></div>
           </div>
-          <div class="landing-spec">
-            <div class="landing-spec-label">Glide range</div>
+          <div class="landing-spec" data-reveal>
+            <div class="landing-spec-label">Target glide range</div>
             <div class="landing-spec-value">&gt;10 <span class="landing-spec-unit">km</span></div>
           </div>
-          <div class="landing-spec">
-            <div class="landing-spec-label">Powered range</div>
+          <div class="landing-spec" data-reveal>
+            <div class="landing-spec-label">Target powered range</div>
             <div class="landing-spec-value is-accent">&gt;25 <span class="landing-spec-unit">km</span></div>
           </div>
-          <div class="landing-spec">
+          <div class="landing-spec" data-reveal>
             <div class="landing-spec-label">Exit altitude</div>
             <div class="landing-spec-value">5 000 <span class="landing-spec-unit">m</span></div>
           </div>
-          <div class="landing-spec">
+          <div class="landing-spec" data-reveal>
             <div class="landing-spec-label">Recovery</div>
             <div class="landing-spec-value">1 500 <span class="landing-spec-unit">m</span></div>
           </div>
@@ -85,7 +92,7 @@
     </section>
 
     <section class="landing-section is-soft" id="airframe" aria-labelledby="airframe-title">
-      <div class="landing-container landing-split">
+      <div class="landing-container landing-split" data-reveal>
         <figure class="exds-blueprint">
           <div class="exds-blueprint-heading"><span>Plan view</span></div>
           <%= image_tag "blueprints/exowing-plan.svg", class: "exds-blueprint-image", width: 1200, height: 640, loading: "lazy", decoding: "async", alt: "Exowing viewed from above, showing the swept planform and central pilot recess" %>
@@ -99,6 +106,7 @@
               <%= image_tag "blueprints/exowing-profile.svg", class: "exds-blueprint-image", width: 640, height: 360, loading: "lazy", decoding: "async", alt: "Exowing side profile showing the aerofoil curvature and ventral fin" %>
             </div>
           </div>
+          <figcaption class="exds-blueprint-caption">Exowing V115 / Assembly views</figcaption>
         </figure>
 
         <div>
@@ -108,7 +116,7 @@
           <div class="landing-feature-list">
             <div class="landing-feature-row">
               <strong>Airframe</strong>
-              <span>Rigid carbon structure with defined load paths, validated by CFD, structural work, and tunnel testing.</span>
+              <span>Rigid carbon structure with defined load paths, developed through aerodynamic and structural evaluation.</span>
             </div>
             <div class="landing-feature-row">
               <strong>Sensing</strong>
@@ -116,7 +124,7 @@
             </div>
             <div class="landing-feature-row">
               <strong>Recovery</strong>
-              <span>Rescue parachute with verified attachment, harness, and an independent emergency deactivation path.</span>
+              <span>Recovery system, harness integration, and independent deactivation are part of the qualification program.</span>
             </div>
             <div class="landing-feature-row">
               <strong>Flight data</strong>
@@ -129,23 +137,23 @@
 
     <section class="landing-section" id="capabilities" aria-labelledby="capabilities-title">
       <div class="landing-container">
-        <div class="landing-section-header">
+        <div class="landing-section-header" data-reveal>
           <span class="landing-eyebrow">Capabilities</span>
           <h2 class="landing-section-title" id="capabilities-title">Built around evidence, assistance, and repeatability.</h2>
           <p class="landing-section-copy">The airframe, avionics, and operating workflows are designed as one system: qualify the aircraft, assist the pilot, and preserve the record.</p>
         </div>
         <div class="landing-card-grid">
-          <article class="landing-card">
+          <article class="landing-card" data-reveal>
             <span class="landing-stage">01</span>
             <h3>Rigid performance</h3>
-            <p>Defined geometry, high-speed stability, and a measured operating envelope for serious flight programs.</p>
+            <p>Defined geometry and rigid-wing stability, with an operating envelope to establish through instrumented testing.</p>
           </article>
-          <article class="landing-card">
+          <article class="landing-card" data-reveal>
             <span class="landing-stage">02</span>
             <h3>Assisted flight</h3>
             <p>Instrumented cues for airspeed, altitude, glide, and system health, designed for clarity in motion.</p>
           </article>
-          <article class="landing-card">
+          <article class="landing-card" data-reveal>
             <span class="landing-stage">03</span>
             <h3>Recoverable design</h3>
             <p>Independent rescue and deactivation paths are part of the platform, not late-stage accessories.</p>
@@ -156,7 +164,7 @@
 
     <section class="landing-section is-light" id="sillage" aria-labelledby="sillage-title">
       <div class="landing-container">
-        <div class="landing-section-header">
+        <div class="landing-section-header" data-reveal>
           <span class="landing-eyebrow">Sillage</span>
           <h2 class="landing-section-title" id="sillage-title">The aircraft keeps a record. Sillage makes it useful.</h2>
           <p class="landing-section-copy">Sillage is the operating layer for flight preparation, telemetry review, logbook continuity, maintenance status, and engineering traceability.</p>
@@ -164,7 +172,7 @@
 
         <div class="landing-os-grid">
           <div class="landing-os-panel">
-            <span class="landing-stage">Flight readiness</span>
+            <span class="landing-stage">Flight readiness / Interface preview</span>
             <h3>Pre-flight state in one place.</h3>
             <p>Every session starts from the same check structure and produces a reviewable trail for the team.</p>
             <div class="landing-check-list">
@@ -195,10 +203,10 @@
     <section class="landing-section" id="evidence" aria-labelledby="evidence-title">
       <div class="landing-grid" aria-hidden="true"></div>
       <div class="landing-container">
-        <div class="landing-section-header">
+        <div class="landing-section-header" data-reveal>
           <span class="landing-eyebrow">Engineering evidence</span>
-          <h2 class="landing-section-title" id="evidence-title">Proven through a complete test campaign.</h2>
-          <p class="landing-section-copy">Nothing reaches flight without passing the stage before it. The same discipline applies on the ground: every result is recorded, reviewable, and traceable to the airframe that produced it.</p>
+          <h2 class="landing-section-title" id="evidence-title">Every claim needs a test.</h2>
+          <p class="landing-section-copy">From simulation to instrumented flight, each stage has its own evidence and acceptance criteria. This is the qualification path, not a statement that every stage is complete.</p>
         </div>
 
         <div class="landing-process">
@@ -207,28 +215,28 @@
           <div class="landing-step"><span class="landing-step-label">Step 03</span><strong>Wind tunnel</strong><span>Validated coefficients</span></div>
           <div class="landing-step"><span class="landing-step-label">Step 04</span><strong>Drop test</strong><span>Recovery and release</span></div>
           <div class="landing-step"><span class="landing-step-label">Step 05</span><strong>Flight test</strong><span>Instrumented campaign</span></div>
-          <div class="landing-step is-current"><span class="landing-step-label">Step 06</span><strong>Acceptance</strong><span>Documented sign-off</span></div>
+          <div class="landing-step"><span class="landing-step-label">Step 06</span><strong>Acceptance</strong><span>Documented sign-off</span></div>
         </div>
 
         <div class="landing-principles">
           <div class="landing-principle"><strong>Traceable</strong><p>Every flight produces a record with an integrity state, so what happened can be reconstructed.</p></div>
           <div class="landing-principle"><strong>Repeatable</strong><p>The same checks, workflows, and expected behavior apply across pilots, sites, and airframes.</p></div>
-          <div class="landing-principle"><strong>Recoverable</strong><p>Independent rescue and deactivation paths are verified before arming and designed to remain available.</p></div>
+          <div class="landing-principle"><strong>Recoverable</strong><p>Independent rescue and deactivation paths are designed into the platform and evaluated during qualification.</p></div>
         </div>
       </div>
     </section>
 
     <section class="landing-section is-soft" aria-labelledby="operators-title">
       <div class="landing-container">
-        <div class="landing-section-header">
+        <div class="landing-section-header" data-reveal>
           <span class="landing-eyebrow">Where it operates</span>
           <h2 class="landing-section-title" id="operators-title">Designed for serious operators.</h2>
           <p class="landing-section-copy">One platform, evaluated against the same standard wherever it flies: predictable performance, full traceability, and equipment that behaves the same way every time.</p>
         </div>
         <div class="landing-card-grid">
-          <article class="landing-card"><span class="landing-stage">Defense and security</span><h3>Operators</h3><p>For teams that require predictable handling, complete flight records, and equipment qualified to a consistent standard.</p></article>
-          <article class="landing-card"><span class="landing-stage">Professional aviation</span><h3>Flight programs</h3><p>For pilots and test programs that depend on instrumentation, repeatable procedures, and reviewable data.</p></article>
-          <article class="landing-card"><span class="landing-stage">Advanced sport</span><h3>Expert pilots</h3><p>For experienced pilots who want a rigid high-performance wing with real assistance behind it.</p></article>
+          <article class="landing-card" data-reveal><span class="landing-stage">Defense and security</span><h3>Operators</h3><p>For teams that require predictable handling, complete flight records, and equipment qualified to a consistent standard.</p></article>
+          <article class="landing-card" data-reveal><span class="landing-stage">Professional aviation</span><h3>Flight programs</h3><p>For pilots and test programs that depend on instrumentation, repeatable procedures, and reviewable data.</p></article>
+          <article class="landing-card" data-reveal><span class="landing-stage">Advanced sport</span><h3>Expert pilots</h3><p>For experienced pilots who want a rigid high-performance wing with real assistance behind it.</p></article>
         </div>
       </div>
     </section>
@@ -256,7 +264,7 @@
         <a href="#sillage">Sillage</a>
         <a href="#evidence">Evidence</a>
       </nav>
-      <span class="landing-footer-note">Personal rigid-wing flight program - figures indicative - non-final marks</span>
+      <span class="landing-footer-note">Personal rigid-wing flight program / Design targets subject to qualification</span>
     </div>
   </footer>
 </div>

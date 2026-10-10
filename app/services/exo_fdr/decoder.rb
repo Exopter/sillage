@@ -7,6 +7,7 @@ module ExoFdr
     MAGIC = "EXOFDR1\0".b
     SYNC_BYTES = [ 0xA55A ].pack("v")
     FORMAT_VERSION = 3
+    IMU_COORDINATE_FRAMES = { 0 => "sensor_native", 1 => "body_frd_ned" }.freeze
     RECORD_NAMES = {
       1 => "gps_pvt",
       2 => "imu",
@@ -177,11 +178,13 @@ module ExoFdr
     def decode_imu(payload)
       return raw_payload(payload) unless payload.bytesize == 20
 
-      sensor_id, accuracy, _reserved, x, y, z, w = payload.unpack("CCve4")
+      sensor_id, accuracy, frame_id, x, y, z, w = payload.unpack("CCve4")
       {
         "sensor_id" => sensor_id,
         "sensor" => IMU_NAMES.fetch(sensor_id, "unknown_#{sensor_id}"),
         "accuracy" => accuracy,
+        "frame_id" => frame_id,
+        "coordinate_frame" => IMU_COORDINATE_FRAMES.fetch(frame_id, "unknown_#{frame_id}"),
         "x" => x,
         "y" => y,
         "z" => z,

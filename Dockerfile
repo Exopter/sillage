@@ -7,7 +7,7 @@ FROM docker.io/library/node:24-bookworm-slim AS frontend
 WORKDIR /frontend
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
-COPY script/prepare_cesium_assets.mjs script/
+COPY script/prepare_cesium_assets.mjs script/prepare_three_assets.mjs script/
 RUN npm run assets:prepare
 
 FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
@@ -41,6 +41,7 @@ RUN bundle install && \
 
 COPY . .
 COPY --from=frontend /frontend/public/vendor/cesium /rails/public/vendor/cesium
+COPY --from=frontend /frontend/public/vendor/three /rails/public/vendor/three
 
 RUN bundle exec bootsnap precompile -j 1 app/ lib/
 RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile

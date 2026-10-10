@@ -42,6 +42,9 @@
       </div>
     </section>
 
+    <%= link_to "Run preflight check", flight_imu_check_path(@flight), class: "button-secondary" %>
+    <%= render "imu_checks/history", checks: @flight.imu_checks.recent.limit(10) %>
+
     <p class="operations-help">Signal inherits this Flight ID, aircraft, and installed Hangar assets. The microSD recorder remains authoritative.</p>
   <% else %>
     <p class="operations-help">Shared with the team. Only the owner can edit this flight or attach data.</p>

@@ -2,8 +2,8 @@ module Forge
   class FdrsController < BaseController
     include Pagination
 
-    before_action :set_fdr, only: %i[show update connectivity activity]
-    before_action :load_fdr_context, only: %i[show connectivity activity]
+    before_action :set_fdr, only: %i[show update connectivity activity calibration]
+    before_action :load_fdr_context, only: %i[show connectivity activity calibration]
 
     def index
       @fdrs = EmbeddedController.includes(
@@ -42,6 +42,10 @@ module Forge
         @recent_test_runs = TestRun.none
         render :show, status: :unprocessable_entity
       end
+    end
+
+    def calibration
+      @checks = @fdr.imu_checks.includes(:user, :flight).recent.limit(25)
     end
 
     def connectivity

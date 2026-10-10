@@ -1,0 +1,11 @@
+<% content_for :title, "#{@flight.code} · Preflight" %>
+<% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><% end %>
+<header class="operations-heading"><div><span class="section-eyebrow"><%= @flight.code %></span><h1>IMU preflight check</h1><p><%= @flight.display_aircraft %></p></div><%= link_to "Back to flight", flight_path(@flight), class: "button-secondary" %></header>
+<% if @fdr %>
+  <% if @controllers.many? %><%= form_with url: flight_imu_check_path(@flight), method: :get, class: "workspace-form" do |form| %><%= form.label :controller_id, "Recorder" %><%= form.collection_select :controller_id, @controllers, :id, :technical_reference, selected: @fdr.id %><%= form.submit "Select recorder", class: "button-secondary" %><% end %><% end %>
+  <p class="workspace-muted"><%= @fdr.technical_reference %> · <%= link_to "Calibration reference in Forge", calibration_forge_fdr_path(@fdr), class: "workspace-strong-link" %></p>
+  <%= render "imu_checks/guide", fdr: @fdr, kind: "preflight", flight: @flight %>
+  <%= render "imu_checks/history", checks: @flight.imu_checks.recent.limit(10) %>
+<% else %>
+  <div class="workspace-empty">No identified recorder is installed on this aircraft. Assign it in Hangar first.</div>
+<% end %>

@@ -1,5 +1,6 @@
 class SignalController < ApplicationController
   def index
+    @cesium_ion_token = ENV["CESIUM_ION_TOKEN"].presence || Rails.application.credentials.dig(:cesium, :ion_token).presence
     @preparation_flights = Current.user.flights.where(status: "preparation").includes(:aircraft).recent
     @active_session = if params[:session].present?
       Current.user.signal_sessions.includes(flight: :aircraft).find_by!(uuid: params[:session])

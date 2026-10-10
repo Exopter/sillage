@@ -1,6 +1,11 @@
 const MAGIC_V2 = 0xfd
 const MAGIC_V1 = 0xfe
-const CRC_EXTRAS = new Map([[0, 50], [1, 124], [4, 237], [24, 24], [31, 246], [74, 20], [109, 185], [137, 195], [253, 83]])
+const CRC_EXTRAS = new Map([[0, 50], [1, 124], [4, 237], [24, 24], [31, 246], [74, 20], [105, 93], [109, 185], [137, 195], [253, 83], [42000, 212]])
+const BASE_LENGTHS = new Map([[0, 9], [1, 31], [4, 14], [24, 30], [31, 32], [74, 20], [105, 62], [109, 9], [137, 14], [253, 51], [42000, 48]])
+// Firmware /55 explicitly preserves native BNO085 axes in its radio payloads.
+const FDR_SENSOR_NATIVE_MODE = 0x46445200
+/** @type {Map<string, "sensor_native" | "body_frd_ned">} */
+const imuFrames = new Map()
 
 let buffer = new Uint8Array(0)
 /** @type {{getSize():number, write(buffer: Uint8Array, options:{at:number}):number, flush():void, close():void} | null} */
@@ -8,11 +13,19 @@ let captureHandle = null
 let captureOffset = 0
 let errors = 0
 let ignored = 0
-/** @type {number | null} */
-let lastSequence = null
+/** @type {Map<string, number>} */
+const sequences = new Map()
 let dropped = 0
+let commands = Promise.resolve()
 
-self.onmessage = async (/** @type {MessageEvent<unknown>} */ { data }) => {
+self.onmessage = (/** @type {MessageEvent<unknown>} */ { data }) => {
+  // Finish opening the capture before consuming the first USB chunk or closing it.
+  commands = commands.then(() => handleCommand(data))
+  return commands
+}
+
+/** @param {unknown} data */
+async function handleCommand(data) {
   if (!data || typeof data !== "object" || !("type" in data)) return
 
   if (data.type === "init-capture" && "filename" in data && typeof data.filename === "string" && /^[A-Za-z0-9._-]+$/.test(data.filename)) {
@@ -81,7 +94,7 @@ function feed(chunk, receivedAtUs) {
     buffer = buffer.slice(frameLength)
     const timestampUs = BigInt(receivedAtUs || Date.now() * 1000)
     appendCapture(timestampUs, raw)
-    if (isV2 && (raw[2] & 0x01)) {
+    if (isV2 && raw[2] !== 0) {
       errors += 1
       continue
     }
@@ -99,20 +112,44 @@ function feed(chunk, receivedAtUs) {
     }
 
     const sequence = isV2 ? raw[4] : raw[2]
+    const systemId = isV2 ? raw[5] : raw[3]
+    const componentId = isV2 ? raw[6] : raw[4]
+    const source = `${systemId}/${componentId}`
+    const lastSequence = sequences.get(source)
     if (lastSequence != null) {
       const delta = (sequence - lastSequence + 256) % 256
       if (delta > 1 && delta < 128) dropped += delta - 1
+      if (delta > 0 && delta < 128) sequences.set(source, sequence)
+    } else {
+      sequences.set(source, sequence)
     }
-    lastSequence = sequence
 
-    const payload = raw.slice(isV2 ? 10 : 6, -2)
-    const decoded = decode(messageId, payload)
+    let payload = raw.slice(isV2 ? 10 : 6, -2)
+    const baseLength = BASE_LENGTHS.get(messageId) || 0
+    if (!payload.length || (!isV2 && payload.length < baseLength)) {
+      errors += 1
+      continue
+    }
+    // MAVLink 2 removes trailing zero bytes, including fields from the base message.
+    if (isV2 && payload.length < baseLength) {
+      const padded = new Uint8Array(baseLength)
+      padded.set(payload)
+      payload = padded
+    }
+    if (messageId === 0) {
+      const heartbeat = new DataView(payload.buffer, payload.byteOffset, payload.byteLength)
+      const native = componentId === 191 && payload[4] === 18 && payload[5] === 8
+        && (payload[6] & 1) !== 0 && heartbeat.getUint32(0, true) === FDR_SENSOR_NATIVE_MODE
+      imuFrames.set(source, native ? "sensor_native" : "body_frd_ned")
+    }
+    const coordinateFrame = imuFrames.get(source) ?? (componentId === 191 ? null : "body_frd_ned")
+    const decoded = decode(messageId, payload, coordinateFrame)
     const transferableRaw = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength)
     send({
       type: "frame",
       messageId,
-      systemId: isV2 ? raw[5] : raw[3],
-      componentId: isV2 ? raw[6] : raw[4],
+      systemId,
+      componentId,
       sequence,
       receivedAtUs: timestampUs.toString(),
       decoded,
@@ -130,13 +167,19 @@ function appendCapture(receivedAtUs, raw) {
   view.setBigUint64(0, receivedAtUs, true)
   view.setUint16(8, raw.length, true)
   record.set(raw, 10)
-  captureHandle.write(record, { at: captureOffset })
-  captureOffset += record.length
-  if (captureOffset % 8192 < record.length) captureHandle.flush()
+  try {
+    captureHandle.write(record, { at: captureOffset })
+    captureOffset += record.length
+    if (captureOffset % 8192 < record.length) captureHandle.flush()
+  } catch (error) {
+    try { captureHandle.close() } catch (_) { /* Preserve decoding after storage failure. */ }
+    captureHandle = null
+    send({ type: "capture-error", message: error instanceof Error ? error.message : String(error) })
+  }
 }
 
-/** @param {number} messageId @param {Uint8Array} payload @returns {import("../app/javascript/types/signal").DecodedMessage} */
-function decode(messageId, payload) {
+/** @param {number} messageId @param {Uint8Array} payload @param {"sensor_native" | "body_frd_ned" | null} coordinateFrame @returns {import("../app/javascript/types/signal").DecodedMessage} */
+function decode(messageId, payload, coordinateFrame) {
   const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength)
   const f32 = (/** @type {number} */ offset) => view.getFloat32(offset, true)
   const u16 = (/** @type {number} */ offset) => view.getUint16(offset, true)
@@ -144,6 +187,14 @@ function decode(messageId, payload) {
   const u32 = (/** @type {number} */ offset) => view.getUint32(offset, true)
   const i32 = (/** @type {number} */ offset) => view.getInt32(offset, true)
 
+  if (messageId === 42000 && payload.length >= 48) {
+    const deviceId = new TextDecoder().decode(payload.slice(32, 48)).split("\0")[0]
+    const heading = f32(12)
+    if (!/^ECU-[A-F0-9]{6}$/.test(deviceId)) return { name: "unknown" }
+    return { name: "imu_quality", deviceId, bootId: u32(0), timeBootMs: u32(4), imuEpoch: u32(8),
+      firmware: `fdr_integrated/${u16(16)}`, headingAccuracyDeg: Number.isFinite(heading) && heading >= 0 ? radiansToDegrees(heading) : null,
+      agesMs: [u16(18), u16(20), u16(22), u16(24)], validity: u16(26), accuracy: Array.from(payload.slice(28, 32)) }
+  }
   if (messageId === 0 && payload.length >= 9) {
     return { name: "heartbeat", customMode: u32(0), type: payload[4], autopilot: payload[5], baseMode: payload[6], systemStatus: payload[7] }
   }
@@ -154,18 +205,38 @@ function decode(messageId, payload) {
     return { name: "ping", timeUs: view.getBigUint64(0, true).toString(), sequence: u32(8), targetSystem: payload[12], targetComponent: payload[13] }
   }
   if (messageId === 24 && payload.length >= 30) {
-    return { name: "gps", timeUs: view.getBigUint64(0, true).toString(), latitude: i32(8) / 1e7, longitude: i32(12) / 1e7, altitudeM: i32(16) / 1000, ephM: u16(20) / 100, epvM: u16(22) / 100, velocityMps: u16(24) / 100, courseDeg: u16(26) / 100, fix: payload[28], satellites: payload[29] }
+    const optional = (/** @type {number} */ offset) => u16(offset) === 65535 ? null : u16(offset) / 100
+    return { name: "gps", timeUs: view.getBigUint64(0, true).toString(), latitude: i32(8) / 1e7, longitude: i32(12) / 1e7, altitudeM: i32(16) / 1000, hdop: optional(20), vdop: optional(22), velocityMps: optional(24), courseDeg: optional(26), fix: payload[28], satellites: payload[29] === 255 ? null : payload[29] }
   }
   if (messageId === 31 && payload.length >= 32) {
+    // Wait for this recorder's heartbeat before choosing its attitude convention.
+    if (coordinateFrame == null) return { name: "unknown" }
     const quaternion = [f32(4), f32(8), f32(12), f32(16)]
+    const norm = Math.hypot(...quaternion)
+    if (!Number.isFinite(norm) || norm < 0.5 || norm > 1.5) return { name: "unknown" }
+    for (let index = 0; index < quaternion.length; index += 1) quaternion[index] /= norm
     const [w, x, y, z] = quaternion
-    return { name: "attitude", quaternion, rollDeg: radiansToDegrees(Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y))), pitchDeg: radiansToDegrees(Math.asin(clamp(2 * (w * y - z * x), -1, 1))), yawDeg: normalizeDegrees(radiansToDegrees(Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)))), rollSpeed: f32(20), pitchSpeed: f32(24), yawSpeed: f32(28) }
+    const rollDeg = radiansToDegrees(Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y)))
+    const pitch = radiansToDegrees(Math.asin(clamp(2 * (w * y - z * x), -1, 1)))
+    const yaw = radiansToDegrees(Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)))
+    // Instruments use sensor +X forward, +Y left, +Z up for native ENU data.
+    // Preserve the received quaternion and angular rates for storage/export.
+    const native = coordinateFrame === "sensor_native"
+    return { name: "attitude", timeBootMs: u32(0), coordinateFrame, quaternion, rollDeg, pitchDeg: native ? -pitch : pitch, yawDeg: normalizeDegrees(native ? 90 - yaw : yaw), rollSpeed: f32(20), pitchSpeed: f32(24), yawSpeed: f32(28) }
   }
   if (messageId === 74 && payload.length >= 20) {
     return { name: "vfr_hud", airspeedMps: f32(0), groundspeedMps: f32(4), altitudeM: f32(8), climbMps: f32(12), headingDeg: i16(16), throttlePercent: u16(18) }
   }
   if (messageId === 109 && payload.length >= 9) {
     return { name: "radio", rxErrors: u16(0), fixed: u16(2), rssi: payload[4], remoteRssi: payload[5], txBufferPercent: payload[6], noise: payload[7], remoteNoise: payload[8], rssiDbm: payload[4] / 1.9 - 127, remoteRssiDbm: payload[5] / 1.9 - 127 }
+  }
+  if (messageId === 105 && payload.length >= 62) {
+    const vector = (/** @type {number} */ offset, scale = 1) => {
+      const values = [f32(offset), f32(offset + 4), f32(offset + 8)].map((value) => value * scale)
+      return values.every(Number.isFinite) ? values : null
+    }
+    const finite = (/** @type {number} */ offset, scale = 1) => Number.isFinite(f32(offset)) ? f32(offset) * scale : null
+    return { name: "highres_imu", coordinateFrame, timeUs: view.getBigUint64(0, true).toString(), acceleration: vector(8), angularVelocity: vector(20), magneticField: vector(32, 100), absolutePa: finite(44, 100), differentialPa: finite(48, 100), pressureAltitudeM: finite(52), temperatureC: finite(56), fieldsUpdated: u16(60) }
   }
   if (messageId === 137 && payload.length >= 14) {
     return { name: "pressure", timeBootMs: u32(0), absoluteHpa: f32(4), differentialHpa: f32(8), temperatureC: i16(12) / 100 }

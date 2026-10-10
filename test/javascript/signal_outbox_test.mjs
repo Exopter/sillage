@@ -6,8 +6,10 @@ const source = (await readFile(new URL("../../app/javascript/controllers/signal_
   .replace("extends Controller", "extends class {}")
   .replace(/const TypedController = .*$/m, "const TypedController = class {}")
 const outboxURL = new URL("../../app/javascript/lib/signal_outbox.js", import.meta.url).href
+const healthURL = new URL("../../app/javascript/lib/imu_health.js", import.meta.url).href
+const telemetryURL = new URL("../../app/javascript/lib/signal_telemetry.js", import.meta.url).href
 const { transactionRequest } = await import(outboxURL)
-const { default: Workspace } = await import(`data:text/javascript;base64,${Buffer.from(`import { OUTBOX_STORE, META_STORE, transactionRequest, putOutbox, readOutbox, oldestOutbox, deleteOutbox } from "${outboxURL}"\n${source}`).toString("base64")}`)
+const { default: Workspace } = await import(`data:text/javascript;base64,${Buffer.from(`import {ImuHealth} from "${healthURL}";\nimport { SignalTelemetry } from "${telemetryURL}"\nimport { OUTBOX_STORE, META_STORE, transactionRequest, putOutbox, readOutbox, oldestOutbox, deleteOutbox, readMetadata, writeMetadata, writeOutbox } from "${outboxURL}"\n${source}`).toString("base64")}`)
 globalThis.IDBKeyRange = { bound: () => ({}) }
 const tick = () => new Promise((resolve) => setImmediate(resolve))
 
@@ -21,6 +23,7 @@ class Database {
       names,
       changes,
       objectStore: (name) => ({
+        get: (key) => ({ result: this.values[name].get(key) }),
         put: (record) => {
           changes.push({ name, record })
           return { result: record.id || record.key }
@@ -61,7 +64,7 @@ function workspace() {
   return Object.assign(new Workspace(), {
     db: new Database(), sessionValue: "session", batchUrlValue: "/batch", completeUrlValue: "/complete",
     pendingSamples: [], nextSequence: 0, ended: false, ending: false, telemetry: {},
-    dataStatusTarget: {}, showWarning(message) { throw new Error(message) }, async flushOutbox() {}
+    connectButtonTarget: {}, dataStatusTarget: {}, showWarning(message) { throw new Error(message) }, async flushOutbox() {}
   })
 }
 
@@ -164,4 +167,21 @@ await cloud.flushOutbox()
 assert.equal(cloud.db.values.outbox.size, 0)
 assert.equal(cloud.cloudError, null)
 assert.equal(cloud.cloudStatusTarget.textContent, "Live")
-console.log("Signal outbox durability and shutdown tests passed")
+const quality = workspace()
+quality.db.autoCommit = true
+quality.eventUrlValue = "/events"
+quality.imuHealth.quality = {deviceId:"ECU-A172E0",bootId:42,imuEpoch:1,firmware:"fdr_integrated/56"}
+await quality.recordQualityEvent("Magnetic disturbance", ["magnetic_disturbance"], 17)
+assert.equal(quality.db.values.metadata.get("imu-check:17:invalidated").value, true)
+assert.equal(quality.db.values.outbox.size, 1, "invalidation remains queued while cloud sync is unavailable")
+const reloaded = workspace()
+reloaded.db = quality.db
+reloaded.imuHealth.quality = quality.imuHealth.quality
+let checkId = 17
+globalThis.fetch = async () => ({ok:true,json:async()=>({preflight:{id:checkId,outcome:"passed",boot_id:42,imu_epoch:1,firmware:"fdr_integrated/56"}})})
+await reloaded.loadQualityContext("ECU-A172E0/42/1/fdr_integrated/56")
+assert.equal(reloaded.preflightInvalidated, true, "a stale cloud response cannot revive an invalidated preflight after reload")
+checkId = 18
+await reloaded.loadQualityContext("ECU-A172E0/42/1/fdr_integrated/56")
+assert.equal(reloaded.preflightInvalidated, false, "a new preflight can replace the invalidated check")
+console.log("Signal outbox durability, preflight invalidation and shutdown tests passed")

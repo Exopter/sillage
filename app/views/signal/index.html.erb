@@ -1,10 +1,17 @@
 <% content_for :title, @active_session ? @active_session.flight.code : "Signal sessions" %>
 
 <% if @active_session %>
+  <% content_for :head do %>
+    <link rel="stylesheet" href="<%= Rails.application.config.x.cesium_base_url %>Widgets/widgets.css">
+  <% end %>
   <% flight = @active_session.flight %>
   <div class="signal-root"
        data-controller="signal-workspace"
+       data-signal-workspace-cesium-token-value="<%= @cesium_ion_token %>"
+       data-signal-workspace-cesium-base-url-value="<%= Rails.application.config.x.cesium_base_url %>"
+       data-signal-workspace-completed-value="<%= @active_session.status == "completed" %>"
        data-signal-workspace-session-value="<%= @active_session.uuid %>"
+       data-signal-workspace-flight-id-value="<%= flight.id %>"
        data-signal-workspace-flight-code-value="<%= flight.code %>"
        data-signal-workspace-batch-url-value="<%= batches_api_v1_signal_session_path(@active_session.uuid) %>"
        data-signal-workspace-event-url-value="<%= events_api_v1_signal_session_path(@active_session.uuid) %>"
@@ -18,42 +25,50 @@
         </div>
         <div class="signal-link-stack" aria-label="Signal link status">
           <div><span>Radio</span><strong data-signal-workspace-target="radioStatus">Waiting for ground radio</strong></div>
-          <div><span>Recorder</span><strong data-signal-workspace-target="recorderStatus">Preparing local capture</strong></div>
-          <div><span>Cloud</span><strong data-signal-workspace-target="cloudStatus">Live</strong></div>
+          <div><span>Capture</span><strong data-signal-workspace-target="recorderStatus">Not recording</strong></div>
+          <div><span>Cloud</span><strong data-signal-workspace-target="cloudStatus">Preparing</strong></div>
         </div>
         <div class="signal-command-actions">
-          <button type="button" class="signal-tool-button is-primary" aria-label="Connect ground radio" aria-describedby="signal-development-status" title="Development in progress" data-action="signal-workspace#connectStation" data-signal-workspace-target="connectButton" disabled><%= sillage_icon "radio", size: 14 %><span>Connect ground radio</span></button>
-          <button type="button" class="signal-tool-button" aria-label="Full screen" aria-describedby="signal-development-status" title="Development in progress" data-action="signal-workspace#toggleFullscreen" disabled><%= sillage_icon "arrow-up-right", size: 14 %><span>Full screen</span></button>
-          <button type="button" class="signal-tool-button" aria-label="Reset layout" aria-describedby="signal-development-status" title="Development in progress" data-action="signal-workspace#resetLayout" disabled><%= sillage_icon "rotate-ccw", size: 14 %><span>Reset layout</span></button>
-          <button type="button" class="signal-tool-button" aria-label="Mark event" aria-describedby="signal-development-status" title="Development in progress" data-action="signal-workspace#markEvent" disabled><%= sillage_icon "plus", size: 14 %><span>Mark event</span></button>
-          <button type="button" class="signal-tool-button is-danger" aria-describedby="signal-development-status" title="Development in progress" data-action="signal-workspace#endSession" disabled>End session</button>
+          <button type="button" class="signal-tool-button is-primary" aria-label="Connect ground radio" data-action="signal-workspace#connectStation" data-signal-workspace-target="connectButton" disabled><%= sillage_icon "radio", size: 14 %><span>Connect ground radio</span></button>
+          <button type="button" class="signal-tool-button" aria-label="Full screen" data-action="signal-workspace#toggleFullscreen"><%= sillage_icon "arrow-up-right", size: 14 %><span>Full screen</span></button>
+          <button type="button" class="signal-tool-button" aria-label="Reset layout" data-action="signal-workspace#resetLayout"><%= sillage_icon "rotate-ccw", size: 14 %><span>Reset layout</span></button>
+          <button type="button" class="signal-tool-button" aria-label="Mark event" data-action="signal-workspace#markEvent"><%= sillage_icon "plus", size: 14 %><span>Mark event</span></button>
+          <button type="button" class="signal-tool-button is-danger" data-action="signal-workspace#endSession">End session</button>
         </div>
       </header>
 
-      <div id="signal-development-status" class="signal-storage-warning" role="status">Development in progress</div>
+      <div class="calibration-quality" data-theme="dark" aria-label="Live IMU quality">
+        <span>ATTITUDE <strong data-signal-workspace-target="qualityAttitude" data-state="unknown">Unknown</strong></span>
+        <span>HEADING <strong data-signal-workspace-target="qualityHeading" data-state="unknown">Unknown</strong></span>
+        <span>PREFLIGHT <strong data-signal-workspace-target="preflightStatus" data-state="unknown">Not checked</strong></span>
+        <small data-signal-workspace-target="qualityReason">Waiting for quality telemetry</small>
+        <%= link_to "Run preflight check", flight_imu_check_path(flight), class: "workspace-strong-link" %>
+      </div>
       <div class="signal-storage-warning" data-signal-workspace-target="warning" hidden></div>
 
       <main class="signal-dashboard" data-signal-workspace-target="board" aria-label="Movable live Signal widgets">
         <section class="signal-widget" data-signal-workspace-target="widget" data-widget="map" data-mode="large">
           <header class="signal-widget-head">
-            <button type="button" class="signal-drag-handle" aria-label="Move Live map" aria-describedby="signal-development-status" title="Development in progress" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget" disabled><%= sillage_icon "menu", size: 13 %></button>
-            <span class="signal-head-icon"><%= sillage_icon "map", size: 15 %></span><strong>Live map</strong><span class="signal-widget-subtitle">Flight path and heading</span>
-            <span class="signal-live-badge">Live</span>
+            <button type="button" class="signal-drag-handle" aria-label="Move GPS track" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget"><%= sillage_icon "menu", size: 13 %></button>
+            <span class="signal-head-icon"><%= sillage_icon "map", size: 15 %></span><strong>GPS track</strong><span class="signal-widget-subtitle">3D satellite · live position</span>
+            <span class="signal-live-badge" data-signal-workspace-target="streamBadge" data-state="waiting">Waiting</span>
             <span class="signal-mode-buttons"><%= render "signal/widget_modes" %></span>
           </header>
-          <div class="signal-widget-body signal-map-body" style="--signal-map-image: url('<%= asset_path("flight-terrain-v1.png") %>')">
-            <canvas data-signal-workspace-target="mapCanvas" aria-label="Live flight path and heading"></canvas>
-            <div class="signal-aircraft" data-signal-workspace-target="aircraftMarker"><span class="signal-heading-ray"></span><span class="signal-aircraft-icon"><%= sillage_icon "plane", size: 23, stroke_width: 1.8 %></span><span class="signal-aircraft-label"><strong><%= flight.code %> · LIVE</strong><small data-signal-workspace-target="aircraftLabel">Waiting for telemetry</small></span></div>
-            <div class="signal-map-cache">Terrain available in this session</div>
+          <div class="signal-widget-body signal-map-body">
+            <div class="signal-map-scene" data-signal-workspace-target="mapScene" aria-label="Live GPS position on the 3D satellite map"></div>
+            <canvas data-signal-workspace-target="mapCanvas" aria-label="GPS track from received positions"></canvas>
+            <div class="signal-aircraft" data-signal-workspace-target="aircraftMarker" hidden><span class="signal-heading-ray"></span><span class="signal-aircraft-icon"><%= sillage_icon "plane", size: 23, stroke_width: 1.8 %></span><span class="signal-aircraft-label"><strong><%= flight.code %></strong><small data-signal-workspace-target="aircraftLabel">Waiting for telemetry</small></span></div>
+            <div class="signal-map-cache" data-signal-workspace-target="mapStatus">Loading 3D map</div>
+            <button type="button" class="signal-tool-button signal-map-follow" data-signal-workspace-target="mapFollow" data-action="signal-workspace#toggleMapFollow" aria-pressed="true" disabled>Following GPS</button>
             <div class="signal-map-event" data-signal-workspace-target="latestEvent" hidden></div>
           </div>
         </section>
 
         <section class="signal-widget" data-signal-workspace-target="widget" data-widget="instruments" data-mode="mini">
           <header class="signal-widget-head">
-            <button type="button" class="signal-drag-handle" aria-label="Move Instruments" aria-describedby="signal-development-status" title="Development in progress" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget" disabled><%= sillage_icon "menu", size: 13 %></button>
-            <span class="signal-head-icon"><%= sillage_icon "gauge", size: 15 %></span><strong>Instruments</strong><span class="signal-widget-subtitle">Ground-reconstructed flight state</span>
-            <span class="signal-live-badge">Live</span>
+            <button type="button" class="signal-drag-handle" aria-label="Move Instruments" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget"><%= sillage_icon "menu", size: 13 %></button>
+            <span class="signal-head-icon"><%= sillage_icon "gauge", size: 15 %></span><strong>Instruments</strong><span class="signal-widget-subtitle">Measured attitude</span>
+            <span class="signal-live-badge" data-signal-workspace-target="streamBadge" data-state="waiting">Waiting</span>
             <span class="signal-mode-buttons"><%= render "signal/widget_modes" %></span>
           </header>
           <div class="signal-widget-body"><canvas class="signal-instrument-canvas" data-signal-workspace-target="instrumentCanvas" aria-label="Ground reconstructed instruments"></canvas></div>
@@ -61,39 +76,45 @@
 
         <section class="signal-widget" data-signal-workspace-target="widget" data-widget="charts" data-mode="mini">
           <header class="signal-widget-head">
-            <button type="button" class="signal-drag-handle" aria-label="Move Charts" aria-describedby="signal-development-status" title="Development in progress" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget" disabled><%= sillage_icon "menu", size: 13 %></button>
+            <button type="button" class="signal-drag-handle" aria-label="Move Charts" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget"><%= sillage_icon "menu", size: 13 %></button>
             <span class="signal-head-icon"><%= sillage_icon "activity", size: 15 %></span><strong>Charts</strong><span class="signal-widget-subtitle">Aligned telemetry and stream validity</span>
-            <span class="signal-live-badge">Live</span>
+            <span class="signal-live-badge" data-signal-workspace-target="streamBadge" data-state="waiting">Waiting</span>
             <span class="signal-mode-buttons"><%= render "signal/widget_modes" %></span>
           </header>
           <div class="signal-widget-body"><canvas class="signal-chart-canvas" data-signal-workspace-target="chartCanvas" aria-label="Aligned telemetry charts"></canvas></div>
         </section>
       </main>
 
+      <div class="signal-telemetry-strip signal-sensor-strip" aria-label="Live sensor measurements">
+        <% [["accel", "Acceleration X/Y/Z", "m/s²"], ["gyro", "Gyroscope X/Y/Z", "rad/s"], ["mag", "Magnetometer X/Y/Z", "µT"], ["pressure", "Pitot differential", "Pa"], ["temperature", "Pitot temperature", "°C"], ["gps", "GPS", "Fix / satellites"]].each do |key, label, unit| %>
+          <div><span><%= label %></span><strong data-signal-workspace-target="sensorValue" data-sensor="<%= key %>">---</strong><small><%= unit %></small></div>
+        <% end %>
+      </div>
       <footer class="signal-telemetry-strip" aria-label="Shared live telemetry">
         <div><span>Heading</span><strong data-signal-workspace-target="heading">---</strong><small>deg</small></div>
-        <div><span>Airspeed</span><strong data-signal-workspace-target="airspeed">---</strong><small>km/h</small></div>
-        <div><span>Altitude</span><strong data-signal-workspace-target="altitude">---</strong><small>m AMSL</small></div>
-        <div><span>Vertical speed</span><strong data-signal-workspace-target="verticalSpeed">---</strong><small>m/s</small></div>
-        <div><span>Glide</span><strong data-signal-workspace-target="glide">---</strong><small>L/D</small></div>
+        <div><span title="Estimated from pitot pressure using standard air density (1.225 kg/m³); sensor calibration is not corrected.">IAS estimate</span><strong data-signal-workspace-target="airspeed">---</strong><small>km/h</small></div>
+        <div><span title="Total accelerometer magnitude across all three axes. Approximately 1 g at rest, regardless of orientation.">G load</span><strong data-signal-workspace-target="sensorValue" data-sensor="gLoad">---</strong><small>g</small></div>
+        <div><span>GPS altitude</span><strong data-signal-workspace-target="altitude">---</strong><small>m AMSL</small></div>
+        <div><span>GPS vertical speed</span><strong data-signal-workspace-target="verticalSpeed">---</strong><small>m/s</small></div>
+        <div><span>GPS glide ratio</span><strong data-signal-workspace-target="glide">---</strong><small>L/D</small></div>
         <div class="signal-telemetry-health"><span>Data</span><strong data-signal-workspace-target="dataStatus">Waiting for telemetry</strong><small data-signal-workspace-target="parserStatus">No valid MAVLink frames</small></div>
       </footer>
+      <div data-signal-workspace-target="mapCredits" hidden></div>
     </div>
   </div>
 <% else %>
   <div class="signal-home">
     <div class="signal-home-inner">
       <header class="signal-home-head">
-        <div><span class="signal-k">Sillage Signal</span><h1>Start live acquisition</h1><p>Connect the ground radio, display telemetry and record a durable local capture while the cloud stays synchronized.</p></div>
+        <div><span class="signal-k">Sillage Signal</span><h1>Start live acquisition</h1><p>Connect the Holybro ground radio over USB to view live telemetry. Use Chrome or Edge on desktop.</p></div>
       </header>
-      <div id="signal-development-status" class="signal-storage-warning" role="status">Development in progress</div>
       <div class="signal-launch-grid">
         <section class="signal-launch-card">
           <div class="signal-launch-body"><span class="signal-k">Prepared flights</span><h2>Attach to an existing flight</h2><p>The aircraft and installed Hangar assets are inherited automatically.</p></div>
           <% @preparation_flights.each do |flight| %>
             <div class="signal-prep-row">
               <div><strong><%= flight.code %></strong><span><%= flight.display_aircraft %></span></div>
-              <%= button_to "Open session", signal_sessions_path(flight_id: flight.id), class: "signal-tool-button is-primary", disabled: true, title: "Development in progress", aria: { describedby: "signal-development-status" }, form: { data: { turbo: false } } %>
+              <%= button_to "Open session", signal_sessions_path(flight_id: flight.id), class: "signal-tool-button is-primary", form: { data: { turbo: false } } %>
             </div>
           <% end %>
           <% if @preparation_flights.empty? %><div class="signal-prep-empty">No flight is currently in Preparation.</div><% end %>
@@ -101,7 +122,7 @@
         <section class="signal-launch-card">
           <div class="signal-launch-body">
             <span class="signal-k">Direct acquisition</span><h2>Create from Signal</h2><p>A new Flight is created. Its aircraft is filled automatically when identification is unambiguous; otherwise it remains To complete.</p>
-            <%= button_to signal_sessions_path, class: "signal-tool-button is-primary signal-start-direct", disabled: true, title: "Development in progress", aria: { describedby: "signal-development-status" }, form: { data: { turbo: false } } do %><%= sillage_icon "radio", size: 15 %><span>Start unassigned session</span><% end %>
+            <%= button_to signal_sessions_path, class: "signal-tool-button is-primary signal-start-direct", form: { data: { turbo: false } } do %><%= sillage_icon "radio", size: 15 %><span>Start unassigned session</span><% end %>
             <div class="signal-launch-rules"><div><%= sillage_icon "download", size: 15 %><span><strong>Local capture first</strong>Raw MAVLink continues during a brief Internet cut.</span></div><div><%= sillage_icon "upload", size: 15 %><span><strong>Automatic recovery</strong>Queued batches resume from the last acknowledgement.</span></div><div><%= sillage_icon "shield", size: 15 %><span><strong>microSD authoritative</strong>Signal complements the onboard recorder.</span></div></div>
           </div>
         </section>

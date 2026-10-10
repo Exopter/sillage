@@ -70,6 +70,10 @@
       </section>
     <% end %>
 
+    <%= render "imu_checks/history", checks: @flight.imu_checks.recent.limit(10) %>
+
+    <% quality_events = @flight.operator_events.where("metadata ->> 'source' = ?", "imu_health").order(occurred_at: :desc).limit(100) %>
+    <% if quality_events.any? %><details class="workspace-panel"><summary>IMU quality timeline</summary><% quality_events.each do |event| %><p class="workspace-mono"><%= l event.occurred_at, format: :short %> · <%= event.label %></p><% end %></details><% end %>
     <section class="flight-overview-strip" aria-label="Flight overview">
       <div>
         <span>Total recording</span>

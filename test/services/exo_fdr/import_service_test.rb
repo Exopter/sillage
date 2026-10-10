@@ -4,6 +4,22 @@ require_relative "../../support/exo_fdr_binary"
 class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
   include ExoFdrBinary
 
+  test "preserves the recorded IMU frame and values through import without a second rotation" do
+    readings = [ [ 0, 0.2, -0.4, 0.4, 0.8 ], [ 1, -0.4, 0.2, -0.4, 0.8 ], [ 99, 0.2, -0.4, 0.4, 0.8 ] ]
+    binary = fdr_binary(readings.each_with_index.map do |values, sequence|
+      { type: 2, payload: [ 5, 3, *values ].pack("CCve4"), timestamp_us: (1 + sequence * 5) * 1_000_000, sequence: }
+    end)
+    flight_import = fdr_import(binary)
+    ExoFdr::ImportService.new(flight_import).call
+    samples = flight_import.flights.sole.sensor_samples.ordered
+    assert_equal [ "sensor_native", "body_frd_ned", "unknown_99" ], samples.map { |sample| sample.readings.fetch("coordinate_frame") }
+    samples.zip(readings).each do |sample, (frame_id, *axes)|
+      assert_equal "IMU:rotation_vector", sample.sensor_type
+      assert_equal frame_id, sample.readings.fetch("frame_id")
+      %w[x y z w].zip(axes).each { |axis, value| assert_in_delta value, sample.readings.fetch(axis), 1e-6 }
+    end
+  end
+
   test "imports GPS without UTC and preserves relative sample times" do
     current = Assembly.create!(name: "Current recorder", assembly_type: "ExoFDR", assembly_method: "PERF", fdr_functional_configuration: create_fdr_functional_configuration)
     create_embedded_controller(assembly: current, device_id: "ECU-ABC123")

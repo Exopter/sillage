@@ -45,7 +45,7 @@ export function parseSignalLayout(json) {
     /** @type {unknown} */
     const value = JSON.parse(json || "null")
     if (!value || typeof value !== "object") return null
-    /** @type {Record<string,{left:number,top:number,width:number,height:number,mode:string}>} */
+    /** @type {Record<string,{left:number,top:number,width:number,height:number,mode:string,miniSize?:{width:number,height:number}}>} */
     const widgets = {}
     /** @type {{width:number,height:number}|null} */
     let board = null
@@ -54,6 +54,10 @@ export function parseSignalLayout(json) {
       if (key === "__board") { board = {width: record.width, height: record.height}; continue }
       if (!Number.isFinite(record.left) || !Number.isFinite(record.top) || !["large", "mini", "hidden"].includes(record.mode)) continue
       widgets[key] = {left:record.left, top:record.top, width:record.width, height:record.height, mode:record.mode}
+      const mini = record.miniSize
+      if (mini && Number.isFinite(mini.width) && mini.width >= 250 && Number.isFinite(mini.height) && mini.height >= 150) {
+        widgets[key].miniSize = { width: mini.width, height: mini.height }
+      }
     }
     return Object.keys(widgets).length ? {board, widgets} : null
   } catch { return null }

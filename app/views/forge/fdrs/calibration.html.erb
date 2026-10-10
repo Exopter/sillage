@@ -1,0 +1,8 @@
+<% content_for :title, "#{@fdr.technical_reference} · Calibration" %>
+<% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><% end %>
+<%= render "forge/tabs" %>
+<div class="fdr-connectivity">
+  <%= render "shell", active_tab: :calibration %>
+  <%= render "imu_checks/guide", fdr: @fdr, kind: "calibration" %>
+  <%= render "imu_checks/history", checks: @checks %>
+</div>

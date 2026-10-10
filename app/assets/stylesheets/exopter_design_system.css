@@ -29,6 +29,32 @@
   --ex-red-600: #e63b35;
   --ex-violet-500: #6658c7;
 
+  --ex-instrument-sky: #102936;
+  --ex-instrument-ground: #151f20;
+  --ex-instrument-line: #53676d;
+  --ex-instrument-muted: #95a6aa;
+  --ex-telemetry-live: var(--ex-aqua-500);
+  --ex-telemetry-no-data: var(--ex-amber-500);
+
+  --ex-flight-violet: #9256e8;
+  --ex-flight-orchid: #c19aff;
+  --ex-flight-magenta: #dc4b9a;
+  --ex-flight-amber: #efab62;
+  --ex-flight-shadow: #15101f;
+  --ex-flight-night: #0a080e;
+  --ex-flight-depth: #100c18;
+  --ex-flight-panel: #15111b;
+  --ex-flight-haze: #281a36;
+  --ex-flight-border: #272030;
+  --ex-flight-border-strong: #3a2e44;
+  --ex-flight-backdrop: radial-gradient(ellipse at 78% 38%, var(--ex-flight-haze), var(--ex-flight-depth) 50%, var(--ex-flight-night) 78%);
+  --ex-flight-spectrum: linear-gradient(115deg, var(--ex-flight-orchid), var(--ex-flight-magenta) 70%, var(--ex-flight-amber));
+  --ex-scene-surface: #19171e;
+  --ex-scene-edge: var(--ex-flight-orchid);
+  --ex-scene-light: var(--ex-vapor-100);
+  --ex-motion-reveal-duration: 800ms; /* @kind other */
+  --ex-motion-reveal-ease: cubic-bezier(.2, .7, .2, 1); /* @kind other */
+
   --ex-state-ready-bg: rgba(140, 255, 77, 0.18);
   --ex-state-ready-text: #315a26;
   --ex-state-live-bg: rgba(47, 214, 198, 0.14);

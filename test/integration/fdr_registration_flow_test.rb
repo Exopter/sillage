@@ -37,6 +37,7 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
     assert_nil recorder.assembly
     assert_equal connectivity_forge_fdr_path(recorder), response.parsed_body.dig("recorder", "connectivity_url")
     assert_equal api_v1_fdr_initialization_path(recorder), response.parsed_body.dig("recorder", "initialization_url")
+    assert_equal api_v1_fdr_access_restoration_path(recorder), response.parsed_body.dig("recorder", "access_restoration_url")
     assert_not response.parsed_body.dig("recorder", "initialization_confirmed")
     assert_match "no-store", response.headers["Cache-Control"]
     assert_nil recorder.reload.fdr_auth_key_ciphertext

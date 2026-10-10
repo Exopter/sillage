@@ -53,10 +53,14 @@ Rails.application.routes.draw do
   end
 
   resources :signal_sessions, only: :create
+  resources :flights, only: [] do
+    resource :imu_check, only: :show, path: "preflight"
+  end
 
   scope module: :forge, path: "forge", as: "forge" do
     resources :fdrs, only: %i[index show update] do
       member do
+        get :calibration
         get :connectivity
         get :activity
       end
@@ -90,6 +94,7 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
+      resources :imu_checks, only: %i[index create], path: "imu-checks"
       resource :fdr_registration, only: %i[show create], path: "fdr-registration"
       resource :fdr_sillage_heartbeat, only: :create, path: "fdr-sillage-heartbeat"
       resources :fdr_sillage_heartbeats, only: :index, path: "fdr-sillage-heartbeats"
@@ -103,6 +108,7 @@ Rails.application.routes.draw do
       resource :fdr_authentication, only: :create, path: "fdr-authentication"
       resources :fdrs, only: [] do
         resource :initialization, controller: "fdr_initializations", only: %i[create update]
+        resource :access_restoration, controller: "fdr_access_restorations", only: %i[create update], path: "access-restoration"
         resource :wifi_provisioning, controller: "fdr_wifi_provisionings", only: %i[create update], path: "wifi-provisioning"
       end
       resources :fdr_syncs, only: [ :create, :show ], path: "fdr-syncs"

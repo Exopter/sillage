@@ -3,6 +3,8 @@ class DeviceActivity < ApplicationRecord
     "registered" => "ECU registered",
     "authentication_prepared" => "Authentication prepared",
     "initialized" => "ECU initialized",
+    "access_restoration_requested" => "Recorder access restoration requested",
+    "access_restored" => "Recorder access restored",
     "assembly_linked" => "Legacy physical asset assignment changed",
     "controller_part_linked" => "Controller part assignment changed",
     "wifi_profile_added" => "Wi-Fi network added",
@@ -41,6 +43,10 @@ class DeviceActivity < ApplicationRecord
 
   def description
     case event_type
+    when "access_restoration_requested"
+      "Restoration of the existing authentication key was requested over USB-C."
+    when "access_restored"
+      "The existing authentication key was restored and the USB-C session authenticated."
     when "registered"
       details["device_id"].presence || "The recorder was added to Forge."
     when "assembly_linked"

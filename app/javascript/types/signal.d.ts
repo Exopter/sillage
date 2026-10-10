@@ -1,9 +1,11 @@
 export type DecodedMessage =
+  | { name: "imu_quality"; deviceId: string; bootId: number; timeBootMs: number; imuEpoch: number; firmware: string; headingAccuracyDeg: number | null; agesMs: number[]; validity: number; accuracy: number[] }
   | { name: "heartbeat"; customMode: number; type: number; autopilot: number; baseMode: number; systemStatus: number }
   | { name: "system_status"; sensorsPresent: number; sensorsEnabled: number; sensorsHealthy: number; loadPermille: number; voltageMv: number; batteryRemaining: number }
   | { name: "ping"; timeUs: string; sequence: number; targetSystem: number; targetComponent: number }
-  | { name: "gps"; timeUs: string; latitude: number; longitude: number; altitudeM: number; ephM: number; epvM: number; velocityMps: number; courseDeg: number; fix: number; satellites: number }
-  | { name: "attitude"; quaternion: number[]; rollDeg: number; pitchDeg: number; yawDeg: number; rollSpeed: number; pitchSpeed: number; yawSpeed: number }
+  | { name: "gps"; timeUs: string; latitude: number; longitude: number; altitudeM: number; hdop: number | null; vdop: number | null; velocityMps: number | null; courseDeg: number | null; fix: number; satellites: number | null }
+  | { name: "highres_imu"; coordinateFrame?: "sensor_native" | "body_frd_ned" | null; timeUs: string; acceleration: number[] | null; angularVelocity: number[] | null; magneticField: number[] | null; absolutePa: number | null; differentialPa: number | null; pressureAltitudeM: number | null; temperatureC: number | null; fieldsUpdated: number }
+  | { name: "attitude"; timeBootMs?: number; coordinateFrame?: "sensor_native" | "body_frd_ned"; quaternion: number[]; rollDeg: number; pitchDeg: number; yawDeg: number; rollSpeed: number; pitchSpeed: number; yawSpeed: number }
   | { name: "vfr_hud"; airspeedMps: number; groundspeedMps: number; altitudeM: number; climbMps: number; headingDeg: number; throttlePercent: number }
   | { name: "radio"; rxErrors: number; fixed: number; rssi: number; remoteRssi: number; txBufferPercent: number; noise: number; remoteNoise: number; rssiDbm: number; remoteRssiDbm: number }
   | { name: "pressure"; timeBootMs: number; absoluteHpa: number; differentialHpa: number; temperatureC: number }

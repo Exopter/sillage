@@ -8,6 +8,7 @@ class Flight < ApplicationRecord
   belongs_to :user
   belongs_to :flight_import, optional: true, inverse_of: :flights
   belongs_to :aircraft, optional: true
+  has_many :imu_checks, dependent: :nullify
   has_many :track_points, dependent: :delete_all, inverse_of: :flight
   has_many :sensor_samples, dependent: :delete_all, inverse_of: :flight
   has_many :signal_sessions, dependent: :restrict_with_error

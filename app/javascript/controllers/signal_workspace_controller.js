@@ -1,10 +1,15 @@
+import { drawSignalInstruments, instrumentStyle } from "signal_instruments"
 import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
 import { clamp, signalLayoutPreset, parseSignalLayout } from "signal_layout"
+import { ImuHealth } from "imu_health"
+import { SignalTelemetry } from "signal_telemetry"
+import { SignalMap } from "signal_map"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
 
 import { OUTBOX_STORE, META_STORE, openDatabase, putOutbox, writeOutbox, deleteOutbox, readOutbox, oldestOutbox, writeMetadata, readMetadata, transactionRequest } from "signal_outbox"
 const BATCH_INTERVAL_MS = 2_000
+const CHART_WINDOW_MS = 30_000
 
 
 /**
@@ -15,12 +20,23 @@ const BATCH_INTERVAL_MS = 2_000
  * @property {HTMLElement} widgetTarget
  * @property {HTMLElement[]} widgetTargets
  * @property {HTMLCanvasElement} mapCanvasTarget
+ * @property {HTMLElement} mapSceneTarget
+ * @property {HTMLElement} mapCreditsTarget
+ * @property {HTMLElement} mapStatusTarget
+ * @property {HTMLButtonElement} mapFollowTarget
+ * @property {string} cesiumTokenValue
+ * @property {string} cesiumBaseUrlValue
  * @property {HTMLCanvasElement} instrumentCanvasTarget
  * @property {HTMLCanvasElement} chartCanvasTarget
  * @property {HTMLButtonElement} connectButtonTarget
  * @property {HTMLElement} radioStatusTarget
  * @property {HTMLElement} recorderStatusTarget
  * @property {HTMLElement} cloudStatusTarget
+ * @property {HTMLElement} qualityAttitudeTarget
+ * @property {HTMLElement} qualityHeadingTarget
+ * @property {HTMLElement} qualityReasonTarget
+ * @property {HTMLElement} preflightStatusTarget
+ * @property {string} flightIdValue
  * @property {HTMLElement} warningTarget
  * @property {HTMLElement} headingTarget
  * @property {HTMLElement} airspeedTarget
@@ -31,7 +47,10 @@ const BATCH_INTERVAL_MS = 2_000
  * @property {HTMLElement} parserStatusTarget
  * @property {HTMLElement} aircraftMarkerTarget
  * @property {HTMLElement} aircraftLabelTarget
+ * @property {HTMLElement[]} sensorValueTargets
+ * @property {HTMLElement[]} streamBadgeTargets
  * @property {HTMLElement} latestEventTarget
+ * @property {boolean} completedValue
  * @property {string} sessionValue
  * @property {string} flightCodeValue
  * @property {string} batchUrlValue
@@ -41,10 +60,27 @@ const BATCH_INTERVAL_MS = 2_000
 const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller & StimulusBindings} */ (/** @type {unknown} */ (Controller))
 
 export default class extends TypedController {
-  /** @type {{heading:number|null,airspeed:number|null,altitude:number|null,verticalSpeed:number|null,glide:number|null,roll:number,pitch:number,gps:number[]|null,radio:number|null}} */
-  telemetry = { heading: null, airspeed: null, altitude: null, verticalSpeed: null, glide: null, roll: 0, pitch: 0, gps: null, radio: null }
+  /** @type {SignalMap | null} */
+  map3d = null
+  imuHealth = new ImuHealth()
+  /** @type {{id:number, boot_id:number, imu_epoch:number, firmware:string, outcome:string, invalidated_at:string|null}|null} */
+  preflight = null
+  /** @type {number|null} */ referenceField = null
+  qualityContextAt = 0
+  qualityContextKey = ""
+  qualitySignature = ""
+  preflightInvalidated = false
+  qualityContextLoading = false
+  measurements = new SignalTelemetry()
+  telemetry = this.measurements.snapshot(0)
+  /** @type {number|undefined} */
+  renderTimer = undefined
+  /** @type {number[]} */
+  frameTimes = []
   /** @type {Record<"airspeed"|"altitude"|"verticalSpeed"|"validity",number[]>} */
   history = { airspeed: [], altitude: [], verticalSpeed: [], validity: [] }
+  /** @type {number[]} */
+  historyTimes = []
   /** @type {import("../types/signal").SignalSample[]} */
   pendingSamples = []
   /** @type {IDBDatabase|null} */
@@ -87,13 +123,16 @@ export default class extends TypedController {
   ending = false
   openingPort = false
   layoutStorageKey = ""
+  /** @type {Map<string, {width:number,height:number}>} */
+  miniSizes = new Map()
 
   boundOnline = () => { this.flushOutbox() }
   boundOffline = () => { this.refreshCloudStatus() }
   boundBeforeUnload = (/** @type {BeforeUnloadEvent} */ event) => this.warnBeforeUnload(event)
   boundResize = () => this.reflowLayout()
   boundSerialConnect = async () => { await this.stopSerialPromise; this.autoReconnect() }
-  boundSerialDisconnect = () => {
+  boundSerialDisconnect = (/** @type {Event} */ event) => {
+    if (event.target !== this.port) return
     this.showWarning("The ground radio was disconnected. Acquisition will resume after USB reconnection.")
     this.stopSerial()
   }
@@ -105,14 +144,20 @@ export default class extends TypedController {
 
   static targets = [
     "presentation", "board", "widget", "mapCanvas", "instrumentCanvas", "chartCanvas",
+    "mapScene", "mapCredits", "mapStatus", "mapFollow",
     "connectButton", "radioStatus", "recorderStatus", "cloudStatus", "warning",
     "heading", "airspeed", "altitude", "verticalSpeed", "glide", "dataStatus",
-    "parserStatus", "aircraftMarker", "aircraftLabel", "latestEvent"
+    "qualityAttitude", "qualityHeading", "qualityReason", "preflightStatus",
+    "parserStatus", "aircraftMarker", "aircraftLabel", "latestEvent", "sensorValue", "streamBadge"
   ]
 
   static values = {
+    cesiumToken: String,
+    cesiumBaseUrl: String,
+    completed: Boolean,
     session: String,
     flightCode: String,
+    flightId: String,
     batchUrl: String,
     eventUrl: String,
     completeUrl: String
@@ -123,8 +168,13 @@ export default class extends TypedController {
 
   async connect() {
     const generation = this.connectionGeneration = Symbol("signal")
-    this.telemetry = { heading: null, airspeed: null, altitude: null, verticalSpeed: null, glide: null, roll: 0, pitch: 0, gps: null, radio: null }
+    this.imuHealth = new ImuHealth()
+    this.preflight = null; this.preflightInvalidated = false; this.qualityContextKey = ""; this.qualitySignature = ""; this.qualityContextAt = 0
+    this.measurements = new SignalTelemetry()
+    this.telemetry = this.measurements.snapshot(0)
+    this.frameTimes = []
     this.history = { airspeed: [], altitude: [], verticalSpeed: [], validity: [] }
+    this.historyTimes = []
     this.pendingSamples = []
     this.connectedAt = null
     this.lastFrameAt = null
@@ -146,7 +196,7 @@ export default class extends TypedController {
       if (generation !== this.connectionGeneration) { database.close(); return }
       this.db = database
       this.nextSequence = Number(nextSequence) || 0
-      this.ended = Boolean(endedAt)
+      this.ended = this.completedValue || Boolean(endedAt)
     } catch (caught) {
       if (generation !== this.connectionGeneration) return
       const error = caught instanceof Error ? caught : new Error(String(caught))
@@ -161,20 +211,29 @@ export default class extends TypedController {
     navigator.serial?.addEventListener("connect", this.boundSerialConnect)
     navigator.serial?.addEventListener("disconnect", this.boundSerialDisconnect)
     this.restoreLayout()
+    this.map3d = new SignalMap({ container: this.mapSceneTarget, credits: this.mapCreditsTarget,
+      status: this.mapStatusTarget, followButton: this.mapFollowTarget,
+      baseUrl: this.cesiumBaseUrlValue, token: this.cesiumTokenValue, label: this.flightCodeValue })
+    this.map3d.start()
     this.batchTimer = window.setInterval(() => {
       if (!this.ending) this.queuePendingBatch().then(() => this.flushOutbox()).catch((error) => this.showWarning(`Local storage failed: ${error.message}. Keep this page open and free disk space.`))
     }, BATCH_INTERVAL_MS)
-    this.drawAll()
+    this.connectButtonTarget.disabled = this.ended
+    this.renderTimer = window.setInterval(() => this.refreshTelemetry(), 100)
+    this.refreshTelemetry()
     await this.prepareLocalStorage()
     await this.flushOutbox()
     if (generation === this.connectionGeneration) await this.autoReconnect()
   }
 
   disconnect() {
+    this.map3d?.destroy()
+    this.map3d = null
     this.connectionGeneration = null
     this.unregisterUsbPageRelease?.()
     this.unregisterUsbPageRelease = null
     window.clearInterval(this.batchTimer)
+    window.clearInterval(this.renderTimer)
     window.removeEventListener("online", this.boundOnline)
     window.removeEventListener("offline", this.boundOffline)
     window.removeEventListener("beforeunload", this.boundBeforeUnload)
@@ -186,14 +245,10 @@ export default class extends TypedController {
   }
 
   async prepareLocalStorage() {
-    if (!navigator.storage?.persist) {
-      this.showWarning("Persistent browser storage is unavailable. Keep the microSD recorder running.")
-      return
-    }
+    if (!navigator.storage?.persist) return
 
-    const persistent = await navigator.storage.persisted() || await navigator.storage.persist()
+    if (!await navigator.storage.persisted()) await navigator.storage.persist()
     const estimate = await navigator.storage.estimate()
-    if (!persistent) this.showWarning("Persistent storage was not granted. The browser may remove the local capture under storage pressure.")
     if (estimate.quota && estimate.usage && estimate.quota - estimate.usage < 250 * 1024 * 1024) {
       this.showWarning("Less than 250 MB of browser storage remains. Free space before a long acquisition.")
     }
@@ -202,7 +257,7 @@ export default class extends TypedController {
   async autoReconnect() {
     const generation = this.connectionGeneration
     if (!navigator.serial || this.ended || this.ending || !generation) return
-    const ports = await navigator.serial.getPorts()
+    const ports = (await navigator.serial.getPorts()).filter(isGroundRadio)
     const lastPort = await readMetadata(this.database, "last-authorized-port")
     const port = ports.find((candidate) => samePort(candidate.getInfo(), lastPort)) || (ports.length === 1 ? ports[0] : null)
     if (port && generation === this.connectionGeneration) await this.acquirePort(port)
@@ -219,8 +274,8 @@ export default class extends TypedController {
     }
 
     try {
-      const authorized = await navigator.serial.getPorts()
-      const port = authorized.length === 1 ? authorized[0] : await navigator.serial.requestPort()
+      const authorized = (await navigator.serial.getPorts()).filter(isGroundRadio)
+      const port = authorized.length === 1 ? authorized[0] : await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x0403 }, { usbVendorId: 0x10c4 }] })
       await this.acquirePort(port)
     } catch (caught) {
       const error = caught instanceof Error ? caught : new Error(String(caught))
@@ -272,8 +327,16 @@ export default class extends TypedController {
     if (generation !== this.connectionGeneration || this.ending || this.ended) return
     this.openingPort = false
     this.connectedAt = new Date()
-    this.worker = new Worker("/signal_serial_worker.js")
+    this.imuHealth = new ImuHealth()
+    this.preflight = null; this.preflightInvalidated = false; this.qualityContextKey = ""; this.qualitySignature = ""; this.qualityContextAt = 0
+    this.measurements = new SignalTelemetry()
+    this.lastFrameAt = null
+    this.frameTimes = []
+    this.mavlinkSystemId = null
+    this.mavlinkComponentId = null
+    this.worker = new Worker("/signal_serial_worker.js?v=55-native-imu")
     this.worker.onmessage = ({ data }) => this.handleWorkerMessage(data)
+    this.worker.onerror = () => this.showWarning("Telemetry decoding stopped. Reconnect the ground radio.")
     this.worker.postMessage({ type: "init-capture", filename: `${this.flightCodeValue}-${this.sessionValue}.mavcap` })
     const label = this.connectButtonTarget.querySelector("span:last-child") || this.connectButtonTarget
     label.textContent = "Disconnect ground radio"
@@ -342,6 +405,10 @@ export default class extends TypedController {
     label.textContent = "Connect ground radio"
     this.connectButtonTarget.setAttribute("aria-label", "Connect ground radio")
     this.radioStatusTarget.textContent = "Not connected"
+    this.imuHealth = new ImuHealth()
+    this.preflight = null; this.preflightInvalidated = false; this.qualityContextKey = ""; this.qualitySignature = ""; this.qualityContextAt = 0
+    this.measurements = new SignalTelemetry()
+    this.refreshTelemetry()
     this.updateGroundRadioState("disconnected")
   }
 
@@ -353,56 +420,83 @@ export default class extends TypedController {
   /** @param {import("../types/signal").CaptureMessage} message */
   handleWorkerMessage(message) {
     if (message.type === "capture-ready") {
-      this.recorderStatusTarget.textContent = `Recording locally · ${formatBytes(message.bytes)}`
+      this.recorderStatusTarget.textContent = "Recording locally"
+      return
+    }
+    if (message.type === "capture-closed") {
+      this.recorderStatusTarget.textContent = `Capture saved · ${formatBytes(message.bytes)}`
       return
     }
     if (message.type === "capture-error") {
       this.recorderStatusTarget.textContent = "Local capture unavailable"
-      this.showWarning(`Raw capture could not start: ${message.message}`)
+      this.showWarning(`Raw capture unavailable: ${message.message}`)
       return
     }
     if (message.type !== "frame") return
 
-    this.lastFrameAt = Date.now()
-    this.mavlinkSystemId = String(message.systemId)
-    this.mavlinkComponentId = String(message.componentId)
-    this.radioStatusTarget.textContent = `Live · MAVLink ${message.systemId}/${message.componentId}`
+    const now = Date.now()
+    // SiK injects RADIO_STATUS from its own identity. It must never select the aircraft.
+    if (message.decoded.name !== "radio") {
+      if (message.decoded.name === "unknown" || message.decoded.name === "ping") return
+      if (this.mavlinkSystemId == null) {
+        this.mavlinkSystemId = String(message.systemId)
+        this.mavlinkComponentId = String(message.componentId)
+      }
+      if (String(message.systemId) !== this.mavlinkSystemId || String(message.componentId) !== this.mavlinkComponentId) return
+      this.lastFrameAt = now
+      this.frameTimes.push(now)
+    }
     this.parserStatusTarget.textContent = `${message.parser.errors} CRC errors · ${message.parser.dropped} missing frames`
     this.applyTelemetry(message.decoded, message)
-    this.drawAll()
   }
 
   /** @param {import("../types/signal").DecodedMessage} decoded @param {import("../types/signal").FrameMessage} frame */
   applyTelemetry(decoded, frame) {
+    const now = Date.now()
+    const generation = this.imuHealth.generation
+    this.imuHealth.apply(decoded, now)
+    if (this.imuHealth.generation !== generation) this.measurements = new SignalTelemetry()
+    this.measurements.apply(decoded, now)
+    this.telemetry = this.measurements.snapshot(now)
     const recordedAt = new Date(Number(BigInt(frame.receivedAtUs) / 1000n)).toISOString()
-    /** @type {import("../types/signal").SignalSample | null} */
-    let sample = null
-    if (decoded.name === "gps") {
-      this.telemetry.gps = [decoded.longitude, decoded.latitude]
-      if (this.telemetry.heading == null) this.telemetry.heading = decoded.courseDeg
-      if (this.telemetry.altitude == null) this.telemetry.altitude = decoded.altitudeM
-      sample = { kind: "gps", recorded_at: recordedAt, latitude: decoded.latitude, longitude: decoded.longitude, altitude_m: decoded.altitudeM, horizontal_accuracy_m: decoded.ephM, vertical_accuracy_m: decoded.epvM, horizontal_speed_mps: decoded.velocityMps, heading_deg: decoded.courseDeg, gps_fix: decoded.fix, satellite_count: decoded.satellites }
-    } else if (decoded.name === "vfr_hud") {
-      this.telemetry.airspeed = decoded.airspeedMps * 3.6
-      this.telemetry.altitude = decoded.altitudeM
-      this.telemetry.verticalSpeed = decoded.climbMps
-      this.telemetry.heading = normalizeHeading(decoded.headingDeg)
-      this.telemetry.glide = Math.abs(decoded.climbMps) > 0.1 ? decoded.groundspeedMps / Math.abs(decoded.climbMps) : null
-      sample = this.sensorSample(recordedAt, "VFR_HUD", decoded)
-    } else if (decoded.name === "attitude") {
-      this.telemetry.roll = decoded.rollDeg
-      this.telemetry.pitch = decoded.pitchDeg
-      if (this.telemetry.heading == null) this.telemetry.heading = decoded.yawDeg
-      sample = this.sensorSample(recordedAt, "ATTITUDE", decoded)
-    } else if (decoded.name === "radio") {
-      this.telemetry.radio = decoded.rssiDbm
-      sample = this.sensorSample(recordedAt, "RADIO_STATUS", decoded)
-    } else if (["system_status", "pressure", "status_text", "heartbeat", "ping"].includes(decoded.name)) {
-      sample = this.sensorSample(recordedAt, decoded.name.toUpperCase(), decoded)
+    if (decoded.name === "unknown") return
+    if (decoded.name === "gps" && this.telemetry.gps) {
+      /** @type {import("../types/signal").SignalSample} */
+      const sample = { kind: "gps", recorded_at: recordedAt, latitude: decoded.latitude, longitude: decoded.longitude, gps_fix: decoded.fix }
+      if (decoded.fix >= 3) sample.altitude_m = decoded.altitudeM
+      if (decoded.velocityMps != null) sample.horizontal_speed_mps = decoded.velocityMps
+      if (decoded.courseDeg != null) sample.heading_deg = decoded.courseDeg
+      if (decoded.satellites != null) sample.satellite_count = decoded.satellites
+      this.pendingSamples.push(sample)
+    } else {
+      // Keep GPS diagnostics without adding an invalid position to the Flight track.
+      this.pendingSamples.push(this.sensorSample(recordedAt, decoded.name.toUpperCase(), decoded))
     }
-    if (sample) this.pendingSamples.push(sample)
-    this.pushHistory()
+  }
+
+  refreshTelemetry() {
+    const now = Date.now()
+    this.telemetry = this.measurements.snapshot(now)
+    this.frameTimes = this.frameTimes.filter((time) => now - time < 1_000)
+    const live = Boolean(this.port && this.lastFrameAt && now - this.lastFrameAt < 1_500)
+    const state = this.ended ? "Ended" : live ? "Live" : this.lastFrameAt ? "Stale" : "Waiting"
+    this.streamBadgeTargets.forEach((badge) => {
+      const widget = badge.closest("[data-widget]")?.getAttribute("data-widget")
+      const available = widget === "map" ? this.telemetry.gps != null
+        : widget === "instruments" ? this.telemetry.roll != null && this.telemetry.pitch != null : true
+      const label = live && !available ? (widget === "map" && this.telemetry.fix != null ? "No fix" : "No data") : state
+      badge.textContent = label
+      badge.dataset.state = live && !available ? "waiting" : state.toLowerCase()
+    })
+    if (this.port) {
+      this.radioStatusTarget.textContent = live
+        ? `Live · ${this.mavlinkSystemId}/${this.mavlinkComponentId} · ${this.frameTimes.length} frames/s${this.telemetry.radio == null ? "" : ` · ${formatNumber(this.telemetry.radio)} dBm`}`
+        : this.lastFrameAt ? "No telemetry · link lost" : "Connected · waiting for MAVLink"
+    }
+    this.dataStatusTarget.textContent = this.ended ? "Session ended locally" : live ? "Receiving telemetry" : this.lastFrameAt ? "Telemetry stale" : "Waiting for telemetry"
+    this.pushHistory(live, now)
     this.renderValues()
+    this.drawAll()
   }
 
   /** @param {string} recordedAt @param {string} sensorType @param {import("../types/signal").DecodedMessage} readings @returns {import("../types/signal").SignalSample} */
@@ -410,29 +504,42 @@ export default class extends TypedController {
     return { kind: "sensor", sensor_type: sensorType, recorded_at: recordedAt, readings }
   }
 
-  pushHistory() {
-    const push = (/** @type {"airspeed"|"altitude"|"verticalSpeed"|"validity"} */ key, /** @type {number|null} */ value) => {
-      if (value === null || !Number.isFinite(value)) return
-      this.history[key].push(value)
-      if (this.history[key].length > 180) this.history[key].shift()
+  /** @param {boolean} live @param {number} now */
+  pushHistory(live, now = Date.now()) {
+    // A wall-clock correction must not reorder the visible time axis.
+    if (now < (this.historyTimes.at(-1) ?? now)) {
+      this.historyTimes = []
+      this.history = { airspeed: [], altitude: [], verticalSpeed: [], validity: [] }
     }
-    push("airspeed", this.telemetry.airspeed)
-    push("altitude", this.telemetry.altitude)
-    push("verticalSpeed", this.telemetry.verticalSpeed)
-    push("validity", 1)
+    this.historyTimes.push(now)
+    let expired = 0
+    while (this.historyTimes[expired] < now - CHART_WINDOW_MS) expired++
+    this.historyTimes.splice(0, expired)
+    for (const key of /** @type {const} */ (["airspeed", "altitude", "verticalSpeed", "validity"])) {
+      this.history[key].push(key === "validity" ? Number(live) : this.telemetry[key] ?? NaN)
+      this.history[key].splice(0, expired)
+    }
   }
 
   renderValues() {
+    this.renderQuality()
     this.headingTarget.textContent = formatNumber(this.telemetry.heading, 0, 3)
-    this.airspeedTarget.textContent = formatNumber(this.telemetry.airspeed, 0)
+    this.airspeedTarget.textContent = formatNumber(this.telemetry.airspeed, 1)
     this.altitudeTarget.textContent = formatNumber(this.telemetry.altitude, 0)
     this.verticalSpeedTarget.textContent = formatNumber(this.telemetry.verticalSpeed, 1)
     this.glideTarget.textContent = formatNumber(this.telemetry.glide, 1)
-    this.dataStatusTarget.textContent = this.lastFrameAt ? "Valid local stream" : "Waiting for telemetry"
-    if (this.lastFrameAt) {
-      const values = `${formatNumber(this.telemetry.altitude, 0)} m · ${formatNumber(this.telemetry.airspeed, 0)} km/h · ${formatNumber(this.telemetry.heading, 0, 3)}°`
-      this.aircraftLabelTarget.textContent = values
+    this.aircraftLabelTarget.textContent = this.telemetry.gps
+      ? `${this.telemetry.gps[1].toFixed(5)}, ${this.telemetry.gps[0].toFixed(5)}` : "No current GPS position"
+    const vector = (/** @type {number[]|null} */ values) => values ? values.map((value) => formatNumber(value, 2)).join(" / ") : "---"
+    const fix = this.telemetry.fix
+    /** @type {Record<string, string>} */
+    const values = {
+      gLoad: formatNumber(this.telemetry.gLoad, 2),
+      accel: vector(this.telemetry.accel), gyro: vector(this.telemetry.gyro), mag: vector(this.telemetry.mag),
+      pressure: formatNumber(this.telemetry.pressure, 2), temperature: formatNumber(this.telemetry.temperature, 1),
+      gps: fix == null ? "---" : `${fix < 2 ? "No fix" : fix === 2 ? "2D fix" : "3D fix"} · ${formatNumber(this.telemetry.satellites)} sats`
     }
+    this.sensorValueTargets.forEach((target) => { target.textContent = values[target.dataset.sensor || ""] || "---" })
   }
 
   queuePendingBatch() {
@@ -476,6 +583,61 @@ export default class extends TypedController {
     }
   }
 
+  renderQuality() {
+    const now = Date.now(), q = this.imuHealth.quality
+    const status = this.imuHealth.status(now, this.referenceField)
+    this.qualityAttitudeTarget.textContent = status.attitude
+    this.qualityAttitudeTarget.dataset.state = status.attitude
+    this.qualityHeadingTarget.textContent = status.heading
+    this.qualityHeadingTarget.dataset.state = status.heading
+    this.qualityReasonTarget.textContent = status.reason
+    const key = q ? `${q.deviceId}/${q.bootId}/${q.imuEpoch}/${q.firmware}` : ""
+    if (q && !this.qualityContextLoading && (key !== this.qualityContextKey || now - this.qualityContextAt > 30000)) void this.loadQualityContext(key)
+    const check = this.preflight
+    const sameBoot = q && check && check.boot_id === q.bootId && check.imu_epoch === q.imuEpoch && check.firmware === q.firmware
+    if (check && (!sameBoot || status.issues.length > 0)) this.preflightInvalidated = true
+    this.preflightStatusTarget.textContent = !check ? "Not checked" : check.invalidated_at || this.preflightInvalidated || !sameBoot ? "Recheck required" : check.outcome === "passed" ? "Passed for this boot" : "Check failed"
+    this.preflightStatusTarget.dataset.state = !check ? "unknown" : check.invalidated_at || this.preflightInvalidated || !sameBoot || check.outcome !== "passed" ? "degraded" : "consistent"
+    const signature = `${key}:${status.issues.join(",")}:${this.preflightInvalidated}`
+    if (signature !== this.qualitySignature && q && this.db && !this.ended && !this.ending) {
+      this.qualitySignature = signature
+      void this.recordQualityEvent(status.reason, status.issues, this.preflightInvalidated ? check?.id : undefined)
+    }
+  }
+
+  /** @param {string} key */
+  async loadQualityContext(key) {
+    const q = this.imuHealth.quality
+    if (!q) return
+    this.qualityContextLoading = true
+    const connection = this.connectionGeneration
+    try {
+      const response = await fetch(`/api/v1/imu-checks?device_id=${encodeURIComponent(q.deviceId)}&firmware=${encodeURIComponent(q.firmware)}&flight_id=${encodeURIComponent(this.flightIdValue)}`)
+      const result = response.ok ? await response.json() : null
+      const locallyInvalidated = result?.preflight && await readMetadata(this.database, `imu-check:${result.preflight.id}:invalidated`)
+      const current = this.imuHealth.quality
+      if (connection !== this.connectionGeneration || !current || `${current.deviceId}/${current.bootId}/${current.imuEpoch}/${current.firmware}` !== key) return
+      if (result?.preflight?.id !== this.preflight?.id) this.preflightInvalidated = false
+      if (locallyInvalidated) this.preflightInvalidated = true
+      this.preflight = result?.preflight || null
+      this.referenceField = result?.reference?.summary?.magnetic_mean_ut ?? null
+      this.qualityContextKey = key
+    } catch { this.preflight = null }
+    finally { this.qualityContextAt = Date.now(); this.qualityContextLoading = false }
+  }
+
+  /** @param {string} reason @param {string[]} issues @param {number} [invalidatedId] */
+  async recordQualityEvent(reason, issues, invalidatedId) {
+    const id = crypto.randomUUID()
+    try {
+      if (invalidatedId) await writeMetadata(this.database, `imu-check:${invalidatedId}:invalidated`, true)
+      await writeOutbox(this.database, { id: `${this.sessionValue}:event:${id}`, session: this.sessionValue, kind: "event", url: this.eventUrlValue, method: "POST", queuedAt: Date.now(),
+        body: { event_uuid: id, event_type: issues.length || invalidatedId ? "warning" : "note", occurred_at: new Date().toISOString(), label: `IMU: ${reason}`,
+          metadata: { source: "imu_health", issues, invalidate_preflight_id: invalidatedId ?? null, boot_id: this.imuHealth.quality?.bootId, imu_epoch: this.imuHealth.quality?.imuEpoch } } })
+      await this.flushOutbox()
+    } catch { this.qualitySignature = "" }
+  }
+
   async markEvent() {
     if (this.ending || this.ended) return
     const occurredAt = new Date().toISOString()
@@ -499,6 +661,7 @@ export default class extends TypedController {
         return putOutbox(transaction.objectStore(OUTBOX_STORE), { id, session: this.sessionValue, kind: "complete", url: this.completeUrlValue, method: "PATCH", body: { ended_at: endedAt }, queuedAt: Date.now() })
       })
       this.ended = true
+      this.connectButtonTarget.disabled = true
       await this.flushOutbox()
       this.dataStatusTarget.textContent = "Session ended locally"
     } catch (caught) {
@@ -594,6 +757,10 @@ export default class extends TypedController {
     const widget = event.currentTarget instanceof Element ? event.currentTarget.closest("[data-widget]") : null
     if (!(widget instanceof HTMLElement) || !(event.currentTarget instanceof HTMLElement)) return
     const mode = event.currentTarget.dataset.mode || "mini"
+    if (mode === widget.dataset.mode) return
+    const id = widget.dataset.widget || "map"
+    const rect = this.widgetRect(widget)
+    if (widget.dataset.mode === "mini") this.miniSizes.set(id, { width: rect.width, height: rect.height })
     if (mode === "large") {
       this.widgetTargets.forEach((candidate) => {
         if (candidate !== widget && candidate.dataset.mode !== "hidden") candidate.dataset.mode = "mini"
@@ -602,10 +769,13 @@ export default class extends TypedController {
       this.applyPreset(widget.dataset.widget || "map")
     } else {
       widget.dataset.mode = mode
-      if (!(widget instanceof HTMLElement)) return
-    const rect = this.widgetRect(widget)
-      widget.style.height = `${mode === "hidden" ? 38 : Math.max(170, Math.min(320, rect.height))}px`
-      widget.style.width = `${Math.max(250, Math.min(430, rect.width))}px`
+      if (mode === "hidden") {
+        widget.style.height = "38px"
+      } else {
+        const size = this.miniSizes.get(id) || { width: 430, height: 320 }
+        widget.style.height = `${size.height}px`
+        widget.style.width = `${size.width}px`
+      }
       this.clampWidget(widget)
     }
     this.updateModeButtons()
@@ -614,6 +784,7 @@ export default class extends TypedController {
   }
 
   resetLayout() {
+    this.miniSizes.clear()
     this.widgetTargets.forEach((widget) => { widget.removeAttribute("style") })
     this.widgetTargets.forEach((widget) => { widget.dataset.mode = widget.dataset.widget === "map" ? "large" : "mini" })
     this.applyPreset("map")
@@ -636,6 +807,7 @@ export default class extends TypedController {
         this.widgetTargets.forEach((widget) => {
           const record = stored.widgets[widget.dataset.widget || "map"]
           if (!record) return
+          if (record.miniSize) this.miniSizes.set(widget.dataset.widget || "map", record.miniSize)
           widget.dataset.mode = record.mode
           Object.assign(widget.style, { left: `${record.left}px`, top: `${record.top}px`, width: `${record.width}px`, height: `${record.height}px` })
         })
@@ -754,9 +926,14 @@ export default class extends TypedController {
   }
 
   saveLayout() {
-    /** @type {Record<string, {width:number,height:number,left?:number,top?:number,mode?:string}>} */
+    /** @type {Record<string, {width:number,height:number,left?:number,top?:number,mode?:string,miniSize?:{width:number,height:number}}>} */
     const layout = { __board: { width: this.boardTarget.clientWidth, height: this.boardTarget.clientHeight } }
-    this.widgetTargets.forEach((widget) => { layout[(widget.dataset.widget || "map")] = { mode: widget.dataset.mode, ...this.widgetRect(widget) } })
+    this.widgetTargets.forEach((widget) => {
+      const id = widget.dataset.widget || "map"
+      const rect = this.widgetRect(widget)
+      if (widget.dataset.mode === "mini") this.miniSizes.set(id, { width: rect.width, height: rect.height })
+      layout[id] = { mode: widget.dataset.mode, ...rect, miniSize: this.miniSizes.get(id) }
+    })
     sessionStorage.setItem(this.layoutStorageKey, JSON.stringify(layout))
   }
 
@@ -773,78 +950,128 @@ export default class extends TypedController {
   }
 
   drawMap() {
+    const ready = this.map3d?.ready || false
+    this.mapCanvasTarget.hidden = ready
+    this.mapSceneTarget.hidden = !ready
+    if (ready) {
+      this.aircraftMarkerTarget.hidden = true
+      this.map3d?.update(this.telemetry)
+      return
+    }
     const canvas = this.mapCanvasTarget
-    const { context, width, height } = prepareCanvas(canvas)
+    const { context, width, height, fontFamily } = prepareCanvas(canvas)
     if (!context || !width || !height) return
     context.clearRect(0, 0, width, height)
-    const points = this.history.airspeed.map((_, index, all) => [width * (.12 + index / Math.max(all.length - 1, 1) * .38), height * (.34 + Math.sin(index / 18) * .12)])
-    if (!points.length) points.push([width * .12, height * .35], [width * .43, height * .54])
-    context.strokeStyle = "rgba(245,248,246,.58)"
-    context.lineWidth = 3
-    context.setLineDash([10, 8])
-    drawPolyline(context, points)
-    context.strokeStyle = "#8cff4d"
-    context.setLineDash([7, 6])
-    drawPolyline(context, points.slice(Math.max(0, points.length - 60)))
-    context.setLineDash([])
-    const last = points[points.length - 1]
-    const heading = this.telemetry.heading || 36
+    context.strokeStyle = "#202c31"
+    for (let x = 0; x < width; x += 50) { context.beginPath(); context.moveTo(x, 0); context.lineTo(x, height); context.stroke() }
+    for (let y = 0; y < height; y += 50) { context.beginPath(); context.moveTo(0, y); context.lineTo(width, y); context.stroke() }
+    this.aircraftMarkerTarget.hidden = !this.telemetry.gps
+    const track = this.measurements.track
+    if (!track.length) {
+      context.fillStyle = "#899392"; context.font = `500 13px ${fontFamily}`; context.textAlign = "center"
+      context.fillText("Waiting for a GPS position", width / 2, height / 2)
+      return
+    }
+    const [originLon, originLat] = track[0]
+    const points = track.map(([lon, lat]) => [(((lon - originLon + 540) % 360) - 180) * Math.cos(originLat * Math.PI / 180) * 111_320, (lat - originLat) * 111_320])
+    const xs = points.map((point) => point[0]); const ys = points.map((point) => point[1])
+    const minX = Math.min(...xs); const maxX = Math.max(...xs); const minY = Math.min(...ys); const maxY = Math.max(...ys)
+    const scale = Math.min(Math.max(1, width - 120) / Math.max(100, maxX - minX), Math.max(1, height - 120) / Math.max(100, maxY - minY))
+    const projected = points.map(([x, y]) => [width / 2 + (x - (minX + maxX) / 2) * scale, height / 2 - (y - (minY + maxY) / 2) * scale])
+    context.strokeStyle = "#8cff4d"; context.lineWidth = 2
+    drawPolyline(context, projected)
+    const last = projected[projected.length - 1]
     this.aircraftMarkerTarget.style.left = `${last[0]}px`
     this.aircraftMarkerTarget.style.top = `${last[1]}px`
-    this.aircraftMarkerTarget.style.setProperty("--aircraft-heading", `${heading}deg`)
+    this.aircraftMarkerTarget.style.setProperty("--aircraft-heading", `${this.telemetry.heading ?? 0}deg`)
+    context.fillStyle = "#899392"; context.font = `500 10px ${fontFamily}`; context.textAlign = "left"
+    context.fillText(`N ↑ · ${Math.round(50 / scale)} m / grid`, 12, height - 16)
   }
+
+  toggleMapFollow() { this.map3d?.toggleFollow() }
 
   drawInstruments() {
     const canvas = this.instrumentCanvasTarget
-    const { context: ctx, width: w, height: h } = prepareCanvas(canvas)
-    if (!ctx || !w || !h) return
-    ctx.fillStyle = "#071011"
-    ctx.fillRect(0, 0, w, h)
-    const cx = w / 2
-    const cy = h / 2 + 8
-    const radius = Math.min(w, h) * .34
-    ctx.save()
-    ctx.beginPath(); ctx.arc(cx, cy, radius, Math.PI, 0); ctx.lineTo(cx + radius, cy + 25); ctx.lineTo(cx - radius, cy + 25); ctx.closePath(); ctx.clip()
-    ctx.fillStyle = "rgba(62,135,206,.45)"; ctx.fillRect(cx - radius, cy - radius, radius * 2, radius)
-    ctx.fillStyle = "#10191a"; ctx.fillRect(cx - radius, cy, radius * 2, radius)
-    ctx.translate(cx, cy); ctx.rotate((this.telemetry.roll || 0) * Math.PI / 180); ctx.translate(-cx, -cy)
-    ctx.strokeStyle = "#e6ece9"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx - radius, cy + (this.telemetry.pitch || 0) * 2); ctx.lineTo(cx + radius, cy + (this.telemetry.pitch || 0) * 2); ctx.stroke(); ctx.restore()
-    ctx.strokeStyle = "#8cff4d"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, radius, Math.PI, 0); ctx.stroke()
-    ctx.strokeStyle = "#ffb74d"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(cx - 70, cy - 7); ctx.lineTo(cx - 24, cy - 7); ctx.lineTo(cx, cy + 6); ctx.lineTo(cx + 24, cy - 7); ctx.lineTo(cx + 70, cy - 7); ctx.stroke()
-    ctx.fillStyle = "#8cff4d"; ctx.textAlign = "center"; ctx.font = "600 28px ui-monospace"; ctx.fillText(`${formatNumber(this.telemetry.heading, 0, 3)}°`, cx, 42)
-    ctx.fillStyle = "#788281"; ctx.font = "600 10px ui-monospace"; ctx.fillText("HEADING", cx, 58)
-    ctx.fillStyle = "#e6ece9"; ctx.font = "500 12px ui-monospace"; ctx.fillText("FLIGHT DATA · LIVE", cx, h - 24)
-    if (w > 420 && h > 260) {
-      drawTape(ctx, 32, cy, "AIRSPEED", this.telemetry.airspeed, "km/h", true)
-      drawTape(ctx, w - 32, cy, "ALTITUDE", this.telemetry.altitude, "m", false)
-    }
+    const { context, width, height } = prepareCanvas(canvas)
+    if (!context || !width || !height) return
+    drawSignalInstruments(context, width, height, this.telemetry, instrumentStyle(canvas))
   }
 
   drawCharts() {
     const canvas = this.chartCanvasTarget
-    const { context: ctx, width: w, height: h } = prepareCanvas(canvas)
+    const { context: ctx, width: w, height: h, fontFamily } = prepareCanvas(canvas)
     if (!ctx || !w || !h) return
-    ctx.fillStyle = "#071011"; ctx.fillRect(0, 0, w, h)
+    const style = instrumentStyle(canvas)
+    ctx.fillStyle = style.background; ctx.fillRect(0, 0, w, h)
     /** @type {[string, number[], string][]} */
-    const rows = [["AIRSPEED", this.history.airspeed, "#2fd6c6"], ["ALTITUDE", this.history.altitude, "#2fd6c6"], ["VERTICAL SPEED", this.history.verticalSpeed, "#2fd6c6"], ["DATA VALIDITY", this.history.validity, "#65c87a"]]
+    const rows = [["AIRSPEED", this.history.airspeed, style.reference], ["ALTITUDE", this.history.altitude, style.reference], ["VERTICAL SPEED", this.history.verticalSpeed, style.reference]]
     const left = Math.min(120, w * .3)
     const right = w - 14
-    const rowHeight = Math.max(35, (h - 20) / rows.length)
+    const axisY = h - 25
+    const rowHeight = Math.max(20, (axisY - 52) / rows.length)
+    const now = this.historyTimes.at(-1) ?? Date.now()
+    const start = now - CHART_WINDOW_MS
+    const timeX = (/** @type {number} */ time) => left + (time - start) / CHART_WINDOW_MS * (right - left)
+    const tickStep = right - left >= 420 ? 5_000 : 10_000
+    ctx.font = `500 9px ${fontFamily}`
+    ctx.lineWidth = 0.5
+    for (let offset = -CHART_WINDOW_MS; offset <= 0; offset += tickStep) {
+      const x = timeX(now + offset)
+      ctx.strokeStyle = style.line; ctx.globalAlpha = 0.3
+      ctx.beginPath(); ctx.moveTo(x, 9); ctx.lineTo(x, axisY); ctx.stroke()
+      ctx.globalAlpha = 1
+      ctx.beginPath(); ctx.moveTo(x, axisY); ctx.lineTo(x, axisY + 4); ctx.stroke()
+      ctx.fillStyle = style.muted
+      ctx.textAlign = offset === 0 ? "right" : offset === -CHART_WINDOW_MS ? "left" : "center"
+      ctx.fillText(offset === 0 ? "NOW" : `${offset / 1000}s`, x, h - 8)
+    }
+    ctx.strokeStyle = style.line
+    ctx.beginPath(); ctx.moveTo(left, axisY); ctx.lineTo(right, axisY); ctx.stroke()
+    ctx.fillStyle = style.muted; ctx.textAlign = "left"
+    ctx.fillText("TIME · 30 s", 12, h - 8)
     rows.forEach(([label, values, color], index) => {
       const y = 18 + index * rowHeight
-      ctx.fillStyle = "#899392"; ctx.font = "600 8px ui-monospace"; ctx.textAlign = "left"; ctx.fillText(label, 12, y)
-      ctx.fillStyle = label === "DATA VALIDITY" ? "#65c87a" : "#e6ece9"; ctx.font = "600 13px ui-monospace"; ctx.fillText(label === "DATA VALIDITY" ? "Valid" : formatNumber(values.at(-1), label === "VERTICAL SPEED" ? 1 : 0), 12, y + 17)
+      ctx.fillStyle = style.muted; ctx.font = `600 8px ${fontFamily}`; ctx.textAlign = "left"; ctx.fillText(label, 12, y)
+      ctx.fillStyle = style.text; ctx.font = `600 13px ${fontFamily}`; ctx.fillText(formatNumber(values.at(-1), label === "VERTICAL SPEED" ? 1 : 0), 12, y + 17)
       ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath()
-      const minimum = Math.min(...values, 0); const maximum = Math.max(...values, 1); const range = Math.max(maximum - minimum, 1)
-      const plotValues = values.length ? values : [0, 0]
+      const finiteValues = values.filter(Number.isFinite)
+      const minimum = Math.min(...finiteValues, 0); const maximum = Math.max(...finiteValues, 1); const range = Math.max(maximum - minimum, 1)
+      const plotValues = values
+      let drawing = false
       plotValues.forEach((value, valueIndex) => {
-        const x = left + valueIndex / Math.max(plotValues.length - 1, 1) * (right - left)
+        if (!Number.isFinite(value)) { drawing = false; return }
+        const time = this.historyTimes[valueIndex]
+        if (time - this.historyTimes[valueIndex - 1] > 1_500) drawing = false
+        const x = timeX(time)
         const plotY = y + 10 - ((value - minimum) / range - .5) * Math.min(20, rowHeight * .35)
-        valueIndex ? ctx.lineTo(x, plotY) : ctx.moveTo(x, plotY)
+        drawing ? ctx.lineTo(x, plotY) : ctx.moveTo(x, plotY)
+        drawing = true
       })
       ctx.stroke()
     })
-    ctx.strokeStyle = "#2fd6c6"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(w * .72, 10); ctx.lineTo(w * .72, h - 10); ctx.stroke()
+    const css = getComputedStyle(canvas)
+    const liveColor = css.getPropertyValue("--ex-telemetry-live").trim()
+    const noDataColor = css.getPropertyValue("--ex-telemetry-no-data").trim()
+    const receptionY = axisY - 28
+    ctx.fillStyle = style.muted; ctx.font = `600 8px ${fontFamily}`
+    ctx.fillText("TELEMETRY RECEPTION", 12, receptionY)
+    ctx.fillStyle = this.history.validity.at(-1) ? liveColor : noDataColor
+    ctx.font = `600 13px ${fontFamily}`
+    ctx.fillText(this.history.validity.at(-1) ? "Live" : "No data", 12, receptionY + 17)
+    ctx.font = `500 8px ${fontFamily}`
+    ctx.fillStyle = liveColor; ctx.fillRect(left, receptionY - 6, 6, 6)
+    ctx.fillStyle = style.muted; ctx.fillText("Live", left + 10, receptionY)
+    ctx.fillStyle = noDataColor; ctx.fillRect(left + 44, receptionY - 6, 6, 6)
+    ctx.fillStyle = style.muted; ctx.fillText("No data", left + 54, receptionY)
+    this.history.validity.forEach((value, index) => {
+      const time = this.historyTimes[index]
+      const nextTime = this.historyTimes[index + 1] ?? now
+      // Leave unobserved time blank when rendering was suspended.
+      if (nextTime - time > 1_500) return
+      const x = Math.round(timeX(time))
+      ctx.fillStyle = value ? liveColor : noDataColor
+      ctx.fillRect(x, receptionY + 9, Math.min(right - x, Math.max(1, Math.round(timeX(nextTime)) - x)), 8)
+    })
   }
 }
 
@@ -871,17 +1098,22 @@ function closeWorkerCapture(worker) {
   })
 }
 
+/** @type {WeakMap<HTMLCanvasElement, string>} */
+const canvasFonts = new WeakMap()
+
 /** @param {HTMLCanvasElement} canvas */
 function prepareCanvas(canvas) {
   const width = Math.floor(canvas.clientWidth)
   const height = Math.floor(canvas.clientHeight)
-  if (!width || !height) return { context: null, width, height }
+  const fontFamily = canvasFonts.get(canvas) || getComputedStyle(canvas).getPropertyValue("--ex-font-mono").trim() || "monospace"
+  canvasFonts.set(canvas, fontFamily)
+  if (!width || !height) return { context: null, width, height, fontFamily }
   const ratio = window.devicePixelRatio || 1
   canvas.width = width * ratio
   canvas.height = height * ratio
   const context = canvas.getContext("2d")
   context?.scale(ratio, ratio)
-  return { context, width, height }
+  return { context, width, height, fontFamily }
 }
 
 /** @param {CanvasRenderingContext2D} context @param {number[][]} points */
@@ -892,19 +1124,6 @@ function drawPolyline(context, points) {
   context.stroke()
 }
 
-/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} centerY @param {string} label @param {number|null} value @param {string} unit @param {boolean} left */
-function drawTape(ctx, x, centerY, label, value, unit, left) {
-  ctx.textAlign = left ? "left" : "right"
-  ctx.fillStyle = "#899392"; ctx.font = "600 9px ui-monospace"; ctx.fillText(label, x, 78); ctx.fillText(unit, x, 92)
-  for (let index = -2; index <= 2; index += 1) {
-    const y = centerY + index * 38
-    ctx.strokeStyle = "#788281"; ctx.beginPath(); ctx.moveTo(x + (left ? 46 : -46), y); ctx.lineTo(x + (left ? 70 : -70), y); ctx.stroke()
-    ctx.fillStyle = index === 0 ? "#8cff4d" : "#e6ece9"; ctx.font = index === 0 ? "600 17px ui-monospace" : "500 11px ui-monospace"
-    const base = value !== null && Number.isFinite(value) ? value : 0
-    ctx.fillText(String(Math.round(base + index * (left ? 10 : 100))), x, y + 5)
-  }
-}
-
 /** @param {number|null|undefined} value */
 function formatNumber(value, precision = 0, padding = 0) {
   if (!Number.isFinite(value)) return "---"
@@ -912,8 +1131,8 @@ function formatNumber(value, precision = 0, padding = 0) {
   return padding ? formatted.padStart(padding, "0") : formatted
 }
 
-/** @param {number} value */
-function normalizeHeading(value) { return (Number(value) + 360) % 360 }
+/** @param {SerialPort} port */
+function isGroundRadio(port) { return [0x0403, 0x10c4].includes(port.getInfo().usbVendorId || 0) }
 /** @param {SerialPortInfo} info @param {unknown} saved */
 function samePort(info, saved) {
   if (!saved || typeof saved !== "object") return false

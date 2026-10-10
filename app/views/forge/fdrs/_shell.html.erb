@@ -42,6 +42,7 @@
   <%= link_to "Connectivity", connectivity_forge_fdr_path(@fdr),
     class: ("is-active" if active_tab == :connectivity),
     aria: { current: ("page" if active_tab == :connectivity) } %>
+  <%= link_to "Calibration", calibration_forge_fdr_path(@fdr), class: ("is-active" if active_tab == :calibration) %>
   <%= link_to "Activity", activity_forge_fdr_path(@fdr),
     class: ("is-active" if active_tab == :activity),
     aria: { current: ("page" if active_tab == :activity) } %>

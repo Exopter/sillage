@@ -27,6 +27,37 @@ The 3D flight trajectory works without an ion token. Terrain, imagery, and
 buildings load independently when configured; unavailable map data leaves the
 3D viewer usable. A native 2D profile handles engine/WebGL initialization failure.
 
+## Signal ground radio
+
+Open `/signal` in desktop Chrome or Edge, start a session, then select
+**Connect ground radio**. Choose the Holybro USB radio, not the recorder's USB
+port. Web Serial uses 57,600 baud and requires HTTPS or localhost. Both radios
+must already share the same SiK configuration.
+
+The worker supports the FDR radio messages, including truncated MAVLink 2
+payloads and HIGHRES_IMU. Sensor values expire independently after 1.5 seconds.
+FDR `/55` declares native BNO085 payloads through heartbeat custom mode
+`0x46445200`. Signal preserves the received vector axes and interprets native
+attitude with sensor +X forward for its instruments. Mounting interpretation
+belongs here; it must not rotate the firmware's authoritative SD/radio samples.
+Unmarked legacy radio traffic retains its existing interpretation.
+The GPS panel uses the shared Cesium engine for live satellite imagery, terrain,
+buildings and a trailing GPS path. Camera tracking can be toggled with **Follow GPS**.
+`CESIUM_ION_TOKEN` enables detailed geography; bundled world imagery and the local
+grid remain fallbacks when online geography or WebGL is unavailable. The visual
+marker is kept above terrain; numeric altitude remains the received AMSL value.
+IAS is estimated at standard density from signed pitot pressure smoothed with
+a 250 ms time constant, using acquisition timestamps. Display hysteresis returns
+to zero at 0.5 Pa and leaves zero above 1 Pa. Gaps, invalid pressure, source changes
+and reconnects reset the filter. Instruments and charts share this derived IAS;
+the raw pressure strip, synchronized readings, MAVLink capture and authoritative
+microSD recording remain unchanged. Run `bin/ci` to validate the parser,
+captured-payload regression fixture, workspace, and synchronization lifecycle.
+The instrument and telemetry-strip `G load` readouts show the received three-axis
+accelerometer magnitude divided by 9.80665 m/s²: about 1 g at rest and 0 g in free
+fall, regardless of mounting orientation. This unsigned total load is derived
+only for display; stale or invalid acceleration shows no value.
+
 ## Validation
 
 Run the checks locally before committing or deploying. GitHub Actions is disabled.
@@ -42,6 +73,14 @@ design-system usage, unused CSS selectors, the documentation boundary,
 JavaScript workers, dependency security, Rails tests, and seeds.
 
 ## Design implementation
+
+The public landing at `http://landing.localhost:3000` loads a separate import map
+and a local Three.js scene, with the canonical Exowing model, suited pilot, offline airflow and SVG fallback.
+`npm run assets:prepare` installs the pinned renderer and loader dependencies in
+`public/vendor/three/`. The Docker frontend stage prepares the same assets.
+The scene pauses offscreen, in hidden tabs, or through its pause control; reduced
+motion starts with a still frame. Run `node test/javascript/landing_scene_test.mjs`
+to verify the vendor module graph, model and animation resource lifecycle.
 
 - Shared design assets: [Exopter/design-system](https://github.com/Exopter/design-system)
 - Canonical tokens: `../design_system/tokens/exopter-tokens.css`
@@ -116,3 +155,10 @@ Only FDR file format 3 and record version 2 are imported. Device identifiers use
 recording variants are retired. For an external historical recording, use the
 archive decoder command in the FDR repository README; existing source files are
 preserved.
+
+From `fdr_integrated/54`, microSD and radio share body FRD axes and magnetic NED
+attitude (sensor +Y forward). The IMU payload frame field is retained in sample
+readings as `frame_id` and `coordinate_frame`: `0` is `sensor_native`, `1` is
+`body_frd_ned`; unknown IDs remain unknown. Import preserves stored values
+without another rotation. Historical files and previously imported samples
+are not rewritten. See the FDR firmware README for the binary field contract.

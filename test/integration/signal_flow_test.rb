@@ -261,12 +261,18 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select ".signal-widget[data-widget='instruments']"
     assert_select ".signal-widget[data-widget='charts']"
     assert_select ".signal-mode-buttons button", text: "Large", minimum: 3
-    assert_select ".signal-telemetry-strip", count: 1
+    assert_select ".signal-telemetry-strip", count: 2
     assert_select ".signal-tabs", count: 0
-    assert_select "#signal-development-status[role='status']", text: "Development in progress", count: 1
+    assert_select "#signal-development-status", count: 0
     assert_select ".signal-root button", minimum: 1
-    assert_select ".signal-root button:not([disabled])", count: 0
-    assert_select ".signal-root button[aria-describedby='signal-development-status'][title='Development in progress']", minimum: 1
+    assert_select ".signal-root button[data-action='signal-workspace#endSession']:not([disabled])"
+    assert_select ".signal-root [data-signal-workspace-target='sensorValue']", count: 7
+    assert_select ".signal-aircraft[hidden]"
+    assert_select ".signal-map-body[style]", count: 0
+    assert_select "[data-signal-workspace-target='mapScene'][aria-label='Live GPS position on the 3D satellite map']"
+    assert_select "[data-signal-workspace-target='mapFollow'][aria-pressed='true']", text: "Following GPS"
+    assert_select "link[href='#{Rails.application.config.x.cesium_base_url}Widgets/widgets.css']"
+    assert_select "[data-signal-workspace-target='streamBadge']", text: "Waiting", count: 3
   end
 
   test "renders uniform recorder connections and combined information in Forge" do
@@ -416,12 +422,11 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".signal-home #sillage-fdr-connectivity", count: 0
     assert_select "#sillage-fdr-connectivity", count: 0
-    assert_select "#signal-development-status[role='status']", text: "Development in progress", count: 1
+    assert_select "#signal-development-status", count: 0
     assert_select ".signal-home button", minimum: 1
-    assert_select ".signal-home button:not([disabled])", count: 0
-    assert_select ".signal-home button[aria-describedby='signal-development-status'][title='Development in progress']", minimum: 1
-    assert_select ".signal-prep-row button[disabled]", text: "Open session", count: 1
-    assert_select ".signal-start-direct[disabled]", text: /Start unassigned session/, count: 1
+    assert_select ".signal-home button[disabled]", count: 0
+    assert_select ".signal-prep-row button:not([disabled])", text: "Open session", count: 1
+    assert_select ".signal-start-direct:not([disabled])", text: /Start unassigned session/, count: 1
   end
 
   test "does not keep the recorder connection manager outside Forge" do
