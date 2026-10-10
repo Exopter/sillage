@@ -203,18 +203,37 @@ export class LandingScene {
       if (name.includes("visor")) {
         material.dispose()
         material = new THREE.MeshPhysicalMaterial({ color: this.color("--ex-carbon-950"), roughness: 0.16, metalness: 0.05, clearcoat: 0.65, clearcoatRoughness: 0.15, side: THREE.DoubleSide })
-      } else if (name.includes("accent") || name.includes("handle")) {
+      } else if (name.includes("parachute") || (name.includes("harness") && !name.includes("buckle"))) {
+        material.color.copy(this.color(name.includes("fabric-inlay") ? "--ex-flight-violet" : name.includes("binding") ? "--ex-flight-border-strong" : "--ex-scene-surface"))
+        material.roughness = 0.92
+        material.metalness = 0
+        material.sheen = 0.1
+        material.sheenColor.copy(this.color("--ex-line-300"))
+        material.sheenRoughness = 0.9
+        this.fabricWeave(material)
+      } else if (name.includes("accent")) {
         material.dispose()
         material = new THREE.MeshPhysicalMaterial({ color: this.color("--ex-flight-violet"), roughness: 0.4, metalness: 0.35, emissive: this.color("--ex-flight-magenta"), emissiveIntensity: 0.12 })
       } else if (name.includes("buckle")) {
         material.dispose()
         material = new THREE.MeshPhysicalMaterial({ color: this.color("--ex-line-300"), roughness: 0.25, metalness: 0.85 })
-      } else if (name.includes("parachute")) {
-        material.color.copy(this.color("--ex-scene-surface"))
-        material.roughness = 0.94
       }
       this.replaceMaterial(object, material)
     })
+  }
+
+  /** @param {THREE.MeshPhysicalMaterial} material */
+  fabricWeave(material) {
+    material.onBeforeCompile = (shader) => {
+      shader.vertexShader = "varying vec3 fabricPosition;\n" + shader.vertexShader
+      shader.vertexShader = shader.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\nfabricPosition = position;")
+      shader.fragmentShader = "varying vec3 fabricPosition;\n" + shader.fragmentShader
+      shader.fragmentShader = shader.fragmentShader.replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>
+        vec2 fabricUV = vec2(fabricPosition.x + fabricPosition.y * 0.4, fabricPosition.z) * 190.0;
+        float detail = 1.0 - smoothstep(0.4, 1.1, max(fwidth(fabricUV.x), fwidth(fabricUV.y)));
+        float weave = sin(fabricUV.x * 6.283185) * sin(fabricUV.y * 6.283185);
+        diffuseColor.rgb *= 1.0 + weave * detail * 0.08;`)
+    }
   }
 
   attach() {

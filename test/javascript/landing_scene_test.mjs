@@ -121,6 +121,25 @@ const helmetCenter = helmetBounds.getCenter(new THREE.Vector3())
 assert.ok(visorCenter.y < helmetCenter.y - 0.12,
   "The pilot must look down, with the visor below the helmet shell and the back toward the wing")
 const packBounds = new THREE.Box3().setFromObject(pack)
+const packSize = packBounds.getSize(new THREE.Vector3())
+assert.ok(packSize.x < 0.8 && packSize.z < 1.3,
+  "The pack must fit the narrow wing recess without the oversized backpack silhouette")
+// Measure transverse sections independently of the curved lumbar backpad.
+const packPositions = pack.geometry.getAttribute("position")
+for (const centerZ of [-1.6, -1.4]) {
+  const section = []
+  for (let i = 0; i < packPositions.count; i++) {
+    if (Math.abs(packPositions.getZ(i) - centerZ) < 0.025) section.push(packPositions.getY(i))
+  }
+  assert.ok(section.length > 10 && Math.max(...section) - Math.min(...section) < 0.26,
+    "The shoulder end of the container must remain below 108 mm thick")
+}
+const rearCrown = []
+for (let i = 0; i < packPositions.count; i++) {
+  if (packPositions.getZ(i) > -0.58) rearCrown.push(packPositions.getY(i))
+}
+assert.ok(Math.max(...rearCrown) > 0.37 && packBounds.max.y < 0.42,
+  "The fuller rear pack must fill the recess depth and remain below the adjacent wing crown")
 const torsoBounds = new THREE.Box3().setFromObject(torso)
 assert.ok(helmetBounds.min.z < torsoBounds.min.z, "The helmet must face the inlet")
 assert.ok(packBounds.max.y > torsoBounds.max.y, "The parachute must sit on the pilot's back")
