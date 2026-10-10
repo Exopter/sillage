@@ -1,4 +1,5 @@
 # Pin npm packages by running ./bin/importmap
+draw Rails.root.join("config/landing_importmap.rb")
 
 pin "application"
 pin "@hotwired/turbo-rails", to: "turbo.min.js"

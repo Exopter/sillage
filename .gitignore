@@ -28,6 +28,7 @@
 /vendor/bundle/
 /public/assets/
 /public/vendor/cesium/
+/public/vendor/three/
 
 # OS/editor noise
 .DS_Store

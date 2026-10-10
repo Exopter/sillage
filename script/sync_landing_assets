@@ -13,7 +13,12 @@ files = {
   "assets/logo-mark.svg" => "app/assets/images/logo-mark.svg",
   "assets/logo-shell.svg" => "app/assets/images/logo-shell.svg",
   "assets/app-icon.svg" => [ "app/assets/images/app-icon.svg", "public/icon.svg" ],
-  "components/illustration/WingBlueprint.css" => "app/assets/stylesheets/wing_blueprint.css"
+  "components/illustration/WingBlueprint.css" => "app/assets/stylesheets/wing_blueprint.css",
+  "components/illustration/FlightScene.css" => "app/assets/stylesheets/flight_scene.css",
+  "assets/blueprints/exowing-scene.glb" => "app/assets/images/blueprints/exowing-scene.glb",
+  "assets/blueprints/exowing-seat.glb" => "app/assets/images/blueprints/exowing-seat.glb",
+  "assets/blueprints/exowing-pilot.glb" => "app/assets/images/blueprints/exowing-pilot.glb",
+  "assets/blueprints/exowing-flow.json" => "app/assets/images/blueprints/exowing-flow.json"
 }
 %w[axonometric plan front profile].each do |view|
   files["assets/blueprints/exowing-#{view}.svg"] = "app/assets/images/blueprints/exowing-#{view}.svg"

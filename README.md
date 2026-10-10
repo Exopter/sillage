@@ -43,6 +43,14 @@ JavaScript workers, dependency security, Rails tests, and seeds.
 
 ## Design implementation
 
+The public landing at `http://landing.localhost:3000` loads a separate import map
+and a local Three.js scene, with the canonical Exowing model, suited pilot, offline airflow and SVG fallback.
+`npm run assets:prepare` installs the pinned renderer and loader dependencies in
+`public/vendor/three/`. The Docker frontend stage prepares the same assets.
+The scene pauses offscreen, in hidden tabs, or through its pause control; reduced
+motion starts with a still frame. Run `node test/javascript/landing_scene_test.mjs`
+to verify the vendor module graph, model and animation resource lifecycle.
+
 - Shared design assets: [Exopter/design-system](https://github.com/Exopter/design-system)
 - Canonical tokens: `../design_system/tokens/exopter-tokens.css`
 - Rails consumer copy: `app/assets/stylesheets/exopter_design_system.css`

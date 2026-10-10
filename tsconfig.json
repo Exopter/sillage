@@ -61,6 +61,12 @@
       ],
       "recorder_identity": [
         "./app/javascript/lib/recorder_identity.js"
+      ],
+      "landing_scene": [
+        "./app/javascript/lib/landing_scene.js"
+      ],
+      "landing_flow": [
+        "./app/javascript/lib/landing_flow.js"
       ]
     },
     "strict": true,

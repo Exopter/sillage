@@ -14,6 +14,7 @@ CI.run do
   step "Tests: Operations failure propagation", "bash test/operations/failure_propagation_test.sh"
   step "Style: JavaScript type safety", "npm run typecheck"
   step "Tests: Browser module graph", "node test/javascript/importmap_modules_test.mjs"
+  step "Tests: Landing scene lifecycle and assets", "node test/javascript/landing_scene_test.mjs"
   step "Tests: Local Cesium distribution", "node test/javascript/cesium_assets_test.mjs"
   step "Tests: Cesium ion tile provider", "node test/javascript/flight_viewer_cesium_ion_test.mjs"
   step "Tests: Viewer lifecycle", "node test/javascript/flight_viewer_lifecycle_test.mjs"
