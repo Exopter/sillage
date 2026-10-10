@@ -36,6 +36,15 @@
     <% end %>
   </div>
 
+  <% if part.persisted? %>
+    <label>
+      <span>Assembly</span>
+      <%= form.collection_select :assembly_id, @assemblies, :id, :selection_label,
+        { include_blank: "Not installed in an assembly", selected: @selected_assembly_id } %>
+      <small>Changing the assembly records a new installation and preserves the previous installation history.</small>
+    </label>
+  <% end %>
+
   <label>
     <span>Notes</span>
     <%= form.text_area :notes, rows: 4 %>

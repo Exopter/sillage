@@ -41,12 +41,18 @@ module Hangar
     end
 
     def update
-      if @part.update(part_params)
-        redirect_to hangar_part_path(@part), notice: "Part updated."
+      if params.require(:part).key?(:assembly_id)
+        @part.update_with_assembly!(part_params, assembly_id: params[:part][:assembly_id])
       else
-        load_form_options
-        render :edit, status: :unprocessable_entity
+        @part.update!(part_params)
       end
+      redirect_to hangar_part_path(@part), notice: "Part updated."
+    rescue ActiveRecord::RecordInvalid => error
+      messages = error.record.errors.full_messages
+      @part.reload.assign_attributes(part_params)
+      messages.each { |message| @part.errors.add(:base, message) }
+      load_form_options
+      render :edit, status: :unprocessable_entity
     end
 
     def destroy
@@ -69,6 +75,14 @@ module Hangar
 
     def load_form_options
       @functions = Function.ordered
+      if @part.persisted?
+        @assemblies = Assembly.not_retired.or(Assembly.where(id: @part.assembly&.id)).ordered
+        @selected_assembly_id = if params[:part]&.key?(:assembly_id)
+          params[:part][:assembly_id]
+        else
+          @part.assembly&.id
+        end
+      end
     end
 
     def part_params

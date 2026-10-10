@@ -75,6 +75,22 @@ class Part < ApplicationRecord
     end
   end
 
+  def update_with_assembly!(attributes, assembly_id:)
+    with_lock do
+      target_assembly = Assembly.find_by(id: assembly_id) if assembly_id.present?
+      if assembly_id.present? && target_assembly.nil?
+        errors.add(:assembly, "is no longer available. Select another assembly")
+        raise ActiveRecord::RecordInvalid, self
+      end
+
+      assembly_changed = assembly != target_assembly
+      changed_at = Time.current
+      remove_from_assembly!(at: changed_at) if assembly_changed && assembly
+      update!(attributes)
+      install_in!(target_assembly, at: changed_at) if assembly_changed && target_assembly
+    end
+  end
+
   def deletion_blockers
     [].tap do |blockers|
       blockers << "assembly installation history" if part_installations.exists?
