@@ -1,4 +1,8 @@
 module ApplicationHelper
+  def ecu_label(value)
+    FdrIdentity::DeviceId.label(value)
+  end
+
   def build_configuration_value(value)
     return "Yes" if value == true
     return "No" if value == false

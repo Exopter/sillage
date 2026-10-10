@@ -39,7 +39,7 @@
           <% if @selected_assembly.controlled_fdr? %>
             <div><dt>Functional configuration</dt><dd><%= @selected_assembly.functional_configuration %></dd></div>
             <div><dt>Assembly method</dt><dd><%= @selected_assembly.assembly_method_label %></dd></div>
-            <div><dt>ECU ID</dt><dd><%= @selected_assembly.embedded_controller&.device_id || "Not identified" %></dd></div>
+            <div><dt>ECU ID</dt><dd><%= ecu_label(@selected_assembly.embedded_controller&.device_id) || "Not identified" %></dd></div>
           <% else %>
             <div><dt>Internal Asset ID</dt><dd><%= @selected_assembly.internal_number %></dd></div>
           <% end %>

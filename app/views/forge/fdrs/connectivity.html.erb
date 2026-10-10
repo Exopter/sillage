@@ -58,7 +58,7 @@
               <span class="fdr-wifi-network">
                 <strong><%= profile.ssid %></strong>
                 <small class="<%= "is-pending" if profile.pending? %>">
-                  <%= profile.pending? ? "Not yet applied" : "Applied to #{profile.last_provisioned_device_id}" %>
+                  <%= profile.pending? ? "Not yet applied" : "Applied to #{ecu_label(profile.last_provisioned_device_id)}" %>
                 </small>
               </span>
               <span class="fdr-wifi-cell-muted"><%= profile.security_label %></span>

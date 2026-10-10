@@ -5,9 +5,9 @@
     <thead><tr><th>Time</th><th>Check</th><th>Outcome at check</th><th>Roll / pitch</th><th>Recorder / boot</th></tr></thead>
     <tbody><% checks.each do |check| %><tr>
       <td><%= l check.created_at, format: :short %></td><td><%= check.kind.humanize %></td>
-      <td><%= check.outcome.capitalize %><%= " · Recheck required" if check.invalidated_at %><small class="workspace-muted"> · <%= check.summary["reason"] %></small></td>
+      <td><%= check.outcome.capitalize %><%= " with warning" if check.summary["warnings"].present? %><%= " · Recheck required" if check.invalidated_at %><small class="workspace-muted"> · <%= check.summary["reason"] %></small><% Array(check.summary["warnings"]).each do |warning| %><small class="workspace-muted"><%= warning %></small><% end %></td>
       <td><%= check.summary["roll_mean"]&.round(2) %>° / <%= check.summary["pitch_mean"]&.round(2) %>°</td>
-      <td class="workspace-mono"><%= check.embedded_controller.device_id %> / <%= check.boot_id %><small class="workspace-muted"> · <%= check.firmware %></small></td>
+      <td class="workspace-mono"><%= ecu_label(check.evidence["device_id"] || check.embedded_controller.device_id) %> / <%= check.boot_id %><small class="workspace-muted"> · <%= check.firmware %></small></td>
     </tr><% end %></tbody>
   </table></div>
 </section>

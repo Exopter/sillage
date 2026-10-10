@@ -45,7 +45,7 @@ module Api
           calibration: kind == "preflight" ? reference : nil, uuid: params[:uuid], kind:,
           outcome: summary["passed"] ? "passed" : "failed", firmware:, boot_id: params.require(:boot_id),
           imu_epoch: params.require(:imu_epoch), configuration_digest: ImuCheck.configuration_digest_for(@fdr),
-          evidence: { configuration: ImuCheck.configuration_for(@fdr), samples:, faces: params[:faces]&.as_json, figure_eight_confirmed: params[:figure_eight_confirmed],
+          evidence: { device_id: @fdr.device_id, configuration: ImuCheck.configuration_for(@fdr), samples:, faces: params[:faces]&.as_json, figure_eight_confirmed: params[:figure_eight_confirmed],
                       ground_reference_confirmed: true, source: "operator_browser_radio" }, summary:)
         render json: payload(check), status: :created
       rescue ActiveRecord::RecordInvalid => error

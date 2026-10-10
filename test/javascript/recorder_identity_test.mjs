@@ -148,3 +148,8 @@ await assert.rejects(disconnectedWifiLookup, /connection ended/)
 assert.equal(wifi.resolvedRecorder, null)
 
 console.log("Recorder identity, transport consistency, reassignment and asynchronous lifecycle tests passed")
+
+const fullIdentity = {deviceId:"ECU-E072A1F81D84"}
+assert.equal(recorderTechnicalLabel(fullIdentity),"ECU-F81D84")
+assert.equal(fullIdentity.deviceId,"ECU-E072A1F81D84","presentation does not alter authentication identity")
+assert.equal(recorderTechnicalLabel({deviceId:"ECU-E072A1FA3E78"}),"ECU-FA3E78")

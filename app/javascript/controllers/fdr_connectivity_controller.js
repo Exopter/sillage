@@ -433,7 +433,7 @@ export default class extends TypedController {
       this.refreshRecorderRegistration()
       setAircraftConnection(AircraftConnectionTransport.USB_C, true, { deviceId: device.deviceId })
       this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.CONNECTED)
-      this.usbDeviceTarget.textContent = device.deviceId
+      this.usbDeviceTarget.textContent = recorderTechnicalLabel(device)
       this.usbButtonTarget.textContent = "Disconnect USB-C"
       await this.refreshUsbControlData()
       if (!this.usbSessionActive(session, client)) return
@@ -967,7 +967,7 @@ export default class extends TypedController {
     this.refreshRecorderRegistration()
     setAircraftConnection(AircraftConnectionTransport.BLE, true, { deviceId: this.bleIdentity.deviceId })
     this.setConnectionStatus(this.bleStatusTarget, ConnectionStatus.CONNECTED)
-    this.bleDeviceTarget.textContent = this.bleIdentity.deviceId
+    this.bleDeviceTarget.textContent = recorderTechnicalLabel(this.bleIdentity)
     if (this.bleAuthenticated) this.hideBleNotice()
     this.setConnectionStatus(this.bleStatusTarget, ConnectionStatus.CONNECTED)
     this.renderStatus(parseBleStatus(statusValue), "ble")
@@ -1043,7 +1043,7 @@ export default class extends TypedController {
       this.registeredRecorder.assembly = this.wifiIdentity.assembly
       this.registeredAircraft = heartbeat.aircraft || null
     }
-    this.wifiDeviceTarget.textContent = this.wifiIdentity.deviceId
+    this.wifiDeviceTarget.textContent = recorderTechnicalLabel(this.wifiIdentity)
     this.wifiDeviceTarget.removeAttribute("title")
     this.setConnectionStatus(this.wifiStatusTarget, ConnectionStatus.CONNECTED)
     this.setWifiAutomaticDetail(
@@ -1084,7 +1084,7 @@ export default class extends TypedController {
     this.wifiRecordingControlSupported = false
     this.renderWifiSynchronizationProgress()
     const deviceIds = this.wifiIdentities.map(({ deviceId }) => deviceId)
-    const deviceList = deviceIds.join(" · ")
+    const deviceList = deviceIds.map(deviceId => recorderTechnicalLabel({deviceId})).join(" · ")
     this.wifiDeviceTarget.textContent = deviceList
     this.wifiDeviceTarget.title = deviceList
     this.setConnectionStatus(this.wifiStatusTarget, ConnectionStatus.CONNECTED)
@@ -1726,7 +1726,7 @@ export default class extends TypedController {
     this.registrationSubmitting = false
     this.updateResolvedConnections(recorder.device_id, aircraft)
     this.wifiLinkTarget.href = recorder.connectivity_url
-    this.setWifiLinkLabel(`Configure Wi-Fi for ${recorderLabel(recorder)} · ${recorder.device_id}`)
+    this.setWifiLinkLabel(`Configure Wi-Fi for ${recorderLabel(recorder)} · ${recorderTechnicalLabel({deviceId:recorder.device_id})}`)
     this.wifiLinkTarget.hidden = false
     this.recorderOnboardingTarget.hidden = true
     this.wifiRegisterButtonTarget.disabled = false
@@ -1853,7 +1853,7 @@ export default class extends TypedController {
         this.recorderSourceTarget.hidden = true
         this.recorderDeviceTarget.textContent = "—"
       }
-      this.recorderEcuTarget.textContent = multipleWifiRecorders ? this.wifiIdentities.map(({deviceId}) => deviceId).join(" · ") : "—"
+      this.recorderEcuTarget.textContent = multipleWifiRecorders ? this.wifiIdentities.map(identity => recorderTechnicalLabel(identity)).join(" · ") : "—"
       this.recorderFirmwareTarget.textContent = "—"
       this.recorderFirmwareGroupTarget.hidden = true
       this.healthTarget.textContent = "—"
@@ -1867,7 +1867,7 @@ export default class extends TypedController {
     const mismatch = new Set(identities.map(({ deviceId }) => deviceId)).size > 1 ||
       new Set(identities.map(({ firmware }) => firmware).filter((value) => value != null)).size > 1
     this.recorderDeviceTarget.textContent = mismatch ? "Multiple recorder identities" : recorderLabel(this.resolvedIdentity(identity))
-    this.recorderEcuTarget.textContent = [...new Set(identities.map(({deviceId}) => deviceId))].join(" · ")
+    this.recorderEcuTarget.textContent = [...new Set(identities.map(({deviceId}) => deviceId))].map(deviceId => recorderTechnicalLabel({deviceId})).join(" · ")
     this.recorderFirmwareTarget.textContent = identity.firmware || "—"
     this.recorderFirmwareGroupTarget.hidden = !identity.firmware
 

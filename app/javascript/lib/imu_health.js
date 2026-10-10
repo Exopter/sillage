@@ -1,14 +1,9 @@
 const G = 9.80665
 export const IMU_QUALITY_NAMES = ["Accelerometer", "Gyroscope", "Magnetometer", "Orientation"]
-// Bench-confirmed BNO085 report semantics for this firmware. Keep unknown
-// revisions strict until their sensor/status contract has been verified.
-/** @param {string|undefined} firmware */
-export const gyroStatusInformational = firmware => firmware === "fdr_integrated/56"
-/** @param {number} value @param {number} index @param {string|undefined} firmware */
-export function imuQualityLabel(value, index, firmware) {
+/** @param {number} value @param {number} index */
+export function imuQualityLabel(value, index) {
   if (value < 0 || value > 3 || !Number.isInteger(value)) return `${IMU_QUALITY_NAMES[index]} unavailable`
-  return index === 1 && gyroStatusInformational(firmware)
-    ? `Gyroscope status ${value} (diagnostic)` : `${IMU_QUALITY_NAMES[index]} ${value}/3`
+  return `${IMU_QUALITY_NAMES[index]} ${value}/3`
 }
 export const FACE_NAMES = ["x+", "x-", "y+", "y-", "z+", "z-"]
 // Guided face holds tolerate hand movement; final reference limits remain separate.
@@ -73,12 +68,14 @@ export class ImuHealth {
   /** @param {number} now @param {number|null} [referenceField] */
   status(now, referenceField = null) {
     const q = this.quality
-    if (!q || now - this.qualityAt > 2500) return { attitude: "unknown", heading: "unknown", reason: q ? "Quality telemetry lost" : "Waiting for quality telemetry (firmware /56+)", issues: ["quality_unavailable"] }
+    if (!q || now - this.qualityAt > 2500) return { attitude: "unknown", heading: "unknown", reason: q ? "Quality telemetry lost" : "Waiting for quality telemetry (firmware /56+)", issues: ["quality_unavailable"], warnings: [] }
     const i = this.imu, a = this.attitude
     /** @type {string[]} */ const issues = []
     const attitudeMissing = !i || !a || now - this.imuAt > 1500 || now - this.attitudeAt > 1500 || [0,1,3].some(n => q.agesMs[n] + now - this.qualityAt > 2000 || q.accuracy[n] > 3)
     if (attitudeMissing) issues.push("attitude_unavailable")
-    const lowAttitude = (gyroStatusInformational(q.firmware) ? [0,3] : [0,1,3]).some(n => q.accuracy[n] < 2)
+    const lowAttitude = [0,3].some(n => q.accuracy[n] < 2)
+    const warnings = Number.isInteger(q.accuracy[1]) && q.accuracy[1] >= 0 && q.accuracy[1] < 2
+      ? [`Gyroscope manufacturer status ${q.accuracy[1]}/3. Non-blocking; measured checks remain required.`] : []
     const lowHeading = q.accuracy[2] < 2 || q.accuracy[2] > 3 || q.headingAccuracyDeg == null || q.headingAccuracyDeg > 10 || q.agesMs[2] + now - this.qualityAt > 2000
     if (this.sustained("attitude", lowAttitude, now)) issues.push("imu_quality_low")
     if (this.sustained("heading", lowHeading, now)) issues.push("heading_uncertain")
@@ -100,8 +97,8 @@ export class ImuHealth {
     if (now < this.jumpUntil && !attitudeMissing) issues.push("gyro_attitude_mismatch")
     const attitudeBad = issues.some(s => ["imu_quality_low","gravity_attitude_mismatch","gyro_attitude_mismatch"].includes(s))
     const headingBad = issues.some(s => ["heading_uncertain","magnetic_disturbance"].includes(s))
-    return { attitude: attitudeMissing ? "unknown" : attitudeBad ? "degraded" : "consistent", heading: attitudeMissing ? "unknown" : headingBad ? "degraded" : "consistent",
-      reason: issues.length ? issues.map(s => s.replaceAll("_", " ")).join(" · ") : "Live consistency checks passed", issues }
+    return { attitude: attitudeMissing ? "unknown" : attitudeBad ? "degraded" : warnings.length ? "warning" : "consistent", heading: attitudeMissing ? "unknown" : headingBad ? "degraded" : "consistent",
+      reason: [...issues.map(s => s.replaceAll("_", " ")), ...warnings].join(" · ") || "Live consistency checks passed", issues, warnings }
   }
 
   /** @param {string} key @param {boolean} bad @param {number} now */
@@ -114,7 +111,7 @@ export class ImuHealth {
 
 /** @param {ReferenceSample} s */
 export function referenceIssue(s) {
-  const low = s.accuracy.flatMap((v, n) => v > 3 || v < 0 || !Number.isInteger(v) || (v < 2 && !(n === 1 && gyroStatusInformational(s.firmware))) ? [imuQualityLabel(v, n, s.firmware)] : [])
+  const low = s.accuracy.flatMap((v, n) => v > 3 || v < 0 || !Number.isInteger(v) || (n !== 1 && v < 2) ? [imuQualityLabel(v, n)] : [])
   if (low.length) return `${low.join(" · ")}. Required quality: at least 2/3.`
   if (s.heading_accuracy > 10) return `Heading uncertainty ${s.heading_accuracy.toFixed(1)}°. Required: at most 10°.`
   if (s.quality_age > 1500) return "Quality reports are stale. Check the radio link."
@@ -128,7 +125,7 @@ export function referenceIssue(s) {
   return null
 }
 
-/** Collect evidence even when quality is low: the assessment must return a failure, not wait forever. */
+/** Collect low-quality evidence too: assessment returns an explicit outcome within a bounded window. */
 export class ReferenceCapture {
   /** @type {ReferenceSample[]} */ samples = []
   /** @param {number} startedAt */

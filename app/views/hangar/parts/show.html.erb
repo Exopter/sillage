@@ -24,7 +24,7 @@
       <div><dt>Serial number</dt><dd><%= @part.serial_number.presence || "—" %></dd></div>
       <div><dt>State</dt><dd><span class="workspace-status is-<%= @part.state %>"><%= @part.state.titleize %></span></dd></div>
       <div><dt>Assembly</dt><dd><%= @part.assembly ? link_to(@part.assembly.identity_label, hangar_assembly_path(@part.assembly)) : "Not installed" %></dd></div>
-      <% if @part.embedded_controller %><div><dt>ECU ID</dt><dd class="workspace-mono"><%= @part.embedded_controller.device_id.presence || "Not identified" %></dd></div><% end %>
+      <% if @part.embedded_controller %><div><dt>ECU ID</dt><dd class="workspace-mono"><%= ecu_label(@part.embedded_controller.device_id).presence || "Not identified" %></dd></div><% end %>
       <div><dt>Internal Asset ID</dt><dd class="workspace-mono"><%= @part.internal_number %></dd></div>
     </dl>
     <% if @part.notes.present? %><p class="workspace-notes"><%= simple_format @part.notes %></p><% end %>

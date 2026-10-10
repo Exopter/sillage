@@ -171,3 +171,26 @@ for (const [key, value] of Object.entries(originalDOM)) {
   else globalThis[key] = value
 }
 console.log("Signal source selection, GPS safety, lost-link rendering, timestamp-aligned charts and mini-card restoration tests passed")
+
+// Low gyro accuracy warns without invalidating a current preflight.
+now = 50000
+Date.now = () => now
+view.qualityContextLoading = true
+const quality = {name:"imu_quality",deviceId:"ECU-E072A1FA3E78",bootId:42,imuEpoch:1,firmware:"fdr_integrated/57",timeBootMs:now,accuracy:[3,0,3,3],agesMs:[0,0,0,0],headingAccuracyDeg:3}
+view.imuHealth = new (await import(healthURL)).ImuHealth()
+function qualitySample() {
+  view.imuHealth.apply({...quality,timeBootMs:now},now)
+  view.imuHealth.apply({name:"highres_imu",timeUs:String(now*1000),coordinateFrame:"sensor_native",acceleration:[0,0,9.80665],angularVelocity:[0,0,0],magneticField:[20,0,25]},now)
+  view.imuHealth.apply({name:"attitude",timeBootMs:now,coordinateFrame:"sensor_native",quaternion:[1,0,0,0],rollDeg:0,pitchDeg:0,rollSpeed:0,pitchSpeed:0,yawSpeed:0},now)
+}
+view.preflight = {id:5,boot_id:42,imu_epoch:1,firmware:quality.firmware,outcome:"passed",summary:{warnings:[]}}
+view.preflightInvalidated = false
+qualitySample(); view.renderQuality()
+now+=2100; qualitySample(); view.renderQuality()
+assert.equal(view.preflightInvalidated,false)
+assert.equal(view.preflightStatusTarget.textContent,"Passed with warning")
+assert.equal(view.preflightStatusTarget.dataset.state,"warning")
+assert.match(view.qualityReasonTarget.textContent,/Gyroscope manufacturer status 0\/3/)
+quality.accuracy[1]=255;now+=100;qualitySample();view.renderQuality()
+assert.equal(view.preflightInvalidated,true,"unavailable gyro still invalidates preflight")
+Date.now = originalNow

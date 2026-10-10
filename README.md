@@ -58,6 +58,21 @@ accelerometer magnitude divided by 9.80665 m/s²: about 1 g at rest and 0 g in f
 fall, regardless of mounting orientation. This unsigned total load is derived
 only for display; stale or invalid acceleration shows no value.
 
+## Controller identity maintenance
+
+Firmware `/57` uses `ECU-` plus all 12 hexadecimal MAC digits. Deploy compatible
+Sillage code before upgrading controllers. Legacy six-digit identities remain
+readable but are never automatic aliases: the old ID can belong to multiple
+boards. Register additional boards separately.
+
+For a verified existing board, `bin/rails fdr:correct_identity` requires
+`RECORDER_ID`, `HARDWARE_MAC` (colon-separated), `OPERATOR_EMAIL`, `EVIDENCE`
+(physical verification reference), and `APPLY=true`. Verify the full MAC and
+the inventory/history association first. The task rejects an occupied target,
+retains the controller row, authentication key and history, records the old ID,
+and invalidates earlier IMU checks. It does not merge colliding histories or
+rewrite source recordings. Run a new reference after the firmware update.
+
 ## Validation
 
 Run the checks locally before committing or deploying. GitHub Actions is disabled.
@@ -151,7 +166,9 @@ Unknown errors and nullable DOM resources are checked without suppressions.
 No browser bundle or runtime transpilation is added.
 
 Only FDR file format 3 and record version 2 are imported. Device identifiers use
-`ECU-XXXXXX`; MAVLink identity uses `mavlink_system_id`. The previous aliases and
+`ECU-` followed by 12 hexadecimal digits; legacy six-digit IDs remain readable.
+Sillage displays the final six digits as a short label, never as a matching key.
+MAVLink source addresses use `mavlink_system_id`. The previous aliases and
 recording variants are retired. For an external historical recording, use the
 archive decoder command in the FDR repository README; existing source files are
 preserved.

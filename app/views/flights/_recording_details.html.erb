@@ -24,7 +24,7 @@
   <% end %>
 
   <dl class="preparation-grid">
-    <div><dt>Recorder</dt><dd><%= @flight_import.recorder_label %><% if @flight_import.device_id.present? %><br><%= @flight_import.device_id %><% end %></dd></div>
+    <div><dt>Recorder</dt><dd><%= @flight_import.recorder_label %><% if @flight_import.device_id.present? %><br><%= ecu_label(@flight_import.device_id) %><% end %></dd></div>
     <div><dt>Firmware</dt><dd><%= @flight_import.firmware_version.presence || "—" %></dd></div>
     <div><dt>Session</dt><dd><%= @flight_import.session_id.presence || "—" %></dd></div>
     <div><dt>Started at</dt><dd><%= @flight_import.log_started_at ? l(@flight_import.log_started_at, format: :long) : "—" %></dd></div>

@@ -63,7 +63,7 @@ export default class extends TypedController {
   /** @type {SignalMap | null} */
   map3d = null
   imuHealth = new ImuHealth()
-  /** @type {{id:number, boot_id:number, imu_epoch:number, firmware:string, outcome:string, invalidated_at:string|null}|null} */
+  /** @type {{id:number, boot_id:number, imu_epoch:number, firmware:string, outcome:string, invalidated_at:string|null, summary?:{warnings?:string[]}}|null} */
   preflight = null
   /** @type {number|null} */ referenceField = null
   qualityContextAt = 0
@@ -334,7 +334,7 @@ export default class extends TypedController {
     this.frameTimes = []
     this.mavlinkSystemId = null
     this.mavlinkComponentId = null
-    this.worker = new Worker("/signal_serial_worker.js?v=55-native-imu")
+    this.worker = new Worker("/signal_serial_worker.js?v=57-full-identity")
     this.worker.onmessage = ({ data }) => this.handleWorkerMessage(data)
     this.worker.onerror = () => this.showWarning("Telemetry decoding stopped. Reconnect the ground radio.")
     this.worker.postMessage({ type: "init-capture", filename: `${this.flightCodeValue}-${this.sessionValue}.mavcap` })
@@ -596,12 +596,14 @@ export default class extends TypedController {
     const check = this.preflight
     const sameBoot = q && check && check.boot_id === q.bootId && check.imu_epoch === q.imuEpoch && check.firmware === q.firmware
     if (check && (!sameBoot || status.issues.length > 0)) this.preflightInvalidated = true
-    this.preflightStatusTarget.textContent = !check ? "Not checked" : check.invalidated_at || this.preflightInvalidated || !sameBoot ? "Recheck required" : check.outcome === "passed" ? "Passed for this boot" : "Check failed"
-    this.preflightStatusTarget.dataset.state = !check ? "unknown" : check.invalidated_at || this.preflightInvalidated || !sameBoot || check.outcome !== "passed" ? "degraded" : "consistent"
-    const signature = `${key}:${status.issues.join(",")}:${this.preflightInvalidated}`
+    const warnings = status.warnings || []
+    const hasWarning = warnings.length > 0 || (check?.summary?.warnings?.length || 0) > 0
+    this.preflightStatusTarget.textContent = !check ? "Not checked" : check.invalidated_at || this.preflightInvalidated || !sameBoot ? "Recheck required" : check.outcome === "passed" ? hasWarning ? "Passed with warning" : "Passed for this boot" : "Check failed"
+    this.preflightStatusTarget.dataset.state = !check ? "unknown" : check.invalidated_at || this.preflightInvalidated || !sameBoot || check.outcome !== "passed" ? "degraded" : hasWarning ? "warning" : "consistent"
+    const signature = `${key}:${status.issues.join(",")}:${warnings.join(",")}:${this.preflightInvalidated}`
     if (signature !== this.qualitySignature && q && this.db && !this.ended && !this.ending) {
       this.qualitySignature = signature
-      void this.recordQualityEvent(status.reason, status.issues, this.preflightInvalidated ? check?.id : undefined)
+      void this.recordQualityEvent(status.reason, status.issues, this.preflightInvalidated ? check?.id : undefined, warnings)
     }
   }
 
@@ -626,14 +628,14 @@ export default class extends TypedController {
     finally { this.qualityContextAt = Date.now(); this.qualityContextLoading = false }
   }
 
-  /** @param {string} reason @param {string[]} issues @param {number} [invalidatedId] */
-  async recordQualityEvent(reason, issues, invalidatedId) {
+  /** @param {string} reason @param {string[]} issues @param {number} [invalidatedId] @param {string[]} [warnings] */
+  async recordQualityEvent(reason, issues, invalidatedId, warnings = []) {
     const id = crypto.randomUUID()
     try {
       if (invalidatedId) await writeMetadata(this.database, `imu-check:${invalidatedId}:invalidated`, true)
       await writeOutbox(this.database, { id: `${this.sessionValue}:event:${id}`, session: this.sessionValue, kind: "event", url: this.eventUrlValue, method: "POST", queuedAt: Date.now(),
-        body: { event_uuid: id, event_type: issues.length || invalidatedId ? "warning" : "note", occurred_at: new Date().toISOString(), label: `IMU: ${reason}`,
-          metadata: { source: "imu_health", issues, invalidate_preflight_id: invalidatedId ?? null, boot_id: this.imuHealth.quality?.bootId, imu_epoch: this.imuHealth.quality?.imuEpoch } } })
+        body: { event_uuid: id, event_type: issues.length || warnings.length || invalidatedId ? "warning" : "note", occurred_at: new Date().toISOString(), label: `IMU: ${reason}`,
+          metadata: { source: "imu_health", issues, warnings, invalidate_preflight_id: invalidatedId ?? null, boot_id: this.imuHealth.quality?.bootId, imu_epoch: this.imuHealth.quality?.imuEpoch } } })
       await this.flushOutbox()
     } catch { this.qualitySignature = "" }
   }

@@ -70,24 +70,42 @@ class ImuChecksFlowTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
-  test "verified BNO085 gyro status zero is diagnostic and original evidence is retained" do
+  test "gyro status zero permits calibration and preflight with a retained warning" do
     @samples.each { |sample| sample[:accuracy] = [ 2, 0, 3, 3 ] }
     post api_v1_imu_checks_path, params: @payload, as: :json
     assert_response :created
     assert_equal "passed", response.parsed_body["outcome"]
-    assert_equal "diagnostic_only", response.parsed_body.dig("summary", "gyro_status_role")
+    assert_match(/Gyroscope manufacturer status 0\/3/, response.parsed_body.dig("summary", "warnings").first)
+    assert_equal "warning", response.parsed_body.dig("summary", "gyro_status_role")
     assert_equal [ 2, 0, 3, 3 ], response.parsed_body.dig("summary", "accuracy_min")
-    assert_equal [ 0.0, 0.0, 0.0 ], response.parsed_body.dig("summary", "gyro_mean_rad_s")
-    assert_equal 0, ImuCheck.last.evidence["samples"].first["accuracy"][1]
-    assert ImuCheck.reference_for(@fdr, firmware: @payload[:firmware])
-    post api_v1_imu_checks_path, params: @payload.merge(uuid: SecureRandom.uuid, firmware: "fdr_integrated/57"), as: :json
+    reference = ImuCheck.last
+    assert_equal 0, reference.evidence["samples"].first["accuracy"][1]
+    assert_equal reference, ImuCheck.reference_for(@fdr, firmware: @payload[:firmware])
+    post api_v1_imu_checks_path, params: @payload.merge(uuid: SecureRandom.uuid, kind: "preflight", flight_id: @flight.id), as: :json
     assert_response :created
-    assert_equal "failed", response.parsed_body["outcome"]
-    assert_match(/Gyroscope 0\/3/, response.parsed_body.dig("summary", "reason"))
+    assert_equal "passed", response.parsed_body["outcome"]
+    assert_equal reference, ImuCheck.last.calibration
+    assert_equal reference.summary["warnings"], ImuCheck.last.summary["warnings"]
+    get flight_path(@flight)
+    assert_select "td", text: /Passed with warning/
+    assert_select "small", text: /Gyroscope manufacturer status 0\/3/
+    @samples.each { |sample| sample[:accuracy][1] = 1 }
+    assert Imu::Assessment.call(@samples.as_json, firmware: "fdr_integrated/57")["passed"]
   end
 
-  test "gyro zero status never hides missing data, rest bias, noise or excessive motion" do
-    @samples.each { |sample| sample[:accuracy] = [ 2, 0, 3, 3 ] }
+  test "a historical pass under the withdrawn gyro exception cannot authorize a preflight" do
+    post api_v1_imu_checks_path, params: @payload, as: :json
+    assert_response :created
+    reference = ImuCheck.last
+    reference.update!(summary: reference.summary.merge("limits_version" => "imu-poc-2", "gyro_status_role" => "diagnostic_only"))
+    assert_nil ImuCheck.reference_for(@fdr, firmware: @payload[:firmware])
+    post api_v1_imu_checks_path, params: @payload.merge(uuid: SecureRandom.uuid, kind: "preflight", flight_id: @flight.id), as: :json
+    assert_response :unprocessable_entity
+    assert_equal "passed", reference.reload.outcome
+  end
+
+  test "gyro warning never hides missing data, rest bias, noise or excessive motion" do
+    @samples.each { |sample| sample[:accuracy][1] = 0 }
     assessment = -> { Imu::Assessment.call(@samples.as_json, firmware: @payload[:firmware]) }
     @samples[50][:accuracy][1] = 255
     assert_not assessment.call["passed"]

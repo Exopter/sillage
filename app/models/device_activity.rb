@@ -1,6 +1,7 @@
 class DeviceActivity < ApplicationRecord
   TITLES = {
     "registered" => "ECU registered",
+    "identity_corrected" => "ECU identity corrected",
     "authentication_prepared" => "Authentication prepared",
     "initialized" => "ECU initialized",
     "access_restoration_requested" => "Recorder access restoration requested",
@@ -43,6 +44,8 @@ class DeviceActivity < ApplicationRecord
 
   def description
     case event_type
+    when "identity_corrected"
+      "#{details['previous_device_id']} to #{details['device_id']}. Existing keys and history retained."
     when "access_restoration_requested"
       "Restoration of the existing authentication key was requested over USB-C."
     when "access_restored"

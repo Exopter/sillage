@@ -12,7 +12,7 @@ class ImuCheck < ApplicationRecord
   scope :recent, -> { order(created_at: :desc, id: :desc) }
 
   def self.configuration_for(controller)
-    { part: controller.part_id, assembly: controller.assembly&.snapshot, aircraft: controller.aircraft&.id }
+    { device_id: controller.device_id, part: controller.part_id, assembly: controller.assembly&.snapshot, aircraft: controller.aircraft&.id }
   end
 
   def self.configuration_digest_for(controller)
@@ -26,6 +26,6 @@ class ImuCheck < ApplicationRecord
   def self.reference_for(controller, firmware:)
     reference = where(embedded_controller: controller, kind: "calibration", firmware:,
       configuration_digest: configuration_digest_for(controller)).recent.first
-    reference if reference&.outcome == "passed"
+    reference if reference&.outcome == "passed" && reference.invalidated_at.nil? && reference.summary["limits_version"] == Imu::Assessment::LIMITS_VERSION
   end
 end

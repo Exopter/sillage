@@ -190,7 +190,7 @@ function decode(messageId, payload, coordinateFrame) {
   if (messageId === 42000 && payload.length >= 48) {
     const deviceId = new TextDecoder().decode(payload.slice(32, 48)).split("\0")[0]
     const heading = f32(12)
-    if (!/^ECU-[A-F0-9]{6}$/.test(deviceId)) return { name: "unknown" }
+    if (!/^ECU-(?:[A-F0-9]{6}|[A-F0-9]{12})$/.test(deviceId)) return { name: "unknown" }
     return { name: "imu_quality", deviceId, bootId: u32(0), timeBootMs: u32(4), imuEpoch: u32(8),
       firmware: `fdr_integrated/${u16(16)}`, headingAccuracyDeg: Number.isFinite(heading) && heading >= 0 ? radiansToDegrees(heading) : null,
       agesMs: [u16(18), u16(20), u16(22), u16(24)], validity: u16(26), accuracy: Array.from(payload.slice(28, 32)) }

@@ -4,7 +4,8 @@ const source = (await readFile(new URL('../../app/javascript/controllers/imu_che
   .replace(/^import .*$/gm,'')
   .replace(/^const Base = .*$/m,'const Base = class {}')
 const healthURL = new URL('../../app/javascript/lib/imu_health.js',import.meta.url).href
-const {default: Guide} = await import(`data:text/javascript;base64,${Buffer.from(`import {ImuHealth, SixFaceCapture, ReferenceCapture, imuQualityLabel, FACE_NAMES, FACE_HOLD_RULES, referenceIssue} from '${healthURL}';\n${source}`).toString('base64')}`)
+const identityURL = new URL('../../app/javascript/lib/recorder_identity.js',import.meta.url).href
+const {default: Guide} = await import(`data:text/javascript;base64,${Buffer.from(`import {ImuHealth, SixFaceCapture, ReferenceCapture, imuQualityLabel, FACE_NAMES, FACE_HOLD_RULES, referenceIssue} from '${healthURL}';\nimport {recorderTechnicalLabel} from '${identityURL}';\n${source}`).toString('base64')}`)
 function makeGuide() {
  const guide = new Guide()
  for(const name of ['attitude','heading','qualityReason','actionButton','title','instruction','progress','result','connectButton']) guide[`${name}Target`]={textContent:'',dataset:{},value:0}
@@ -37,7 +38,7 @@ for(let time=0;time<=15000;time+=100) {
 }
 assert.equal(saveCalls,1,'the actual controller submits a persistent low-quality diagnostic after 15 seconds')
 assert.equal(guide.samples.length,151)
-assert.match(guide.instructionTarget.textContent,/Gyroscope 0\/3/)
+assert.match(guide.instructionTarget.textContent,/Keep still/, 'gyro score alone does not block the reference observation')
 guide.phase='result';guide.checkPassed=false
 guide.advance()
 assert.equal(guide.phase,'measuring')

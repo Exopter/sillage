@@ -35,7 +35,7 @@
 .calibration-face[data-complete="true"] .calibration-face-mark { background: var(--ex-state-live-bg); border-color: var(--ex-aqua-500); animation: calibration-confirm .45s ease-out; }
 .calibration-quality { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; padding: 12px 18px; border-bottom: 1px solid var(--border-rule); font: 12px/1.5 var(--font-mono); }
 .calibration-quality strong { color: var(--ex-aqua-500); }
-.calibration-quality [data-state="degraded"] { color: var(--ex-amber-500); }
+.calibration-quality [data-state="degraded"], .calibration-quality [data-state="warning"] { color: var(--ex-amber-500); }
 .calibration-quality [data-state="unknown"] { color: var(--text-muted); }
 .calibration-quality small { flex: 1; min-width: 200px; color: var(--text-muted); }
 .calibration-quality[data-theme="dark"] { --text-muted: var(--ex-instrument-muted); --text-body: var(--ex-vapor-150); --border-rule: var(--ex-carbon-700); color: var(--text-body); }

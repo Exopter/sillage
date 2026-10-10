@@ -14,7 +14,7 @@
   <td><%= logbook_value(nil) %></td>
   <td class="flights-muted flights-data"><%= logbook_date(flight_import) %></td>
   <td class="flights-data"><%= logbook_duration(flight_import.activity_summary["duration_seconds"] || flight_import.details.to_h["duration_seconds"]) %></td>
-  <td><span class="flights-source"><%= sillage_icon(flight_import.import_type == "exofdr" ? "exopter" : "flysight", size: 14) %><%= flight_import.import_type == "exofdr" ? "ExoFDR" : "FlySight" %></span><% if flight_import.device_id.present? %><span class="flights-cell-note"><%= flight_import.device_id %></span><% end %></td>
+  <td><span class="flights-source"><%= sillage_icon(flight_import.import_type == "exofdr" ? "exopter" : "flysight", size: 14) %><%= flight_import.import_type == "exofdr" ? "ExoFDR" : "FlySight" %></span><% if flight_import.device_id.present? %><span class="flights-cell-note"><%= ecu_label(flight_import.device_id) %></span><% end %></td>
   <td>
     <span class="status-dot is-<%= status_state %>"><span></span><%= status_label %></span>
     <% if flight_import.failed? %><span class="flights-cell-note"><%= flight_import.error_message %></span><% end %>

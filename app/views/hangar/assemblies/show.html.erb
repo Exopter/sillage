@@ -22,7 +22,7 @@
     <% if @assembly.controlled_fdr? %>
       <div><dt>Functional configuration</dt><dd><%= link_to @assembly.functional_configuration, hangar_fdr_functional_configuration_path(@assembly.fdr_functional_configuration) %></dd></div>
       <div><dt>Assembly method</dt><dd><%= @assembly.assembly_method_label %></dd></div>
-      <div><dt>ECU ID</dt><dd class="workspace-mono"><%= @assembly.embedded_controller&.device_id || "Not identified" %></dd></div>
+      <div><dt>ECU ID</dt><dd class="workspace-mono"><%= ecu_label(@assembly.embedded_controller&.device_id) || "Not identified" %></dd></div>
     <% end %>
     <div><dt>Serviceability</dt><dd><%= @assembly.serviceability_label %></dd></div>
     <div><dt>Internal Asset ID</dt><dd class="workspace-mono"><%= @assembly.internal_number %></dd></div>
@@ -66,7 +66,7 @@
     <div class="workspace-list">
       <% @assembly.parts.includes(:function).ordered.each do |part| %>
         <div class="workspace-list-row is-static">
-          <span><strong><%= part.display_name %> · <%= part.function.name %></strong><small><%= part.serial_number.present? ? "S/N #{part.serial_number} · Asset ID #{part.internal_number}" : "Asset ID #{part.internal_number}" %><%= " · ECU ID #{part.embedded_controller.device_id}" if part.embedded_controller&.device_id %></small></span>
+          <span><strong><%= part.display_name %> · <%= part.function.name %></strong><small><%= part.serial_number.present? ? "S/N #{part.serial_number} · Asset ID #{part.internal_number}" : "Asset ID #{part.internal_number}" %><%= " · ECU ID #{ecu_label(part.embedded_controller.device_id)}" if part.embedded_controller&.device_id %></small></span>
           <div class="workspace-actions">
             <% replacements = @available_parts.select { |candidate| candidate.function_id == part.function_id } %>
             <% if replacements.any? %>

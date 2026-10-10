@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { ImuHealth, SixFaceCapture, ReferenceCapture, imuQualityLabel, FACE_NAMES, FACE_HOLD_RULES, referenceIssue } from "imu_health"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
+import { recorderTechnicalLabel } from "recorder_identity"
 /** @typedef {{deviceValue:string, kindValue:string, flightValue:string, sceneTarget:HTMLElement, sceneLabelTarget:HTMLElement, sceneHintTarget:HTMLElement, visualTarget:HTMLElement, stepLabelTarget:HTMLElement, holdTarget:HTMLElement, holdRingTarget:SVGCircleElement, countdownTarget:HTMLElement, confirmationTarget:HTMLElement, titleTarget:HTMLElement, instructionTarget:HTMLElement, qualityReasonTarget:HTMLElement, attitudeTarget:HTMLElement, headingTarget:HTMLElement, connectButtonTarget:HTMLButtonElement, actionButtonTarget:HTMLButtonElement, cancelButtonTarget:HTMLButtonElement, confirmedTarget:HTMLInputElement, progressTarget:HTMLProgressElement, resultTarget:HTMLElement}} Bindings */
 const Base = /** @type {new (c:import('@hotwired/stimulus').Context) => Controller & Bindings} */ (/** @type {unknown} */ (Controller))
 export default class extends Base {
@@ -68,7 +69,7 @@ export default class extends Base {
       this.resetRecorder()
       this.port = port
       this.resultTarget.textContent = ""
-      const worker = new Worker("/signal_serial_worker.js")
+      const worker = new Worker("/signal_serial_worker.js?v=57-full-identity")
       this.worker = worker
       worker.onmessage = ({ data }) => {
         if (!this.active || this.port !== port || this.worker !== worker) return
@@ -119,12 +120,13 @@ export default class extends Base {
   }
   /** @param {number} now */
   connectionIssue(now) {
-    if (!this.port) return `Connect the ground radio to verify ${this.deviceValue}.`
+    const label = recorderTechnicalLabel({deviceId:this.deviceValue})
+    if (!this.port) return `Connect the ground radio to verify ${label}.`
     const deviceId = this.connectedDeviceId || this.health.quality?.deviceId
     if (deviceId && deviceId !== this.deviceValue) return `Wrong recorder: ${deviceId}. Expected ${this.deviceValue}.`
-    if (!this.source || this.health.quality?.deviceId !== this.deviceValue) return `Waiting for recorder identity: ${this.deviceValue}.`
+    if (!this.source || this.health.quality?.deviceId !== this.deviceValue) return `Waiting for recorder identity: ${label}.`
     if (this.health.generation !== this.generation) return "Recorder or IMU restarted. Begin a new check."
-    if (!this.health.sample(now)) return `Waiting for fresh IMU measurements from ${this.deviceValue}.`
+    if (!this.health.sample(now)) return `Waiting for fresh IMU measurements from ${label}.`
     return null
   }
   async read() {
@@ -207,13 +209,13 @@ export default class extends Base {
     }
     const q = this.health.quality
     const qualityDetails = q && now - this.health.qualityAt <= 1500
-      ? q.accuracy.map((v, n) => imuQualityLabel(v, n, q.firmware)).join(" · ")
+      ? q.accuracy.map((v, n) => imuQualityLabel(v, n)).join(" · ")
       : status.reason
     if (this.health.generation !== this.generation) {
       this.generation = this.health.generation; this.cancel(); this.confirmedTarget.checked = false; this.resultTarget.textContent = "Recorder or IMU restarted. Begin a new check."
     }
     const issue = this.connectionIssue(now)
-    this.qualityReasonTarget.textContent = issue || `${this.deviceValue} · ${qualityDetails}` + (q && status.issues.length ? ` · ${status.reason}` : "")
+    this.qualityReasonTarget.textContent = issue || `${recorderTechnicalLabel({deviceId:this.deviceValue})} · ${qualityDetails}` + (q && (status.issues.length || status.warnings?.length) ? ` · ${status.reason}` : "")
     const s = issue ? null : this.health.sample(now)
     this.actionButtonTarget.disabled = !s || !this.confirmedTarget.checked || (this.kindValue === "preflight" && !this.referenceReady) || ["faces", "measuring", "saving"].includes(this.phase)
     if (this.phase === "faces") {
@@ -352,9 +354,10 @@ export default class extends Base {
       if (!this.active || generation !== this.health.generation || operation !== this.uuid) return
       this.checkPassed = result.outcome === "passed"
       this.phase = "result"; this.actionButtonTarget.textContent = this.checkPassed ? "Run again" : "Retry reference"
-      this.titleTarget.textContent = result.outcome === "passed" ? "Reference checks passed" : "Check needs attention"
-      this.instructionTarget.textContent = result.summary.reason + (this.checkPassed ? "" : " Retry this reference after correcting the issue. Completed faces are kept while this recorder and IMU stay powered.")
-      this.resultTarget.textContent = `Saved in ${this.kindValue === "calibration" ? "Forge" : "this flight"} · ${q.deviceId}\nRoll ${result.summary.roll_mean.toFixed(2)}° · Pitch ${result.summary.pitch_mean.toFixed(2)}° · ${result.summary.g_mean.toFixed(3)} g\nBoot ${q.bootId} · ${q.firmware}`
+      const warnings = result.summary.warnings || []
+      this.titleTarget.textContent = this.checkPassed ? warnings.length ? "Reference passed with warning" : "Reference checks passed" : "Check needs attention"
+      this.instructionTarget.textContent = [result.summary.reason, ...warnings].join(" ") + (this.checkPassed ? "" : " Retry this reference after correcting the issue. Completed faces are kept while this recorder and IMU stay powered.")
+      this.resultTarget.textContent = `Saved in ${this.kindValue === "calibration" ? "Forge" : "this flight"} · ${recorderTechnicalLabel(q)}\nRoll ${result.summary.roll_mean.toFixed(2)}° · Pitch ${result.summary.pitch_mean.toFixed(2)}° · ${result.summary.g_mean.toFixed(3)} g\nBoot ${q.bootId} · ${q.firmware}`
     } catch (error) {
       if (!this.active || generation !== this.health.generation || operation !== this.uuid) return
       this.phase = "save_failed"; this.actionButtonTarget.textContent = "Retry saving"

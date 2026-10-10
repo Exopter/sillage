@@ -8,7 +8,7 @@
     <section class="workspace-panel">
       <div class="workspace-panel-header"><h2>Controller identity</h2><span>Learned from the ECU</span></div>
       <dl class="workspace-details">
-        <div><dt>ECU ID</dt><dd class="workspace-mono"><%= @fdr.device_id.presence || "Not identified" %></dd></div>
+        <div><dt>ECU ID</dt><dd class="workspace-mono"><%= ecu_label(@fdr.device_id).presence || "Not identified" %></dd></div>
         <div><dt>Hardware platform</dt><dd><%= @fdr.device_model.presence || "Not reported" %></dd></div>
         <div><dt>Firmware</dt><dd><%= @fdr.last_seen_firmware.presence || "Not reported" %></dd></div>
         <div><dt>Last identified</dt><dd><%= @fdr.last_identified_at ? "#{time_ago_in_words(@fdr.last_identified_at)} ago" : "Never" %></dd></div>

@@ -1,6 +1,8 @@
 module Imu
   # POC bench limits. These checks measure consistency, not flight certification.
   class Assessment
+    LIMITS_VERSION = "imu-poc-4".freeze
+
     def self.call(samples, firmware: nil)
       return { "passed" => false, "reason" => "A continuous 15-second reference is required." } unless samples.is_a?(Array) && samples.size.between?(100, 400)
       numeric = ->(v) { v.is_a?(Numeric) && v.finite? }
@@ -20,10 +22,9 @@ module Imu
       gyro_stable = gyro_mean.all? { |v| v.abs <= 0.005 } && gyro_std.all? { |v| v <= 0.005 }
       magnetic = samples.map { |s| norm.call(s["mag"]) }
       accuracy_min = (0..3).map { |index| samples.map { |s| s["accuracy"][index] }.min }
-      # The /56 BNO085 gyro status remained zero with verified bias correction
-      # and three-axis response. Unknown firmware retains the strict status gate.
-      gyro_status_informational = firmware == "fdr_integrated/56"
-      required_quality = gyro_status_informational ? [ 0, 2, 3 ] : [ 0, 1, 2, 3 ]
+      # Operator policy: low gyro accuracy is advisory, not a missing-data waiver.
+      required_quality = [ 0, 2, 3 ]
+      warnings = accuracy_min[1] < 2 ? [ "Gyroscope manufacturer status #{accuracy_min[1]}/3. Non-blocking; measured checks remain required." ] : []
       low_quality = %w[Accelerometer Gyroscope Magnetometer Orientation].each_with_index.filter_map { |name, index| "#{name} #{accuracy_min[index]}/3" if required_quality.include?(index) && accuracy_min[index] < 2 }
       quality = samples.all? { |s| required_quality.all? { |index| s["accuracy"][index] >= 2 } && s["quality_age"].between?(0, 1500) && s["heading_accuracy"].between?(0, 10) }
       stationary = g.all? { |v| v.between?(0.97, 1.03) } && gyro.max <= 0.035
@@ -51,10 +52,10 @@ module Imu
         "pitch_mean" => samples.sum { |s| s["pitch"] } / samples.size,
         "magnetic_mean_ut" => magnetic.sum / magnetic.size, "gyro_max_rad_s" => gyro.max,
         "gyro_mean_rad_s" => gyro_mean, "gyro_std_rad_s" => gyro_std,
-        "gyro_status_role" => gyro_status_informational ? "diagnostic_only" : "accuracy_gate",
+        "gyro_status_role" => "warning", "warnings" => warnings, "firmware" => firmware,
         "heading_accuracy_max_deg" => samples.map { |s| s["heading_accuracy"] }.max,
         "accuracy_min" => accuracy_min,
-        "limits_version" => "imu-poc-2" }
+        "limits_version" => LIMITS_VERSION }
     end
   end
 end

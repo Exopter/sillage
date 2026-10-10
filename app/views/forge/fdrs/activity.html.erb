@@ -16,7 +16,7 @@
             <span>
               <strong><%= activity.title %></strong>
               <small><%= activity.description %></small>
-              <small><%= activity.recorder_label %><% if activity.details.dig("recorder_identity", "device_id") %> · <%= activity.details.dig("recorder_identity", "device_id") %><% end %></small>
+              <small><%= activity.recorder_label %><% if activity.details.dig("recorder_identity", "device_id") %> · <%= ecu_label(activity.details.dig("recorder_identity", "device_id")) %><% end %></small>
             </span>
             <span class="device-activity-meta">
               <strong><%= l activity.occurred_at, format: :long %></strong>

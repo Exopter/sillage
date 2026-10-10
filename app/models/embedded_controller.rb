@@ -51,7 +51,7 @@ class EmbeddedController < ApplicationRecord
   end
 
   def technical_reference
-    device_id.presence || part&.internal_number.presence || "Not identified"
+    FdrIdentity::DeviceId.label(device_id).presence || part&.internal_number.presence || "Not identified"
   end
 
   def assembly

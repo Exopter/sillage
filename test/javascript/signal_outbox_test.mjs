@@ -185,3 +185,14 @@ checkId = 18
 await reloaded.loadQualityContext("ECU-A172E0/42/1/fdr_integrated/56")
 assert.equal(reloaded.preflightInvalidated, false, "a new preflight can replace the invalidated check")
 console.log("Signal outbox durability, preflight invalidation and shutdown tests passed")
+
+const advisory = workspace()
+advisory.db.autoCommit = true
+advisory.eventUrlValue = "/events"
+advisory.imuHealth.quality = quality.imuHealth.quality
+await advisory.recordQualityEvent("Gyroscope manufacturer status 0/3", [], undefined, ["Gyroscope manufacturer status 0/3"])
+const warning = [...advisory.db.values.outbox.values()][0]
+assert.equal(warning.body.event_type,"warning")
+assert.equal(warning.body.metadata.invalidate_preflight_id,null)
+assert.equal(warning.body.metadata.warnings.length,1)
+assert.equal(advisory.db.values.metadata.size,0,"an advisory does not persist a preflight invalidation")
