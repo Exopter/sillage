@@ -8,6 +8,7 @@ const STANDARD_GRAVITY = 9.80665
 
 /** Live measurements are expired independently, so a heartbeat cannot keep a failed sensor alive. */
 export class SignalTelemetry {
+  bodyFrame = false
   /** @type {Map<string, {value: number | number[] | null, at: number}>} */
   values = new Map()
   /** @type {number[][]} */
@@ -69,6 +70,7 @@ export class SignalTelemetry {
   /** @param {import("../types/signal").DecodedMessage} decoded @param {number} now */
   apply(decoded, now) {
     if (decoded.name === "highres_imu") {
+      this.bodyFrame = decoded.coordinateFrame === "body_frd_ned"
       this.set("accel", decoded.acceleration, now)
       this.set("gyro", decoded.angularVelocity, now)
       this.set("mag", decoded.magneticField, now)
@@ -133,6 +135,7 @@ export class SignalTelemetry {
       // Total specific-force magnitude: about 1 g at rest, independent of mounting orientation.
       gLoad: acceleration?.length === 3 ? Math.hypot(...acceleration) / STANDARD_GRAVITY : null,
       accel: acceleration, gyro: this.vector("gyro", now), mag: this.vector("mag", now),
+      bodyFrame: this.bodyFrame,
       pressure: this.number("pressure", now), temperature: this.number("temperature", now),
       fix: this.number("fix", now), satellites: this.number("satellites", now)
     }

@@ -82,6 +82,9 @@
       ],
       "imu_tutorial": [
         "./app/javascript/lib/imu_tutorial.js"
+      ],
+      "imu_mount": [
+        "./app/javascript/lib/imu_mount.js"
       ]
     },
     "strict": true,

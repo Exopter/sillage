@@ -3,7 +3,7 @@ module Imu
   class Assessment
     LIMITS_VERSION = "imu-poc-4".freeze
 
-    def self.call(samples, firmware: nil)
+    def self.call(samples, firmware: nil, mount_profile: Mount::NATIVE)
       return { "passed" => false, "reason" => "A continuous 15-second reference is required." } unless samples.is_a?(Array) && samples.size.between?(100, 400)
       numeric = ->(v) { v.is_a?(Numeric) && v.finite? }
       valid = samples.all? do |s|
@@ -12,6 +12,9 @@ module Imu
           s["accuracy"].is_a?(Array) && s["accuracy"].size == 4 && s["accuracy"].all? { |v| v.is_a?(Integer) && v.between?(0, 3) }
       end
       return { "passed" => false, "reason" => "Missing or invalid sensor evidence." } unless valid
+      return { "passed" => false, "reason" => "Unknown IMU mounting profile." } unless Mount::LABELS.key?(mount_profile)
+      samples = samples.map { |sample| Mount.reference(sample, mount_profile) }
+      return { "passed" => false, "reason" => "Native quaternions are required for the installed reference." } if samples.any?(&:nil?)
       span = samples.last["t"] - samples.first["t"]
       continuous = span.between?(15_000, 45_000) && samples.each_cons(2).all? { |a, b| (b["t"] - a["t"]).between?(1, 300) }
       norm = ->(v) { Math.sqrt(v.sum { |x| x * x }) }
@@ -32,6 +35,7 @@ module Imu
       gravity_consistent = samples.all? do |sample|
         roll, pitch = sample.values_at("roll", "pitch").map { |v| v * Math::PI / 180 }
         gravity = [ Math.sin(pitch), Math.sin(roll) * Math.cos(pitch), Math.cos(roll) * Math.cos(pitch) ]
+        gravity = [ gravity[0], -gravity[1], -gravity[2] ] if mount_profile == Mount::BELLY
         cosine = gravity.zip(sample["accel"]).sum { |a, b| a * b } / norm.call(sample["accel"])
         cosine.finite? && cosine >= Math.cos(5 * Math::PI / 180)
       end
@@ -55,7 +59,7 @@ module Imu
         "gyro_status_role" => "warning", "warnings" => warnings, "firmware" => firmware,
         "heading_accuracy_max_deg" => samples.map { |s| s["heading_accuracy"] }.max,
         "accuracy_min" => accuracy_min,
-        "limits_version" => LIMITS_VERSION }
+        "limits_version" => LIMITS_VERSION, "mount_profile" => mount_profile }
     end
   end
 end

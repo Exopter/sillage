@@ -77,16 +77,23 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
     part.install_in!(original, at: Time.utc(2026, 7, 1))
     part.remove_from_assembly!(at: Time.utc(2026, 8, 1))
     part.install_in!(current, at: Time.utc(2026, 8, 2))
+    travel_to Time.utc(2026, 7, 28) do
+      original.update!(imu_mount_profile: Imu::Mount::BELLY)
+    end
+    travel_to Time.utc(2026, 7, 30) do
+      original.update!(imu_mount_profile: Imu::Mount::NATIVE)
+    end
     gps_payload = [ 123_456, 2026, 7, 29, 10, 11, 6, 1, 80, 0, 3, 1, 0, 12,
       57_168_000, 441_994_000, 700_000, 642_000, 1_000, 1_500,
       20_000, 5_000, -1_000, 20_600, 3_600_000, 500, 10_000, 125 ].pack("VvC6Vl<C4l<4V2l<5V2v")
     invalid_utc = gps_payload.dup
     invalid_utc.setbyte(11, 0)
+    imu_payload = [ 5, 3, 0, 0, 1, 0, 0 ].pack("CCve4")
     binary = fdr_binary([
-      { sequence: 0, timestamp_us: 1_000_000 },
+      { sequence: 0, timestamp_us: 1_000_000, type: 2, payload: imu_payload },
       { sequence: 1, timestamp_us: 2_000_000, type: 1, payload: invalid_utc },
       { sequence: 2, timestamp_us: 7_000_000, type: 1, payload: gps_payload },
-      { sequence: 3, timestamp_us: 8_000_000 }
+      { sequence: 3, timestamp_us: 8_000_000, type: 2, payload: imu_payload }
     ])
     flight_import = fdr_import(binary)
     ExoFdr::ImportService.new(flight_import).call
@@ -95,6 +102,8 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
     assert_equal flight.started_at + 7, flight.ended_at
     assert_equal [ 1, 6 ], flight.track_points.ordered.pluck(:elapsed_seconds)
     assert_equal [ 0, 7 ], flight.sensor_samples.ordered.pluck(:elapsed_seconds)
+    assert_equal [ Imu::Mount::BELLY ], flight.sensor_samples.map { |s| s.readings["mount_profile"] }.uniq,
+      "SD import resolves the capture-time mounting and installation, not the current assembly or profile"
     assert_equal 7, flight.duration_seconds
     assert_equal original.serial_number, flight_import.details.dig("files", 0, "recorder_identity", "assembly", "serial_number")
     assert_equal "ECU-ABC123", flight_import.details.dig("files", 0, "recorder_identity", "device_id")

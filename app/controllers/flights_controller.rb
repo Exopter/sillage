@@ -247,7 +247,7 @@ class FlightsController < ApplicationController
   end
 
   def serialize_sensor_sample(sample)
-    readings = sample.readings || {}
+    readings = sample.installed_readings
     if sample.sensor_type == "BARO" && readings["pressure_altitude_m"].blank?
       readings = readings.merge("pressure_altitude_m" => Flights::PressureAltitude.from_pascals(readings["pressure"]))
     end

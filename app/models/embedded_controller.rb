@@ -69,6 +69,10 @@ class EmbeddedController < ApplicationRecord
     part&.assembly
   end
 
+  def imu_mount_profile(at: nil)
+    (at ? assembly_at(at) : assembly)&.imu_mount_profile_at(at) || Imu::Mount::NATIVE
+  end
+
   def assembly_at(time)
     part&.assembly_at(time)
   end

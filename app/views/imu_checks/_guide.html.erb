@@ -1,4 +1,4 @@
-<section data-controller="imu-check" data-imu-check-device-value="<%= fdr.device_id %>" data-imu-check-kind-value="<%= kind %>" data-imu-check-flight-value="<%= local_assigns[:flight]&.id %>">
+<section data-controller="imu-check" data-imu-check-device-value="<%= fdr.device_id %>" data-imu-check-kind-value="<%= kind %>" data-imu-check-flight-value="<%= local_assigns[:flight]&.id %>" data-imu-check-mount-profile-value="<%= fdr.imu_mount_profile %>">
   <div class="calibration-quality" aria-live="polite">
     <span>ATTITUDE <strong data-imu-check-target="attitude" data-state="unknown">Unknown</strong></span>
     <span>HEADING <strong data-imu-check-target="heading" data-state="unknown">Unknown</strong></span>
@@ -24,6 +24,7 @@
     <div class="calibration-controls">
       <span class="section-eyebrow"><%= kind == "calibration" ? "Forge / IMU calibration" : "Flight / Preflight check" %></span>
       <h2 data-imu-check-target="title"><%= kind == "calibration" ? "IMU calibration" : "IMU preflight check" %></h2>
+      <p class="workspace-muted"><%= Imu::Mount::LABELS.fetch(fdr.imu_mount_profile) %> · <%= Imu::Mount.description(fdr.imu_mount_profile) %></p>
       <p data-imu-check-target="instruction"><%= kind == "calibration" ? "Hold each of the six orientations for 3 seconds, rotate about all three axes, then record a 15-second static reference." : "Place the enclosure on a level reference. Leave the radio and normal equipment powered. Keep it still for 15 seconds." %></p>
       <% if kind == "calibration" %>
         <div class="calibration-faces" aria-label="Measured orientations">
@@ -41,7 +42,7 @@
         <button type="button" class="button-secondary" data-action="imu-check#cancel" data-imu-check-target="cancelButton">Cancel</button>
       </div>
       <div class="calibration-result" data-imu-check-target="result" role="status"></div>
-      <p class="workspace-muted">Static consistency check, not flight qualification. No axis remapping or automatic zeroing.</p>
+      <p class="workspace-muted">Static consistency check in the selected mounting. Source sensor axes are preserved.</p>
     </div>
   </div>
 </section>

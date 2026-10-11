@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_11_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_11_193000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -57,6 +57,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_11_160000) do
     t.string "assembly_type"
     t.datetime "created_at", null: false
     t.bigint "fdr_functional_configuration_id"
+    t.jsonb "imu_mount_history", default: [], null: false
+    t.string "imu_mount_profile", default: "sensor_native", null: false
     t.string "internal_number"
     t.jsonb "legacy_identity", default: {}, null: false
     t.string "name", null: false

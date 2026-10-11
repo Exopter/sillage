@@ -11,7 +11,7 @@ export const FACE_HOLD_RULES = Object.freeze({ enterTiltDeg: 15, exitTiltDeg: 20
 const norm = (/** @type {number[]} */ v) => Math.hypot(...v)
 const finiteVector = (/** @type {number[] | null} */ v) => v?.length === 3 && v.every(Number.isFinite)
 /** @typedef {Extract<import('../types/signal').DecodedMessage, {name:'imu_quality'}>} Quality */
-/** @typedef {{t:number, roll:number, pitch:number, accel:number[], gyro:number[], mag:number[], accuracy:number[], heading_accuracy:number, quality_age:number, firmware?:string}} ReferenceSample */
+/** @typedef {{t:number, roll:number, pitch:number, accel:number[], gyro:number[], mag:number[], accuracy:number[], heading_accuracy:number, quality_age:number, firmware?:string, quaternion?:number[], frame?:string}} ReferenceSample */
 
 export class ImuHealth {
   /** @type {Quality|null} */ quality = null
@@ -31,7 +31,7 @@ export class ImuHealth {
       if (p && (p.bootId !== d.bootId || p.imuEpoch !== d.imuEpoch || p.deviceId !== d.deviceId || p.firmware !== d.firmware || d.timeBootMs < p.timeBootMs)) {
         this.generation++; this.imu = null; this.attitude = null; this.pending.clear(); this.jumpUntil = 0
       }
-      if (p && p.bootId === d.bootId && p.imuEpoch === d.imuEpoch && p.timeBootMs === d.timeBootMs) return
+      if (p && p.deviceId === d.deviceId && p.firmware === d.firmware && p.bootId === d.bootId && p.imuEpoch === d.imuEpoch && p.timeBootMs === d.timeBootMs) return
       this.quality = d; this.qualityAt = now
     } else if (d.name === "highres_imu") {
       if (d.timeUs === this.imu?.timeUs) return
@@ -61,14 +61,17 @@ export class ImuHealth {
         !finiteVector(i.acceleration) || !finiteVector(i.angularVelocity) || !finiteVector(i.magneticField) ||
         q.agesMs.some(age => age + now - this.qualityAt > 1500) || q.headingAccuracyDeg == null) return null
     return /** @type {ReferenceSample} */ ({ t: Number(i.timeUs) / 1000, roll: a.rollDeg, pitch: a.pitchDeg,
-      accel: i.acceleration, gyro: i.angularVelocity, mag: i.magneticField,
+      accel: i.acceleration, gyro: i.angularVelocity, mag: i.magneticField, quaternion: a.quaternion,
       accuracy: q.accuracy, heading_accuracy: q.headingAccuracyDeg, quality_age: Math.max(...q.agesMs) + now - this.qualityAt, firmware: q.firmware })
   }
 
   /** @param {number} now @param {number|null} [referenceField] */
   status(now, referenceField = null) {
     const q = this.quality
-    if (!q || now - this.qualityAt > 2500) return { attitude: "unknown", heading: "unknown", reason: q ? "Quality telemetry lost" : "Waiting for quality telemetry (firmware /56+)", issues: ["quality_unavailable"], warnings: [] }
+    if (!q || now - this.qualityAt > 2500) {
+      const reason = q ? "Quality telemetry lost" : "Waiting for quality telemetry (firmware /56+)"
+      return { attitude: "unknown", heading: "unknown", reason, attitudeReason: reason, headingReason: reason, issues: ["quality_unavailable"], warnings: [] }
+    }
     const i = this.imu, a = this.attitude
     /** @type {string[]} */ const issues = []
     const attitudeMissing = !i || !a || now - this.imuAt > 1500 || now - this.attitudeAt > 1500 || [0,1,3].some(n => q.agesMs[n] + now - this.qualityAt > 2000 || q.accuracy[n] > 3)
@@ -97,7 +100,7 @@ export class ImuHealth {
     if (now < this.jumpUntil && !attitudeMissing) issues.push("gyro_attitude_mismatch")
     const attitudeBad = issues.some(s => ["imu_quality_low","gravity_attitude_mismatch","gyro_attitude_mismatch"].includes(s))
     const headingBad = issues.some(s => ["heading_uncertain","magnetic_disturbance"].includes(s))
-    const reasons = issues.flatMap(issue => {
+    const issueDetails = (/** @type {string} */ issue) => {
       if (issue === "imu_quality_low") return [0,3].filter(n => q.accuracy[n] < 2).map(n => imuQualityLabel(q.accuracy[n], n))
       if (issue !== "heading_uncertain") return [issue.replaceAll("_", " ")]
       const details = []
@@ -106,9 +109,13 @@ export class ImuHealth {
       else if (q.headingAccuracyDeg > 10) details.push(`Heading uncertainty ${q.headingAccuracyDeg.toFixed(1)}° (limit 10°)`)
       if (q.agesMs[2] + now - this.qualityAt > 2000) details.push("Magnetometer report stale")
       return details
-    })
+    }
+    const reasons = issues.flatMap(issueDetails)
     return { attitude: attitudeMissing ? "unknown" : attitudeBad ? "degraded" : warnings.length ? "warning" : "consistent", heading: attitudeMissing ? "unknown" : headingBad ? "degraded" : "consistent",
-      reason: [...reasons, ...warnings].join(" · ") || "Live consistency checks passed", issues, warnings }
+      reason: [...reasons, ...warnings].join(" · ") || "Live consistency checks passed",
+      attitudeReason: [...issues.filter(issue => !["heading_uncertain", "magnetic_disturbance"].includes(issue)).flatMap(issueDetails), ...warnings].join(" · ") || "Live attitude consistency checks passed",
+      headingReason: issues.filter(issue => ["attitude_unavailable", "heading_uncertain", "magnetic_disturbance"].includes(issue)).flatMap(issueDetails).join(" · ") || "Live magnetic heading checks passed",
+      issues, warnings }
   }
 
   /** @param {string} key @param {boolean} bad @param {number} now */
@@ -129,6 +136,7 @@ export function referenceIssue(s) {
   if (Math.abs(s.roll) > 2 || Math.abs(s.pitch) > 2) return "Check the level reference in both directions"
   const roll = s.roll * Math.PI / 180, pitch = s.pitch * Math.PI / 180
   const gravity = [Math.sin(pitch), Math.sin(roll) * Math.cos(pitch), Math.cos(roll) * Math.cos(pitch)]
+  if (s.frame === "body_frd_ned") { gravity[1] *= -1; gravity[2] *= -1 }
   const cosine = gravity.reduce((sum, v, i) => sum + v * s.accel[i], 0) / norm(s.accel)
   if (cosine < Math.cos(5 * Math.PI / 180)) return "Acceleration and attitude disagree on gravity"
   if (norm(s.mag) < 20 || norm(s.mag) > 80) return "Move magnetic objects away"

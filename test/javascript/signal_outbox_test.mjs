@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 
+const mountURL = new URL("../../app/javascript/lib/imu_mount.js", import.meta.url).href
 const connectionURL = new URL("../../app/javascript/lib/aircraft_connection.js", import.meta.url).href
 const source = (await readFile(new URL("../../app/javascript/controllers/signal_workspace_controller.js", import.meta.url), "utf8"))
   .replace(/^import .*$/gm, "")
@@ -10,7 +11,7 @@ const outboxURL = new URL("../../app/javascript/lib/signal_outbox.js", import.me
 const healthURL = new URL("../../app/javascript/lib/imu_health.js", import.meta.url).href
 const telemetryURL = new URL("../../app/javascript/lib/signal_telemetry.js", import.meta.url).href
 const { transactionRequest } = await import(outboxURL)
-const { default: Workspace } = await import(`data:text/javascript;base64,${Buffer.from(`import {ImuHealth} from "${healthURL}";\nimport { SignalTelemetry } from "${telemetryURL}"\nimport { OUTBOX_STORE, META_STORE, transactionRequest, putOutbox, readOutbox, oldestOutbox, deleteOutbox, readMetadata, writeMetadata, writeOutbox } from "${outboxURL}"\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString("base64")}`)
+const { default: Workspace } = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountedReference} from "${mountURL}";\nimport {ImuHealth} from "${healthURL}";\nimport { SignalTelemetry } from "${telemetryURL}"\nimport { OUTBOX_STORE, META_STORE, transactionRequest, putOutbox, readOutbox, oldestOutbox, deleteOutbox, readMetadata, writeMetadata, writeOutbox } from "${outboxURL}"\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString("base64")}`)
 globalThis.IDBKeyRange = { bound: () => ({}) }
 const tick = () => new Promise((resolve) => setImmediate(resolve))
 
@@ -65,7 +66,7 @@ function workspace() {
   return Object.assign(new Workspace(), {
     db: new Database(), sessionValue: "session", batchUrlValue: "/batch", completeUrlValue: "/complete",
     pendingSamples: [], nextSequence: 0, ended: false, ending: false, telemetry: {},
-    connectButtonTarget: {}, dataStatusTarget: {}, showWarning(message) { throw new Error(message) }, async flushOutbox() {}
+    dataStatusTarget: {}, showWarning(message) { throw new Error(message) }, async flushOutbox() {}
   })
 }
 
@@ -92,7 +93,7 @@ assert.deepEqual(capture.db.values.outbox.get("session:batch:0").body.samples, [
 assert.equal(capture.db.values.metadata.get("session:next-sequence").value, 1)
 
 const navigations = []
-globalThis.window = { confirm: () => true, location: {assign: url => navigations.push(url)} }
+globalThis.window = { dispatchEvent() {}, confirm: () => true, location: {assign: url => navigations.push(url)} }
 const ending = workspace()
 let drained = false
 ending.stopSerial = async () => {

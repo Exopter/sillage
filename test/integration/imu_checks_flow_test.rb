@@ -59,6 +59,38 @@ class ImuChecksFlowTest < ActionDispatch::IntegrationTest
     assert_not Imu::Assessment.call(@samples.as_json)["passed"]
   end
 
+  test "installed belly reference uses native quaternions and rejects a stale mounting" do
+    assembly = create_exofdr_assembly
+    installed = create_embedded_controller(assembly:, device_id: "ECU-ABC124")
+    part = installed.part
+    installed.destroy!
+    @fdr.update!(part:)
+    post api_v1_imu_checks_path, params: @payload, as: :json
+    assert_response :created
+    old_reference = ImuCheck.last
+    assembly.update!(imu_mount_profile: Imu::Mount::BELLY)
+    assert_not old_reference.reload.current_configuration?
+    assert_nil ImuCheck.reference_for(@fdr.reload, firmware: @payload[:firmware])
+    post api_v1_imu_checks_path, params: @payload.merge(uuid: SecureRandom.uuid), as: :json
+    assert_response :unprocessable_entity
+    assert_match(/mounting changed/, response.parsed_body["error"])
+    @samples.each { |s| s.merge!(roll: 180, pitch: 0, quaternion: [ 0, 0, 1, 0 ], accel: [ 0, 0, -9.80665 ], accuracy: [ 3, 0, 3, 3 ]) }
+    post api_v1_imu_checks_path, params: @payload.merge(uuid: SecureRandom.uuid, mount_profile: Imu::Mount::BELLY), as: :json
+    assert_response :created
+    assert_equal "passed", response.parsed_body["outcome"]
+    assert_in_delta 0, response.parsed_body.dig("summary", "roll_mean"), 1e-6
+    assert_equal 180, ImuCheck.last.evidence["samples"].first["roll"]
+    assert_match(/status 0\/3/, ImuCheck.last.summary["warnings"].first)
+    get api_v1_imu_checks_path, params: { device_id: @fdr.device_id, firmware: @payload[:firmware] }
+    assert_equal Imu::Mount::BELLY, response.parsed_body["mount_profile"]
+    assert_equal ImuCheck.last.id, response.parsed_body.dig("reference", "id")
+    @samples.each { |s| s.merge!(quaternion: [ 1, 0, 0, 0 ], accel: [ 0, 0, 9.80665 ]) }
+    assessment = Imu::Assessment.call(@samples.as_json, mount_profile: Imu::Mount::BELLY)
+    assert_not assessment["passed"], "upright sensor is inverted relative to the flight mounting"
+    @samples.each { |s| s.delete(:quaternion) }
+    assert_match(/quaternions are required/, Imu::Assessment.call(@samples.as_json, mount_profile: Imu::Mount::BELLY)["reason"])
+  end
+
   test "preflight requires a matching reference and belongs to the signed-in user" do
     post api_v1_imu_checks_path, params: @payload.merge(kind: "preflight", flight_id: @flight.id), as: :json
     assert_response :unprocessable_entity

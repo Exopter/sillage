@@ -3,11 +3,14 @@ import { Controller } from "@hotwired/stimulus"
 import { ImuHealth, SixFaceCapture, ReferenceCapture, imuQualityLabel, FACE_NAMES, FACE_HOLD_RULES, referenceIssue } from "imu_health"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
 import { recorderTechnicalLabel } from "recorder_identity"
-/** @typedef {{deviceValue:string, kindValue:string, flightValue:string, sceneTarget:HTMLElement, sceneLabelTarget:HTMLElement, sceneHintTarget:HTMLElement, visualTarget:HTMLElement, stepLabelTarget:HTMLElement, holdTarget:HTMLElement, holdRingTarget:SVGCircleElement, countdownTarget:HTMLElement, confirmationTarget:HTMLElement, titleTarget:HTMLElement, instructionTarget:HTMLElement, qualityReasonTarget:HTMLElement, attitudeTarget:HTMLElement, headingTarget:HTMLElement, connectButtonTarget:HTMLButtonElement, actionButtonTarget:HTMLButtonElement, cancelButtonTarget:HTMLButtonElement, confirmedTarget:HTMLInputElement, progressTarget:HTMLProgressElement, resultTarget:HTMLElement}} Bindings */
+import { BELLY_MOUNT, NATIVE_MOUNT, mountedReference } from "imu_mount"
+/** @typedef {{deviceValue:string, kindValue:string, flightValue:string, mountProfileValue:string, sceneTarget:HTMLElement, sceneLabelTarget:HTMLElement, sceneHintTarget:HTMLElement, visualTarget:HTMLElement, stepLabelTarget:HTMLElement, holdTarget:HTMLElement, holdRingTarget:SVGCircleElement, countdownTarget:HTMLElement, confirmationTarget:HTMLElement, titleTarget:HTMLElement, instructionTarget:HTMLElement, qualityReasonTarget:HTMLElement, attitudeTarget:HTMLElement, headingTarget:HTMLElement, connectButtonTarget:HTMLButtonElement, actionButtonTarget:HTMLButtonElement, cancelButtonTarget:HTMLButtonElement, confirmedTarget:HTMLInputElement, progressTarget:HTMLProgressElement, resultTarget:HTMLElement}} Bindings */
 const Base = /** @type {new (c:import('@hotwired/stimulus').Context) => Controller & Bindings} */ (/** @type {unknown} */ (Controller))
 export default class extends Base {
   static targets = ["scene", "sceneLabel", "sceneHint", "visual", "stepLabel", "hold", "holdRing", "countdown", "confirmation", "title", "instruction", "qualityReason", "attitude", "heading", "connectButton", "actionButton", "cancelButton", "confirmed", "progress", "result"]
-  static values = { device: String, kind: String, flight: String }
+  static values = { device: String, kind: String, flight: String, mountProfile: { type: String, default: "sensor_native" } }
+  get referenceFace() { return this.mountProfileValue === BELLY_MOUNT ? "z-" : "z+" }
+  get levelInstruction() { return this.mountProfileValue === BELLY_MOUNT ? "Place the enclosure level in its flight mounting, with +Z toward the ground and +Y forward." : "Place the enclosure on a level reference." }
   health = new ImuHealth()
   faces = new SixFaceCapture()
   /** @type {import('../lib/imu_health').ReferenceSample[]} */ samples = []
@@ -179,8 +182,8 @@ export default class extends Base {
     this.faceIndex = 0; this.faceCompletedUntil = 0; this.checkPassed = false
     this.uuid = ""; this.progressTarget.value = 0; this.actionButtonTarget.textContent = "Start"
     this.titleTarget.textContent = this.kindValue === "calibration" ? "IMU calibration" : "IMU preflight check"
-    this.instructionTarget.textContent = this.kindValue === "calibration" ? "Orient each marked sensor axis upward in sequence. Hold each orientation for 3 seconds within the displayed tolerance." : "Place the enclosure on a level reference and keep it still for 15 seconds."
-    this.scene?.resetTargets(); this.scene?.setMode("z+")
+    this.instructionTarget.textContent = this.kindValue === "calibration" ? "Orient each marked sensor axis upward in sequence. Hold each orientation for 3 seconds within the displayed tolerance." : `${this.levelInstruction} Keep it still for 15 seconds.`
+    this.scene?.resetTargets(); this.scene?.setMode(this.referenceFace)
   }
   advance() {
     const issue = this.connectionIssue(Date.now())
@@ -191,8 +194,8 @@ export default class extends Base {
       if (this.rotation.some(v => v < 0.5)) return
       this.phase = "level"; this.actionButtonTarget.textContent = "Measure reference"
       this.titleTarget.textContent = "Return to the level reference"
-      this.instructionTarget.textContent = "Slow rotations complete. Place the enclosure level in both directions, then keep it still."
-      this.scene?.setMode("z+"); return
+      this.instructionTarget.textContent = `Slow rotations complete. ${this.levelInstruction} Keep it still.`
+      this.scene?.setMode(this.referenceFace); return
     }
     if (["level", "reference_blocked"].includes(this.phase) || (this.phase === "result" && !this.checkPassed) || (this.phase === "ready" && this.kindValue === "preflight")) {
       this.capture = new ReferenceCapture(Date.now())
@@ -245,14 +248,15 @@ export default class extends Base {
       this.actionButtonTarget.disabled = !s || !this.confirmedTarget.checked || this.rotation.some(v => v < 0.5)
       this.progressTarget.value = this.rotation.reduce((sum, v) => sum + Math.min(1, v / 0.5), 0) / 3 * 100
     } else if (this.phase === "measuring") {
-      const issue = s ? referenceIssue(s) : "Waiting for fresh sensor and quality reports"
+      const installed = s && mountedReference(s, this.mountProfileValue || NATIVE_MOUNT)
+      const issue = installed ? referenceIssue(installed) : "Waiting for fresh sensor and quality reports"
       this.titleTarget.textContent = "Measuring the static reference"
       this.instructionTarget.textContent = issue ? `Recording the diagnostic. ${issue}` : "Keep still. Measuring acceleration, rotation, level and magnetic stability."
       this.capture.add(s, now)
       this.samples = this.capture.samples
       const elapsed = this.capture.elapsed
       this.progressTarget.value = Math.min(100, elapsed / 150)
-      this.resultTarget.textContent = `${(elapsed / 1000).toFixed(1)} / 15.0 s` + (s ? ` · ${s.roll.toFixed(2)}° roll · ${s.pitch.toFixed(2)}° pitch · ${(Math.hypot(...s.accel) / 9.80665).toFixed(3)} g` : "")
+      this.resultTarget.textContent = `${(elapsed / 1000).toFixed(1)} / 15.0 s` + (installed ? ` · ${installed.roll.toFixed(2)}° roll · ${installed.pitch.toFixed(2)}° pitch · ${(Math.hypot(...installed.accel) / 9.80665).toFixed(3)} g` : "")
       if (this.capture.done) void this.save()
       else if (this.capture.expired(now)) {
         this.phase = "reference_blocked"
@@ -298,9 +302,9 @@ export default class extends Base {
       const elapsed = this.samples.length > 1 ? (this.samples[this.samples.length - 1].t - this.samples[0].t) / 1000 : 0
       ratio = Math.min(1, elapsed / 15); remaining = Math.max(0, 15 - elapsed)
       label = this.phase === "saving" ? "Saving the reference" : elapsed > 0 ? "Keep the enclosure stationary" : "Place the enclosure level"
-      hint = this.phase === "level" ? "Check both directions, remove the level, then start measuring." : this.instructionTarget.textContent || ""
+      hint = this.phase === "level" ? `${this.levelInstruction} Check both directions, then remove the level.` : this.instructionTarget.textContent || ""
       state = elapsed > 0 ? "holding" : state
-      if (this.phase === "measuring" && this.samples.some(sample => referenceIssue(sample))) {
+      if (this.phase === "measuring" && this.samples.some(sample => { const installed = mountedReference(sample, this.mountProfileValue || NATIVE_MOUNT); return !installed || referenceIssue(installed) })) {
         state = "degraded"; label = "Recording the diagnostic"
       }
     } else if (this.phase === "result") {
@@ -315,7 +319,7 @@ export default class extends Base {
       label = "Waiting for live orientation"; hint = "The solid model is hidden until fresh orientation measurements arrive."
     }
     const rotating = this.phase === "rotate"
-    this.scene?.setMode(rotating ? "rotate" : this.phase === "faces" ? face : "z+")
+    this.scene?.setMode(rotating ? "rotate" : this.phase === "faces" ? face : this.referenceFace)
     this.scene?.setReading(live ? attitude.quaternion : null, state === "holding", state === "complete")
     this.visualTarget.dataset.state = state
     this.visualTarget.dataset.motion = rotating ? "figure-eight" : "face"
@@ -348,7 +352,7 @@ export default class extends Base {
     const generation = this.health.generation
     const operation = this.uuid
     const body = { uuid: this.uuid, expected_device_id: this.deviceValue, device_id: q.deviceId, boot_id: q.bootId, imu_epoch: q.imuEpoch, firmware: q.firmware,
-      kind: this.kindValue, flight_id: this.flightValue || null, samples: this.samples, faces: this.faces.completed,
+      kind: this.kindValue, flight_id: this.flightValue || null, mount_profile: this.mountProfileValue || NATIVE_MOUNT, samples: this.samples, faces: this.faces.completed,
       ground_reference_confirmed: this.confirmedTarget.checked, figure_eight_confirmed: this.rotation.every(v => v >= 0.5) }
     try {
       const response = await fetch("/api/v1/imu-checks", { method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "" }, body: JSON.stringify(body) })

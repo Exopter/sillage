@@ -1,4 +1,4 @@
-/** @typedef {{heading: number|null, roll: number|null, pitch: number|null, airspeed: number|null, altitude: number|null, verticalSpeed: number|null, gLoad: number|null, accel?: number[]|null}} InstrumentData */
+/** @typedef {{heading: number|null, roll: number|null, pitch: number|null, airspeed: number|null, altitude: number|null, verticalSpeed: number|null, gLoad: number|null, accel?: number[]|null, bodyFrame?: boolean}} InstrumentData */
 /** @typedef {{background: string, surface: string, sky: string, ground: string, line: string, muted: string, text: string, reference: string, caution: string, font: string}} InstrumentStyle */
 /** @type {WeakMap<HTMLCanvasElement, InstrumentStyle>} */
 const styles = new WeakMap()
@@ -56,15 +56,15 @@ export function drawSignalInstruments(ctx, width, height, data, style) {
   const top = 76, bottom = h - 48, center = (top + bottom) / 2
   drawHeading(ctx, w, data.heading, style)
   drawAttitude(ctx, side, top, w - side * 2, bottom - top, data, style)
-  drawGLoad(ctx, side + 30, bottom - 30, data.accel, style)
+  drawGLoad(ctx, side + 30, bottom - 30, data.accel, style, data.bodyFrame)
   drawTape(ctx, 14, 68, center, top + 20, bottom, data.airspeed, true, style)
   drawTape(ctx, w - 82, 68, center, top + 20, bottom, data.altitude, false, style)
   drawReadouts(ctx, w, h, data, style)
   ctx.restore()
 }
 
-/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number[]|null|undefined} acceleration @param {InstrumentStyle} s */
-function drawGLoad(ctx, x, y, acceleration, s) {
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number[]|null|undefined} acceleration @param {InstrumentStyle} s @param {boolean} [bodyFrame] */
+function drawGLoad(ctx, x, y, acceleration, s, bodyFrame = false) {
   const radius = 23
   const valid = acceleration?.length === 3 && acceleration.every(Number.isFinite)
   ctx.save()
@@ -78,9 +78,9 @@ function drawGLoad(ctx, x, y, acceleration, s) {
   ctx.moveTo(x - radius, y); ctx.lineTo(x + radius, y)
   ctx.moveTo(x, y - radius); ctx.lineTo(x, y + radius); ctx.stroke()
   if (valid) {
-    // Sensor X points right and sensor Y points up; the outer ring is 2 g.
+    // Installed FRD: right points across the display, forward points upward.
     // Clamp radially so out-of-range values preserve their direction.
-    const gx = acceleration[0] / 9.80665, gy = acceleration[1] / 9.80665
+    const gx = acceleration[bodyFrame ? 1 : 0] / 9.80665, gy = acceleration[bodyFrame ? 0 : 1] / 9.80665
     const factor = (radius - 3) / Math.max(2, Math.hypot(gx, gy))
     ctx.fillStyle = s.reference
     ctx.beginPath(); ctx.arc(x + gx * factor, y - gy * factor, 3, 0, Math.PI * 2); ctx.fill()
@@ -90,8 +90,8 @@ function drawGLoad(ctx, x, y, acceleration, s) {
     ctx.fillText("NO DATA", x, y)
   }
   ctx.textAlign = "center"; ctx.fillStyle = s.muted; ctx.font = `500 6px ${s.font}`
-  ctx.fillText("Y", x, y - radius + 5)
-  ctx.fillText("X", x + radius - 5, y - 5)
+  ctx.fillText(bodyFrame ? "F" : "Y", x, y - radius + 5)
+  ctx.fillText(bodyFrame ? "R" : "X", x + radius - 5, y - 5)
   ctx.fillText("2 g", x, y + radius - 4)
   ctx.restore()
 }

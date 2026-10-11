@@ -30,15 +30,16 @@ buildings load independently when configured; unavailable map data leaves the
 ## Signal ground radio
 
 Open `/signal` in desktop Chrome or Edge, start a session, then select
-**Connect ground radio**. Choose the Holybro USB radio, not the recorder's USB
+**Connect radio** in the header. Choose the Holybro USB radio, not the recorder's USB
 port. Web Serial uses 57,600 baud and requires HTTPS or localhost. Both radios
 must already share the same SiK configuration.
 
 The worker supports the FDR radio messages, including truncated MAVLink 2
 payloads and HIGHRES_IMU. Sensor values expire independently after 1.5 seconds.
 FDR `/55` declares native BNO085 payloads through heartbeat custom mode
-`0x46445200`. Signal preserves the received vector axes and interprets native
-attitude with sensor +X forward for its instruments. Mounting interpretation
+`0x46445200`. Signal preserves received samples and derives instrument axes from the assembly
+mount profile. Native axes remain the default; each recorded interpretation
+retains its profile for historical replay. Mounting interpretation
 belongs here; it must not rotate the firmware's authoritative SD/radio samples.
 Unmarked legacy radio traffic retains its existing interpretation.
 The GPS panel uses the shared Cesium engine for live satellite imagery, terrain,
@@ -173,8 +174,8 @@ recording variants are retired. For an external historical recording, use the
 archive decoder command in the FDR repository README; existing source files are
 preserved.
 
-From `fdr_integrated/54`, microSD and radio share body FRD axes and magnetic NED
-attitude (sensor +Y forward). The IMU payload frame field is retained in sample
+`fdr_integrated/54` used body FRD axes and magnetic NED attitude (sensor +Y
+forward). From `/55`, microSD and radio retain native sensor axes. The IMU payload frame field is retained in sample
 readings as `frame_id` and `coordinate_frame`: `0` is `sensor_native`, `1` is
 `body_frd_ned`; unknown IDs remain unknown. Import preserves stored values
 without another rotation. Historical files and previously imported samples

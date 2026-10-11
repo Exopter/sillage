@@ -119,7 +119,7 @@ module Hangar
 
     def assembly_params
       params.require(:assembly).permit(
-        :name, :parent_id, :assembly_type, :fdr_functional_configuration_id, :assembly_method, :serviceability_state, :notes
+        :name, :parent_id, :assembly_type, :fdr_functional_configuration_id, :assembly_method, :serviceability_state, :notes, :imu_mount_profile
       )
     end
 

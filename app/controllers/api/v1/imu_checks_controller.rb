@@ -9,7 +9,7 @@ module Api
         check = @flight && @flight.imu_checks.where(embedded_controller: @fdr, kind: "preflight",
           configuration_digest: ImuCheck.configuration_digest_for(@fdr), firmware:).recent.first
         check = nil if check && (!reference || check.calibration_id != reference.id)
-        render json: { reference: reference && payload(reference), preflight: check && payload(check) }
+        render json: { reference: reference && payload(reference), preflight: check && payload(check), mount_profile: @fdr.imu_mount_profile }
       end
 
       def create
@@ -25,7 +25,11 @@ module Api
           return render json: payload(existing)
         end
         samples = params[:samples]&.as_json
-        summary = Imu::Assessment.call(samples, firmware:)
+        mount_profile = @fdr.imu_mount_profile
+        unless (params[:mount_profile].presence || Imu::Mount::NATIVE) == mount_profile
+          return render_error("IMU mounting changed. Reload the page and start a new check.")
+        end
+        summary = Imu::Assessment.call(samples, firmware:, mount_profile:)
         reference = ImuCheck.reference_for(@fdr, firmware:)
         if kind == "calibration"
           faces = params[:faces]&.as_json

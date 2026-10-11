@@ -1,12 +1,13 @@
 import assert from "node:assert/strict"
 import {readFileSync} from "node:fs"
+const mountURL = new URL("../../app/javascript/lib/imu_mount.js", import.meta.url).href
 const connectionURL = new URL("../../app/javascript/lib/aircraft_connection.js", import.meta.url).href
 const source = readFileSync(new URL("../../app/javascript/controllers/signal_workspace_controller.js", import.meta.url), "utf8")
   .replace(/^import .*$/gm, "")
   .replace(/const TypedController = .*$/m, "const TypedController = class {}")
 import {ImuHealth} from "../../app/javascript/lib/imu_health.js"
 import {SignalTelemetry} from "../../app/javascript/lib/signal_telemetry.js"
-globalThis.window = { location: {href: "https://example.com/signal"} }
+globalThis.window = { dispatchEvent() {}, location: {href: "https://example.com/signal"} }
 globalThis.history = {state: null}
 const requests = []
 const metadata = []
@@ -20,7 +21,7 @@ globalThis.signalLifecycleDependencies = {
   SignalMap: class { start() {} }
 }
 const prelude = "const {ImuHealth, SignalTelemetry, openDatabase, readMetadata, writeMetadata, registerUsbPageRelease, SignalMap} = globalThis.signalLifecycleDependencies;\n"
-const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n` + prelude + source).toString("base64")}`)
+const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountedReference} from "${mountURL}";\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n` + prelude + source).toString("base64")}`)
 const tick = () => new Promise((resolve) => setImmediate(resolve))
 let closed = 0
 const database = {close() {closed += 1}}
@@ -62,7 +63,7 @@ async function resume({review = false, disposition = null, endedAt = null} = {})
   let reconnected = 0, prompted = 0
   const restored = new Workspace()
   Object.assign(restored, {
-    sessionValue: "session", reviewValue: review, connectButtonTarget: {},
+    sessionValue: "session", reviewValue: review,
     restoreLayout() {}, refreshTelemetry() {}, prepareLocalStorage: async () => {}, flushOutbox: async () => {},
     autoReconnect: async () => {reconnected++}, requestExit() {prompted++}
   })

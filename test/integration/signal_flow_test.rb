@@ -99,6 +99,13 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     get signal_path(session: uuid)
     assert_response :success
     assert_select "strong", text: "Unassigned session"
+    assert_select ".sillage-topbar button[data-controller='signal-connection']", count: 1
+    assert_select ".signal-command-actions button", count: 2
+    assert_select "button[aria-controls='sillage-room-rail']", count: 1
+    assert_select "button[aria-controls='signal-telemetry-readings']", count: 1
+    assert_select "#signal-telemetry-readings .signal-telemetry-strip", count: 2
+    assert_select "button", text: "Full screen", count: 0
+    assert_select "button", text: "Reset layout", count: 0
     assert_select "dialog button", text: "Save as new flight"
     assert_select "dialog button", text: "Discard"
     assert_select "a", text: "Run preflight check", count: 0

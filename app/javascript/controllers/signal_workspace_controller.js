@@ -3,6 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection, observeRecorderConnection } from "aircraft_connection"
 import { clamp, signalLayoutPreset, parseSignalLayout } from "signal_layout"
 import { ImuHealth } from "imu_health"
+import { BELLY_MOUNT, NATIVE_MOUNT, interpretImu } from "imu_mount"
 import { SignalTelemetry, groundStationHeartbeat } from "signal_telemetry"
 import { SignalMap } from "signal_map"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
@@ -15,7 +16,6 @@ const CHART_WINDOW_MS = 30_000
 /**
  * Stimulus accessors are installed at runtime.
  * @typedef {Object} StimulusBindings
- * @property {HTMLElement} presentationTarget
  * @property {HTMLElement} boardTarget
  * @property {HTMLElement} widgetTarget
  * @property {HTMLElement[]} widgetTargets
@@ -28,15 +28,20 @@ const CHART_WINDOW_MS = 30_000
  * @property {string} cesiumBaseUrlValue
  * @property {HTMLCanvasElement} instrumentCanvasTarget
  * @property {HTMLCanvasElement} chartCanvasTarget
- * @property {HTMLButtonElement} connectButtonTarget
  * @property {HTMLElement} radioStatusTarget
  * @property {HTMLElement} recorderStatusTarget
  * @property {HTMLElement} cloudStatusTarget
  * @property {HTMLElement} qualityAttitudeTarget
  * @property {HTMLElement} qualityHeadingTarget
- * @property {HTMLElement} qualityReasonTarget
+ * @property {HTMLElement} attitudeDetailTarget
+ * @property {HTMLElement} headingDetailTarget
+ * @property {HTMLElement} preflightDetailTarget
  * @property {HTMLElement} preflightStatusTarget
  * @property {string} flightIdValue
+ * @property {Record<string,string>} mountProfilesValue
+ * @property {HTMLElement} mountLabelTarget
+ * @property {boolean} hasMountLabelTarget
+ * @property {HTMLElement[]} sensorAxesTargets
  * @property {HTMLElement} warningTarget
  * @property {HTMLElement} headingTarget
  * @property {HTMLElement} airspeedTarget
@@ -142,9 +147,12 @@ export default class extends TypedController {
   /** @type {unknown} */ pageHistoryState = null
   /** @type {"save"|"discard"|null} */ completionDisposition = null
   openingPort = false
+  choosingPort = false
   layoutStorageKey = ""
   /** @type {Map<string, {width:number,height:number}>} */
   miniSizes = new Map()
+  /** @type {Record<string,string>} */
+  mountProfileOverrides = {}
 
   boundOnline = () => { this.flushOutbox() }
   boundOffline = () => { this.refreshCloudStatus() }
@@ -166,6 +174,7 @@ export default class extends TypedController {
     void this.queuePendingBatch().catch(() => {})
   }
   boundResize = () => this.reflowLayout()
+  boundRadioToggle = () => { void this.connectStation() }
   boundSerialConnect = async () => { await this.stopSerialPromise; this.autoReconnect() }
   boundSerialDisconnect = (/** @type {Event} */ event) => {
     if (event.target !== this.port) return
@@ -179,13 +188,13 @@ export default class extends TypedController {
   }
 
   static targets = [
-    "presentation", "board", "widget", "mapCanvas", "instrumentCanvas", "chartCanvas",
+    "board", "widget", "mapCanvas", "instrumentCanvas", "chartCanvas",
     "mapScene", "mapCredits", "mapStatus", "mapFollow",
-    "connectButton", "radioStatus", "recorderStatus", "cloudStatus", "warning",
+    "radioStatus", "recorderStatus", "cloudStatus", "warning",
     "heading", "airspeed", "altitude", "verticalSpeed", "glide", "dataStatus",
-    "qualityAttitude", "qualityHeading", "qualityReason", "preflightStatus",
+    "qualityAttitude", "qualityHeading", "attitudeDetail", "headingDetail", "preflightDetail", "preflightStatus",
     "exitDialog", "exitError", "exitStatus", "flightName", "exitAction",
-    "parserStatus", "aircraftMarker", "aircraftLabel", "latestEvent", "sensorValue", "streamBadge"
+    "parserStatus", "aircraftMarker", "aircraftLabel", "latestEvent", "sensorValue", "streamBadge", "mountLabel", "sensorAxes"
   ]
 
   static values = {
@@ -194,6 +203,7 @@ export default class extends TypedController {
     completed: Boolean,
     review: Boolean,
     session: String,
+    mountProfiles: Object,
     flightCode: String,
     flightId: String,
     batchUrl: String,
@@ -253,7 +263,7 @@ export default class extends TypedController {
     } catch (caught) {
       if (generation !== this.connectionGeneration) return
       const error = caught instanceof Error ? caught : new Error(String(caught))
-      this.connectButtonTarget.disabled = true
+      this.renderRadioControl()
       this.showWarning(`Local storage unavailable: ${error.message}`)
       return
     }
@@ -261,6 +271,7 @@ export default class extends TypedController {
     window.addEventListener("offline", this.boundOffline)
     window.addEventListener("beforeunload", this.boundBeforeUnload)
     window.addEventListener("resize", this.boundResize)
+    window.addEventListener("sillage:ground-radio-toggle", this.boundRadioToggle)
     document.addEventListener("click", this.boundLinkClick, true)
     document.addEventListener("submit", this.boundSubmit, true)
     document.addEventListener("turbo:before-visit", this.boundVisit)
@@ -277,7 +288,6 @@ export default class extends TypedController {
     this.batchTimer = window.setInterval(() => {
       if (!this.ending) this.queuePendingBatch().then(() => this.flushOutbox()).catch((error) => this.showWarning(`Local storage failed: ${error.message}. Keep this page open and free disk space.`))
     }, BATCH_INTERVAL_MS)
-    this.connectButtonTarget.disabled = this.ended
     this.renderTimer = window.setInterval(() => this.refreshTelemetry(), 100)
     this.refreshTelemetry()
     await this.prepareLocalStorage()
@@ -307,6 +317,8 @@ export default class extends TypedController {
     window.removeEventListener("offline", this.boundOffline)
     window.removeEventListener("beforeunload", this.boundBeforeUnload)
     window.removeEventListener("resize", this.boundResize)
+    window.removeEventListener("sillage:ground-radio-toggle", this.boundRadioToggle)
+    window.clearTimeout(this.resizeTimer)
     document.removeEventListener("click", this.boundLinkClick, true)
     document.removeEventListener("submit", this.boundSubmit, true)
     document.removeEventListener("turbo:before-visit", this.boundVisit)
@@ -339,6 +351,8 @@ export default class extends TypedController {
   }
 
   async connectStation() {
+    const generation = this.connectionGeneration
+    if (!generation || !this.db || this.ended || this.ending || this.openingPort || this.choosingPort || this.stopSerialPromise) return
     if (!navigator.serial) {
       this.showWarning("Web Serial is not available. Use Chrome or Edge on desktop over HTTPS.")
       return
@@ -348,13 +362,18 @@ export default class extends TypedController {
       return
     }
 
+    this.choosingPort = true
+    this.renderRadioControl()
     try {
       const authorized = (await navigator.serial.getPorts()).filter(isGroundRadio)
       const port = authorized.length === 1 ? authorized[0] : await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x0403 }, { usbVendorId: 0x10c4 }] })
-      await this.acquirePort(port)
+      if (generation === this.connectionGeneration) await this.acquirePort(port)
     } catch (caught) {
       const error = caught instanceof Error ? caught : new Error(String(caught))
       if (error.name !== "NotFoundError") this.showWarning(`Ground radio connection failed: ${error.message}`)
+    } finally {
+      this.choosingPort = false
+      this.renderRadioControl()
     }
   }
 
@@ -363,6 +382,7 @@ export default class extends TypedController {
     const generation = this.connectionGeneration
     if (!generation || this.port || this.openingPort || this.ending || this.ended) return
     this.openingPort = true
+    this.renderRadioControl()
     const lockName = `sillage-signal-port:${port.getInfo().usbVendorId || "serial"}:${port.getInfo().usbProductId || "port"}`
     navigator.locks.request(lockName, { ifAvailable: true }, async (lock) => {
       if (generation !== this.connectionGeneration || this.ending || this.ended) {
@@ -413,9 +433,7 @@ export default class extends TypedController {
     this.worker.onmessage = ({ data }) => this.handleWorkerMessage(data)
     this.worker.onerror = () => this.showWarning("Telemetry decoding stopped. Reconnect the ground radio.")
     this.worker.postMessage({ type: "init-capture", filename: `${this.flightCodeValue}-${this.sessionValue}.mavcap` })
-    const label = this.connectButtonTarget.querySelector("span:last-child") || this.connectButtonTarget
-    label.textContent = "Disconnect ground radio"
-    this.connectButtonTarget.setAttribute("aria-label", "Disconnect ground radio")
+    this.renderRadioControl()
     this.radioStatusTarget.textContent = "Connected · waiting for MAVLink"
     this.updateGroundRadioState("connected")
     await this.acquireWakeLock()
@@ -470,10 +488,12 @@ export default class extends TypedController {
     if (this.stopSerialPromise) return this.stopSerialPromise
 
     this.stopSerialPromise = this.performStopSerial()
+    this.renderRadioControl()
     try {
       await this.stopSerialPromise
     } finally {
       this.stopSerialPromise = null
+      this.renderRadioControl()
     }
   }
 
@@ -496,9 +516,7 @@ export default class extends TypedController {
     this.openingPort = false
     this.releasePortLock?.()
     this.releasePortLock = null
-    const label = this.connectButtonTarget.querySelector("span:last-child") || this.connectButtonTarget
-    label.textContent = "Connect ground radio"
-    this.connectButtonTarget.setAttribute("aria-label", "Connect ground radio")
+    this.renderRadioControl()
     this.radioStatusTarget.textContent = "Not connected"
     this.imuHealth = new ImuHealth()
     this.preflight = null; this.preflightInvalidated = false; this.qualityContextKey = ""; this.qualitySignature = ""; this.qualityContextAt = 0
@@ -553,7 +571,7 @@ export default class extends TypedController {
     this.imuHealth.apply(decoded, now)
     if (decoded.name === "imu_quality") observeRecorderConnection("ground-radio", decoded, now)
     if (this.imuHealth.generation !== generation) this.measurements = new SignalTelemetry()
-    this.measurements.apply(decoded, now)
+    this.measurements.apply(interpretImu(decoded, this.activeMountProfile), now)
     this.telemetry = this.measurements.snapshot(now)
     const recordedAt = new Date(Number(BigInt(frame.receivedAtUs) / 1000n)).toISOString()
     if (decoded.name === "unknown") return
@@ -572,6 +590,7 @@ export default class extends TypedController {
   }
 
   refreshTelemetry() {
+    this.renderRadioControl()
     const now = Date.now()
     this.telemetry = this.measurements.snapshot(now)
     this.frameTimes = this.frameTimes.filter((time) => now - time < 1_000)
@@ -597,6 +616,18 @@ export default class extends TypedController {
     this.drawAll()
   }
 
+  renderRadioControl() {
+    const connected = Boolean(this.port && !this.openingPort)
+    const busy = Boolean(this.choosingPort || this.openingPort || this.stopSerialPromise)
+    const available = Boolean(this.db && this.connectionGeneration && !this.ended && !this.ending)
+    const live = Boolean(connected && this.lastFrameAt && Date.now() - this.lastFrameAt < 1_500)
+    const label = this.ended ? "Session ended" : this.stopSerialPromise ? "Disconnecting" : busy ? "Connecting" : connected ? "Connected" : "Connect radio"
+    const description = connected
+      ? `Disconnect ground radio. ${live ? "Receiving telemetry." : "No telemetry received."}`
+      : this.ended ? "Session ended" : "Connect ground radio"
+    window.dispatchEvent(new CustomEvent("sillage:ground-radio-state", {detail: {connected, busy, available, label, description}}))
+  }
+
   /** @param {boolean} live @param {number} now */
   renderRadioMetrics(live, now) {
     // SiK can repeat RF statistics after Air telemetry is lost.
@@ -607,7 +638,14 @@ export default class extends TypedController {
 
   /** @param {string} recordedAt @param {string} sensorType @param {import("../types/signal").DecodedMessage} readings @returns {import("../types/signal").SignalSample} */
   sensorSample(recordedAt, sensorType, readings) {
-    return { kind: "sensor", sensor_type: sensorType, recorded_at: recordedAt, readings }
+    const source = this.imuHealth.quality?.deviceId
+    return { kind: "sensor", sensor_type: sensorType, recorded_at: recordedAt,
+      readings: source ? {...readings, mount_profile: this.activeMountProfile, device_id: source} : readings }
+  }
+
+  get activeMountProfile() {
+    const id = this.imuHealth.quality?.deviceId
+    return id ? this.mountProfileOverrides[id] || this.mountProfilesValue?.[id] || NATIVE_MOUNT : NATIVE_MOUNT
   }
 
   /** @param {boolean} live @param {number} now */
@@ -629,6 +667,10 @@ export default class extends TypedController {
 
   renderValues() {
     this.renderQuality()
+    if (this.hasMountLabelTarget) this.mountLabelTarget.textContent = this.imuHealth.quality
+      ? this.activeMountProfile === BELLY_MOUNT ? "Wingsuit belly pocket · MAG" : "Native sensor axes · MAG"
+      : "Waiting for recorder mounting"
+    for (const target of this.sensorAxesTargets || []) target.textContent = this.telemetry.bodyFrame ? "F/R/D" : "X/Y/Z"
     this.headingTarget.textContent = formatNumber(this.telemetry.heading, 0, 3)
     this.airspeedTarget.textContent = formatNumber(this.telemetry.airspeed, 1)
     this.altitudeTarget.textContent = formatNumber(this.telemetry.altitude, 0)
@@ -696,7 +738,6 @@ export default class extends TypedController {
     this.qualityAttitudeTarget.dataset.state = status.attitude
     this.qualityHeadingTarget.textContent = status.heading
     this.qualityHeadingTarget.dataset.state = status.heading
-    this.qualityReasonTarget.title = status.reason
     const key = q ? `${q.deviceId}/${q.bootId}/${q.imuEpoch}/${q.firmware}` : ""
     if (q && !this.qualityContextLoading && (key !== this.qualityContextKey || now - this.qualityContextAt > 30000)) void this.loadQualityContext(key)
     const check = this.preflight
@@ -706,6 +747,31 @@ export default class extends TypedController {
     const hasWarning = warnings.length > 0 || (check?.summary?.warnings?.length || 0) > 0
     this.preflightStatusTarget.textContent = !check ? "Not checked" : check.invalidated_at || this.preflightInvalidated || !sameBoot ? "Recheck required" : check.outcome === "passed" ? hasWarning ? "Passed with warning" : "Passed for this boot" : "Check failed"
     this.preflightStatusTarget.dataset.state = !check ? "unknown" : check.invalidated_at || this.preflightInvalidated || !sameBoot || check.outcome !== "passed" ? "degraded" : hasWarning ? "warning" : "consistent"
+    let preflightDetail
+    if (!check) {
+      preflightDetail = !this.flightIdValue ? "No flight is assigned to this session. A preflight check belongs to a flight."
+        : this.qualityContextLoading ? "Loading the flight preflight check."
+        : "No preflight check is available for this flight and recorder. Select the status to run a check."
+    } else if (check.invalidated_at || this.preflightInvalidated || !sameBoot) {
+      preflightDetail = !q || status.issues.includes("quality_unavailable") ? "Live IMU quality is unavailable. Reconnect the recorder and run a new preflight check."
+        : !sameBoot ? "The recorder boot, IMU epoch or firmware no longer matches the saved check. Run a new preflight check."
+        : status.issues.length ? `Recheck required: ${status.reason}.`
+        : "A previous live check invalidated this preflight. Run a new preflight check."
+    } else if (check.outcome !== "passed") {
+      preflightDetail = "The latest preflight check failed. Review its results and run a new check."
+    } else {
+      const advisories = [...new Set([...warnings, ...(check.summary?.warnings || [])])]
+      preflightDetail = "The check passed for the current recorder boot, IMU epoch and firmware."
+      if (advisories.length) preflightDetail += ` Warning: ${advisories.join(" · ")}.`
+    }
+    const details = /** @type {Array<[HTMLElement, string]>} */ ([
+      [this.attitudeDetailTarget, `Roll and pitch consistency.\n${status.attitudeReason}`],
+      [this.headingDetailTarget, `Magnetic heading confidence.\n${status.headingReason}`],
+      [this.preflightDetailTarget, preflightDetail]
+    ])
+    for (const [target, detail] of details) {
+      if (target.textContent !== detail) target.textContent = detail
+    }
     const signature = `${key}:${status.issues.join(",")}:${warnings.join(",")}:${this.preflightInvalidated}`
     if (signature !== this.qualitySignature && q && this.db && !this.ended && !this.ending) {
       this.qualitySignature = signature
@@ -725,6 +791,10 @@ export default class extends TypedController {
       const locallyInvalidated = result?.preflight && await readMetadata(this.database, `imu-check:${result.preflight.id}:invalidated`)
       const current = this.imuHealth.quality
       if (connection !== this.connectionGeneration || !current || `${current.deviceId}/${current.bootId}/${current.imuEpoch}/${current.firmware}` !== key) return
+      if (result?.mount_profile && result.mount_profile !== this.activeMountProfile) {
+        this.mountProfileOverrides[current.deviceId] = result.mount_profile
+        this.measurements = new SignalTelemetry()
+      }
       if (result?.preflight?.id !== this.preflight?.id) this.preflightInvalidated = false
       if (locallyInvalidated) this.preflightInvalidated = true
       this.preflight = result?.preflight || null
@@ -853,7 +923,7 @@ export default class extends TypedController {
       this.ended = true
       this.completionDisposition = disposition
       this.returnHomeAfterSync = true
-      this.connectButtonTarget.disabled = true
+      this.renderRadioControl()
       await this.flushOutbox()
       this.dataStatusTarget.textContent = "Session ended locally"
     } catch (caught) {
@@ -960,20 +1030,6 @@ export default class extends TypedController {
     this.warningTarget.textContent = message
   }
 
-  async toggleFullscreen() {
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen()
-      } else if (document.fullscreenEnabled && this.presentationTarget.requestFullscreen) {
-        await this.presentationTarget.requestFullscreen()
-      } else {
-        this.showWarning("Full screen is blocked by this browser. Use the browser full-screen shortcut for projection.")
-      }
-    } catch (_) {
-      this.showWarning("Full screen is blocked by this browser. Use the browser full-screen shortcut for projection.")
-    }
-  }
-
   /** @param {MouseEvent} event */
   setMode(event) {
     const widget = event.currentTarget instanceof Element ? event.currentTarget.closest("[data-widget]") : null
@@ -1003,14 +1059,6 @@ export default class extends TypedController {
     this.updateModeButtons()
     this.saveLayout()
     this.drawAll()
-  }
-
-  resetLayout() {
-    this.miniSizes.clear()
-    this.widgetTargets.forEach((widget) => { widget.removeAttribute("style") })
-    this.widgetTargets.forEach((widget) => { widget.dataset.mode = widget.dataset.widget === "map" ? "large" : "mini" })
-    this.applyPreset("map")
-    this.saveLayout()
   }
 
   /** @param {MouseEvent} event */

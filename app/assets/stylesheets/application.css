@@ -3357,3 +3357,47 @@ body.flight-analysis-theme,
     flex-direction: column;
   }
 }
+
+/* Shared panel disclosure: the control remains visible when its panel closes. */
+.sillage-rail[hidden] { display: none; }
+.kit-icon-button.panel-disclosure { width: 28px; height: 32px; }
+.panel-disclosure[aria-expanded="true"] > svg { transform: rotate(180deg); }
+
+button.aircraft-connection-pill { background: transparent; cursor: pointer; }
+button.aircraft-connection-pill::before { display: none; }
+button.aircraft-connection-pill:disabled { cursor: default; opacity: .55; }
+
+/* Shared contextual status help, using the existing compact information panel. */
+.workspace-help-trigger {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: help;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 4px;
+}
+.workspace-help-trigger:hover { color: var(--ex-aqua-500); }
+.workspace-help-trigger:focus-visible { outline: 2px solid var(--ex-aqua-500); outline-offset: 3px; }
+.workspace-help-tooltip {
+  position: fixed;
+  inset: auto;
+  width: min(320px, calc(100vw - 16px));
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ex-graphite-600);
+  border-radius: var(--radius);
+  background: var(--ex-carbon-900);
+  box-shadow: var(--shadow-sm);
+  color: var(--ex-vapor-50);
+  font: 500 12px/1.5 var(--font-data);
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: normal;
+}
+.workspace-help-tooltip > span { white-space: pre-line; }
+.workspace-help-tooltip b { display: block; margin-bottom: 4px; font-weight: 600; }

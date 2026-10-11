@@ -1,0 +1,13 @@
+<div data-controller="tooltip"
+     data-action="mouseenter->tooltip#show mouseleave->tooltip#leave focusin->tooltip#show focusout->tooltip#blur keydown.esc@window->tooltip#hide resize@window->tooltip#position scroll@window->tooltip#position">
+  <button type="button" class="workspace-help-trigger" data-tooltip-target="trigger" data-action="tooltip#show" aria-describedby="<%= id %>"><%= label %></button>
+  <% if local_assigns[:href] %>
+    <%= link_to href, aria: { label: "Run preflight check" } do %><strong data-signal-workspace-target="<%= status_target %>" data-state="unknown"><%= initial_status %></strong><% end %>
+  <% else %>
+    <strong data-signal-workspace-target="<%= status_target %>" data-state="unknown"><%= initial_status %></strong>
+  <% end %>
+  <div id="<%= id %>" class="workspace-help-tooltip" role="tooltip" popover="manual" data-tooltip-target="tip">
+    <b><%= label %></b>
+    <span data-signal-workspace-target="<%= detail_target %>"><%= initial_detail %></span>
+  </div>
+</div>

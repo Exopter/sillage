@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import {readFile} from "node:fs/promises"
+const mountURL = new URL("../../app/javascript/lib/imu_mount.js", import.meta.url).href
 const connectionURL = new URL("../../app/javascript/lib/aircraft_connection.js", import.meta.url).href
 const source = (await readFile(new URL("../../app/javascript/controllers/signal_workspace_controller.js", import.meta.url), "utf8"))
   .replace(/^import .*$/gm, "")
@@ -8,9 +9,9 @@ const healthURL = new URL("../../app/javascript/lib/imu_health.js", import.meta.
 const telemetryURL = new URL("../../app/javascript/lib/signal_telemetry.js", import.meta.url).href
 const instrumentsURL = new URL("../../app/javascript/lib/signal_instruments.js", import.meta.url).href
 const layoutURL = new URL("../../app/javascript/lib/signal_layout.js", import.meta.url).href
-const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {ImuHealth} from "${healthURL}";\nimport {SignalTelemetry, groundStationHeartbeat} from "${telemetryURL}";\nimport {instrumentStyle} from "${instrumentsURL}";\nimport {clamp, signalLayoutPreset, parseSignalLayout} from "${layoutURL}";\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString("base64")}`)
+const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountedReference} from "${mountURL}";\nimport {ImuHealth} from "${healthURL}";\nimport {SignalTelemetry, groundStationHeartbeat} from "${telemetryURL}";\nimport {instrumentStyle} from "${instrumentsURL}";\nimport {clamp, signalLayoutPreset, parseSignalLayout} from "${layoutURL}";\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString("base64")}`)
 const view = new Workspace()
-for (const name of ["qualityAttitude", "qualityHeading", "qualityReason", "preflightStatus"]) view[`${name}Target`] = {textContent: "", dataset: {}}
+for (const name of ["qualityAttitude", "qualityHeading", "attitudeDetail", "headingDetail", "preflightDetail", "preflightStatus"]) view[`${name}Target`] = {textContent: "", dataset: {}}
 for (const name of ["radioStatus", "parserStatus", "dataStatus", "heading", "airspeed", "altitude", "verticalSpeed", "glide", "aircraftLabel"]) view[`${name}Target`] = {textContent: ""}
 view.sensorValueTargets = ["accel", "gyro", "mag", "pressure", "temperature", "gps", "gLoad"].map((sensor) => ({dataset: {sensor}, textContent: ""}))
 view.streamBadgeTargets = ["charts", "map", "instruments"].map((widget) => ({dataset: {}, textContent: "", closest: () => ({getAttribute: () => widget})}))
@@ -108,6 +109,23 @@ globalThis.window = originalRadioWindow
 Date.now = originalNow
 
 const charts = new Workspace()
+const mounted = new Workspace()
+mounted.mountProfilesValue = {"ECU-BELLY1": "wingsuit_belly_pocket_v1"}
+const orientation = Object.freeze({name: "attitude", coordinateFrame: "sensor_native", quaternion: [0,0,1,0], timeBootMs: now, rollDeg: 180, pitchDeg: 0, yawDeg: 270, rollSpeed: 1, pitchSpeed: 2, yawSpeed: 3})
+mounted.applyTelemetry({name: "imu_quality", deviceId: "ECU-BELLY1", bootId: 1, imuEpoch: 1, firmware: "fdr_integrated/58", timeBootMs: now}, frame({}))
+mounted.applyTelemetry(orientation, frame(orientation))
+assert.ok(Math.abs(mounted.telemetry.roll) < 1e-6)
+assert.equal(mounted.telemetry.heading, 0)
+assert.equal(mounted.pendingSamples.at(-1).readings.rollDeg, 180, "raw radio angles stay native")
+assert.deepEqual(mounted.pendingSamples.at(-1).readings.quaternion, [0,0,1,0])
+assert.equal(mounted.pendingSamples.at(-1).readings.mount_profile, "wingsuit_belly_pocket_v1")
+assert.equal(mounted.imuHealth.attitude, orientation, "quality checks retain the source frame")
+mounted.applyTelemetry({name: "highres_imu", coordinateFrame: "sensor_native", timeUs: "10000000", acceleration: [1,2,-9], angularVelocity: [3,4,5], magneticField: [20,30,40]}, frame({}))
+assert.deepEqual(mounted.telemetry.accel, [2,-1,-9])
+assert.equal(mounted.telemetry.bodyFrame, true)
+mounted.applyTelemetry({name: "imu_quality", deviceId: "ECU-NATIVE", bootId: 1, imuEpoch: 1, firmware: "fdr_integrated/58", timeBootMs: now}, frame({}))
+mounted.applyTelemetry(orientation, frame(orientation))
+assert.equal(mounted.telemetry.roll, 180, "a different recorder keeps its own mounting")
 for (const time of [10_000, 10_300, 11_000, 17_000, 40_000]) {
   charts.telemetry.altitude = time / 1000
   charts.pushHistory(true, time)
@@ -224,9 +242,27 @@ now+=2100; qualitySample(); view.renderQuality()
 assert.equal(view.preflightInvalidated,false)
 assert.equal(view.preflightStatusTarget.textContent,"Passed with warning")
 assert.equal(view.preflightStatusTarget.dataset.state,"warning")
-assert.match(view.qualityReasonTarget.title,/Gyroscope manufacturer status 0\/3/)
+assert.match(view.attitudeDetailTarget.textContent,/Gyroscope manufacturer status 0\/3/)
+assert.match(view.preflightDetailTarget.textContent, /Gyroscope manufacturer status 0\/3/)
+assert.doesNotMatch(view.headingDetailTarget.textContent, /Gyroscope/, "heading details do not inherit attitude advisories")
+quality.headingAccuracyDeg = 30
+now += 100; qualitySample(); view.renderQuality()
+now += 2100; qualitySample(); view.renderQuality()
+assert.match(view.headingDetailTarget.textContent, /Heading uncertainty 30.0°/)
+assert.doesNotMatch(view.attitudeDetailTarget.textContent, /Heading uncertainty/, "attitude details do not inherit heading faults")
+assert.match(view.preflightDetailTarget.textContent, /Recheck required/)
+quality.headingAccuracyDeg = 3
+view.preflightInvalidated = false
 quality.accuracy[1]=255;now+=100;qualitySample();view.renderQuality()
 assert.equal(view.preflightInvalidated,true,"unavailable gyro still invalidates preflight")
+view.preflight = null
+view.flightIdValue = ""
+view.renderQuality()
+assert.match(view.preflightDetailTarget.textContent, /No flight is assigned/)
+now += 3000
+view.renderQuality()
+assert.match(view.attitudeDetailTarget.textContent, /Quality telemetry lost/)
+assert.match(view.headingDetailTarget.textContent, /Quality telemetry lost/)
 Date.now = originalNow
 
 // Outgoing diagnostic presence must not queue writes or retain the serial lock.

@@ -27,5 +27,6 @@ pin "fdr_api", to: "lib/fdr_api.js"
 pin "recorder_identity", to: "lib/recorder_identity.js"
 
 pin "imu_health", to: "lib/imu_health.js", preload: false
+pin "imu_mount", to: "lib/imu_mount.js", preload: false
 
 pin "imu_tutorial", to: "lib/imu_tutorial.js", preload: false

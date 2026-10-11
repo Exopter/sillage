@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
+const mountURL = new URL("../../app/javascript/lib/imu_mount.js", import.meta.url).href
 const connectionURL = new URL("../../app/javascript/lib/aircraft_connection.js", import.meta.url).href
 const source = (await readFile(new URL('../../app/javascript/controllers/imu_check_controller.js', import.meta.url),'utf8'))
   .replace(/^import .*$/gm,'')
   .replace(/^const Base = .*$/m,'const Base = class {}')
 const healthURL = new URL('../../app/javascript/lib/imu_health.js',import.meta.url).href
 const identityURL = new URL('../../app/javascript/lib/recorder_identity.js',import.meta.url).href
-const {default: Guide} = await import(`data:text/javascript;base64,${Buffer.from(`import {ImuHealth, SixFaceCapture, ReferenceCapture, imuQualityLabel, FACE_NAMES, FACE_HOLD_RULES, referenceIssue} from '${healthURL}';\nimport {recorderTechnicalLabel} from '${identityURL}';\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString('base64')}`)
+const {default: Guide} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountedReference} from "${mountURL}";\nimport {ImuHealth, SixFaceCapture, ReferenceCapture, imuQualityLabel, FACE_NAMES, FACE_HOLD_RULES, referenceIssue} from '${healthURL}';\nimport {recorderTechnicalLabel} from '${identityURL}';\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString('base64')}`)
 function makeGuide() {
  const guide = new Guide()
  for(const name of ['attitude','heading','qualityReason','actionButton','title','instruction','progress','result','connectButton']) guide[`${name}Target`]={textContent:'',dataset:{},value:0}
@@ -181,5 +182,16 @@ preflight.advance()
 assert.equal(preflight.phase,'ready','the matching recorder still requires a calibration reference for preflight')
 preflight.referenceReady=true; preflight.advance()
 assert.equal(preflight.phase,'measuring')
+const belly=makeGuide()
+belly.mountProfileValue='wingsuit_belly_pocket_v1'
+belly.port={}; feed(belly); belly.confirmedTarget.checked=true
+assert.equal(belly.referenceFace,'z-')
+assert.match(belly.levelInstruction,/\+Z toward the ground and \+Y forward/)
+belly.phase='level'; belly.advance(); belly.save=async()=>{}
+belly.health.sample=()=>({t:now,roll:180,pitch:0,quaternion:[0,0,1,0],accel:[0,0,-9.80665],gyro:[0,0,0],mag:[20,0,25],accuracy:[3,0,3,3],heading_accuracy:3,quality_age:10})
+belly.tick()
+assert.match(belly.resultTarget.textContent,/0.00° roll/)
+assert.equal(belly.samples[0].roll,180,'final reference display changes without rotating captured evidence')
+assert.equal(belly.faces.completed['z-'],undefined,'the final mounting does not fabricate six-face completion')
 Date.now=originalNow
 console.log('IMU recorder identity, freshness, disconnect, save guards, diagnostic recovery and reset tests passed')

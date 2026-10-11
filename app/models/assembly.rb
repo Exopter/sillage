@@ -20,6 +20,7 @@ class Assembly < ApplicationRecord
   normalizes :serial_number, with: ->(number) { number.to_s.strip.upcase.presence }
 
   before_create :assign_exofdr_serial_number
+  before_save :record_imu_mount_change
   before_destroy :retain_exofdr_identity
 
   validates :name, presence: true, unless: :controlled_fdr?
@@ -33,6 +34,7 @@ class Assembly < ApplicationRecord
   validates :serial_number, format: { with: EXOFDR_SERIAL_PATTERN }, allow_blank: true, if: :controlled_fdr?
   validates :serial_number, presence: true, if: :controlled_fdr?, on: :update
   validates :serviceability_state, inclusion: { in: SERVICEABILITY_STATES }
+  validates :imu_mount_profile, inclusion: { in: Imu::Mount::LABELS.keys }
   validate :exofdr_serial_number_is_generated, on: :create
   validate :serial_number_is_immutable, on: :update
   validate :configuration_is_immutable, on: :update
@@ -65,11 +67,18 @@ class Assembly < ApplicationRecord
       "assembly_type" => assembly_type,
       "functional_configuration" => fdr_functional_configuration&.snapshot,
       "assembly_method" => assembly_method,
+      "imu_mount_profile" => imu_mount_profile_at(at),
+      "imu_mount_changed_at" => imu_mount_change_at(at)&.fetch("effective_at"),
       "parts" => recorded_parts.map(&:snapshot),
       "assemblies" => at ? [] : Array(tree[id]).sort_by { |child| [ child.internal_number.nil? ? 1 : 0, child.internal_number.to_s ] }.map { |child| child.snapshot(tree:) },
       # Parent assignments and mutable asset metadata have no temporal history.
       "history_limitations" => at ? [ "Subassembly membership is not recorded historically.", "Asset metadata reflects the time of capture." ] : []
-    }
+    }.tap do |configuration|
+      # Preserve reference digests for existing assemblies with no installation profile.
+      if configuration["imu_mount_changed_at"].nil? && configuration["imu_mount_profile"] == Imu::Mount::NATIVE
+        configuration.except!("imu_mount_profile", "imu_mount_changed_at")
+      end
+    end
   end
 
   def descendant_ids
@@ -109,6 +118,11 @@ class Assembly < ApplicationRecord
     controlled_fdr? ? serial_label : name
   end
 
+  def imu_mount_profile_at(time = nil)
+    return imu_mount_profile unless time
+    imu_mount_change_at(time)&.fetch("profile") || Imu::Mount::NATIVE
+  end
+
   def selection_label
     controlled_fdr? ? display_name : "#{name} · #{identity_label}"
   end
@@ -144,6 +158,16 @@ class Assembly < ApplicationRecord
   end
 
   private
+
+  def imu_mount_change_at(time)
+    return imu_mount_history.last unless time
+    imu_mount_history.reverse.find { |change| Time.iso8601(change.fetch("effective_at")) <= time }
+  end
+
+  def record_imu_mount_change
+    return unless will_save_change_to_imu_mount_profile?
+    self.imu_mount_history = imu_mount_history + [ { "profile" => imu_mount_profile, "effective_at" => Time.current.iso8601(6) } ]
+  end
 
   def assign_exofdr_serial_number
     return unless controlled_fdr?

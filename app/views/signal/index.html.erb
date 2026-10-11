@@ -4,6 +4,20 @@
   <% content_for :connection_metrics do %>
     <%= render "signal/radio_quality" %>
   <% end %>
+  <% content_for :rail_control do %>
+    <button type="button" class="kit-icon-button panel-disclosure" aria-label="Hide navigation" aria-controls="sillage-room-rail" aria-expanded="true"
+            data-controller="panel-disclosure" data-action="panel-disclosure#toggle"
+            data-panel-disclosure-storage-key-value="signal-navigation" data-panel-disclosure-expand-label-value="Show navigation" data-panel-disclosure-collapse-label-value="Hide navigation">
+      <%= sillage_icon "chevron-right", size: 16 %>
+    </button>
+  <% end %>
+  <% content_for :connection_control do %>
+    <button type="button" class="aircraft-connection-pill" data-controller="signal-connection"
+            data-action="signal-connection#toggle sillage:ground-radio-state@window->signal-connection#update"
+            data-aircraft-connection-state="disconnected" aria-label="Preparing ground radio" disabled>
+      <%= sillage_icon "radio", size: 15 %><strong data-signal-connection-target="label">Preparing</strong>
+    </button>
+  <% end %>
   <% content_for :head do %>
     <meta name="turbo-cache-control" content="no-cache">
     <link rel="stylesheet" href="<%= Rails.application.config.x.cesium_base_url %>Widgets/widgets.css">
@@ -16,6 +30,7 @@
        data-signal-workspace-review-value="<%= params[:review] == "1" %>"
        data-signal-workspace-completed-value="<%= @active_session.status == "completed" %>"
        data-signal-workspace-session-value="<%= @active_session.uuid %>"
+       data-signal-workspace-mount-profiles-value="<%= @imu_mount_profiles.to_json %>"
        data-signal-workspace-flight-id-value="<%= flight&.id %>"
        data-signal-workspace-flight-code-value="<%= flight&.code || "UNASSIGNED" %>"
        data-signal-workspace-batch-url-value="<%= batches_api_v1_signal_session_path(@active_session.uuid) %>"
@@ -23,41 +38,28 @@
        data-signal-workspace-home-url-value="<%= signal_path(view: "home") %>"
        data-signal-workspace-complete-url-value="<%= complete_api_v1_signal_session_path(@active_session.uuid) %>">
     <%= render "signal/exit_dialog", flight: flight %>
-    <div class="signal-live-shell" data-signal-workspace-target="presentation">
+    <div class="signal-live-shell">
       <header class="signal-command-bar">
         <div class="signal-session-identity">
           <span class="signal-k"><%= flight ? "Flight" : "Acquisition" %></span>
-          <strong><%= flight&.code || "Unassigned session" %></strong>
           <small><%= flight&.display_aircraft || "No flight created" %></small>
+          <small data-signal-workspace-target="mountLabel">Waiting for recorder mounting</small>
         </div>
         <div class="signal-link-stack" aria-label="Signal link status">
           <div><span>Radio</span><strong data-signal-workspace-target="radioStatus">Waiting for ground radio</strong></div>
           <div><span>Capture</span><strong data-signal-workspace-target="recorderStatus">Not recording</strong></div>
           <div><span>Cloud</span><strong data-signal-workspace-target="cloudStatus">Preparing</strong></div>
         </div>
-        <div class="signal-link-stack signal-quality-stack" aria-label="Live IMU quality" data-signal-workspace-target="qualityReason" title="Waiting for quality telemetry">
-          <div><span>Attitude</span><strong data-signal-workspace-target="qualityAttitude" data-state="unknown">Unknown</strong></div>
-          <div><span>Heading</span><strong data-signal-workspace-target="qualityHeading" data-state="unknown">Unknown</strong></div>
-          <div><span>Preflight</span>
-            <% if flight %>
-              <%= link_to flight_imu_check_path(flight), title: "Run preflight check" do %><strong data-signal-workspace-target="preflightStatus" data-state="unknown">Not checked</strong><% end %>
-            <% else %>
-              <strong data-signal-workspace-target="preflightStatus" data-state="unknown">Not checked</strong>
-            <% end %>
-          </div>
+        <div class="signal-link-stack signal-quality-stack" aria-label="Live IMU quality" data-tooltip-boundary>
+          <%= render "shared/status_help", id: "signal-attitude-detail", label: "Attitude", status_target: "qualityAttitude", detail_target: "attitudeDetail", initial_status: "Unknown", initial_detail: "Waiting for IMU quality telemetry." %>
+          <%= render "shared/status_help", id: "signal-heading-detail", label: "Heading", status_target: "qualityHeading", detail_target: "headingDetail", initial_status: "Unknown", initial_detail: "Waiting for heading quality telemetry." %>
+          <%= render "shared/status_help", id: "signal-preflight-detail", label: "Preflight", status_target: "preflightStatus", detail_target: "preflightDetail", initial_status: "Not checked", initial_detail: "No preflight check is available.", href: flight ? flight_imu_check_path(flight) : nil %>
         </div>
         <div class="signal-command-actions">
-          <button type="button" class="signal-tool-button is-primary" aria-label="Connect ground radio" data-action="signal-workspace#connectStation" data-signal-workspace-target="connectButton" disabled><%= sillage_icon "radio", size: 14 %><span>Connect ground radio</span></button>
-          <button type="button" class="signal-tool-button" aria-label="Full screen" data-action="signal-workspace#toggleFullscreen"><%= sillage_icon "arrow-up-right", size: 14 %><span>Full screen</span></button>
-          <button type="button" class="signal-tool-button" aria-label="Reset layout" data-action="signal-workspace#resetLayout"><%= sillage_icon "rotate-ccw", size: 14 %><span>Reset layout</span></button>
           <button type="button" class="signal-tool-button" aria-label="Mark event" data-action="signal-workspace#markEvent"><%= sillage_icon "plus", size: 14 %><span>Mark event</span></button>
           <button type="button" class="signal-tool-button is-danger" data-action="signal-workspace#endSession">End session</button>
         </div>
       </header>
-
-      <div class="signal-fullscreen-radio-quality">
-        <%= render "signal/radio_quality" %>
-      </div>
 
       <div class="signal-storage-warning" data-signal-workspace-target="warning" hidden></div>
 
@@ -100,20 +102,29 @@
         </section>
       </main>
 
-      <div class="signal-telemetry-strip signal-sensor-strip" aria-label="Live sensor measurements">
-        <% [["accel", "Acceleration X/Y/Z", "m/s²"], ["gyro", "Gyroscope X/Y/Z", "rad/s"], ["mag", "Magnetometer X/Y/Z", "µT"], ["pressure", "Pitot differential", "Pa"], ["temperature", "Pitot temperature", "°C"], ["gps", "GPS", "Fix / satellites"]].each do |key, label, unit| %>
-          <div><span><%= label %></span><strong data-signal-workspace-target="sensorValue" data-sensor="<%= key %>">---</strong><small><%= unit %></small></div>
-        <% end %>
-      </div>
-      <footer class="signal-telemetry-strip" aria-label="Shared live telemetry">
-        <div><span>Heading</span><strong data-signal-workspace-target="heading">---</strong><small>deg</small></div>
-        <div><span title="Estimated from pitot pressure using standard air density (1.225 kg/m³); sensor calibration is not corrected.">IAS estimate</span><strong data-signal-workspace-target="airspeed">---</strong><small>km/h</small></div>
-        <div><span title="Total accelerometer magnitude across all three axes. Approximately 1 g at rest, regardless of orientation.">G load</span><strong data-signal-workspace-target="sensorValue" data-sensor="gLoad">---</strong><small>g</small></div>
-        <div><span>GPS altitude</span><strong data-signal-workspace-target="altitude">---</strong><small>m AMSL</small></div>
-        <div><span>GPS vertical speed</span><strong data-signal-workspace-target="verticalSpeed">---</strong><small>m/s</small></div>
-        <div><span>GPS glide ratio</span><strong data-signal-workspace-target="glide">---</strong><small>L/D</small></div>
-        <div class="signal-telemetry-health"><span>Data</span><strong data-signal-workspace-target="dataStatus">Waiting for telemetry</strong><small data-signal-workspace-target="parserStatus">No valid MAVLink frames</small></div>
-      </footer>
+      <section class="signal-telemetry-panel" aria-label="Telemetry measurements">
+        <button type="button" class="signal-telemetry-toggle panel-disclosure" aria-controls="signal-telemetry-readings" aria-expanded="true" aria-label="Hide telemetry measurements"
+                data-controller="panel-disclosure" data-action="panel-disclosure#toggle"
+                data-panel-disclosure-storage-key-value="signal-telemetry" data-panel-disclosure-expand-label-value="Show telemetry measurements" data-panel-disclosure-collapse-label-value="Hide telemetry measurements">
+          <span>Telemetry</span><%= sillage_icon "chevron-up", size: 14 %>
+        </button>
+        <div id="signal-telemetry-readings">
+          <div class="signal-telemetry-strip signal-sensor-strip" aria-label="Live sensor measurements">
+            <% [["accel", "Acceleration", "m/s²"], ["gyro", "Gyroscope", "rad/s"], ["mag", "Magnetometer", "µT"], ["pressure", "Pitot differential", "Pa"], ["temperature", "Pitot temperature", "°C"], ["gps", "GPS", "Fix / satellites"]].each do |key, label, unit| %>
+              <div><span><%= label %><% if %w[accel gyro mag].include?(key) %> <span data-signal-workspace-target="sensorAxes" title="F/R/D: forward, right, down. X/Y/Z: native sensor axes.">X/Y/Z</span><% end %></span><strong data-signal-workspace-target="sensorValue" data-sensor="<%= key %>">---</strong><small><%= unit %></small></div>
+            <% end %>
+          </div>
+          <footer class="signal-telemetry-strip" aria-label="Shared live telemetry">
+            <div><span>Heading</span><strong data-signal-workspace-target="heading">---</strong><small>deg</small></div>
+            <div><span title="Estimated from pitot pressure using standard air density (1.225 kg/m³); sensor calibration is not corrected.">IAS estimate</span><strong data-signal-workspace-target="airspeed">---</strong><small>km/h</small></div>
+            <div><span title="Total accelerometer magnitude across all three axes. Approximately 1 g at rest, regardless of orientation.">G load</span><strong data-signal-workspace-target="sensorValue" data-sensor="gLoad">---</strong><small>g</small></div>
+            <div><span>GPS altitude</span><strong data-signal-workspace-target="altitude">---</strong><small>m AMSL</small></div>
+            <div><span>GPS vertical speed</span><strong data-signal-workspace-target="verticalSpeed">---</strong><small>m/s</small></div>
+            <div><span>GPS glide ratio</span><strong data-signal-workspace-target="glide">---</strong><small>L/D</small></div>
+            <div class="signal-telemetry-health"><span>Data</span><strong data-signal-workspace-target="dataStatus">Waiting for telemetry</strong><small data-signal-workspace-target="parserStatus">No valid MAVLink frames</small></div>
+          </footer>
+        </div>
+      </section>
       <div data-signal-workspace-target="mapCredits" hidden></div>
     </div>
   </div>
