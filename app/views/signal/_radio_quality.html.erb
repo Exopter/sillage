@@ -1,0 +1,17 @@
+<div class="signal-radio-quality" aria-label="Radio link quality" data-controller="radio-quality" data-action="sillage:radio-quality@window->radio-quality#update">
+  <% [ [ "ground", "Ground" ], [ "air", "Air" ] ].each do |endpoint, label| %>
+    <div class="exds-signal-strength" data-level="0" data-radio-quality-target="link" data-endpoint="<%= endpoint %>">
+      <div class="exds-signal-strength__heading">
+        <svg viewBox="0 0 24 20" width="24" height="20" aria-hidden="true">
+          <rect x="1" y="14" width="4" height="5" rx="1" />
+          <rect x="7" y="10" width="4" height="9" rx="1" />
+          <rect x="13" y="5" width="4" height="14" rx="1" />
+          <rect x="19" y="1" width="4" height="18" rx="1" />
+        </svg>
+        <span class="exds-signal-strength__label"><%= label %></span>
+        <strong class="exds-signal-strength__quality" data-quality-label>Offline</strong>
+      </div>
+      <small class="exds-signal-strength__value" data-quality-value>RSSI --- · S/N ---</small>
+    </div>
+  <% end %>
+</div>

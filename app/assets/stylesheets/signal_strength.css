@@ -1,0 +1,26 @@
+.exds-signal-strength {
+  display: grid;
+  flex: none;
+  gap: 2px;
+  color: var(--ex-aqua-500);
+  font-family: var(--ex-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.exds-signal-strength__heading { display: flex; align-items: center; gap: 7px; }
+.exds-signal-strength__heading svg { flex: none; }
+.exds-signal-strength__heading rect { fill: currentColor; opacity: .18; }
+.exds-signal-strength[data-level="1"] rect:nth-child(-n+1),
+.exds-signal-strength[data-level="2"] rect:nth-child(-n+2),
+.exds-signal-strength[data-level="3"] rect:nth-child(-n+3),
+.exds-signal-strength[data-level="4"] rect { opacity: 1; }
+.exds-signal-strength__label {
+  color: var(--ex-vapor-100);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.exds-signal-strength__quality { font-size: 11px; font-weight: 500; }
+.exds-signal-strength__value { color: var(--ex-graphite-400); font-size: 10px; line-height: 1.2; white-space: nowrap; }
+.exds-signal-strength[data-level="0"] { color: var(--ex-graphite-400); }
+.exds-signal-strength[data-level="1"] { color: var(--ex-amber-500); }

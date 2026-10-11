@@ -1,6 +1,9 @@
 <% content_for :title, @active_session ? @active_session.flight&.code || "Unassigned session" : "Signal sessions" %>
 
 <% if @active_session %>
+  <% content_for :connection_metrics do %>
+    <%= render "signal/radio_quality" %>
+  <% end %>
   <% content_for :head do %>
     <meta name="turbo-cache-control" content="no-cache">
     <link rel="stylesheet" href="<%= Rails.application.config.x.cesium_base_url %>Widgets/widgets.css">
@@ -41,12 +44,8 @@
         </div>
       </header>
 
-      <div class="calibration-quality" data-theme="dark" aria-label="Radio link measurements">
-        <span title="Signal received by the Ground radio from Air. Approximate SiK RSSI.">GROUND RX <strong data-signal-workspace-target="radioMetric" data-radio-metric="ground" data-state="unknown">---</strong></span>
-        <span title="Ground signal minus background noise. Below 10 dB is highlighted as a low-margin indication, not a qualified link limit.">S/N <strong data-signal-workspace-target="radioMetric" data-radio-metric="groundMargin" data-state="unknown">---</strong></span>
-        <span title="Signal received by the Air radio from Ground. Approximate SiK RSSI.">AIR RX <strong data-signal-workspace-target="radioMetric" data-radio-metric="air" data-state="unknown">---</strong></span>
-        <span title="Air signal minus background noise. Below 10 dB is highlighted as a low-margin indication, not a qualified link limit.">S/N <strong data-signal-workspace-target="radioMetric" data-radio-metric="airMargin" data-state="unknown">---</strong></span>
-        <small data-signal-workspace-target="radioMetricsStatus">Radio metrics unavailable</small>
+      <div class="signal-fullscreen-radio-quality">
+        <%= render "signal/radio_quality" %>
       </div>
 
       <div class="calibration-quality" data-theme="dark" aria-label="Live IMU quality">

@@ -20,9 +20,18 @@ const originalNow = Date.now
 let now = 10_000
 Date.now = () => now
 const frame = (decoded, systemId = 1, componentId = 191) => ({type: "frame", decoded, systemId, componentId, receivedAtUs: String(now * 1000), parser: {errors: 0, ignored: 0, dropped: 0}})
-view.hasRadioMetricsStatusTarget = true
-view.radioMetricsStatusTarget = {textContent: "", title: ""}
-view.radioMetricTargets = ["ground", "air", "groundMargin", "airMargin"].map(radioMetric => ({textContent: "", dataset: {radioMetric}}))
+const originalRadioWindow = globalThis.window
+const radioSource = (await readFile(new URL("../../app/javascript/controllers/radio_quality_controller.js", import.meta.url), "utf8"))
+  .replace(/^import .*$/gm, "")
+  .replace(/const TypedController = .*$/m, "const TypedController = class {}")
+const {default: RadioQuality} = await import(`data:text/javascript;base64,${Buffer.from(radioSource).toString("base64")}`)
+const radioView = new RadioQuality()
+radioView.linkTargets = ["ground", "air"].map(endpoint => ({dataset: {endpoint}, title: "",
+  label: {textContent: ""}, value: {textContent: ""},
+  querySelector(selector) { return selector === "[data-quality-label]" ? this.label : this.value }
+}))
+globalThis.window = new EventTarget()
+window.addEventListener("sillage:radio-quality", event => radioView.update(event))
 const radio = {name: "radio", rssi: 133, remoteRssi: 114, noise: 38, remoteNoise: 100, txBufferPercent: 90, rxErrors: 10, fixed: 20}
 view.handleWorkerMessage(frame({name: "heartbeat", type: 6}, 255, 190))
 assert.equal(view.mavlinkSystemId, null, "a ground station heartbeat cannot select the aircraft")
@@ -38,10 +47,11 @@ assert.equal(view.headingTarget.textContent, "030")
 assert.equal(view.sensorValueTargets[0].textContent, "0.00 / 0.00 / 9.81")
 assert.equal(view.sensorValueTargets.find(target => target.dataset.sensor === "gLoad").textContent, "1.00", "the live G readout shows the accelerometer magnitude")
 assert.equal(view.streamBadgeTargets[0].textContent, "Live")
-assert.deepEqual(view.radioMetricTargets.map(target => target.textContent), ["≈ -57 dBm", "≈ -67 dBm", "≈ +50 dB", "≈ +7 dB"])
-assert.equal(view.radioMetricTargets[3].dataset.state, "warning")
-assert.match(view.radioMetricsStatusTarget.title, /Ground TX buffer free: 90%/)
-assert.equal(view.radioMetricsStatusTarget.textContent, "Updated 0 s ago")
+assert.deepEqual(radioView.linkTargets.map(link => link.dataset.level), ["4", "1"])
+assert.deepEqual(radioView.linkTargets.map(link => link.label.textContent), ["Strong", "Weak"])
+assert.deepEqual(radioView.linkTargets.map(link => link.value.textContent), ["≈ -57 dBm · S/N +50 dB", "≈ -67 dBm · S/N +7 dB"])
+assert.match(radioView.linkTargets[0].title, /Ground TX buffer free: 90%/)
+assert.match(radioView.linkTargets[0].title, /Updated 0 s ago/)
 view.handleWorkerMessage(frame(radio, 51, 68))
 assert.equal(view.mavlinkSystemId, "1")
 view.handleWorkerMessage(frame({name: "attitude", rollDeg: 100, pitchDeg: 100, yawDeg: 120}, 2))
@@ -62,8 +72,8 @@ now += 2_000
 view.handleWorkerMessage(frame(radio, 51, 68))
 view.refreshTelemetry()
 assert.equal(view.streamBadgeTargets[0].textContent, "Stale", "ground-radio status cannot keep the Air link live")
-assert.ok(view.radioMetricTargets.every(target => target.textContent === "---"), "repeated radio reports must not show live strength after Air telemetry stops")
-assert.equal(view.radioMetricsStatusTarget.textContent, "No telemetry")
+assert.ok(radioView.linkTargets.every(link => link.dataset.level === "0" && link.value.textContent === "RSSI --- · S/N ---"), "repeated radio reports must not show live strength after Air telemetry stops")
+assert.ok(radioView.linkTargets.every(link => link.label.textContent === "No telemetry"))
 assert.equal(view.airspeedTarget.textContent, "---")
 assert.equal(view.headingTarget.textContent, "---")
 assert.equal(view.altitudeTarget.textContent, "---")
@@ -83,6 +93,18 @@ assert.equal(view.history.airspeed.at(-1), 0, "the chart receives the same displ
 assert.equal(view.sensorValueTargets.find(target => target.dataset.sensor === "pressure").textContent, "0.72", "the pressure strip keeps its raw measurement")
 assert.equal(view.pendingSamples.at(-1).readings, rawPitot, "cloud synchronization receives the original decoded payload")
 assert.equal(view.pendingSamples.at(-1).readings.differentialPa, 0.715274315606917)
+const qualityReport = {groundDbm: -60, airDbm: -60, groundMarginDb: 10, airMarginDb: 20, at: now}
+radioView.update({detail: {report: qualityReport, state: "Unavailable", now: now + 300}})
+assert.deepEqual(radioView.linkTargets.map(link => link.dataset.level), ["2", "3"])
+assert.deepEqual(radioView.linkTargets.map(link => link.label.textContent), ["Fair", "Good"])
+assert.match(radioView.linkTargets[0].title, /Updated 1 s ago/)
+radioView.update({detail: {report: {...qualityReport, groundMarginDb: null, airDbm: null}, state: "Unavailable", now}})
+assert.ok(radioView.linkTargets.every(link => link.dataset.level === "0" && link.label.textContent === "Unavailable"), "missing RSSI or noise cannot imply good reception")
+for (const state of ["Offline", "Ended"]) {
+  radioView.update({detail: {report: null, state, now}})
+  assert.ok(radioView.linkTargets.every(link => link.dataset.level === "0" && link.label.textContent === state))
+}
+globalThis.window = originalRadioWindow
 Date.now = originalNow
 
 const charts = new Workspace()

@@ -30,9 +30,6 @@ const CHART_WINDOW_MS = 30_000
  * @property {HTMLCanvasElement} chartCanvasTarget
  * @property {HTMLButtonElement} connectButtonTarget
  * @property {HTMLElement} radioStatusTarget
- * @property {HTMLElement[]} radioMetricTargets
- * @property {HTMLElement} radioMetricsStatusTarget
- * @property {boolean} hasRadioMetricsStatusTarget
  * @property {HTMLElement} recorderStatusTarget
  * @property {HTMLElement} cloudStatusTarget
  * @property {HTMLElement} qualityAttitudeTarget
@@ -184,7 +181,7 @@ export default class extends TypedController {
   static targets = [
     "presentation", "board", "widget", "mapCanvas", "instrumentCanvas", "chartCanvas",
     "mapScene", "mapCredits", "mapStatus", "mapFollow",
-    "connectButton", "radioStatus", "radioMetric", "radioMetricsStatus", "recorderStatus", "cloudStatus", "warning",
+    "connectButton", "radioStatus", "recorderStatus", "cloudStatus", "warning",
     "heading", "airspeed", "altitude", "verticalSpeed", "glide", "dataStatus",
     "qualityAttitude", "qualityHeading", "qualityReason", "preflightStatus",
     "exitDialog", "exitError", "exitStatus", "flightName", "exitAction",
@@ -296,6 +293,7 @@ export default class extends TypedController {
     this.map3d?.destroy()
     this.map3d = null
     this.connectionGeneration = null
+    this.renderRadioMetrics(false, Date.now())
     this.unregisterUsbPageRelease?.()
     this.unregisterUsbPageRelease = null
     window.clearInterval(this.batchTimer)
@@ -596,24 +594,10 @@ export default class extends TypedController {
 
   /** @param {boolean} live @param {number} now */
   renderRadioMetrics(live, now) {
-    if (!this.hasRadioMetricsStatusTarget) return
-    // SiK can repeat its last RF statistics after the Air link is lost.
-    const report = live ? this.telemetry.radio : null
-    const values = {ground: report?.groundDbm, air: report?.airDbm,
-      groundMargin: report?.groundMarginDb, airMargin: report?.airMarginDb}
-    for (const target of this.radioMetricTargets) {
-      const key = /** @type {keyof typeof values} */ (target.dataset.radioMetric)
-      const value = values[key]
-      const margin = key === "groundMargin" || key === "airMargin"
-      target.textContent = value == null ? "---" : `≈ ${margin && value > 0 ? "+" : ""}${Math.round(value)} ${margin ? "dB" : "dBm"}`
-      target.dataset.state = value == null ? "unknown" : margin && value < 10 ? "warning" : "live"
-    }
-    const anySignal = report?.groundDbm != null || report?.airDbm != null
-    this.radioMetricsStatusTarget.textContent = this.ended ? "Session ended" : !this.port ? "Not connected"
-      : !live ? "No telemetry" : !report ? "Radio metrics unavailable" : !anySignal ? "RSSI unavailable" : `Updated ${Math.ceil((now - report.at) / 1000)} s ago`
-    this.radioMetricsStatusTarget.title = report
-      ? `SiK estimates. Ground noise: ${formatNumber(report.groundNoiseDbm)} dBm. Air noise: ${formatNumber(report.airNoiseDbm)} dBm. Radio RX errors: ${report.rxErrors}; corrected packets: ${report.fixed} (counters since radio boot). Ground TX buffer free: ${formatNumber(report.txFreePercent)}%.`
-      : "Radio metrics require a fresh SiK report and current FDR telemetry. Signal-to-noise margin is an estimate, not a range guarantee."
+    // SiK can repeat RF statistics after Air telemetry is lost.
+    const report = live && this.port && !this.ended ? this.telemetry.radio : null
+    const state = this.ended ? "Ended" : !this.port ? "Offline" : !live ? "No telemetry" : "Unavailable"
+    window.dispatchEvent(new CustomEvent("sillage:radio-quality", {detail: {report, state, now}}))
   }
 
   /** @param {string} recordedAt @param {string} sensorType @param {import("../types/signal").DecodedMessage} readings @returns {import("../types/signal").SignalSample} */
