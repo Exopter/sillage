@@ -35,6 +35,17 @@
           <div><span>Capture</span><strong data-signal-workspace-target="recorderStatus">Not recording</strong></div>
           <div><span>Cloud</span><strong data-signal-workspace-target="cloudStatus">Preparing</strong></div>
         </div>
+        <div class="signal-link-stack signal-quality-stack" aria-label="Live IMU quality" data-signal-workspace-target="qualityReason" title="Waiting for quality telemetry">
+          <div><span>Attitude</span><strong data-signal-workspace-target="qualityAttitude" data-state="unknown">Unknown</strong></div>
+          <div><span>Heading</span><strong data-signal-workspace-target="qualityHeading" data-state="unknown">Unknown</strong></div>
+          <div><span>Preflight</span>
+            <% if flight %>
+              <%= link_to flight_imu_check_path(flight), title: "Run preflight check" do %><strong data-signal-workspace-target="preflightStatus" data-state="unknown">Not checked</strong><% end %>
+            <% else %>
+              <strong data-signal-workspace-target="preflightStatus" data-state="unknown">Not checked</strong>
+            <% end %>
+          </div>
+        </div>
         <div class="signal-command-actions">
           <button type="button" class="signal-tool-button is-primary" aria-label="Connect ground radio" data-action="signal-workspace#connectStation" data-signal-workspace-target="connectButton" disabled><%= sillage_icon "radio", size: 14 %><span>Connect ground radio</span></button>
           <button type="button" class="signal-tool-button" aria-label="Full screen" data-action="signal-workspace#toggleFullscreen"><%= sillage_icon "arrow-up-right", size: 14 %><span>Full screen</span></button>
@@ -48,13 +59,6 @@
         <%= render "signal/radio_quality" %>
       </div>
 
-      <div class="calibration-quality" data-theme="dark" aria-label="Live IMU quality">
-        <span>ATTITUDE <strong data-signal-workspace-target="qualityAttitude" data-state="unknown">Unknown</strong></span>
-        <span>HEADING <strong data-signal-workspace-target="qualityHeading" data-state="unknown">Unknown</strong></span>
-        <span>PREFLIGHT <strong data-signal-workspace-target="preflightStatus" data-state="unknown">Not checked</strong></span>
-        <small data-signal-workspace-target="qualityReason">Waiting for quality telemetry</small>
-        <%= link_to "Run preflight check", flight_imu_check_path(flight), class: "workspace-strong-link" if flight %>
-      </div>
       <div class="signal-storage-warning" data-signal-workspace-target="warning" hidden></div>
 
       <main class="signal-dashboard" data-signal-workspace-target="board" aria-label="Movable live Signal widgets">

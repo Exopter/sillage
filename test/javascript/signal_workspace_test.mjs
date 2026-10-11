@@ -224,7 +224,7 @@ now+=2100; qualitySample(); view.renderQuality()
 assert.equal(view.preflightInvalidated,false)
 assert.equal(view.preflightStatusTarget.textContent,"Passed with warning")
 assert.equal(view.preflightStatusTarget.dataset.state,"warning")
-assert.match(view.qualityReasonTarget.textContent,/Gyroscope manufacturer status 0\/3/)
+assert.match(view.qualityReasonTarget.title,/Gyroscope manufacturer status 0\/3/)
 quality.accuracy[1]=255;now+=100;qualitySample();view.renderQuality()
 assert.equal(view.preflightInvalidated,true,"unavailable gyro still invalidates preflight")
 Date.now = originalNow

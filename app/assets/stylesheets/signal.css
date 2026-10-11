@@ -44,7 +44,7 @@
   display: grid;
   min-height: 58px;
   flex: none;
-  grid-template-columns: minmax(210px, .8fr) minmax(230px, .65fr) minmax(520px, 1.4fr);
+  grid-template-columns: minmax(170px, .75fr) minmax(230px, .8fr) minmax(210px, .7fr) minmax(520px, 1.6fr);
   border-bottom: 1px solid var(--ex-carbon-700);
   background: var(--ex-carbon-900);
 }
@@ -83,6 +83,7 @@
 
 .signal-link-stack {
   display: grid;
+  min-width: 0;
   align-content: center;
   gap: 3px;
   padding: 6px 10px;
@@ -108,9 +109,19 @@
   white-space: nowrap;
 }
 
+.signal-quality-stack > div { grid-template-columns: 66px minmax(0, 1fr); }
+.signal-quality-stack strong { color: var(--ex-aqua-500); }
+.signal-quality-stack [data-state="degraded"],
+.signal-quality-stack [data-state="warning"] { color: var(--ex-amber-500); }
+.signal-quality-stack [data-state="unknown"] { color: var(--ex-graphite-400); }
+.signal-quality-stack a { min-width: 0; text-decoration: underline; text-underline-offset: 3px; }
+.signal-quality-stack a strong { display: block; }
+.signal-quality-stack a:focus-visible { outline: 1px solid var(--ex-aqua-500); outline-offset: 3px; }
+
 .signal-command-actions {
   display: flex;
   min-width: 0;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 7px;
@@ -1526,9 +1537,9 @@
   font-size: 11px;
 }
 
-@media (max-width: 1150px) {
+@media (max-width: 1280px) {
   .signal-command-bar {
-    grid-template-columns: minmax(180px, .65fr) minmax(200px, .6fr) minmax(430px, 1.2fr);
+    grid-template-columns: minmax(140px, .65fr) minmax(200px, .8fr) minmax(210px, .8fr) auto;
   }
 
   .signal-command-actions .signal-tool-button span {
@@ -1563,14 +1574,13 @@
   }
 }
 
-@media (max-width: 800px) {
+@media (max-width: 920px) {
   .signal-command-bar {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .signal-link-stack {
-    display: none;
-  }
+  .signal-session-identity { grid-column: 1 / -1; border-bottom: 1px solid var(--ex-carbon-700); }
+  .signal-command-actions { grid-column: 1 / -1; flex-wrap: wrap; border-top: 1px solid var(--ex-carbon-700); }
 
   .signal-launch-grid {
     grid-template-columns: 1fr;

@@ -691,7 +691,7 @@ export default class extends TypedController {
     this.qualityAttitudeTarget.dataset.state = status.attitude
     this.qualityHeadingTarget.textContent = status.heading
     this.qualityHeadingTarget.dataset.state = status.heading
-    this.qualityReasonTarget.textContent = status.reason
+    this.qualityReasonTarget.title = status.reason
     const key = q ? `${q.deviceId}/${q.bootId}/${q.imuEpoch}/${q.firmware}` : ""
     if (q && !this.qualityContextLoading && (key !== this.qualityContextKey || now - this.qualityContextAt > 30000)) void this.loadQualityContext(key)
     const check = this.preflight
