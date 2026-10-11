@@ -55,6 +55,7 @@ const CHART_WINDOW_MS = 30_000
  * @property {string} flightCodeValue
  * @property {string} batchUrlValue
  * @property {string} eventUrlValue
+ * @property {string} homeUrlValue
  * @property {string} completeUrlValue
  */
 const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller & StimulusBindings} */ (/** @type {unknown} */ (Controller))
@@ -120,6 +121,7 @@ export default class extends TypedController {
   nextSequence = 0
   syncing = false
   ended = false
+  returnHomeAfterSync = false
   ending = false
   openingPort = false
   layoutStorageKey = ""
@@ -160,6 +162,7 @@ export default class extends TypedController {
     flightId: String,
     batchUrl: String,
     eventUrl: String,
+    homeUrl: String,
     completeUrl: String
   }
 
@@ -182,6 +185,7 @@ export default class extends TypedController {
     this.mavlinkComponentId = null
     this.syncing = false
     this.ended = false
+    this.returnHomeAfterSync = false
     this.ending = false
     this.batchWrite = Promise.resolve()
     this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.releaseCapture())
@@ -653,7 +657,13 @@ export default class extends TypedController {
   }
 
   async endSession() {
-    if (this.ended || this.ending || !window.confirm("End local capture? Import the microSD recording afterward to analyse this flight.")) return
+    if (this.ending) return
+    if (this.ended) {
+      this.returnHomeAfterSync = true
+      await this.flushOutbox()
+      return
+    }
+    if (!window.confirm("End local capture? Import the microSD recording afterward to analyse this flight.")) return
     this.ending = true
     try {
       await this.releaseCapture()
@@ -664,6 +674,7 @@ export default class extends TypedController {
         return putOutbox(transaction.objectStore(OUTBOX_STORE), { id, session: this.sessionValue, kind: "complete", url: this.completeUrlValue, method: "PATCH", body: { ended_at: endedAt }, queuedAt: Date.now() })
       })
       this.ended = true
+      this.returnHomeAfterSync = true
       this.connectButtonTarget.disabled = true
       await this.flushOutbox()
       this.dataStatusTarget.textContent = "Session ended locally"
@@ -720,6 +731,10 @@ export default class extends TypedController {
     } else {
       this.cloudStatusTarget.textContent = this.ended ? "Synced" : "Live"
       this.cloudError = null
+      if (this.ended && this.returnHomeAfterSync) {
+        this.returnHomeAfterSync = false
+        window.location.assign(this.homeUrlValue)
+      }
     }
   }
 

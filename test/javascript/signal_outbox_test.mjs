@@ -91,7 +91,8 @@ assert.equal(capture.nextSequence, 1)
 assert.deepEqual(capture.db.values.outbox.get("session:batch:0").body.samples, [firstSample, lastSample])
 assert.equal(capture.db.values.metadata.get("session:next-sequence").value, 1)
 
-globalThis.window = { confirm: () => true }
+const navigations = []
+globalThis.window = { confirm: () => true, location: {assign: url => navigations.push(url)} }
 const ending = workspace()
 let drained = false
 ending.stopSerial = async () => {
@@ -110,6 +111,7 @@ assert.equal(ending.db.transactions.length, 1)
 ending.db.transactions[0].commit()
 await tick()
 assert.equal(ending.ended, false, "completion is not committed yet")
+assert.deepEqual(navigations, [], "navigation must wait for durable capture completion")
 assert.equal(ending.db.transactions[1].changes.find(({ name }) => name === "outbox").record.kind, "complete")
 ending.db.transactions[1].commit()
 await completion
@@ -168,6 +170,29 @@ await cloud.flushOutbox()
 assert.equal(cloud.db.values.outbox.size, 0)
 assert.equal(cloud.cloudError, null)
 assert.equal(cloud.cloudStatusTarget.textContent, "Live")
+// End session returns home only after the server has acknowledged every queued record.
+cloud.ended = true
+cloud.returnHomeAfterSync = true
+cloud.homeUrlValue = "/signal?view=home"
+cloud.db.values.outbox.set("completion", {
+  id:"completion", session:"session", kind:"complete", url:"/complete", method:"PATCH", body:{ended_at:new Date().toISOString()}, queuedAt:Date.now()
+})
+let finishCompletion
+fetch = async () => new Promise(resolve => { finishCompletion = resolve })
+const pendingCompletion = cloud.flushOutbox()
+await tick()
+await cloud.refreshCloudStatus()
+assert.deepEqual(navigations, [], "an in-flight completion must not be abandoned by navigation")
+finishCompletion({ok:false,status:503,json:async () => ({error:"Temporarily unavailable"})})
+await pendingCompletion
+assert.deepEqual(navigations, [], "failed synchronization keeps the retry page open")
+assert.equal(cloud.returnHomeAfterSync, true)
+fetch = async () => ({ok:true})
+await cloud.flushOutbox()
+assert.deepEqual(navigations, ["/signal?view=home"])
+await cloud.refreshCloudStatus()
+assert.equal(navigations.length, 1, "completion triggers a single navigation")
+
 const quality = workspace()
 quality.db.autoCommit = true
 quality.eventUrlValue = "/events"

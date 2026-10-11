@@ -414,6 +414,19 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "a.is-active[aria-current='page'][href='#{connectivity_forge_fdr_path(@fdr)}']", text: "Connectivity"
   end
 
+  test "explicit Signal home does not reopen another active session" do
+    session = users(:julien).signal_sessions.create!(flight: flights(:one))
+
+    get signal_path(view: "home")
+    assert_response :success
+    assert_select "h1", text: "Start live acquisition"
+    assert_select "[data-controller='signal-workspace']", count: 0
+
+    get signal_path(session: session.uuid)
+    assert_response :success
+    assert_select "[data-signal-workspace-home-url-value=?]", signal_path(view: "home")
+  end
+
   test "Signal home excludes the visible FDR configuration manager" do
     flights(:one).update!(status: "preparation")
 
