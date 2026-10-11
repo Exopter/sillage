@@ -57,8 +57,7 @@ console.log("Signal delayed storage, stale metadata and disconnected failure tes
 // Restoring an active acquisition resumes it without asking for an exit decision.
 Object.assign(window, {addEventListener() {}, setInterval() {return 1}})
 globalThis.document = {addEventListener() {}}
-let navigationType = "reload"
-Object.defineProperty(globalThis, "performance", {configurable: true, value: {getEntriesByType: () => [{type: navigationType}]}})
+history.replaceState = (_state, _title, url) => {window.location.href = url}
 async function resume({review = false, disposition = null, endedAt = null} = {}) {
   let reconnected = 0, prompted = 0
   const restored = new Workspace()
@@ -86,12 +85,16 @@ assert.deepEqual(writes.at(-1), {key: "session:recovery", value: {active: true, 
 const reviewedReload = await resume({review: true})
 assert.equal(reviewedReload.reconnected, 1)
 assert.equal(reviewedReload.prompted, 0, "refresh resumes even when the original URL requested a review")
-navigationType = "navigate"
+window.location.href = "https://example.com/signal?session=session&review=1"
 const explicitReview = await resume({review: true})
 assert.equal(explicitReview.prompted, 1, "explicit review from Signal home keeps the save/discard choice")
 assert.equal(explicitReview.reconnected, 0)
+assert.equal(window.location.href, "https://example.com/signal?session=session", "review is a one-time request, consumed before showing the dialog")
+assert.equal(explicitReview.restored.pageUrl, window.location.href, "navigation guards retain the resumable session URL")
+const reviewRefresh = await resume({review: true})
+assert.equal(reviewRefresh.prompted, 0, "refreshing the reviewed session does not request another exit decision")
+assert.equal(reviewRefresh.reconnected, 1)
 for (const disposition of ["save", "discard"]) {
-  navigationType = "reload"
   const finalizing = await resume({disposition, endedAt: "2026-10-11T17:00:00Z"})
   assert.equal(finalizing.reconnected, 0, "an interrupted completion must not restart acquisition")
   assert.equal(finalizing.prompted, 1)

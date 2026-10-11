@@ -232,8 +232,7 @@ export default class extends TypedController {
     this.batchWrite = Promise.resolve()
     this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.releaseCapture())
     this.layoutStorageKey = `signal-layout:${this.sessionValue}`
-    const navigation = /** @type {PerformanceNavigationTiming|undefined} */ (performance.getEntriesByType("navigation")[0])
-    const review = this.reviewValue && navigation?.type !== "reload"
+    const review = this.reviewValue && new URL(this.pageUrl).searchParams.get("review") === "1"
     try {
       const database = await openDatabase()
       if (generation !== this.connectionGeneration) { database.close(); return }
@@ -284,6 +283,12 @@ export default class extends TypedController {
     await this.prepareLocalStorage()
     await this.flushOutbox()
     if (generation === this.connectionGeneration) {
+      if (review) {
+        const resumeUrl = new URL(this.pageUrl)
+        resumeUrl.searchParams.delete("review")
+        this.pageUrl = resumeUrl.href
+        history.replaceState(this.pageHistoryState, "", this.pageUrl)
+      }
       if (review || this.completionDisposition || (this.ended && !this.flightIdValue)) this.requestExit()
       else await this.autoReconnect()
     }
