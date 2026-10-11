@@ -10,6 +10,8 @@ module Signal
       return unless @system_id
 
       @signal_session.observe_mavlink_identity!(system_id: @system_id, component_id: @component_id)
+      return unless @signal_session.flight
+
       aircraft = @signal_session.flight.aircraft
 
       if aircraft

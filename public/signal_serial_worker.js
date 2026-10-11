@@ -32,6 +32,8 @@ async function handleCommand(data) {
     await openCapture(data.filename)
   } else if (data.type === "bytes" && "bytes" in data && data.bytes instanceof ArrayBuffer && "receivedAtUs" in data && typeof data.receivedAtUs === "string" && /^\d{1,16}$/.test(data.receivedAtUs)) {
     feed(new Uint8Array(data.bytes), data.receivedAtUs)
+  } else if (data.type === "flush") {
+    captureHandle?.flush()
   } else if (data.type === "close") {
     closeCapture()
     send({ type: "capture-closed", bytes: captureOffset })

@@ -1,7 +1,7 @@
 class SignalSession < ApplicationRecord
-  STATUSES = %w[live syncing completed failed].freeze
+  STATUSES = %w[live syncing completed discarded failed].freeze
 
-  belongs_to :flight
+  belongs_to :flight, optional: true
   belongs_to :user
   has_many :signal_batches, dependent: :delete_all
   has_many :operator_events, dependent: :delete_all
@@ -25,9 +25,11 @@ class SignalSession < ApplicationRecord
 
   def complete!(ended_at: Time.current)
     with_lock do
-      return if status == "completed"
+      return if status.in?(%w[completed discarded])
 
       update!(status: "completed", ended_at:)
+      return unless flight
+
       flight.with_lock do
         active_sessions = flight.signal_sessions.where(status: %w[live syncing]).exists?
         if flight.live? && !active_sessions

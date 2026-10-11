@@ -55,6 +55,14 @@ const CHART_WINDOW_MS = 30_000
  * @property {string} flightCodeValue
  * @property {string} batchUrlValue
  * @property {string} eventUrlValue
+ * @property {HTMLDialogElement} exitDialogTarget
+ * @property {HTMLElement} exitErrorTarget
+ * @property {HTMLElement} exitStatusTarget
+ * @property {HTMLInputElement} flightNameTarget
+ * @property {HTMLButtonElement[]} exitActionTargets
+ * @property {boolean} hasExitDialogTarget
+ * @property {boolean} hasFlightNameTarget
+ * @property {boolean} reviewValue
  * @property {string} homeUrlValue
  * @property {string} completeUrlValue
  */
@@ -123,6 +131,12 @@ export default class extends TypedController {
   ended = false
   returnHomeAfterSync = false
   ending = false
+  leaving = false
+  exitDestination = ""
+  /** @type {{form: HTMLFormElement, submitter: HTMLElement|null}|null} */ exitForm = null
+  pageUrl = ""
+  /** @type {unknown} */ pageHistoryState = null
+  /** @type {"save"|"discard"|null} */ completionDisposition = null
   openingPort = false
   layoutStorageKey = ""
   /** @type {Map<string, {width:number,height:number}>} */
@@ -131,6 +145,22 @@ export default class extends TypedController {
   boundOnline = () => { this.flushOutbox() }
   boundOffline = () => { this.refreshCloudStatus() }
   boundBeforeUnload = (/** @type {BeforeUnloadEvent} */ event) => this.warnBeforeUnload(event)
+  boundLinkClick = (/** @type {MouseEvent} */ event) => this.interceptLink(event)
+  boundSubmit = (/** @type {SubmitEvent} */ event) => this.interceptSubmit(event)
+  boundVisit = (/** @type {Event} */ event) => this.interceptVisit(event)
+  boundPopState = (/** @type {PopStateEvent} */ event) => {
+    if (this.leaving || (this.ended && !this.completionDisposition)) return
+    const destination = window.location.href
+    event.stopImmediatePropagation()
+    history.pushState(this.pageHistoryState, "", this.pageUrl)
+    this.requestExit(destination)
+  }
+  boundPageHide = () => { if (!this.ended) void this.releaseCapture().catch(() => {}) }
+  boundVisibility = () => {
+    if (document.visibilityState !== "hidden" || this.ended) return
+    this.worker?.postMessage({ type: "flush" })
+    void this.queuePendingBatch().catch(() => {})
+  }
   boundResize = () => this.reflowLayout()
   boundSerialConnect = async () => { await this.stopSerialPromise; this.autoReconnect() }
   boundSerialDisconnect = (/** @type {Event} */ event) => {
@@ -150,6 +180,7 @@ export default class extends TypedController {
     "connectButton", "radioStatus", "recorderStatus", "cloudStatus", "warning",
     "heading", "airspeed", "altitude", "verticalSpeed", "glide", "dataStatus",
     "qualityAttitude", "qualityHeading", "qualityReason", "preflightStatus",
+    "exitDialog", "exitError", "exitStatus", "flightName", "exitAction",
     "parserStatus", "aircraftMarker", "aircraftLabel", "latestEvent", "sensorValue", "streamBadge"
   ]
 
@@ -157,6 +188,7 @@ export default class extends TypedController {
     cesiumToken: String,
     cesiumBaseUrl: String,
     completed: Boolean,
+    review: Boolean,
     session: String,
     flightCode: String,
     flightId: String,
@@ -186,21 +218,35 @@ export default class extends TypedController {
     this.syncing = false
     this.ended = false
     this.returnHomeAfterSync = false
+    this.leaving = false
+    this.completionDisposition = null
+    this.exitDestination = ""
+    this.exitForm = null
+    this.pageUrl = window.location.href
+    this.pageHistoryState = history.state
     this.ending = false
     this.batchWrite = Promise.resolve()
     this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.releaseCapture())
     this.layoutStorageKey = `signal-layout:${this.sessionValue}`
+    let recover = this.reviewValue
     try {
       const database = await openDatabase()
       if (generation !== this.connectionGeneration) { database.close(); return }
-      const [nextSequence, endedAt] = await Promise.all([
+      const [nextSequence, endedAt, recovery] = await Promise.all([
         readMetadata(database, `${this.sessionValue}:next-sequence`),
-        readMetadata(database, `${this.sessionValue}:ended-at`)
+        readMetadata(database, `${this.sessionValue}:ended-at`),
+        readMetadata(database, `${this.sessionValue}:recovery`)
       ])
       if (generation !== this.connectionGeneration) { database.close(); return }
       this.db = database
       this.nextSequence = Number(nextSequence) || 0
       this.ended = this.completedValue || Boolean(endedAt)
+      if (recovery && typeof recovery === "object") {
+        recover ||= "active" in recovery && recovery.active === true
+        if ("disposition" in recovery && (recovery.disposition === "save" || recovery.disposition === "discard")) this.completionDisposition = recovery.disposition
+      }
+      await writeMetadata(database, `${this.sessionValue}:recovery`, {active: !this.ended, disposition: this.completionDisposition})
+      if (generation !== this.connectionGeneration) { database.close(); return }
     } catch (caught) {
       if (generation !== this.connectionGeneration) return
       const error = caught instanceof Error ? caught : new Error(String(caught))
@@ -212,6 +258,12 @@ export default class extends TypedController {
     window.addEventListener("offline", this.boundOffline)
     window.addEventListener("beforeunload", this.boundBeforeUnload)
     window.addEventListener("resize", this.boundResize)
+    document.addEventListener("click", this.boundLinkClick, true)
+    document.addEventListener("submit", this.boundSubmit, true)
+    document.addEventListener("turbo:before-visit", this.boundVisit)
+    document.addEventListener("visibilitychange", this.boundVisibility)
+    window.addEventListener("pagehide", this.boundPageHide)
+    window.addEventListener("popstate", this.boundPopState, true)
     navigator.serial?.addEventListener("connect", this.boundSerialConnect)
     navigator.serial?.addEventListener("disconnect", this.boundSerialDisconnect)
     this.restoreLayout()
@@ -227,7 +279,10 @@ export default class extends TypedController {
     this.refreshTelemetry()
     await this.prepareLocalStorage()
     await this.flushOutbox()
-    if (generation === this.connectionGeneration) await this.autoReconnect()
+    if (generation === this.connectionGeneration) {
+      if (recover || this.completionDisposition || (this.ended && !this.flightIdValue)) this.requestExit()
+      else await this.autoReconnect()
+    }
   }
 
   disconnect() {
@@ -242,6 +297,12 @@ export default class extends TypedController {
     window.removeEventListener("offline", this.boundOffline)
     window.removeEventListener("beforeunload", this.boundBeforeUnload)
     window.removeEventListener("resize", this.boundResize)
+    document.removeEventListener("click", this.boundLinkClick, true)
+    document.removeEventListener("submit", this.boundSubmit, true)
+    document.removeEventListener("turbo:before-visit", this.boundVisit)
+    document.removeEventListener("visibilitychange", this.boundVisibility)
+    window.removeEventListener("pagehide", this.boundPageHide)
+    window.removeEventListener("popstate", this.boundPopState, true)
     navigator.serial?.removeEventListener("connect", this.boundSerialConnect)
     navigator.serial?.removeEventListener("disconnect", this.boundSerialDisconnect)
     this.releaseCapture().catch((error) => this.showWarning(`Local storage failed: ${error.message}`))
@@ -260,7 +321,7 @@ export default class extends TypedController {
 
   async autoReconnect() {
     const generation = this.connectionGeneration
-    if (!navigator.serial || this.ended || this.ending || !generation) return
+    if (!navigator.serial || this.ended || this.ending || this.exitDialogTarget?.open || !generation) return
     const ports = (await navigator.serial.getPorts()).filter(isGroundRadio)
     const lastPort = await readMetadata(this.database, "last-authorized-port")
     const port = ports.find((candidate) => samePort(candidate.getInfo(), lastPort)) || (ports.length === 1 ? ports[0] : null)
@@ -338,7 +399,7 @@ export default class extends TypedController {
     this.frameTimes = []
     this.mavlinkSystemId = null
     this.mavlinkComponentId = null
-    this.worker = new Worker("/signal_serial_worker.js?v=57-full-identity")
+    this.worker = new Worker("/signal_serial_worker.js?v=58-acquisition-lifecycle")
     this.worker.onmessage = ({ data }) => this.handleWorkerMessage(data)
     this.worker.onerror = () => this.showWarning("Telemetry decoding stopped. Reconnect the ground radio.")
     this.worker.postMessage({ type: "init-capture", filename: `${this.flightCodeValue}-${this.sessionValue}.mavcap` })
@@ -656,33 +717,134 @@ export default class extends TypedController {
     await this.flushOutbox()
   }
 
-  async endSession() {
-    if (this.ending) return
-    if (this.ended) {
+  endSession() { this.requestExit() }
+
+  /** @param {string} [destination] */
+  requestExit(destination = this.homeUrlValue) {
+    if (this.leaving) return
+    this.exitDestination = destination
+    this.exitForm = null
+    if (this.ended && this.flightIdValue && !this.completionDisposition) {
       this.returnHomeAfterSync = true
-      await this.flushOutbox()
+      void this.flushOutbox()
       return
     }
-    if (!window.confirm("End local capture? Import the microSD recording afterward to analyse this flight.")) return
+    this.exitErrorTarget.hidden = true
+    this.exitStatusTarget.hidden = !this.completionDisposition
+    this.exitStatusTarget.textContent = this.completionDisposition ? "Finalizing the previous decision. Synchronization will resume automatically." : ""
+    if (!this.exitDialogTarget.open) this.exitDialogTarget.showModal()
+    if (this.completionDisposition) {
+      this.returnHomeAfterSync = true
+      this.setExitBusy(true)
+      void this.flushOutbox()
+    }
+  }
+
+  /** @param {Event} [event] */
+  continueSession(event) {
+    event?.preventDefault()
+    if (this.ending || this.completionDisposition) return
+    this.exitDialogTarget.close()
+    this.exitDestination = ""
+    this.exitForm = null
+    void this.autoReconnect()
+  }
+
+  saveSession() { return this.finishSession("save") }
+  discardSession() { return this.finishSession("discard") }
+
+  /** @param {MouseEvent} event */
+  interceptLink(event) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || this.leaving) return
+    const link = event.target instanceof Element ? event.target.closest("a[href]") : null
+    if (!(link instanceof HTMLAnchorElement) || link.hasAttribute("download") || (link.target && link.target !== "_self")) return
+    const destination = new URL(link.href, window.location.href)
+    if (!/^https?:$/.test(destination.protocol) || (destination.pathname === window.location.pathname && destination.search === window.location.search && destination.hash)) return
+    if (this.ended && !this.completionDisposition) return
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    this.requestExit(destination.href)
+  }
+
+  /** @param {Event} event */
+  interceptVisit(event) {
+    if (this.leaving || (this.ended && !this.completionDisposition)) return
+    const visit = /** @type {CustomEvent<{url: string}>} */ (event)
+    event.preventDefault()
+    this.requestExit(visit.detail.url)
+  }
+
+  /** @param {SubmitEvent} event */
+  interceptSubmit(event) {
+    if (event.defaultPrevented || this.leaving || (this.ended && !this.completionDisposition)) return
+    const form = event.target
+    if (!(form instanceof HTMLFormElement) || form.method === "dialog" || (form.target && form.target !== "_self")) return
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    this.requestExit()
+    this.exitForm = {form, submitter: event.submitter}
+  }
+
+  /** @param {boolean} busy */
+  setExitBusy(busy) {
+    if (!this.hasExitDialogTarget) return
+    for (const button of this.exitActionTargets) button.disabled = busy
+  }
+
+  /** @param {"save"|"discard"} disposition */
+  async finishSession(disposition) {
+    if (this.ending || this.completionDisposition) return
     this.ending = true
+    this.setExitBusy(true)
+    if (this.hasExitDialogTarget) {
+      this.exitStatusTarget.hidden = false
+      this.exitStatusTarget.textContent = disposition === "save" ? "Saving acquisition…" : "Discarding acquisition…"
+    }
     try {
       await this.releaseCapture()
       const id = `${this.sessionValue}:complete`
       const endedAt = new Date().toISOString()
+      const body = { ended_at: endedAt, disposition, flight_name: this.hasFlightNameTarget ? this.flightNameTarget.value.trim() : undefined }
       await transactionRequest(this.database, [OUTBOX_STORE, META_STORE], "readwrite", (_store, transaction) => {
         transaction.objectStore(META_STORE).put({ key: `${this.sessionValue}:ended-at`, value: endedAt })
-        return putOutbox(transaction.objectStore(OUTBOX_STORE), { id, session: this.sessionValue, kind: "complete", url: this.completeUrlValue, method: "PATCH", body: { ended_at: endedAt }, queuedAt: Date.now() })
+        transaction.objectStore(META_STORE).put({ key: `${this.sessionValue}:recovery`, value: {active: false, disposition} })
+        return putOutbox(transaction.objectStore(OUTBOX_STORE), { id, session: this.sessionValue, kind: "complete", url: this.completeUrlValue, method: "PATCH", body, queuedAt: Date.now() })
       })
       this.ended = true
+      this.completionDisposition = disposition
       this.returnHomeAfterSync = true
       this.connectButtonTarget.disabled = true
       await this.flushOutbox()
       this.dataStatusTarget.textContent = "Session ended locally"
     } catch (caught) {
       const error = caught instanceof Error ? caught : new Error(String(caught))
-      this.showWarning(`The session could not be saved: ${error.message}. Keep this page open and retry ending the session.`)
+      if (this.hasExitDialogTarget) {
+        this.exitErrorTarget.hidden = false
+        this.exitErrorTarget.textContent = `The session could not be finalized: ${error.message}. Retry without closing this page.`
+        this.setExitBusy(false)
+      } else this.showWarning(`The session could not be saved: ${error.message}`)
     } finally {
       this.ending = false
+    }
+  }
+
+  async leaveAfterSync() {
+    if (this.leaving) return
+    this.leaving = true
+    try {
+      if (this.completionDisposition === "discard" && navigator.storage?.getDirectory) {
+        const root = await navigator.storage.getDirectory()
+        try { await root.removeEntry(`${this.flightCodeValue}-${this.sessionValue}.mavcap`) }
+        catch (error) { if (!(error instanceof DOMException) || error.name !== "NotFoundError") throw error }
+      }
+      await writeMetadata(this.database, `${this.sessionValue}:recovery`, {active: false})
+      this.returnHomeAfterSync = false
+      this.completionDisposition = null
+      if (this.exitForm) this.exitForm.form.requestSubmit(this.exitForm.submitter || undefined)
+      else window.location.assign(this.exitDestination || this.homeUrlValue)
+    } catch (error) {
+      this.leaving = false
+      this.showWarning(`Session finalized; local cleanup failed: ${error instanceof Error ? error.message : String(error)}. Keep this page open to retry.`)
     }
   }
 
@@ -721,6 +883,9 @@ export default class extends TypedController {
 
   async refreshCloudStatus() {
     const oldest = this.db ? await oldestOutbox(this.db, this.sessionValue) : null
+    if (this.hasExitDialogTarget && this.exitDialogTarget.open && this.completionDisposition) {
+      this.exitStatusTarget.textContent = !navigator.onLine ? "Saved locally. Waiting for an Internet connection to finalize." : this.cloudError ? `Synchronization blocked: ${this.cloudError}. Retrying automatically.` : "Finalizing acquisition…"
+    }
     const age = oldest ? Math.max(1, Math.round((Date.now() - oldest.queuedAt) / 1000)) : 0
     if (!navigator.onLine) {
       this.cloudStatusTarget.textContent = oldest ? `${age} s behind` : "Offline"
@@ -732,8 +897,7 @@ export default class extends TypedController {
       this.cloudStatusTarget.textContent = this.ended ? "Synced" : "Live"
       this.cloudError = null
       if (this.ended && this.returnHomeAfterSync) {
-        this.returnHomeAfterSync = false
-        window.location.assign(this.homeUrlValue)
+        await this.leaveAfterSync()
       }
     }
   }
@@ -745,7 +909,8 @@ export default class extends TypedController {
 
   /** @param {BeforeUnloadEvent} event */
   warnBeforeUnload(event) {
-    if (this.ended || (!this.port && this.pendingSamples.length === 0)) return
+    if (this.leaving || (this.ended && !this.completionDisposition)) return
+    if (this.hasExitDialogTarget && !this.exitDialogTarget.open) this.requestExit()
     event.preventDefault()
     event.returnValue = ""
   }

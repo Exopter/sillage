@@ -1,0 +1,19 @@
+<dialog class="workspace-dialog" data-signal-workspace-target="exitDialog" aria-labelledby="signal-exit-title" data-action="cancel->signal-workspace#continueSession">
+  <div class="workspace-dialog-head">
+    <div><span class="section-eyebrow">Signal acquisition</span><h3 id="signal-exit-title"><%= flight ? "End session" : "Save this acquisition?" %></h3></div>
+  </div>
+  <div class="workspace-dialog-section">
+    <p><%= flight ? "Save the final telemetry to #{flight.code} and end this session." : "Save the telemetry and event markers as a new flight, or discard this acquisition." %></p>
+    <% unless flight %>
+      <div class="operations-form-grid"><label class="is-wide"><span>Flight name</span><input type="text" value="Signal flight" maxlength="160" data-signal-workspace-target="flightName" aria-label="Flight name"></label></div>
+      <p class="operations-help">Discard permanently deletes this session's telemetry and local capture. Onboard microSD recordings are unchanged.</p>
+    <% end %>
+    <p class="workspace-errors" role="alert" data-signal-workspace-target="exitError" hidden></p>
+    <p class="operations-help" role="status" data-signal-workspace-target="exitStatus" hidden></p>
+    <div class="operations-form-actions">
+      <button type="button" class="button-secondary" data-action="signal-workspace#continueSession" data-signal-workspace-target="exitAction">Continue session</button>
+      <% unless flight %><button type="button" class="button-danger" data-action="signal-workspace#discardSession" data-signal-workspace-target="exitAction">Discard</button><% end %>
+      <button type="button" class="button-primary" data-action="signal-workspace#saveSession" data-signal-workspace-target="exitAction"><%= flight ? "Save and end session" : "Save as new flight" %></button>
+    </div>
+  </div>
+</dialog>

@@ -6,6 +6,8 @@ const source = readFileSync(new URL("../../app/javascript/controllers/signal_wor
   .replace(/const TypedController = .*$/m, "const TypedController = class {}")
 import {ImuHealth} from "../../app/javascript/lib/imu_health.js"
 import {SignalTelemetry} from "../../app/javascript/lib/signal_telemetry.js"
+globalThis.window = { location: {href: "https://example.com/signal"} }
+globalThis.history = {state: null}
 const requests = []
 const metadata = []
 globalThis.signalLifecycleDependencies = {
@@ -32,11 +34,12 @@ assert.equal(view.db, null)
 const stale = view.connect()
 requests.shift().resolve(database)
 await tick()
-assert.equal(metadata.length, 2)
+assert.equal(metadata.length, 3)
 view.connectionGeneration = Symbol("new connection")
 view.nextSequence = 42
 metadata.shift()(1)
 metadata.shift()("ended")
+metadata.shift()(undefined)
 await stale
 assert.equal(closed, 2)
 assert.equal(view.nextSequence, 42, "old metadata cannot overwrite the new connection")

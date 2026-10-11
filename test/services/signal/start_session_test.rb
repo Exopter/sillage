@@ -21,17 +21,18 @@ class Signal::StartSessionTest < ActiveSupport::TestCase
     assert_equal flight.aircraft.configuration_snapshot, flight.configuration_snapshot
   end
 
-  test "creates an unassigned flight and is idempotent for a supplied uuid" do
+  test "creates an unassigned session and is idempotent for a supplied uuid" do
     uuid = SecureRandom.uuid
     service = -> {
       Signal::StartSession.new(user: users(:julien), uuid:, started_at: Time.current).call
     }
 
-    assert_difference [ "Flight.count", "SignalSession.count" ], 1 do
-      first = service.call
-      assert_equal "private", first.flight.visibility
-      assert_equal first, service.call
-      assert_nil first.flight.aircraft
+    assert_no_difference "Flight.count" do
+      assert_difference "SignalSession.count", 1 do
+        first = service.call
+        assert_equal first, service.call
+        assert_nil first.flight
+      end
     end
   end
 end

@@ -1,7 +1,8 @@
-<% content_for :title, @active_session ? @active_session.flight.code : "Signal sessions" %>
+<% content_for :title, @active_session ? @active_session.flight&.code || "Unassigned session" : "Signal sessions" %>
 
 <% if @active_session %>
   <% content_for :head do %>
+    <meta name="turbo-cache-control" content="no-cache">
     <link rel="stylesheet" href="<%= Rails.application.config.x.cesium_base_url %>Widgets/widgets.css">
   <% end %>
   <% flight = @active_session.flight %>
@@ -9,20 +10,22 @@
        data-controller="signal-workspace"
        data-signal-workspace-cesium-token-value="<%= @cesium_ion_token %>"
        data-signal-workspace-cesium-base-url-value="<%= Rails.application.config.x.cesium_base_url %>"
+       data-signal-workspace-review-value="<%= params[:review] == "1" %>"
        data-signal-workspace-completed-value="<%= @active_session.status == "completed" %>"
        data-signal-workspace-session-value="<%= @active_session.uuid %>"
-       data-signal-workspace-flight-id-value="<%= flight.id %>"
-       data-signal-workspace-flight-code-value="<%= flight.code %>"
+       data-signal-workspace-flight-id-value="<%= flight&.id %>"
+       data-signal-workspace-flight-code-value="<%= flight&.code || "UNASSIGNED" %>"
        data-signal-workspace-batch-url-value="<%= batches_api_v1_signal_session_path(@active_session.uuid) %>"
        data-signal-workspace-event-url-value="<%= events_api_v1_signal_session_path(@active_session.uuid) %>"
        data-signal-workspace-home-url-value="<%= signal_path(view: "home") %>"
        data-signal-workspace-complete-url-value="<%= complete_api_v1_signal_session_path(@active_session.uuid) %>">
+    <%= render "signal/exit_dialog", flight: flight %>
     <div class="signal-live-shell" data-signal-workspace-target="presentation">
       <header class="signal-command-bar">
         <div class="signal-session-identity">
-          <span class="signal-k">Flight</span>
-          <strong><%= flight.code %></strong>
-          <small><%= flight.display_aircraft %></small>
+          <span class="signal-k"><%= flight ? "Flight" : "Acquisition" %></span>
+          <strong><%= flight&.code || "Unassigned session" %></strong>
+          <small><%= flight&.display_aircraft || "No flight created" %></small>
         </div>
         <div class="signal-link-stack" aria-label="Signal link status">
           <div><span>Radio</span><strong data-signal-workspace-target="radioStatus">Waiting for ground radio</strong></div>
@@ -43,7 +46,7 @@
         <span>HEADING <strong data-signal-workspace-target="qualityHeading" data-state="unknown">Unknown</strong></span>
         <span>PREFLIGHT <strong data-signal-workspace-target="preflightStatus" data-state="unknown">Not checked</strong></span>
         <small data-signal-workspace-target="qualityReason">Waiting for quality telemetry</small>
-        <%= link_to "Run preflight check", flight_imu_check_path(flight), class: "workspace-strong-link" %>
+        <%= link_to "Run preflight check", flight_imu_check_path(flight), class: "workspace-strong-link" if flight %>
       </div>
       <div class="signal-storage-warning" data-signal-workspace-target="warning" hidden></div>
 
@@ -58,7 +61,7 @@
           <div class="signal-widget-body signal-map-body">
             <div class="signal-map-scene" data-signal-workspace-target="mapScene" aria-label="Live GPS position on the 3D satellite map"></div>
             <canvas data-signal-workspace-target="mapCanvas" aria-label="GPS track from received positions"></canvas>
-            <div class="signal-aircraft" data-signal-workspace-target="aircraftMarker" hidden><span class="signal-heading-ray"></span><span class="signal-aircraft-icon"><%= sillage_icon "plane", size: 23, stroke_width: 1.8 %></span><span class="signal-aircraft-label"><strong><%= flight.code %></strong><small data-signal-workspace-target="aircraftLabel">Waiting for telemetry</small></span></div>
+            <div class="signal-aircraft" data-signal-workspace-target="aircraftMarker" hidden><span class="signal-heading-ray"></span><span class="signal-aircraft-icon"><%= sillage_icon "plane", size: 23, stroke_width: 1.8 %></span><span class="signal-aircraft-label"><strong><%= flight&.code || "Unassigned session" %></strong><small data-signal-workspace-target="aircraftLabel">Waiting for telemetry</small></span></div>
             <div class="signal-map-cache" data-signal-workspace-target="mapStatus">Loading 3D map</div>
             <button type="button" class="signal-tool-button signal-map-follow" data-signal-workspace-target="mapFollow" data-action="signal-workspace#toggleMapFollow" aria-pressed="true" disabled>Following GPS</button>
             <div class="signal-map-event" data-signal-workspace-target="latestEvent" hidden></div>
@@ -109,12 +112,24 @@
       <header class="signal-home-head">
         <div><span class="signal-k">Sillage Signal</span><h1>Start live acquisition</h1><p>Connect the Holybro ground radio over USB to view live telemetry. Use Chrome or Edge on desktop.</p></div>
       </header>
+      <% if @retained_sessions.any? %>
+        <section class="signal-launch-card" aria-label="Unassigned sessions">
+          <div class="signal-launch-body"><span class="signal-k">Recovery</span><h2>Unassigned sessions</h2><p>Review an interrupted acquisition to save or discard it.</p></div>
+          <% @retained_sessions.each do |session| %>
+            <div class="signal-prep-row"><div><strong><%= l session.started_at, format: :short %></strong><span><%= session.uuid.first(8).upcase %> · Pending review</span></div>
+              <%= link_to "Review session", signal_path(session: session.uuid, review: 1), class: "signal-tool-button" %>
+            </div>
+          <% end %>
+        </section>
+      <% end %>
       <div class="signal-launch-grid">
         <section class="signal-launch-card">
-          <div class="signal-launch-body"><span class="signal-k">Prepared flights</span><h2>Attach to an existing flight</h2><p>The aircraft and installed Hangar assets are inherited automatically.</p></div>
+          <div class="signal-launch-body"><span class="signal-k">Prepared flights</span><h2>Attach to an existing flight</h2><p>Select a prepared flight or create a draft. Aircraft and configuration can be completed later.</p>
+            <%= button_to "Create draft flight", draft_signal_sessions_path, class: "signal-tool-button", form: { data: { turbo: false } } %>
+          </div>
           <% @preparation_flights.each do |flight| %>
             <div class="signal-prep-row">
-              <div><strong><%= flight.code %></strong><span><%= flight.display_aircraft %></span></div>
+              <div><strong><%= flight.code %></strong><span><%= flight.name %> · <%= flight.display_aircraft %></span><%= link_to "Edit draft", edit_flight_path(flight), class: "workspace-strong-link" %></div>
               <%= button_to "Open session", signal_sessions_path(flight_id: flight.id), class: "signal-tool-button is-primary", form: { data: { turbo: false } } %>
             </div>
           <% end %>
@@ -122,7 +137,7 @@
         </section>
         <section class="signal-launch-card">
           <div class="signal-launch-body">
-            <span class="signal-k">Direct acquisition</span><h2>Create from Signal</h2><p>A new Flight is created. Its aircraft is filled automatically when identification is unambiguous; otherwise it remains To complete.</p>
+            <span class="signal-k">Direct acquisition</span><h2>Unassigned acquisition</h2><p>Start telemetry without creating a flight. When leaving Signal, save the acquisition as a new flight or discard it.</p>
             <%= button_to signal_sessions_path, class: "signal-tool-button is-primary signal-start-direct", form: { data: { turbo: false } } do %><%= sillage_icon "radio", size: 15 %><span>Start unassigned session</span><% end %>
             <div class="signal-launch-rules"><div><%= sillage_icon "download", size: 15 %><span><strong>Local capture first</strong>Raw MAVLink continues during a brief Internet cut.</span></div><div><%= sillage_icon "upload", size: 15 %><span><strong>Automatic recovery</strong>Queued batches resume from the last acknowledgement.</span></div><div><%= sillage_icon "shield", size: 15 %><span><strong>microSD authoritative</strong>Signal complements the onboard recorder.</span></div></div>
           </div>

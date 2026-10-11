@@ -1,5 +1,7 @@
 module Signal
   class StartSession
+    InvalidFlight = Class.new(StandardError)
+
     def initialize(user:, flight_id: nil, uuid: nil, started_at: nil, station_metadata: {},
       mavlink_system_id: nil, mavlink_component_id: nil)
       @user = user
@@ -35,10 +37,11 @@ module Signal
     private
 
     def prepare_flight
-      flight = if @flight_id.present?
-        @user.flights.find(@flight_id)
-      else
-        @user.flights.create!(name: "Live flight", status: "live", started_at: @started_at)
+      return if @flight_id.blank?
+
+      flight = @user.flights.find(@flight_id)
+      unless flight.preparation? || flight.live?
+        raise InvalidFlight, "Only a draft or live flight can receive a Signal session."
       end
       flight.update!(status: "live", started_at: flight.started_at || @started_at)
       flight.capture_configuration!(at: nil)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_11_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_11_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -338,7 +338,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_11_140000) do
   create_table "operator_events", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "event_type", default: "marker", null: false
-    t.bigint "flight_id", null: false
+    t.bigint "flight_id"
     t.string "label"
     t.json "metadata", default: {}, null: false
     t.datetime "occurred_at", null: false
@@ -448,7 +448,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_11_140000) do
   create_table "signal_sessions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "ended_at"
-    t.bigint "flight_id", null: false
+    t.bigint "flight_id"
     t.integer "last_acknowledged_sequence", default: -1, null: false
     t.integer "mavlink_component_id"
     t.integer "mavlink_system_id"

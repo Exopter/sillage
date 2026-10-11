@@ -110,7 +110,9 @@ export function parseOutboxRecord(value) {
   } else if (value.kind === "event") {
     if (value.method !== "POST" || ![body.event_uuid, body.event_type, body.occurred_at, body.label].every((field) => typeof field === "string") || !isObject(body.metadata)) return invalid()
   } else if (value.kind === "complete") {
-    if (value.method !== "PATCH" || typeof body.ended_at !== "string") return invalid()
+    if (value.method !== "PATCH" || typeof body.ended_at !== "string"
+        || (body.disposition !== undefined && body.disposition !== "save" && body.disposition !== "discard")
+        || (body.flight_name !== undefined && typeof body.flight_name !== "string")) return invalid()
   } else return invalid()
   return /** @type {OutboxRecord} */ (value)
 }

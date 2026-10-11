@@ -15,6 +15,8 @@ module Api
           mavlink_component_id: create_params[:mavlink_component_id]
         ).call
         render json: session_payload(signal_session), status: :created
+      rescue Signal::StartSession::InvalidFlight => error
+        render json: { error: error.message }, status: :unprocessable_entity
       end
 
       def batches
@@ -34,28 +36,39 @@ module Api
       end
 
       def events
-        event = @signal_session.operator_events.find_or_initialize_by(uuid: params.require(:event_uuid))
-        event.assign_attributes(
-          flight: @signal_session.flight,
-          event_type: params[:event_type].presence || "marker",
-          occurred_at: parse_time(params[:occurred_at]) || Time.current,
-          label: params[:label],
-          metadata: params[:metadata].presence || {}
-        )
-        event.save!
-        if event.metadata["source"] == "imu_health" && event.metadata["invalidate_preflight_id"].present?
-          @signal_session.flight.imu_checks.where(id: event.metadata["invalidate_preflight_id"],
-            user: Current.user, kind: "preflight", invalidated_at: nil).update_all(
-              invalidated_at: event.occurred_at, invalidation_reason: event.label.to_s.first(200))
+        event = nil
+        @signal_session.with_lock do
+          if @signal_session.status == "discarded"
+            render json: { error: "This Signal session was discarded." }, status: :conflict
+            return
+          end
+          event = @signal_session.operator_events.find_or_initialize_by(uuid: params.require(:event_uuid))
+          event.assign_attributes(
+            flight: @signal_session.flight,
+            event_type: params[:event_type].presence || "marker",
+            occurred_at: parse_time(params[:occurred_at]) || Time.current,
+            label: params[:label],
+            metadata: params[:metadata].presence || {}
+          )
+          event.save!
+          if @signal_session.flight && event.metadata["source"] == "imu_health" && event.metadata["invalidate_preflight_id"].present?
+            @signal_session.flight.imu_checks.where(id: event.metadata["invalidate_preflight_id"],
+              user: Current.user, kind: "preflight", invalidated_at: nil).update_all(
+                invalidated_at: event.occurred_at, invalidation_reason: event.label.to_s.first(200))
+          end
         end
         SignalSessionChannel.broadcast_to(@signal_session, type: "event", event: event.as_json)
         render json: { uuid: event.uuid }, status: :created
       end
 
       def complete
-        @signal_session.complete!(ended_at: parse_time(params[:ended_at]) || Time.current)
+        Signal::CompleteSession.new(signal_session: @signal_session,
+          disposition: params[:disposition],
+          name: params[:flight_name], ended_at: parse_time(params[:ended_at]) || Time.current).call
         SignalSessionChannel.broadcast_to(@signal_session, type: "completed", ended_at: @signal_session.ended_at)
         render json: session_payload(@signal_session)
+      rescue Signal::CompleteSession::InvalidDecision => error
+        render json: { error: error.message }, status: :unprocessable_entity
       end
 
       private
@@ -95,7 +108,7 @@ module Api
         {
           uuid: signal_session.uuid,
           flight_id: signal_session.flight_id,
-          flight_code: signal_session.flight.code,
+          flight_code: signal_session.flight&.code,
           status: signal_session.status,
           mavlink_system_id: signal_session.mavlink_system_id,
           mavlink_component_id: signal_session.mavlink_component_id,

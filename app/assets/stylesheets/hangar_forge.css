@@ -1059,7 +1059,7 @@
   background: var(--ex-state-live-text, #00615b);
 }
 
-.fdr-wifi-dialog {
+.workspace-dialog {
   width: min(620px, calc(100vw - 32px));
   max-height: calc(100vh - 48px);
   padding: 0;
@@ -1071,11 +1071,11 @@
   box-shadow: 0 24px 80px rgba(9, 20, 22, .24);
 }
 
-.fdr-wifi-dialog::backdrop {
+.workspace-dialog::backdrop {
   background: rgba(4, 15, 18, .55);
 }
 
-.fdr-wifi-dialog-head {
+.workspace-dialog-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -1084,20 +1084,20 @@
   border-bottom: 1px solid var(--border-rule, #d4dfdc);
 }
 
-.fdr-wifi-dialog-head h3 {
+.workspace-dialog-head h3 {
   margin: 4px 0 0;
   font-size: 22px;
 }
 
-.fdr-wifi-dialog-section {
+.workspace-dialog-section {
   padding: 18px 20px 20px;
 }
 
-.fdr-wifi-dialog-section + .fdr-wifi-dialog-section {
+.workspace-dialog-section + .workspace-dialog-section {
   border-top: 1px solid var(--border-rule, #d4dfdc);
 }
 
-.fdr-wifi-dialog-section h4 {
+.workspace-dialog-section h4 {
   margin: 0 0 13px;
   font-size: 14px;
 }

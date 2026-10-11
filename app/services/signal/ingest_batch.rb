@@ -22,6 +22,8 @@ module Signal
 
     def call
       @signal_session.with_lock do
+        raise SessionCompleted, "This Signal session was discarded." if @signal_session.status == "discarded"
+
         existing = @signal_session.signal_batches.find_by(sequence: @sequence)
         if existing
           @signal_session.acknowledge!(@sequence)
@@ -37,14 +39,22 @@ module Signal
           checksum: Digest::SHA256.hexdigest(@payload.to_json),
           payload: @payload
         )
-        insert_track_points
-        insert_sensor_samples
+        materialize!
         identify_flight_source
         @signal_session.acknowledge!(@sequence)
-        mark_flight_live
         broadcast(batch)
         batch
       end
+    end
+
+    # Called under the session lock, either during ingestion or first Flight assignment.
+    def materialize!(update_counts: true)
+      return unless @signal_session.flight
+
+      validate_samples! unless @samples
+      insert_track_points
+      insert_sensor_samples
+      mark_flight_live if update_counts
     end
 
     private

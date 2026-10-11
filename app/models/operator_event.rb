@@ -2,7 +2,7 @@ class OperatorEvent < ApplicationRecord
   EVENT_TYPES = %w[marker note warning].freeze
 
   belongs_to :signal_session
-  belongs_to :flight
+  belongs_to :flight, optional: true
 
   before_validation :assign_defaults, on: :create
 

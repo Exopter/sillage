@@ -131,14 +131,14 @@
     </button>
   </footer>
 
-  <dialog class="fdr-wifi-dialog" data-fdr-wifi-configuration-target="manualDialog">
-    <div class="fdr-wifi-dialog-head">
+  <dialog class="workspace-dialog" data-fdr-wifi-configuration-target="manualDialog">
+    <div class="workspace-dialog-head">
       <div><span class="section-eyebrow">Forge Wi-Fi library</span><h3>Add a network</h3></div>
       <button type="button" class="fdr-wifi-icon-button" aria-label="Close" data-action="fdr-wifi-configuration#closeManual"><%= sillage_icon "x", size: 17 %></button>
     </div>
 
     <% if @known_wifi_credentials.any? %>
-      <section class="fdr-wifi-dialog-section">
+      <section class="workspace-dialog-section">
         <h4>Use a saved network</h4>
         <%= form_with url: forge_fdr_fdr_wifi_profiles_path(@fdr), class: "workspace-form" do |form| %>
           <label>
@@ -150,7 +150,7 @@
       </section>
     <% end %>
 
-    <section class="fdr-wifi-dialog-section">
+    <section class="workspace-dialog-section">
       <h4>Save a new network</h4>
       <%= form_with url: forge_fdr_fdr_wifi_profiles_path(@fdr), scope: :wifi_credential, class: "workspace-form" do |form| %>
         <label>

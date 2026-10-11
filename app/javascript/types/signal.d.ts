@@ -23,7 +23,7 @@ export type CaptureMessage = FrameMessage
   | { type: "capture-error"; message: string }
 export type CaptureCommand = { type: "init-capture"; filename: string }
   | { type: "bytes"; bytes: ArrayBuffer; receivedAtUs: string }
-  | { type: "close" }
+  | { type: "close" } | { type: "flush" }
 
 export type SignalSample = { kind: "sensor"; sensor_type: string; recorded_at: string; readings: Record<string, unknown> }
   | { kind: "gps"; recorded_at: string; latitude: number; longitude: number; altitude_m?: number;
@@ -40,5 +40,5 @@ export interface EventBody {
 export type OutboxRecord = { id: string; session: string; queuedAt: number; url: string } & (
   { kind: "batch"; method: "POST"; sequence: number; body: BatchBody }
   | { kind: "event"; method: "POST"; body: EventBody }
-  | { kind: "complete"; method: "PATCH"; body: { ended_at: string } }
+  | { kind: "complete"; method: "PATCH"; body: { ended_at: string; disposition?: "save" | "discard"; flight_name?: string } }
 )

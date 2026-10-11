@@ -102,7 +102,7 @@ ending.stopSerial = async () => {
 }
 let flushed = false
 ending.flushOutbox = async () => { flushed = true }
-const completion = ending.endSession()
+const completion = ending.finishSession("save")
 await tick()
 await tick()
 assert.equal(drained, true)
@@ -125,7 +125,7 @@ failedEnd.pendingSamples.push(lastSample)
 failedEnd.stopSerial = async () => {}
 const warnings = []
 failedEnd.showWarning = (message) => warnings.push(message)
-const abortedEnd = failedEnd.endSession()
+const abortedEnd = failedEnd.finishSession("save")
 await tick()
 failedEnd.db.transactions[0].abort()
 await abortedEnd
@@ -134,7 +134,7 @@ assert.deepEqual(failedEnd.pendingSamples, [lastSample])
 assert.equal(failedEnd.db.values.outbox.size, 0)
 assert.equal(warnings.length, 1)
 
-const retriedEnd = failedEnd.endSession()
+const retriedEnd = failedEnd.finishSession("save")
 await tick()
 failedEnd.db.transactions[1].commit()
 await tick()
@@ -145,7 +145,7 @@ assert.equal(failedEnd.nextSequence, 1)
 assert.equal(failedEnd.db.values.outbox.size, 1, "the committed final batch must survive a completion failure")
 assert.equal(failedEnd.db.values.metadata.has("session:ended-at"), false)
 
-const finalRetry = failedEnd.endSession()
+const finalRetry = failedEnd.finishSession("save")
 await tick()
 failedEnd.db.transactions[3].commit()
 await finalRetry
@@ -222,3 +222,80 @@ assert.equal(warning.body.event_type,"warning")
 assert.equal(warning.body.metadata.invalidate_preflight_id,null)
 assert.equal(warning.body.metadata.warnings.length,1)
 assert.equal(advisory.db.values.metadata.size,0,"an advisory does not persist a preflight invalidation")
+
+// Asking to leave is reversible and must not stop capture before a decision.
+const prompt = workspace()
+prompt.db.autoCommit = true
+prompt.hasExitDialogTarget = true
+prompt.exitActionTargets = []
+prompt.homeUrlValue = "/signal?view=home"
+prompt.exitErrorTarget = {}
+prompt.exitStatusTarget = {}
+prompt.exitDialogTarget = {open: false, showModal() {this.open = true}, close() {this.open = false}}
+prompt.autoReconnect = async () => {}
+prompt.pendingSamples = [firstSample]
+prompt.endSession()
+assert.equal(prompt.exitDialogTarget.open, true)
+assert.equal(prompt.ended, false)
+assert.equal(prompt.pendingSamples.length, 1)
+prompt.continueSession()
+assert.equal(prompt.exitDialogTarget.open, false)
+assert.equal(prompt.pendingSamples.length, 1)
+let prevented = 0
+prompt.interceptVisit({preventDefault() {prevented++}, detail: {url: "/flights"}})
+assert.equal(prevented, 1)
+assert.equal(prompt.exitDestination, "/flights")
+prompt.continueSession()
+prompt.warnBeforeUnload({preventDefault() {prevented++}})
+assert.equal(prevented, 2, "closing an unassigned session is guarded even without a connected radio")
+assert.equal(prompt.exitDialogTarget.open, true)
+prompt.leaving = true
+prompt.warnBeforeUnload({preventDefault() {prevented++}})
+assert.equal(prevented, 2, "an acknowledged exit does not trigger another browser warning")
+
+// Discard must be durable before deleting the local raw capture, and an offline
+// decision must retain both its queue record and raw file until it can finish.
+const discard = workspace()
+discard.db.autoCommit = true
+discard.flightCodeValue = "UNASSIGNED"
+discard.homeUrlValue = "/signal?view=home"
+discard.stopSerial = async () => {}
+discard.cloudStatusTarget = {}
+discard.flushOutbox = Workspace.prototype.flushOutbox
+const removed = []
+navigator.storage = {getDirectory: async () => ({removeEntry: async name => removed.push(name)})}
+navigator.onLine = false
+await discard.finishSession("discard")
+assert.equal(discard.db.values.outbox.get("session:complete").body.disposition, "discard")
+assert.equal(discard.db.values.metadata.get("session:recovery").value.disposition, "discard")
+assert.deepEqual(removed, [])
+navigator.onLine = true
+fetch = async () => ({ok:true})
+await discard.flushOutbox()
+assert.deepEqual(removed, ["UNASSIGNED-session.mavcap"])
+assert.equal(discard.db.values.outbox.size, 0)
+assert.deepEqual(discard.db.values.metadata.get("session:recovery").value, {active:false})
+
+// Logout is a form submission: do not invalidate authentication before the
+// acquisition and its completion have been acknowledged.
+globalThis.HTMLFormElement = class {}
+let submissions = 0
+const logout = Object.assign(new HTMLFormElement(), {method: "post", target: "", requestSubmit() {submissions++}})
+prompt.leaving = false
+prompt.pendingSamples = []
+prompt.interceptSubmit({target: logout, submitter: null, preventDefault() {}, stopImmediatePropagation() {}})
+assert.equal(prompt.exitDialogTarget.open, true)
+assert.equal(submissions, 0)
+prompt.continueSession()
+assert.equal(prompt.exitForm, null)
+prompt.interceptSubmit({target: logout, submitter: null, preventDefault() {}, stopImmediatePropagation() {}})
+prompt.stopSerial = async () => {}
+prompt.cloudStatusTarget = {}
+prompt.flushOutbox = Workspace.prototype.flushOutbox
+navigator.onLine = false
+await prompt.finishSession("save")
+assert.equal(submissions, 0, "offline completion must keep the authenticated page open")
+navigator.onLine = true
+await prompt.flushOutbox()
+assert.equal(submissions, 1, "submit logout only after completion is acknowledged")
+console.log("Signal exit decisions, navigation protection and acknowledged discard tests passed")

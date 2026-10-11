@@ -74,6 +74,131 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_equal "waiting_for_recording", flight.reload.status
   end
 
+  test "starting from a completed flight fails without changing its state" do
+    flight = flights(:one)
+    flight.update!(status: "waiting_for_recording")
+    assert_no_difference "SignalSession.count" do
+      post api_v1_signal_sessions_path, params: { flight_id: flight.id }, as: :json
+      assert_response :unprocessable_entity
+      post signal_sessions_path, params: { flight_id: flight.id }
+      assert_redirected_to signal_path(view: "home")
+    end
+    assert_equal "waiting_for_recording", flight.reload.status
+  end
+
+  test "direct acquisition stays unassigned until saved and materializes exactly once" do
+    uuid = SecureRandom.uuid
+    assert_no_difference "Flight.count" do
+      post api_v1_signal_sessions_path, params: { uuid: }, as: :json
+      assert_response :created
+      post api_v1_signal_sessions_path, params: { uuid: }, as: :json
+      assert_response :created
+    end
+    session = SignalSession.find_by!(uuid:)
+    assert_nil session.flight
+    get signal_path(session: uuid)
+    assert_response :success
+    assert_select "strong", text: "Unassigned session"
+    assert_select "dialog button", text: "Save as new flight"
+    assert_select "dialog button", text: "Discard"
+    assert_select "a", text: "Run preflight check", count: 0
+
+    payload = { sequence: 0, samples: [
+      { kind: "gps", recorded_at: Time.current.iso8601, latitude: 44.2, longitude: 5.7 },
+      { kind: "sensor", sensor_type: "IMU", readings: { x: 1 } }
+    ] }
+    assert_no_difference [ "Flight.count", "TrackPoint.count", "SensorSample.count" ] do
+      post batches_api_v1_signal_session_path(uuid), params: payload, as: :json
+      assert_response :success
+      post events_api_v1_signal_session_path(uuid), params: { event_uuid: SecureRandom.uuid, label: "Marker" }, as: :json
+      assert_response :created
+    end
+    assert_nil session.operator_events.first.flight
+    patch complete_api_v1_signal_session_path(uuid), as: :json
+    assert_response :unprocessable_entity
+    assert_equal "live", session.reload.status
+
+    assert_difference "Flight.count", 1 do
+      patch complete_api_v1_signal_session_path(uuid), params: { disposition: "save", flight_name: "Range test" }, as: :json
+      assert_response :success
+    end
+    flight = session.reload.flight
+    assert_equal "Range test", flight.name
+    assert_equal "waiting_for_recording", flight.status
+    assert_equal 1, flight.track_points.count
+    assert_equal 1, flight.sensor_samples.count
+    assert_equal 1, flight.operator_events.count
+    assert_equal 1, flight.sample_count
+    assert_equal 1, flight.sensor_sample_count
+    assert_equal "completed", session.status
+    assert_no_difference [ "Flight.count", "TrackPoint.count", "SensorSample.count" ] do
+      patch complete_api_v1_signal_session_path(uuid), params: { disposition: "save" }, as: :json
+      assert_response :success
+      post batches_api_v1_signal_session_path(uuid), params: payload, as: :json
+      assert_response :success
+    end
+  end
+
+  test "discard clears an unassigned acquisition and cannot be reversed by replay" do
+    session = users(:julien).signal_sessions.create!
+    Signal::IngestBatch.new(signal_session: session, sequence: 0, payload: { samples: [] }).call
+    session.operator_events.create!(label: "Marker")
+    assert_no_difference "Flight.count" do
+      patch complete_api_v1_signal_session_path(session.uuid), params: { disposition: "discard" }, as: :json
+      assert_response :success
+      patch complete_api_v1_signal_session_path(session.uuid), params: { disposition: "discard" }, as: :json
+      assert_response :success
+    end
+    assert_equal "discarded", session.reload.status
+    assert_empty session.signal_batches
+    assert_empty session.operator_events
+    patch complete_api_v1_signal_session_path(session.uuid), params: { disposition: "save" }, as: :json
+    assert_response :unprocessable_entity
+    post batches_api_v1_signal_session_path(session.uuid), params: { sequence: 0, samples: [] }, as: :json
+    assert_response :conflict
+    post events_api_v1_signal_session_path(session.uuid), params: { event_uuid: SecureRandom.uuid, label: "Late marker" }, as: :json
+    assert_response :conflict
+    get signal_path(session: session.uuid)
+    assert_redirected_to signal_path(view: "home")
+  end
+
+  test "drafts can be created from Signal without an aircraft" do
+    assert_difference "Flight.count", 1 do
+      post draft_signal_sessions_path
+      assert_redirected_to signal_path(view: "home")
+    end
+    flight = users(:julien).flights.order(:id).last
+    assert_equal "preparation", flight.status
+    assert_nil flight.aircraft
+    get signal_path(view: "home")
+    assert_select "a[href=?]", edit_flight_path(flight), text: "Edit draft"
+    post signal_sessions_path(flight_id: flight.id)
+    assert_equal flight, users(:julien).signal_sessions.order(:id).last.flight
+  end
+
+  test "recovery is owner scoped and excludes discarded acquisitions" do
+    session = users(:julien).signal_sessions.create!
+    other = users(:operator).signal_sessions.create!
+    discarded = users(:julien).signal_sessions.create!(status: "discarded")
+    get signal_path(view: "home")
+    assert_response :success
+    assert_select "a[href=?]", signal_path(session: session.uuid, review: 1), text: "Review session"
+    assert_select "a[href=?]", signal_path(session: other.uuid, review: 1), count: 0
+    assert_select "a[href=?]", signal_path(session: discarded.uuid, review: 1), count: 0
+    patch complete_api_v1_signal_session_path(other.uuid), params: { disposition: "discard" }, as: :json
+    assert_response :not_found
+  end
+
+  test "attached sessions cannot be discarded and saving does not create another flight" do
+    session = users(:julien).signal_sessions.create!(flight: flights(:one))
+    patch complete_api_v1_signal_session_path(session.uuid), params: { disposition: "discard" }, as: :json
+    assert_response :unprocessable_entity
+    assert_no_difference "Flight.count" do
+      patch complete_api_v1_signal_session_path(session.uuid), params: { disposition: "save" }, as: :json
+      assert_response :success
+    end
+  end
+
   test "mixed optional GPS columns are coerced and inserted atomically" do
     session = users(:julien).signal_sessions.create!(flight: flights(:one))
     post batches_api_v1_signal_session_path(session.uuid), params: {
@@ -190,7 +315,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
   test "a first live batch identifies an unassigned aircraft" do
     post api_v1_signal_sessions_path, params: { uuid: SecureRandom.uuid }, as: :json
     session = SignalSession.order(:created_at).last
-    assert_nil session.flight.aircraft
+    assert_nil session.flight
 
     post batches_api_v1_signal_session_path(session.uuid), params: {
       sequence: 0,
@@ -200,7 +325,10 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     }, as: :json
 
     assert_response :success
-    assert_equal aircraft(:pilatus), session.flight.reload.aircraft
+    assert_nil session.reload.flight
+    patch complete_api_v1_signal_session_path(session.uuid), params: { disposition: "save" }, as: :json
+    assert_response :success
+    assert_equal aircraft(:pilatus), session.reload.flight.aircraft
   end
 
   test "a prepared flight learns the observed MAVLink identity for its installed FDR" do
@@ -247,7 +375,9 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     }, as: :json
 
     assert_response :success
-    assert_nil session.flight.reload.aircraft
+    patch complete_api_v1_signal_session_path(session.uuid), params: { disposition: "save" }, as: :json
+    assert_response :success
+    assert_nil session.reload.flight.aircraft
   end
 
   test "renders the unified Signal workspace without view tabs" do

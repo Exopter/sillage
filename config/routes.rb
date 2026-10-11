@@ -52,7 +52,9 @@ Rails.application.routes.draw do
     resources :fdr_functional_configurations, path: "configuration/exofdr-functional-configurations"
   end
 
-  resources :signal_sessions, only: :create
+  resources :signal_sessions, only: :create do
+    post :draft, on: :collection
+  end
   resources :flights, only: [] do
     resource :imu_check, only: :show, path: "preflight"
   end
