@@ -610,7 +610,7 @@ export default class extends TypedController {
     }
     const anySignal = report?.groundDbm != null || report?.airDbm != null
     this.radioMetricsStatusTarget.textContent = this.ended ? "Session ended" : !this.port ? "Not connected"
-      : !live ? "No telemetry" : !report ? "Radio metrics unavailable" : !anySignal ? "RSSI unavailable" : `Updated ${((now - report.at) / 1000).toFixed(1)} s ago`
+      : !live ? "No telemetry" : !report ? "Radio metrics unavailable" : !anySignal ? "RSSI unavailable" : `Updated ${Math.ceil((now - report.at) / 1000)} s ago`
     this.radioMetricsStatusTarget.title = report
       ? `SiK estimates. Ground noise: ${formatNumber(report.groundNoiseDbm)} dBm. Air noise: ${formatNumber(report.airNoiseDbm)} dBm. Radio RX errors: ${report.rxErrors}; corrected packets: ${report.fixed} (counters since radio boot). Ground TX buffer free: ${formatNumber(report.txFreePercent)}%.`
       : "Radio metrics require a fresh SiK report and current FDR telemetry. Signal-to-noise margin is an estimate, not a range guarantee."
