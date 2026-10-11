@@ -7,7 +7,7 @@ export type DecodedMessage =
   | { name: "highres_imu"; coordinateFrame?: "sensor_native" | "body_frd_ned" | null; timeUs: string; acceleration: number[] | null; angularVelocity: number[] | null; magneticField: number[] | null; absolutePa: number | null; differentialPa: number | null; pressureAltitudeM: number | null; temperatureC: number | null; fieldsUpdated: number }
   | { name: "attitude"; timeBootMs?: number; coordinateFrame?: "sensor_native" | "body_frd_ned"; quaternion: number[]; rollDeg: number; pitchDeg: number; yawDeg: number; rollSpeed: number; pitchSpeed: number; yawSpeed: number }
   | { name: "vfr_hud"; airspeedMps: number; groundspeedMps: number; altitudeM: number; climbMps: number; headingDeg: number; throttlePercent: number }
-  | { name: "radio"; rxErrors: number; fixed: number; rssi: number; remoteRssi: number; txBufferPercent: number; noise: number; remoteNoise: number; rssiDbm: number; remoteRssiDbm: number }
+  | { name: "radio"; rxErrors: number; fixed: number; rssi: number; remoteRssi: number; txBufferPercent: number; noise: number; remoteNoise: number; rssiDbm: number|null; remoteRssiDbm: number|null }
   | { name: "pressure"; timeBootMs: number; absoluteHpa: number; differentialHpa: number; temperatureC: number }
   | { name: "status_text"; severity: number; text: string }
   | { name: "unknown" }

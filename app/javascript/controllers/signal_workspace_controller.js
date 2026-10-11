@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection, observeRecorderConnection } from "aircraft_connection"
 import { clamp, signalLayoutPreset, parseSignalLayout } from "signal_layout"
 import { ImuHealth } from "imu_health"
-import { SignalTelemetry } from "signal_telemetry"
+import { SignalTelemetry, groundStationHeartbeat } from "signal_telemetry"
 import { SignalMap } from "signal_map"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
 
@@ -30,6 +30,9 @@ const CHART_WINDOW_MS = 30_000
  * @property {HTMLCanvasElement} chartCanvasTarget
  * @property {HTMLButtonElement} connectButtonTarget
  * @property {HTMLElement} radioStatusTarget
+ * @property {HTMLElement[]} radioMetricTargets
+ * @property {HTMLElement} radioMetricsStatusTarget
+ * @property {boolean} hasRadioMetricsStatusTarget
  * @property {HTMLElement} recorderStatusTarget
  * @property {HTMLElement} cloudStatusTarget
  * @property {HTMLElement} qualityAttitudeTarget
@@ -98,6 +101,10 @@ export default class extends TypedController {
   port = null
   /** @type {Worker|null} */
   worker = null
+  /** @type {number|undefined} */ radioTimer = undefined
+  /** @type {WritableStreamDefaultWriter<Uint8Array>|null} */ radioWriter = null
+  /** @type {Promise<void>|null} */ radioWrite = null
+  radioHeartbeatSequence = 0
   /** @type {ReadableStreamDefaultReader<Uint8Array>|null} */
   reader = null
   /** @type {Date|null} */
@@ -177,7 +184,7 @@ export default class extends TypedController {
   static targets = [
     "presentation", "board", "widget", "mapCanvas", "instrumentCanvas", "chartCanvas",
     "mapScene", "mapCredits", "mapStatus", "mapFollow",
-    "connectButton", "radioStatus", "recorderStatus", "cloudStatus", "warning",
+    "connectButton", "radioStatus", "radioMetric", "radioMetricsStatus", "recorderStatus", "cloudStatus", "warning",
     "heading", "airspeed", "altitude", "verticalSpeed", "glide", "dataStatus",
     "qualityAttitude", "qualityHeading", "qualityReason", "preflightStatus",
     "exitDialog", "exitError", "exitStatus", "flightName", "exitAction",
@@ -399,7 +406,7 @@ export default class extends TypedController {
     this.frameTimes = []
     this.mavlinkSystemId = null
     this.mavlinkComponentId = null
-    this.worker = new Worker("/signal_serial_worker.js?v=58-acquisition-lifecycle")
+    this.worker = new Worker("/signal_serial_worker.js?v=59-radio-metrics")
     this.worker.onmessage = ({ data }) => this.handleWorkerMessage(data)
     this.worker.onerror = () => this.showWarning("Telemetry decoding stopped. Reconnect the ground radio.")
     this.worker.postMessage({ type: "init-capture", filename: `${this.flightCodeValue}-${this.sessionValue}.mavcap` })
@@ -409,7 +416,23 @@ export default class extends TypedController {
     this.radioStatusTarget.textContent = "Connected · waiting for MAVLink"
     this.updateGroundRadioState("connected")
     await this.acquireWakeLock()
+    if (generation !== this.connectionGeneration || this.port !== port || this.stopSerialPromise || this.ending || this.ended) return
     this.readSerial()
+    this.radioTimer = window.setInterval(() => this.sendRadioHeartbeat(), 1_000)
+    void this.sendRadioHeartbeat()
+  }
+
+  async sendRadioHeartbeat() {
+    const writable = this.port?.writable
+    if (!writable || this.radioWrite || this.ended || this.ending || this.stopSerialPromise) return
+    this.radioWrite = (async () => {
+      try {
+        this.radioWriter = writable.getWriter()
+        await this.radioWriter.write(groundStationHeartbeat(this.radioHeartbeatSequence++))
+      } catch (_) { /* Reception remains usable when radio diagnostics cannot be requested. */ }
+      finally { this.radioWriter?.releaseLock(); this.radioWriter = null }
+    })()
+    try { await this.radioWrite } finally { this.radioWrite = null }
   }
 
   async readSerial() {
@@ -452,6 +475,10 @@ export default class extends TypedController {
   }
 
   async performStopSerial() {
+    window.clearInterval(this.radioTimer)
+    this.radioTimer = undefined
+    try { await this.radioWriter?.abort() } catch (_) { /* A disconnected port may reject abort. */ }
+    await this.radioWrite
     try { await this.portOpening } catch (_) { /* A failed open still needs to release its lock. */ }
     try { await this.reader?.cancel() } catch (_) { /* Port may already be gone. */ }
     if (this.worker) {
@@ -498,6 +525,7 @@ export default class extends TypedController {
       return
     }
     if (message.type !== "frame") return
+    if (message.decoded.name === "heartbeat" && message.decoded.type === 6) return
 
     const now = Date.now()
     // SiK injects RADIO_STATUS from its own identity. It must never select the aircraft.
@@ -556,13 +584,36 @@ export default class extends TypedController {
     })
     if (this.port) {
       this.radioStatusTarget.textContent = live
-        ? `Live · ${this.mavlinkSystemId}/${this.mavlinkComponentId} · ${this.frameTimes.length} frames/s${this.telemetry.radio == null ? "" : ` · ${formatNumber(this.telemetry.radio)} dBm`}`
+        ? `Live · ${this.mavlinkSystemId}/${this.mavlinkComponentId} · ${this.frameTimes.length} frames/s`
         : this.lastFrameAt ? "No telemetry · link lost" : "Connected · waiting for MAVLink"
     }
+    this.renderRadioMetrics(live, now)
     this.dataStatusTarget.textContent = this.ended ? "Session ended locally" : live ? "Receiving telemetry" : this.lastFrameAt ? "Telemetry stale" : "Waiting for telemetry"
     this.pushHistory(live, now)
     this.renderValues()
     this.drawAll()
+  }
+
+  /** @param {boolean} live @param {number} now */
+  renderRadioMetrics(live, now) {
+    if (!this.hasRadioMetricsStatusTarget) return
+    // SiK can repeat its last RF statistics after the Air link is lost.
+    const report = live ? this.telemetry.radio : null
+    const values = {ground: report?.groundDbm, air: report?.airDbm,
+      groundMargin: report?.groundMarginDb, airMargin: report?.airMarginDb}
+    for (const target of this.radioMetricTargets) {
+      const key = /** @type {keyof typeof values} */ (target.dataset.radioMetric)
+      const value = values[key]
+      const margin = key === "groundMargin" || key === "airMargin"
+      target.textContent = value == null ? "---" : `≈ ${margin && value > 0 ? "+" : ""}${Math.round(value)} ${margin ? "dB" : "dBm"}`
+      target.dataset.state = value == null ? "unknown" : margin && value < 10 ? "warning" : "live"
+    }
+    const anySignal = report?.groundDbm != null || report?.airDbm != null
+    this.radioMetricsStatusTarget.textContent = this.ended ? "Session ended" : !this.port ? "Not connected"
+      : !live ? "No telemetry" : !report ? "Radio metrics unavailable" : !anySignal ? "RSSI unavailable" : `Updated ${((now - report.at) / 1000).toFixed(1)} s ago`
+    this.radioMetricsStatusTarget.title = report
+      ? `SiK estimates. Ground noise: ${formatNumber(report.groundNoiseDbm)} dBm. Air noise: ${formatNumber(report.airNoiseDbm)} dBm. Radio RX errors: ${report.rxErrors}; corrected packets: ${report.fixed} (counters since radio boot). Ground TX buffer free: ${formatNumber(report.txFreePercent)}%.`
+      : "Radio metrics require a fresh SiK report and current FDR telemetry. Signal-to-noise margin is an estimate, not a range guarantee."
   }
 
   /** @param {string} recordedAt @param {string} sensorType @param {import("../types/signal").DecodedMessage} readings @returns {import("../types/signal").SignalSample} */

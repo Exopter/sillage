@@ -8,7 +8,7 @@ const healthURL = new URL("../../app/javascript/lib/imu_health.js", import.meta.
 const telemetryURL = new URL("../../app/javascript/lib/signal_telemetry.js", import.meta.url).href
 const instrumentsURL = new URL("../../app/javascript/lib/signal_instruments.js", import.meta.url).href
 const layoutURL = new URL("../../app/javascript/lib/signal_layout.js", import.meta.url).href
-const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {ImuHealth} from "${healthURL}";\nimport {SignalTelemetry} from "${telemetryURL}";\nimport {instrumentStyle} from "${instrumentsURL}";\nimport {clamp, signalLayoutPreset, parseSignalLayout} from "${layoutURL}";\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString("base64")}`)
+const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {ImuHealth} from "${healthURL}";\nimport {SignalTelemetry, groundStationHeartbeat} from "${telemetryURL}";\nimport {instrumentStyle} from "${instrumentsURL}";\nimport {clamp, signalLayoutPreset, parseSignalLayout} from "${layoutURL}";\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString("base64")}`)
 const view = new Workspace()
 for (const name of ["qualityAttitude", "qualityHeading", "qualityReason", "preflightStatus"]) view[`${name}Target`] = {textContent: "", dataset: {}}
 for (const name of ["radioStatus", "parserStatus", "dataStatus", "heading", "airspeed", "altitude", "verticalSpeed", "glide", "aircraftLabel"]) view[`${name}Target`] = {textContent: ""}
@@ -20,7 +20,12 @@ const originalNow = Date.now
 let now = 10_000
 Date.now = () => now
 const frame = (decoded, systemId = 1, componentId = 191) => ({type: "frame", decoded, systemId, componentId, receivedAtUs: String(now * 1000), parser: {errors: 0, ignored: 0, dropped: 0}})
-const radio = {name: "radio", rssiDbm: -60}
+view.hasRadioMetricsStatusTarget = true
+view.radioMetricsStatusTarget = {textContent: "", title: ""}
+view.radioMetricTargets = ["ground", "air", "groundMargin", "airMargin"].map(radioMetric => ({textContent: "", dataset: {radioMetric}}))
+const radio = {name: "radio", rssi: 133, remoteRssi: 114, noise: 38, remoteNoise: 100, txBufferPercent: 90, rxErrors: 10, fixed: 20}
+view.handleWorkerMessage(frame({name: "heartbeat", type: 6}, 255, 190))
+assert.equal(view.mavlinkSystemId, null, "a ground station heartbeat cannot select the aircraft")
 view.handleWorkerMessage(frame(radio, 51, 68))
 assert.equal(view.mavlinkSystemId, null, "radio status cannot resolve the FDR identity")
 view.handleWorkerMessage(frame({name: "highres_imu", acceleration: [0, 0, 9.81], angularVelocity: [1, 2, 3], magneticField: [10, 20, 30], differentialPa: 61.25, temperatureC: 24}))
@@ -33,6 +38,10 @@ assert.equal(view.headingTarget.textContent, "030")
 assert.equal(view.sensorValueTargets[0].textContent, "0.00 / 0.00 / 9.81")
 assert.equal(view.sensorValueTargets.find(target => target.dataset.sensor === "gLoad").textContent, "1.00", "the live G readout shows the accelerometer magnitude")
 assert.equal(view.streamBadgeTargets[0].textContent, "Live")
+assert.deepEqual(view.radioMetricTargets.map(target => target.textContent), ["≈ -57 dBm", "≈ -67 dBm", "≈ +50 dB", "≈ +7 dB"])
+assert.equal(view.radioMetricTargets[3].dataset.state, "warning")
+assert.match(view.radioMetricsStatusTarget.title, /Ground TX buffer free: 90%/)
+assert.equal(view.radioMetricsStatusTarget.textContent, "Updated 0.0 s ago")
 view.handleWorkerMessage(frame(radio, 51, 68))
 assert.equal(view.mavlinkSystemId, "1")
 view.handleWorkerMessage(frame({name: "attitude", rollDeg: 100, pitchDeg: 100, yawDeg: 120}, 2))
@@ -53,6 +62,8 @@ now += 2_000
 view.handleWorkerMessage(frame(radio, 51, 68))
 view.refreshTelemetry()
 assert.equal(view.streamBadgeTargets[0].textContent, "Stale", "ground-radio status cannot keep the Air link live")
+assert.ok(view.radioMetricTargets.every(target => target.textContent === "---"), "repeated radio reports must not show live strength after Air telemetry stops")
+assert.equal(view.radioMetricsStatusTarget.textContent, "No telemetry")
 assert.equal(view.airspeedTarget.textContent, "---")
 assert.equal(view.headingTarget.textContent, "---")
 assert.equal(view.altitudeTarget.textContent, "---")
@@ -195,3 +206,35 @@ assert.match(view.qualityReasonTarget.textContent,/Gyroscope manufacturer status
 quality.accuracy[1]=255;now+=100;qualitySample();view.renderQuality()
 assert.equal(view.preflightInvalidated,true,"unavailable gyro still invalidates preflight")
 Date.now = originalNow
+
+// Outgoing diagnostic presence must not queue writes or retain the serial lock.
+const transmitter = new Workspace()
+let resolveWrite
+let writesStarted = 0
+let locksReleased = 0
+let aborts = 0
+transmitter.port = {writable: {getWriter: () => ({
+  write(bytes) {
+    writesStarted++
+    assert.equal(bytes.length, 17)
+    return new Promise(resolve => {resolveWrite = resolve})
+  },
+  releaseLock() { locksReleased++ },
+  async abort() { aborts++; resolveWrite() }
+})}}
+const firstWrite = transmitter.sendRadioHeartbeat()
+await transmitter.sendRadioHeartbeat()
+assert.equal(writesStarted, 1, "a slow serial write cannot accumulate heartbeat writes")
+await transmitter.radioWriter.abort()
+await firstWrite
+assert.equal(aborts, 1)
+assert.equal(locksReleased, 1)
+assert.equal(transmitter.radioWriter, null)
+assert.equal(transmitter.radioWrite, null)
+transmitter.ended = true
+await transmitter.sendRadioHeartbeat()
+assert.equal(writesStarted, 1, "ended sessions do not transmit")
+transmitter.ended = false
+transmitter.port.writable.getWriter = () => {throw new Error("device disconnected")}
+await transmitter.sendRadioHeartbeat()
+assert.equal(transmitter.radioWrite, null, "a failed diagnostic write does not break reception or retain an in-flight write")

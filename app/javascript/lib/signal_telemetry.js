@@ -1,4 +1,5 @@
 const FRESH_MS = 1_500
+const RADIO_FRESH_MS = 3_000
 const PITOT_TIME_CONSTANT_MS = 250
 const PITOT_ZERO_ENTER_PA = 0.5
 const PITOT_ZERO_EXIT_PA = 1
@@ -15,6 +16,8 @@ export class SignalTelemetry {
   altitudeWindow = []
   /** @type {{pressurePa: number, timeMs: number, receivedAt: number, sourceClock: boolean, zero: boolean} | null} */
   pitotDisplay = null
+  /** @type {{at: number, groundDbm: number|null, airDbm: number|null, groundNoiseDbm: number|null, airNoiseDbm: number|null, groundMarginDb: number|null, airMarginDb: number|null, rxErrors: number, fixed: number, txFreePercent: number|null}|null} */
+  radioReport = null
 
   /** @param {string} key @param {number | number[] | null} value @param {number} now */
   set(key, value, now) {
@@ -98,7 +101,13 @@ export class SignalTelemetry {
       const first = this.altitudeWindow[0]
       this.set("verticalSpeed", first && altitude != null && time - first.time >= 0.8 ? (altitude - first.altitude) / (time - first.time) : null, now)
     } else if (decoded.name === "radio") {
-      this.set("radio", decoded.rssiDbm, now)
+      const groundDbm = sikDbm(decoded.rssi), airDbm = sikDbm(decoded.remoteRssi)
+      const groundNoiseDbm = sikDbm(decoded.noise), airNoiseDbm = sikDbm(decoded.remoteNoise)
+      this.radioReport = {at: now, groundDbm, airDbm, groundNoiseDbm, airNoiseDbm,
+        groundMarginDb: groundDbm != null && groundNoiseDbm != null ? groundDbm - groundNoiseDbm : null,
+        airMarginDb: airDbm != null && airNoiseDbm != null ? airDbm - airNoiseDbm : null,
+        rxErrors: decoded.rxErrors, fixed: decoded.fixed,
+        txFreePercent: decoded.txBufferPercent <= 100 ? decoded.txBufferPercent : null}
     } else if (decoded.name === "vfr_hud") {
       this.pitotDisplay = null
       this.set("airspeed", decoded.airspeedMps * 3.6, now)
@@ -119,7 +128,8 @@ export class SignalTelemetry {
       airspeed: this.number("airspeed", now), altitude: this.number("altitude", now), verticalSpeed,
       glide: verticalSpeed != null && verticalSpeed < -0.5 && groundspeed != null ? groundspeed / -verticalSpeed : null,
       roll: this.number("roll", now), pitch: this.number("pitch", now),
-      gps: this.vector("gps", now), radio: this.number("radio", now),
+      gps: this.vector("gps", now),
+      radio: this.radioReport && now - this.radioReport.at < RADIO_FRESH_MS ? this.radioReport : null,
       // Total specific-force magnitude: about 1 g at rest, independent of mounting orientation.
       gLoad: acceleration?.length === 3 ? Math.hypot(...acceleration) / STANDARD_GRAVITY : null,
       accel: acceleration, gyro: this.vector("gyro", now), mag: this.vector("mag", now),
@@ -127,4 +137,27 @@ export class SignalTelemetry {
       fix: this.number("fix", now), satellites: this.number("satellites", now)
     }
   }
+}
+
+/** SiK RSSI conversion is approximate. MAVLink reserves 255 for unavailable values.
+ * @param {number} raw @returns {number|null}
+ */
+export function sikDbm(raw) {
+  return Number.isInteger(raw) && raw >= 0 && raw < 255 ? raw / 1.9 - 127 : null
+}
+
+/** GCS presence enables SiK RADIO_STATUS reporting without changing its settings.
+ * @param {number} sequence
+ */
+export function groundStationHeartbeat(sequence) {
+  const frame = new Uint8Array([0xfe, 9, sequence & 255, 255, 190, 0, 0, 0, 0, 0, 6, 8, 0, 4, 3, 0, 0])
+  let crc = 0xffff
+  for (const value of [...frame.subarray(1, 15), 50]) {
+    let temporary = value ^ (crc & 0xff)
+    temporary ^= (temporary << 4) & 0xff
+    crc = ((crc >> 8) ^ (temporary << 8) ^ (temporary << 3) ^ (temporary >> 4)) & 0xffff
+  }
+  frame[15] = crc & 255
+  frame[16] = crc >> 8
+  return frame
 }

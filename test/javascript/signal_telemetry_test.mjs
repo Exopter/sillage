@@ -1,6 +1,22 @@
 import assert from "node:assert/strict"
 import {readFile} from "node:fs/promises"
-import {SignalTelemetry} from "../../app/javascript/lib/signal_telemetry.js"
+import {SignalTelemetry, sikDbm} from "../../app/javascript/lib/signal_telemetry.js"
+
+for (const invalid of [255, -1, 256, null, undefined, NaN, 1.5]) assert.equal(sikDbm(invalid), null)
+assert.equal(sikDbm(0), -127, "zero is a valid SiK RSSI, not the unknown sentinel")
+const radioStream = new SignalTelemetry()
+const rawRadio = Object.freeze({name: "radio", rssi: 133, remoteRssi: 114, noise: 38, remoteNoise: 76, txBufferPercent: 90, rxErrors: 10, fixed: 20})
+radioStream.apply(rawRadio, 1000)
+assert.deepEqual(radioStream.snapshot(1000).radio, {at: 1000, groundDbm: -57, airDbm: -67, groundNoiseDbm: -107, airNoiseDbm: -87, groundMarginDb: 50, airMarginDb: 20, rxErrors: 10, fixed: 20, txFreePercent: 90})
+assert.equal(rawRadio.rssi, 133, "radio display conversion preserves raw values")
+radioStream.apply({name: "heartbeat"}, 3999)
+assert.ok(radioStream.snapshot(3999).radio)
+assert.equal(radioStream.snapshot(4000).radio, null, "aircraft telemetry cannot refresh radio diagnostics")
+radioStream.apply({...rawRadio, rssi: 255, remoteNoise: 255, txBufferPercent: 255}, 5000)
+assert.equal(radioStream.snapshot(5000).radio.groundDbm, null)
+assert.equal(radioStream.snapshot(5000).radio.groundMarginDb, null)
+assert.equal(radioStream.snapshot(5000).radio.airMarginDb, null)
+assert.equal(radioStream.snapshot(5000).radio.txFreePercent, null)
 
 const stream = new SignalTelemetry()
 const imu = {name: "highres_imu", acceleration: [0, 0, 9.81], angularVelocity: [0.1, 0.2, 0.3], magneticField: [20, -3, 40], differentialPa: 61.25, temperatureC: 22}

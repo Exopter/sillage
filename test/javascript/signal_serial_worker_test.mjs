@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import vm from "node:vm"
+import {groundStationHeartbeat} from "../../app/javascript/lib/signal_telemetry.js"
 
 const workerSource = await readFile(new URL("../../public/signal_serial_worker.js", import.meta.url), "utf8")
 const messages = []
@@ -165,6 +166,25 @@ assert.equal(captureHandle.flushed, true)
 assert.equal(captureHandle.closed, true)
 
 console.log("Signal serial worker tests passed")
+
+await feed(groundStationHeartbeat(257), "7000000")
+const station = frameMessages().at(-1)
+assert.equal(station.systemId, 255)
+assert.equal(station.componentId, 190)
+assert.equal(station.sequence, 1)
+assert.equal(station.decoded.name, "heartbeat", "the outgoing presence frame has a valid MAVLink CRC")
+assert.equal(station.decoded.type, 6)
+const radioPayload = Uint8Array.from([10, 0, 20, 0, 133, 255, 90, 38, 76])
+for (const build of [mavlinkV1Frame, mavlinkV2Frame]) {
+  await feed(build({sequence: 81, messageId: 109, payload: radioPayload, crcExtra: 185}), "7000001")
+  const report = frameMessages().at(-1).decoded
+  assert.equal(report.name, "radio")
+  assert.equal(report.rssiDbm, -57)
+  assert.equal(report.remoteRssiDbm, null, "255 must never become a strong reception reading")
+  assert.equal(report.remoteRssi, 255, "raw sentinels remain available for capture")
+  assert.equal(report.rxErrors, 10)
+  assert.equal(report.fixed, 20)
+}
 
 async function feed(bytes, receivedAtUs) {
   await scope.self.onmessage({ data: { type: "bytes", bytes: exactArrayBuffer(bytes), receivedAtUs } })

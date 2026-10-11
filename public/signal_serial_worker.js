@@ -230,7 +230,7 @@ function decode(messageId, payload, coordinateFrame) {
     return { name: "vfr_hud", airspeedMps: f32(0), groundspeedMps: f32(4), altitudeM: f32(8), climbMps: f32(12), headingDeg: i16(16), throttlePercent: u16(18) }
   }
   if (messageId === 109 && payload.length >= 9) {
-    return { name: "radio", rxErrors: u16(0), fixed: u16(2), rssi: payload[4], remoteRssi: payload[5], txBufferPercent: payload[6], noise: payload[7], remoteNoise: payload[8], rssiDbm: payload[4] / 1.9 - 127, remoteRssiDbm: payload[5] / 1.9 - 127 }
+    return { name: "radio", rxErrors: u16(0), fixed: u16(2), rssi: payload[4], remoteRssi: payload[5], txBufferPercent: payload[6], noise: payload[7], remoteNoise: payload[8], rssiDbm: payload[4] === 255 ? null : payload[4] / 1.9 - 127, remoteRssiDbm: payload[5] === 255 ? null : payload[5] / 1.9 - 127 }
   }
   if (messageId === 105 && payload.length >= 62) {
     const vector = (/** @type {number} */ offset, scale = 1) => {

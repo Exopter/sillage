@@ -41,6 +41,14 @@
         </div>
       </header>
 
+      <div class="calibration-quality" data-theme="dark" aria-label="Radio link measurements">
+        <span title="Signal received by the Ground radio from Air. Approximate SiK RSSI.">GROUND RX <strong data-signal-workspace-target="radioMetric" data-radio-metric="ground" data-state="unknown">---</strong></span>
+        <span title="Ground signal minus background noise. Below 10 dB is highlighted as a low-margin indication, not a qualified link limit.">S/N <strong data-signal-workspace-target="radioMetric" data-radio-metric="groundMargin" data-state="unknown">---</strong></span>
+        <span title="Signal received by the Air radio from Ground. Approximate SiK RSSI.">AIR RX <strong data-signal-workspace-target="radioMetric" data-radio-metric="air" data-state="unknown">---</strong></span>
+        <span title="Air signal minus background noise. Below 10 dB is highlighted as a low-margin indication, not a qualified link limit.">S/N <strong data-signal-workspace-target="radioMetric" data-radio-metric="airMargin" data-state="unknown">---</strong></span>
+        <small data-signal-workspace-target="radioMetricsStatus">Radio metrics unavailable</small>
+      </div>
+
       <div class="calibration-quality" data-theme="dark" aria-label="Live IMU quality">
         <span>ATTITUDE <strong data-signal-workspace-target="qualityAttitude" data-state="unknown">Unknown</strong></span>
         <span>HEADING <strong data-signal-workspace-target="qualityHeading" data-state="unknown">Unknown</strong></span>
