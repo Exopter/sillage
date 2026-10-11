@@ -232,7 +232,8 @@ export default class extends TypedController {
     this.batchWrite = Promise.resolve()
     this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.releaseCapture())
     this.layoutStorageKey = `signal-layout:${this.sessionValue}`
-    let recover = this.reviewValue
+    const navigation = /** @type {PerformanceNavigationTiming|undefined} */ (performance.getEntriesByType("navigation")[0])
+    const review = this.reviewValue && navigation?.type !== "reload"
     try {
       const database = await openDatabase()
       if (generation !== this.connectionGeneration) { database.close(); return }
@@ -246,7 +247,6 @@ export default class extends TypedController {
       this.nextSequence = Number(nextSequence) || 0
       this.ended = this.completedValue || Boolean(endedAt)
       if (recovery && typeof recovery === "object") {
-        recover ||= "active" in recovery && recovery.active === true
         if ("disposition" in recovery && (recovery.disposition === "save" || recovery.disposition === "discard")) this.completionDisposition = recovery.disposition
       }
       await writeMetadata(database, `${this.sessionValue}:recovery`, {active: !this.ended, disposition: this.completionDisposition})
@@ -284,7 +284,7 @@ export default class extends TypedController {
     await this.prepareLocalStorage()
     await this.flushOutbox()
     if (generation === this.connectionGeneration) {
-      if (recover || this.completionDisposition || (this.ended && !this.flightIdValue)) this.requestExit()
+      if (review || this.completionDisposition || (this.ended && !this.flightIdValue)) this.requestExit()
       else await this.autoReconnect()
     }
   }
@@ -945,7 +945,6 @@ export default class extends TypedController {
   /** @param {BeforeUnloadEvent} event */
   warnBeforeUnload(event) {
     if (this.leaving || (this.ended && !this.completionDisposition)) return
-    if (this.hasExitDialogTarget && !this.exitDialogTarget.open) this.requestExit()
     event.preventDefault()
     event.returnValue = ""
   }

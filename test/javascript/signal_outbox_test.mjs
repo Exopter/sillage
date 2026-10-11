@@ -246,9 +246,14 @@ prompt.interceptVisit({preventDefault() {prevented++}, detail: {url: "/flights"}
 assert.equal(prevented, 1)
 assert.equal(prompt.exitDestination, "/flights")
 prompt.continueSession()
-prompt.warnBeforeUnload({preventDefault() {prevented++}})
+const unload = {preventDefault() {prevented++}}
+prompt.warnBeforeUnload(unload)
 assert.equal(prevented, 2, "closing an unassigned session is guarded even without a connected radio")
-assert.equal(prompt.exitDialogTarget.open, true)
+assert.equal(unload.returnValue, "")
+assert.equal(prompt.exitDialogTarget.open, false, "the native warning must not open the save dialog behind it")
+assert.equal(prompt.ended, false, "cancelling the browser warning keeps the session active")
+assert.equal(prompt.pendingSamples.length, 1)
+assert.equal(prompt.exitDestination, "")
 prompt.leaving = true
 prompt.warnBeforeUnload({preventDefault() {prevented++}})
 assert.equal(prevented, 2, "an acknowledged exit does not trigger another browser warning")
