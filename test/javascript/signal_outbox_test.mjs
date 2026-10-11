@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 
+const connectionURL = new URL("../../app/javascript/lib/aircraft_connection.js", import.meta.url).href
 const source = (await readFile(new URL("../../app/javascript/controllers/signal_workspace_controller.js", import.meta.url), "utf8"))
   .replace(/^import .*$/gm, "")
   .replace("extends Controller", "extends class {}")
@@ -9,7 +10,7 @@ const outboxURL = new URL("../../app/javascript/lib/signal_outbox.js", import.me
 const healthURL = new URL("../../app/javascript/lib/imu_health.js", import.meta.url).href
 const telemetryURL = new URL("../../app/javascript/lib/signal_telemetry.js", import.meta.url).href
 const { transactionRequest } = await import(outboxURL)
-const { default: Workspace } = await import(`data:text/javascript;base64,${Buffer.from(`import {ImuHealth} from "${healthURL}";\nimport { SignalTelemetry } from "${telemetryURL}"\nimport { OUTBOX_STORE, META_STORE, transactionRequest, putOutbox, readOutbox, oldestOutbox, deleteOutbox, readMetadata, writeMetadata, writeOutbox } from "${outboxURL}"\n${source}`).toString("base64")}`)
+const { default: Workspace } = await import(`data:text/javascript;base64,${Buffer.from(`import {ImuHealth} from "${healthURL}";\nimport { SignalTelemetry } from "${telemetryURL}"\nimport { OUTBOX_STORE, META_STORE, transactionRequest, putOutbox, readOutbox, oldestOutbox, deleteOutbox, readMetadata, writeMetadata, writeOutbox } from "${outboxURL}"\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString("base64")}`)
 globalThis.IDBKeyRange = { bound: () => ({}) }
 const tick = () => new Promise((resolve) => setImmediate(resolve))
 

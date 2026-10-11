@@ -48,3 +48,13 @@ assert.deepEqual(connection.currentAircraftConnections(), [{
 connection.setAircraftConnection(connection.AircraftConnectionTransport.WIFI, false)
 
 console.log("Aircraft connection identity tests passed")
+
+connection.observeRecorderConnection("usb-c", {deviceId:"ECU-E072A1F81D84",firmware:"fdr_integrated/57"}, 1000)
+connection.observeRecorderConnection("ble", {deviceId:"ECU-E072A1FA3E78",firmware:"fdr_integrated/57"}, 2000)
+assert.equal(connection.recorderConnectionObservations(3000).length, 2)
+assert.equal(connection.recorderConnectionObservations(3000)[0].age_ms, 2000)
+connection.setAircraftConnection("usb-c", false)
+assert.deepEqual(connection.recorderConnectionObservations(3000).map(item => item.device_id), ["ECU-E072A1FA3E78"])
+assert.deepEqual(connection.recorderConnectionObservations(12001), [], "a cached identity cannot renew a stale connection")
+connection.observeRecorderConnection("ground-radio", {deviceId:""}, 13000)
+assert.deepEqual(connection.recorderConnectionObservations(13000), [], "opening Ground without a recorder identity is not recorder presence")

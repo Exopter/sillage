@@ -59,6 +59,7 @@ export function setAircraftConnection(transport, connected, identity = {}) {
         previous.deviceIds.every((deviceId, index) => deviceId === connection.deviceIds[index])) return
     activeConnections.set(transport, connection)
   } else {
+    forgetRecorderConnection(transport)
     if (!activeConnections.delete(transport)) return
   }
 
@@ -99,4 +100,25 @@ function uniqueValues(values) {
     if (typeof value === "string" && value !== "") presentValues.push(value)
   }
   return [...new Set(presentValues)]
+}
+
+/** @typedef {{deviceId:string, firmware?:string, model?:string}} RecorderObservationIdentity */
+/** @type {Map<string, {device_id:string, transport:string, firmware?:string, model?:string, seenAt:number}>} */
+const recorderObservations = new Map()
+
+/** @param {string} transport @param {RecorderObservationIdentity} identity @param {number} [now] */
+export function observeRecorderConnection(transport, identity, now = Date.now()) {
+  if (!identity.deviceId || !["usb-c", "ble", "ground-radio"].includes(transport)) return
+  recorderObservations.set(transport, { transport, device_id: identity.deviceId, firmware: identity.firmware, model: identity.model, seenAt: now })
+}
+
+/** @param {string} transport */
+export function forgetRecorderConnection(transport) {
+  recorderObservations.delete(transport)
+}
+
+/** @param {number} [now] */
+export function recorderConnectionObservations(now = Date.now()) {
+  return [...recorderObservations.values()].filter(item => now - item.seenAt <= 10000 && now >= item.seenAt)
+    .map(({seenAt, ...item}) => ({...item, age_ms: now - seenAt}))
 }

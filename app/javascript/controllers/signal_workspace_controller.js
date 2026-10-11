@@ -1,6 +1,6 @@
 import { drawSignalInstruments, instrumentStyle } from "signal_instruments"
 import { Controller } from "@hotwired/stimulus"
-import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
+import { AircraftConnectionTransport, setAircraftConnection, observeRecorderConnection } from "aircraft_connection"
 import { clamp, signalLayoutPreset, parseSignalLayout } from "signal_layout"
 import { ImuHealth } from "imu_health"
 import { SignalTelemetry } from "signal_telemetry"
@@ -455,6 +455,7 @@ export default class extends TypedController {
     const now = Date.now()
     const generation = this.imuHealth.generation
     this.imuHealth.apply(decoded, now)
+    if (decoded.name === "imu_quality") observeRecorderConnection("ground-radio", decoded, now)
     if (this.imuHealth.generation !== generation) this.measurements = new SignalTelemetry()
     this.measurements.apply(decoded, now)
     this.telemetry = this.measurements.snapshot(now)

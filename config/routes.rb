@@ -94,6 +94,8 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
+      resource :recorder_connections, only: :update, controller: "recorder_connections", path: "recorder-connections"
+      get "recorder-connections", to: "recorder_connections#index"
       resources :imu_checks, only: %i[index create], path: "imu-checks"
       resource :fdr_registration, only: %i[show create], path: "fdr-registration"
       resource :fdr_sillage_heartbeat, only: :create, path: "fdr-sillage-heartbeat"

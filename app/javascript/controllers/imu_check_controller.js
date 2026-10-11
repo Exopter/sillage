@@ -1,3 +1,4 @@
+import { observeRecorderConnection, forgetRecorderConnection } from "aircraft_connection"
 import { Controller } from "@hotwired/stimulus"
 import { ImuHealth, SixFaceCapture, ReferenceCapture, imuQualityLabel, FACE_NAMES, FACE_HOLD_RULES, referenceIssue } from "imu_health"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
@@ -106,6 +107,7 @@ export default class extends Base {
     }
     if (this.source !== key) return
     this.health.apply(decoded, Date.now())
+    if (decoded.name === "imu_quality") observeRecorderConnection("ground-radio", decoded)
     // Invalidate evidence before another action can run, not only on the UI timer.
     if (this.health.generation !== this.generation) {
       this.generation = this.health.generation; this.cancel(); this.confirmedTarget.checked = false
@@ -146,6 +148,7 @@ export default class extends Base {
     }
   }
   async stop() {
+    forgetRecorderConnection("ground-radio")
     const port = this.port; this.port = null
     this.worker?.terminate(); this.worker = null
     this.resetRecorder()

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_10_133000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_11_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -381,6 +381,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_10_133000) do
     t.index ["manufacturer", "serial_number"], name: "index_parts_on_manufacturer_and_serial_number", unique: true, where: "((serial_number IS NOT NULL) AND ((serial_number)::text <> ''::text))"
   end
 
+  create_table "recorder_connections", force: :cascade do |t|
+    t.bigint "embedded_controller_id", null: false
+    t.datetime "last_seen_at", null: false
+    t.string "observer_id", null: false
+    t.string "transport", null: false
+    t.bigint "user_id", null: false
+    t.index ["embedded_controller_id"], name: "index_recorder_connections_on_embedded_controller_id"
+    t.index ["last_seen_at"], name: "index_recorder_connections_on_last_seen_at"
+    t.index ["user_id", "observer_id", "transport", "embedded_controller_id"], name: "index_recorder_connections_on_observer", unique: true
+    t.index ["user_id"], name: "index_recorder_connections_on_user_id"
+  end
+
   create_table "sensor_samples", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.float "elapsed_seconds"
@@ -721,6 +733,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_10_133000) do
   add_foreign_key "part_installations", "assemblies"
   add_foreign_key "part_installations", "parts"
   add_foreign_key "parts", "functions"
+  add_foreign_key "recorder_connections", "embedded_controllers"
+  add_foreign_key "recorder_connections", "users"
   add_foreign_key "sensor_samples", "active_storage_blobs", column: "source_blob_id"
   add_foreign_key "sensor_samples", "fdr_recordings"
   add_foreign_key "sensor_samples", "flights"

@@ -10,6 +10,7 @@ class EmbeddedController < ApplicationRecord
   belongs_to :part, optional: true, inverse_of: :embedded_controller
   has_many :imu_checks, dependent: :restrict_with_error
   has_one :signal_presence, dependent: :destroy
+  has_many :recorder_connections, dependent: :destroy
   has_many :fdr_wifi_profiles, -> { ordered }, dependent: :destroy
   has_many :fdr_wifi_uploads, dependent: :restrict_with_error
   has_many :fdr_recording_commands, dependent: :restrict_with_error
@@ -29,6 +30,16 @@ class EmbeddedController < ApplicationRecord
   validate :part_has_controller_function
 
   scope :ordered, -> { order(Arel.sql("device_id IS NULL, device_id")) }
+
+  def connection_snapshot(at: Time.current)
+    transports = recorder_connections.select { |connection| connection.fresh?(at:) }.map(&:transport)
+    transports << "wifi" if signal_presence&.fresh?(at:)
+    {
+      device_id:, firmware: last_seen_firmware,
+      transports: transports.uniq.sort,
+      last_seen_at: [ last_identified_at, signal_presence&.last_seen_at ].compact.max
+    }
+  end
 
   def display_name
     assembly ? assembly.selection_label : "Unassigned ECU"

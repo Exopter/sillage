@@ -1,7 +1,7 @@
 import { objectPayload, readResponse, registrationPayload, importReceipt, authenticationHex, authenticationKey, commandSequence, heartbeatPayloads } from "fdr_api"
 import { normalizeSillageHeartbeatStatus, describeWifiUpload, normalizeSillageHeartbeatDiagnostics, sillageHeartbeatIdentity, formatSeenAt } from "fdr_heartbeat"
 import { Controller } from "@hotwired/stimulus"
-import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
+import { AircraftConnectionTransport, setAircraftConnection, observeRecorderConnection } from "aircraft_connection"
 import { recorderLabel, recorderTechnicalLabel } from "recorder_identity"
 import { PartialFdrFile } from "fdr_partial_file"
 import {
@@ -581,6 +581,7 @@ export default class extends TypedController {
           )
           this.ensureUsbSyncContinues()
           if (!chunk.length) throw new Error("The recorder returned an empty chunk before end of file.")
+          if (this.usbIdentity) observeRecorderConnection("usb-c", this.usbIdentity)
           await partial.append(offset, chunk)
           offset += chunk.length
           this.syncProgressTarget.value = offset
@@ -1123,6 +1124,8 @@ export default class extends TypedController {
 
   /** @param {ReturnType<typeof normalizeSillageHeartbeatStatus>|ReturnType<typeof parseBleStatus>} status @param {"usb"|"ble"|"wifi"} transport */
   renderStatus(status, transport) {
+    const observedIdentity = transport === "usb" ? this.usbIdentity : transport === "ble" ? this.bleIdentity : null
+    if (observedIdentity) observeRecorderConnection(transport === "usb" ? "usb-c" : "ble", observedIdentity)
     const storageReady = (status.stateFlags & 0x02) !== 0
     const facts = {
       recording: (status.stateFlags & 0x01) !== 0,

@@ -7,7 +7,7 @@ module Forge
 
     def index
       @fdrs = EmbeddedController.includes(
-        :signal_presence,
+        :signal_presence, :recorder_connections,
         part: { active_part_installation: { assembly: [ :fdr_functional_configuration, { installations: :aircraft } ] } }
       ).ordered
       live_fdrs = @fdrs.select { |fdr| fdr.signal_presence&.fresh? }

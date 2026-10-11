@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import {readFileSync} from "node:fs"
+const connectionURL = new URL("../../app/javascript/lib/aircraft_connection.js", import.meta.url).href
 const source = readFileSync(new URL("../../app/javascript/controllers/signal_workspace_controller.js", import.meta.url), "utf8")
   .replace(/^import .*$/gm, "")
   .replace(/const TypedController = .*$/m, "const TypedController = class {}")
@@ -14,7 +15,7 @@ globalThis.signalLifecycleDependencies = {
   registerUsbPageRelease: () => () => {}
 }
 const prelude = "const {ImuHealth, SignalTelemetry, openDatabase, readMetadata, registerUsbPageRelease} = globalThis.signalLifecycleDependencies;\n"
-const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(prelude + source).toString("base64")}`)
+const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n` + prelude + source).toString("base64")}`)
 const tick = () => new Promise((resolve) => setImmediate(resolve))
 let closed = 0
 const database = {close() {closed += 1}}

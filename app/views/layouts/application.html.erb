@@ -18,7 +18,7 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="<%= content_for(:body_class) %>">
+  <body class="<%= content_for(:body_class) %>" data-controller="recorder-presence">
     <div class="sillage-workbench">
       <aside class="sillage-rail" aria-label="Sillage rooms">
         <%= link_to root_path, class: "sillage-home-link", aria: { label: "Sillage home" }, title: "Sillage home" do %>

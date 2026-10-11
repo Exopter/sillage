@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
+const connectionURL = new URL("../../app/javascript/lib/aircraft_connection.js", import.meta.url).href
 const source = (await readFile(new URL('../../app/javascript/controllers/imu_check_controller.js', import.meta.url),'utf8'))
   .replace(/^import .*$/gm,'')
   .replace(/^const Base = .*$/m,'const Base = class {}')
 const healthURL = new URL('../../app/javascript/lib/imu_health.js',import.meta.url).href
 const identityURL = new URL('../../app/javascript/lib/recorder_identity.js',import.meta.url).href
-const {default: Guide} = await import(`data:text/javascript;base64,${Buffer.from(`import {ImuHealth, SixFaceCapture, ReferenceCapture, imuQualityLabel, FACE_NAMES, FACE_HOLD_RULES, referenceIssue} from '${healthURL}';\nimport {recorderTechnicalLabel} from '${identityURL}';\n${source}`).toString('base64')}`)
+const {default: Guide} = await import(`data:text/javascript;base64,${Buffer.from(`import {ImuHealth, SixFaceCapture, ReferenceCapture, imuQualityLabel, FACE_NAMES, FACE_HOLD_RULES, referenceIssue} from '${healthURL}';\nimport {recorderTechnicalLabel} from '${identityURL}';\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString('base64')}`)
 function makeGuide() {
  const guide = new Guide()
  for(const name of ['attitude','heading','qualityReason','actionButton','title','instruction','progress','result','connectButton']) guide[`${name}Target`]={textContent:'',dataset:{},value:0}
