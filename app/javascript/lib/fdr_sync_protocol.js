@@ -190,6 +190,7 @@ export class UsbFdrClient {
   constructor(port) {
     this.port = port
     this.sequence = 0
+    this.capabilities = 0
     /** @type {ReadableStreamDefaultReader<Uint8Array> | null} */
     this.reader = null
     /** @type {WritableStreamDefaultWriter<Uint8Array> | null} */
@@ -251,13 +252,24 @@ export class UsbFdrClient {
 
   async hello() {
     const frame = await this.request(UsbMessage.HELLO, new Uint8Array(), [UsbMessage.DEVICE_INFO])
-    return parseDeviceInfo(frame.payload)
+    const device = parseDeviceInfo(frame.payload)
+    this.capabilities = device.capabilities
+    return device
   }
 
-  async nextFile() {
+  /** @param {number} [afterFileIndex] */
+  async nextFile(afterFileIndex = 0) {
+    if (!Number.isInteger(afterFileIndex) || afterFileIndex < 0 || afterFileIndex > 0xffffffff) {
+      throw new RangeError("The file cursor must be an unsigned 32-bit index.")
+    }
+    if (afterFileIndex && !(this.capabilities & UsbCapability.FILE_CURSOR)) {
+      throw new Error("This firmware does not support a read-only file cursor.")
+    }
+    const payload = afterFileIndex ? new Uint8Array(Exs1Layout.NEXT_FILE) : new Uint8Array()
+    if (afterFileIndex) new DataView(payload.buffer).setUint32(0, afterFileIndex, true)
     const frame = await this.request(
       UsbMessage.NEXT_FILE,
-      new Uint8Array(),
+      payload,
       [UsbMessage.FILE_MANIFEST, UsbMessage.NO_FILE],
       { timeoutMs: USB_FILE_PREPARATION_TIMEOUT_MS }
     )
@@ -574,8 +586,12 @@ export class FrameReader {
   /** @returns {Promise<UsbFrame>} */
   async read() {
     while (true) {
+      const bufferedLength = this.buffer.length
       const frame = this.extractFrame()
       if (frame) return frame
+      // Discarding an invalid header can reveal a complete response already
+      // buffered. Scan it before awaiting bytes the recorder will never send.
+      if (this.buffer.length < bufferedLength) continue
       const { value, done } = await this.reader.read()
       if (done) throw new Error("The recorder disconnected during synchronization.")
       this.buffer = joinBytes(this.buffer, value)
