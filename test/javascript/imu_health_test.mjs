@@ -87,3 +87,27 @@ assert.equal(frozen.expired(45000),true,'frozen timestamps cannot keep the tutor
 const retry = new ReferenceCapture(46000)
 for(let time=46000;time<=61000;time+=100) retry.add({...goodSample,t:time},time)
 assert.equal(retry.done,true,'a new attempt starts a fresh complete observation')
+
+// Explain the captured bench fault without changing its severity or raw quality reports.
+const uncertain = new ImuHealth()
+for (const time of [1000, 3100]) {
+  uncertain.apply({...q, timeBootMs:time, accuracy:[3,0,1,2], headingAccuracyDeg:38.7054}, time)
+  uncertain.apply({...imu, timeUs:String(time*1000)}, time)
+  uncertain.apply({...attitude, timeBootMs:time}, time)
+  uncertain.status(time)
+}
+const uncertainStatus = uncertain.status(3100)
+assert.equal(uncertainStatus.attitude, 'warning')
+assert.equal(uncertainStatus.heading, 'degraded')
+assert.deepEqual(uncertainStatus.issues, ['heading_uncertain'])
+assert.match(uncertainStatus.reason, /Magnetometer 1\/3/)
+assert.match(uncertainStatus.reason, /Heading uncertainty 38\.7° \(limit 10°\)/)
+assert.deepEqual(uncertainStatus.warnings, ['Gyroscope manufacturer status 0/3'])
+for (const time of [4000, 6100]) {
+  uncertain.apply({...q, timeBootMs:time, accuracy:[2,0,1,0], headingAccuracyDeg:111}, time)
+  uncertain.apply({...imu, timeUs:String(time*1000)}, time)
+  uncertain.apply({...attitude, timeBootMs:time}, time)
+  uncertain.status(time)
+}
+assert.equal(uncertain.status(6100).attitude, 'degraded')
+assert.match(uncertain.status(6100).reason, /Orientation 0\/3/)

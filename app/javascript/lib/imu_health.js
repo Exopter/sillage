@@ -75,7 +75,7 @@ export class ImuHealth {
     if (attitudeMissing) issues.push("attitude_unavailable")
     const lowAttitude = [0,3].some(n => q.accuracy[n] < 2)
     const warnings = Number.isInteger(q.accuracy[1]) && q.accuracy[1] >= 0 && q.accuracy[1] < 2
-      ? [`Gyroscope manufacturer status ${q.accuracy[1]}/3. Non-blocking; measured checks remain required.`] : []
+      ? [`Gyroscope manufacturer status ${q.accuracy[1]}/3`] : []
     const lowHeading = q.accuracy[2] < 2 || q.accuracy[2] > 3 || q.headingAccuracyDeg == null || q.headingAccuracyDeg > 10 || q.agesMs[2] + now - this.qualityAt > 2000
     if (this.sustained("attitude", lowAttitude, now)) issues.push("imu_quality_low")
     if (this.sustained("heading", lowHeading, now)) issues.push("heading_uncertain")
@@ -97,8 +97,18 @@ export class ImuHealth {
     if (now < this.jumpUntil && !attitudeMissing) issues.push("gyro_attitude_mismatch")
     const attitudeBad = issues.some(s => ["imu_quality_low","gravity_attitude_mismatch","gyro_attitude_mismatch"].includes(s))
     const headingBad = issues.some(s => ["heading_uncertain","magnetic_disturbance"].includes(s))
+    const reasons = issues.flatMap(issue => {
+      if (issue === "imu_quality_low") return [0,3].filter(n => q.accuracy[n] < 2).map(n => imuQualityLabel(q.accuracy[n], n))
+      if (issue !== "heading_uncertain") return [issue.replaceAll("_", " ")]
+      const details = []
+      if (q.accuracy[2] < 2 || q.accuracy[2] > 3) details.push(imuQualityLabel(q.accuracy[2], 2))
+      if (q.headingAccuracyDeg == null) details.push("Heading uncertainty unavailable")
+      else if (q.headingAccuracyDeg > 10) details.push(`Heading uncertainty ${q.headingAccuracyDeg.toFixed(1)}° (limit 10°)`)
+      if (q.agesMs[2] + now - this.qualityAt > 2000) details.push("Magnetometer report stale")
+      return details
+    })
     return { attitude: attitudeMissing ? "unknown" : attitudeBad ? "degraded" : warnings.length ? "warning" : "consistent", heading: attitudeMissing ? "unknown" : headingBad ? "degraded" : "consistent",
-      reason: [...issues.map(s => s.replaceAll("_", " ")), ...warnings].join(" · ") || "Live consistency checks passed", issues, warnings }
+      reason: [...reasons, ...warnings].join(" · ") || "Live consistency checks passed", issues, warnings }
   }
 
   /** @param {string} key @param {boolean} bad @param {number} now */

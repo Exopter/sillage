@@ -24,7 +24,7 @@ module Imu
       accuracy_min = (0..3).map { |index| samples.map { |s| s["accuracy"][index] }.min }
       # Operator policy: low gyro accuracy is advisory, not a missing-data waiver.
       required_quality = [ 0, 2, 3 ]
-      warnings = accuracy_min[1] < 2 ? [ "Gyroscope manufacturer status #{accuracy_min[1]}/3. Non-blocking; measured checks remain required." ] : []
+      warnings = accuracy_min[1] < 2 ? [ "Gyroscope manufacturer status #{accuracy_min[1]}/3" ] : []
       low_quality = %w[Accelerometer Gyroscope Magnetometer Orientation].each_with_index.filter_map { |name, index| "#{name} #{accuracy_min[index]}/3" if required_quality.include?(index) && accuracy_min[index] < 2 }
       quality = samples.all? { |s| required_quality.all? { |index| s["accuracy"][index] >= 2 } && s["quality_age"].between?(0, 1500) && s["heading_accuracy"].between?(0, 10) }
       stationary = g.all? { |v| v.between?(0.97, 1.03) } && gyro.max <= 0.035
