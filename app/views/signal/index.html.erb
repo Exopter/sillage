@@ -5,10 +5,10 @@
     <%= render "signal/radio_quality" %>
   <% end %>
   <% content_for :rail_control do %>
-    <button type="button" class="kit-icon-button panel-disclosure" aria-label="Hide navigation" aria-controls="sillage-room-rail" aria-expanded="true"
+    <button type="button" class="exds-iconbtn--edge sillage-rail-toggle panel-disclosure" aria-label="Hide navigation" aria-controls="sillage-room-rail" aria-expanded="true"
             data-controller="panel-disclosure" data-action="panel-disclosure#toggle"
             data-panel-disclosure-storage-key-value="signal-navigation" data-panel-disclosure-expand-label-value="Show navigation" data-panel-disclosure-collapse-label-value="Hide navigation">
-      <%= sillage_icon "chevron-right", size: 16 %>
+      <%= sillage_icon "chevron-right", size: 12 %>
     </button>
   <% end %>
   <% content_for :connection_control do %>
@@ -102,11 +102,11 @@
         </section>
       </main>
 
-      <section class="signal-telemetry-panel" aria-label="Telemetry measurements">
-        <button type="button" class="signal-telemetry-toggle panel-disclosure" aria-controls="signal-telemetry-readings" aria-expanded="true" aria-label="Hide telemetry measurements"
+      <section class="signal-telemetry-panel" aria-label="Raw telemetry">
+        <button type="button" class="signal-telemetry-toggle panel-disclosure" aria-controls="signal-telemetry-readings" aria-expanded="true" aria-label="Hide raw telemetry"
                 data-controller="panel-disclosure" data-action="panel-disclosure#toggle"
-                data-panel-disclosure-storage-key-value="signal-telemetry" data-panel-disclosure-expand-label-value="Show telemetry measurements" data-panel-disclosure-collapse-label-value="Hide telemetry measurements">
-          <span>Telemetry</span><%= sillage_icon "chevron-up", size: 14 %>
+                data-panel-disclosure-storage-key-value="signal-telemetry" data-panel-disclosure-expand-label-value="Show raw telemetry" data-panel-disclosure-collapse-label-value="Hide raw telemetry">
+          <span>Raw telemetry</span><%= sillage_icon "chevron-up", size: 14 %>
         </button>
         <div id="signal-telemetry-readings">
           <div class="signal-telemetry-strip signal-sensor-strip" aria-label="Live sensor measurements">

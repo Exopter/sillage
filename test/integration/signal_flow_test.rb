@@ -107,7 +107,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "button", text: "Full screen", count: 0
     assert_select "button", text: "Reset layout", count: 0
     assert_select "dialog button", text: "Save as new flight"
-    assert_select "dialog button", text: "Discard"
+    assert_select "dialog button", text: "Discard data"
     assert_select "a", text: "Run preflight check", count: 0
 
     payload = { sequence: 0, samples: [
@@ -422,10 +422,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".workspace-table", text: /Model not reported/, count: 0
-    assert_select "#aircraft-connection-indicator.aircraft-connection-pill[data-turbo-permanent][data-controller='aircraft-connection-indicator'][data-aircraft-connection-state='disconnected']"
-    assert_select "#aircraft-connection-indicator[data-turbo='false']", count: 0
-    assert_select "[data-aircraft-connection-indicator-target='label']", text: "No recorder connected"
-    assert_select "[data-aircraft-connection-indicator-target='icon'][hidden]", count: 4
+    assert_select ".sillage-topbar .aircraft-connection-pill", count: 0
     assert_select "#sillage-fdr-connectivity[data-controller='fdr-connectivity'][data-fdr-connectivity-registration-url-value='#{api_v1_fdr_registration_path}'][data-fdr-connectivity-authentication-url-value='#{api_v1_fdr_authentication_path}'][data-fdr-connectivity-sillage-heartbeat-url-value='#{api_v1_fdr_sillage_heartbeats_path}']"
     assert_select "#sillage-fdr-connectivity[data-turbo-permanent]", count: 0
     assert_select "#sillage-fdr-connectivity[data-fdr-connectivity-expected-device-id-value]", count: 0
@@ -570,6 +567,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     get signal_path
 
     assert_response :success
+    assert_select ".sillage-topbar .aircraft-connection-pill", count: 0
     assert_select ".signal-home #sillage-fdr-connectivity", count: 0
     assert_select "#sillage-fdr-connectivity", count: 0
     assert_select "#signal-development-status", count: 0
@@ -583,7 +581,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     get flights_path
 
     assert_response :success
-    assert_select "#aircraft-connection-indicator[data-turbo-permanent]"
+    assert_select ".sillage-topbar .aircraft-connection-pill", count: 0
     assert_select "#sillage-fdr-connectivity", count: 0
   end
 end

@@ -1,0 +1,10 @@
+/* Attach to a panel boundary; product layout owns its position. */
+.exds-iconbtn--edge{
+  display:inline-grid;place-items:center;flex:none;cursor:pointer;
+  width:18px;height:28px;padding:0;
+  border:1px solid var(--ex-carbon-700);border-left:0;border-radius:0 3px 3px 0;
+  background:var(--ex-carbon-900);color:var(--ex-graphite-400);
+}
+.exds-iconbtn--edge svg{width:12px;height:12px}
+.exds-iconbtn--edge:hover:not([disabled]){color:var(--ex-vapor-50);background:var(--ex-carbon-800)}
+.exds-iconbtn--edge:focus-visible{outline:2px solid var(--ex-aqua-500);outline-offset:1px}

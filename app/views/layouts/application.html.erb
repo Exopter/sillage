@@ -14,7 +14,7 @@
     <link rel="icon" href="/icon.svg?v=exopter-ex-20261009" type="image/svg+xml">
 
     <%# Includes all stylesheet files in app/assets/stylesheets %>
-    <%= stylesheet_link_tag "exopter_fonts", "exopter_design_system", "application", "selection_toolbar", "flights", "signal", "hangar_forge", "calibration_guide", "signal_strength", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "exopter_fonts", "exopter_design_system", "application", "icon_button_edge", "selection_toolbar", "flights", "signal", "hangar_forge", "calibration_guide", "signal_strength", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
 
@@ -77,28 +77,7 @@
 
           <%= yield :connection_metrics %>
 
-          <% if content_for?(:connection_control) %>
-            <%= yield :connection_control %>
-          <% else %>
-            <%= link_to signal_path,
-              id: "aircraft-connection-indicator",
-              class: "aircraft-connection-pill",
-              aria: { label: "No recorder connected" },
-              data: {
-                turbo_permanent: true,
-                controller: "aircraft-connection-indicator",
-                action: "sillage:aircraft-connection@window->aircraft-connection-indicator#update",
-                aircraft_connection_state: "disconnected"
-              } do %>
-              <span class="aircraft-connection-icons" aria-hidden="true">
-                <span class="aircraft-connection-icon" data-aircraft-connection-indicator-target="icon" data-aircraft-connection-transport="usb-c" hidden><%= sillage_icon "usb-c", size: 15, stroke_width: 2.4 %></span>
-                <span class="aircraft-connection-icon" data-aircraft-connection-indicator-target="icon" data-aircraft-connection-transport="ble" hidden><%= sillage_icon "bluetooth", size: 15 %></span>
-                <span class="aircraft-connection-icon" data-aircraft-connection-indicator-target="icon" data-aircraft-connection-transport="wifi" hidden><%= sillage_icon "wifi", size: 15 %></span>
-                <span class="aircraft-connection-icon" data-aircraft-connection-indicator-target="icon" data-aircraft-connection-transport="ground-radio" hidden><%= sillage_icon "radio", size: 15 %></span>
-              </span>
-              <strong data-aircraft-connection-indicator-target="label">No recorder connected</strong>
-            <% end %>
-          <% end %>
+          <%= yield :connection_control %>
 
           <details class="sillage-account-menu">
             <summary aria-label="Open account menu">

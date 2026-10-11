@@ -630,20 +630,6 @@ body {
   outline-offset: 2px;
 }
 
-.aircraft-connection-icons,
-.aircraft-connection-icon {
-  display: inline-flex;
-  align-items: center;
-}
-
-.aircraft-connection-icons {
-  gap: 3px;
-}
-
-.aircraft-connection-icon[hidden] {
-  display: none;
-}
-
 .sillage-avatar {
   display: grid;
   width: 30px;
@@ -3360,7 +3346,11 @@ body.flight-analysis-theme,
 
 /* Shared panel disclosure: the control remains visible when its panel closes. */
 .sillage-rail[hidden] { display: none; }
-.kit-icon-button.panel-disclosure { width: 28px; height: 32px; }
+.sillage-topbar:has(.sillage-rail-toggle) { padding-left: 28px; }
+.sillage-rail-toggle { position: absolute; left: -1px; top: 50%; transform: translateY(-50%); }
+@media (max-width: 920px) {
+  .sillage-topbar:has(.sillage-rail-toggle) { position: relative; }
+}
 .panel-disclosure[aria-expanded="true"] > svg { transform: rotate(180deg); }
 
 button.aircraft-connection-pill { background: transparent; cursor: pointer; }

@@ -1,10 +1,12 @@
 <div data-controller="tooltip"
-     data-action="mouseenter->tooltip#show mouseleave->tooltip#leave focusin->tooltip#show focusout->tooltip#blur keydown.esc@window->tooltip#hide resize@window->tooltip#position scroll@window->tooltip#position">
-  <button type="button" class="workspace-help-trigger" data-tooltip-target="trigger" data-action="tooltip#show" aria-describedby="<%= id %>"><%= label %></button>
+     data-action="mouseleave->tooltip#leave focusin->tooltip#show focusout->tooltip#blur keydown.esc@window->tooltip#hide resize@window->tooltip#position scroll@window->tooltip#position">
+  <span id="<%= id %>-label"><%= label %></span>
   <% if local_assigns[:href] %>
-    <%= link_to href, aria: { label: "Run preflight check" } do %><strong data-signal-workspace-target="<%= status_target %>" data-state="unknown"><%= initial_status %></strong><% end %>
+    <%= link_to href, class: "workspace-help-trigger", data: { tooltip_target: "trigger", action: "mouseenter->tooltip#show" }, aria: { label: "Run preflight check", describedby: id } do %><strong data-signal-workspace-target="<%= status_target %>" data-state="unknown"><%= initial_status %></strong><% end %>
   <% else %>
-    <strong data-signal-workspace-target="<%= status_target %>" data-state="unknown"><%= initial_status %></strong>
+    <button type="button" class="workspace-help-trigger" data-tooltip-target="trigger" data-action="mouseenter->tooltip#show click->tooltip#show" aria-labelledby="<%= id %>-label <%= id %>-value" aria-describedby="<%= id %>">
+      <strong id="<%= id %>-value" data-signal-workspace-target="<%= status_target %>" data-state="unknown"><%= initial_status %></strong>
+    </button>
   <% end %>
   <div id="<%= id %>" class="workspace-help-tooltip" role="tooltip" popover="manual" data-tooltip-target="tip">
     <b><%= label %></b>
