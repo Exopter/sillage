@@ -285,6 +285,18 @@ manifestTimeoutClient.request = async (_type, _payload, _expectedTypes, options)
   return { type: protocol.UsbMessage.NO_FILE, payload: new Uint8Array() }
 }
 assert.equal(await manifestTimeoutClient.nextFile(), null)
+await assert.rejects(() => manifestTimeoutClient.nextFile(257), /does not support/)
+manifestTimeoutClient.capabilities = protocol.UsbCapability.FILE_CURSOR
+manifestTimeoutClient.request = async (type, payload) => {
+  assert.equal(type, protocol.UsbMessage.NEXT_FILE)
+  assert.equal(new DataView(payload.buffer).getUint32(0, true), 257)
+  return { type: protocol.UsbMessage.NO_FILE, payload: new Uint8Array() }
+}
+assert.equal(await manifestTimeoutClient.nextFile(257), null)
+for (const index of [-1, 0x100000000, 1.5]) {
+  await assert.rejects(() => manifestTimeoutClient.nextFile(index), RangeError)
+}
+
 
 const eraseResultPayload = new Uint8Array(16)
 const eraseResultView = new DataView(eraseResultPayload.buffer)
@@ -383,6 +395,20 @@ const decoded = await reader.read()
 assert.equal(decoded.type, protocol.UsbMessage.HELLO)
 assert.equal(decoded.sequence, 42)
 assert.deepEqual([...decoded.payload], [...payload])
+
+// A malformed header and a complete valid reply can arrive in the same read.
+// The recorder then waits for the next request, so another stream read hangs.
+const malformedHeader = protocol.encodeFrame(protocol.UsbMessage.HELLO, 41)
+malformedHeader[4] = 0xff
+let recoveryReads = 0
+const recoveryReader = new protocol.FrameReader({
+  async read() {
+    recoveryReads += 1
+    assert.equal(recoveryReads, 1, "A buffered valid reply must not trigger a second read")
+    return { value: Uint8Array.from([...malformedHeader, ...frame]), done: false }
+  }
+})
+assert.equal((await recoveryReader.read()).sequence, 42)
 
 const usbErrorMessages = new Map([
   [protocol.UsbErrorCode.BAD_FRAME, "The recorder rejected a corrupted USB command. Disconnect and reconnect it, then try again."],

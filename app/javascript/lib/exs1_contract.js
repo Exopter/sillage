@@ -54,7 +54,8 @@ export const UsbCapability = Object.freeze({
   RATE_STATUS: 256,
   STORAGE_PERFORMANCE: 512,
   ERASE_RECORDINGS: 1024,
-  RECORDING_CONTROL: 2048
+  RECORDING_CONTROL: 2048,
+  FILE_CURSOR: 4096
 })
 export const EraseRecordingsResult = Object.freeze({
   OK: 0,
@@ -78,6 +79,7 @@ export const UsbErrorCode = Object.freeze({
 export const Exs1Layout = Object.freeze({
   FRAME_HEADER: 20,
   DEVICE_INFO: 64,
+  NEXT_FILE: 4,
   FILE_MANIFEST: 72,
   READ_CHUNK: 16,
   FILE_CHUNK_PREFIX: 16,
