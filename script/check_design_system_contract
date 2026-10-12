@@ -12,6 +12,8 @@ calibration_guide = File.join(ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(
 abort "CalibrationGuide CSS differs from the shared component." unless File.binread(calibration_guide) == File.binread(File.join(ROOT, "app/assets/stylesheets/calibration_guide.css"))
 signal_strength = File.join(ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(ROOT, "..", "design_system")), "components/data/SignalStrength.css")
 abort "SignalStrength CSS differs from the shared component." unless File.binread(signal_strength) == File.binread(File.join(ROOT, "app/assets/stylesheets/signal_strength.css"))
+feedback_popover = File.join(ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(ROOT, "..", "design_system")), "components/feedback/FeedbackPopover.css")
+abort "FeedbackPopover CSS differs from the shared component." unless File.binread(feedback_popover) == File.binread(File.join(ROOT, "app/assets/stylesheets/feedback_popover.css"))
 VIEW_GLOB = File.join(ROOT, "app/views/**/*.erb")
 RUBY_GLOBS = [ File.join(ROOT, "app/helpers/**/*.rb") ].freeze
 JAVASCRIPT_GLOB = File.join(ROOT, "app/javascript/**/*.js")

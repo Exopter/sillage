@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "cesium": "1.124.0",
+    "html2canvas-pro": "2.5.2",
     "three": "0.186.1"
   }
 }

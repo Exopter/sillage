@@ -1,0 +1,4 @@
+<nav class="core-user-actions" aria-label="Core">
+  <%= link_to "Users", core_users_path, class: "button-secondary", aria: { current: ("page" if controller_name == "users") } %>
+  <%= link_to "Feedback", core_feedbacks_path, class: "button-secondary", aria: { current: ("page" if controller_name == "feedbacks") } %>
+</nav>

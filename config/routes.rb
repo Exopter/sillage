@@ -28,6 +28,7 @@ Rails.application.routes.draw do
   end
 
   root "flights#index"
+  resources :feedbacks, only: %i[new create]
   get "hangar" => "hangar/aircraft#index", as: :hangar
   get "signal" => "signal#index", as: :signal
   get "forge" => "forge/fdrs#index", as: :forge
@@ -84,6 +85,7 @@ Rails.application.routes.draw do
   end
 
   namespace :core do
+    resources :feedbacks, only: %i[index update]
     resources :users, only: %i[index create edit update] do
       member do
         post :resend_invitation

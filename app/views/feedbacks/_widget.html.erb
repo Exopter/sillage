@@ -1,0 +1,24 @@
+<div data-controller="feedback" data-action="resize@window->feedback#viewportChanged scroll@window->feedback#viewportChanged turbo:before-cache@document->feedback#cleanup" data-html2canvas-ignore>
+  <button type="button" class="exds-feedback-trigger" popovertarget="feedback-panel" aria-label="Share an idea or feedback" title="Share feedback">
+    <%= sillage_icon "lightbulb", size: 19, stroke_width: 1.6 %>
+  </button>
+  <section id="feedback-panel" class="exds-feedback-panel" popover="auto" role="dialog" aria-labelledby="feedback-panel-title">
+    <header class="exds-feedback-head">
+      <h2 id="feedback-panel-title">A little idea?</h2>
+      <button type="button" class="exds-feedback-close" popovertarget="feedback-panel" popovertargetaction="hide" aria-label="Close feedback">
+        <%= sillage_icon "x", size: 16 %>
+      </button>
+    </header>
+    <%= render "feedbacks/composer", feedback: Current.user.feedbacks.new(category: "idea", page_path: request.path) %>
+  </section>
+  <dialog class="exds-feedback-annotation" aria-label="Annotate the current page" data-action="cancel->feedback#cancel wheel->feedback#preventScroll keydown->feedback#preventScroll">
+    <canvas aria-label="Draw on the page using your mouse or touch. Use screenshot also works without drawing." data-action="pointerdown->feedback#beginStroke pointermove->feedback#moveStroke pointerup->feedback#endStroke pointercancel->feedback#endStroke"></canvas>
+    <div class="exds-feedback-tools">
+      <p role="status" data-feedback-capture-status>Draw to highlight an idea or problem.</p>
+      <button type="button" class="exds-feedback-secondary" data-action="feedback#undo">Undo</button>
+      <button type="button" class="exds-feedback-secondary" data-action="feedback#clear">Clear</button>
+      <button type="button" class="exds-feedback-secondary" data-action="feedback#cancel">Cancel</button>
+      <button type="button" class="exds-feedback-send" data-action="feedback#capture">Use screenshot</button>
+    </div>
+  </dialog>
+</div>

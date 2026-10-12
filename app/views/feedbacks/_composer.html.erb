@@ -1,0 +1,36 @@
+<%= turbo_frame_tag "feedback-composer" do %>
+  <%= form_with model: feedback, class: "exds-feedback-form", data: { action: "submit->feedback#submit", turbo: false } do |form| %>
+    <%= form.hidden_field :page_path %>
+    <%= form.file_field :screenshot, accept: "image/png", hidden: true, id: "quick-feedback-file" %>
+    <div class="exds-feedback-editor" data-feedback-editor>
+      <fieldset class="exds-feedback-kinds">
+        <legend>Feedback type</legend>
+        <% Feedback::CATEGORIES.each do |value, label| %>
+          <label class="exds-feedback-kind">
+            <%= form.radio_button :category, value, id: "quick-feedback-#{value}" %>
+            <span><%= label %></span>
+          </label>
+        <% end %>
+      </fieldset>
+      <%= form.label :description, "What's on your mind?", for: "quick-feedback-description" %>
+      <%= form.text_area :description, id: "quick-feedback-description", rows: 4, required: true, maxlength: 5000, placeholder: "A small improvement, something that got in your way…", aria: { describedby: "quick-feedback-note" } %>
+      <button type="button" class="exds-feedback-secondary" data-action="feedback#start">Annotate page</button>
+      <figure class="exds-feedback-preview" data-feedback-preview hidden>
+        <img alt="Your annotated screenshot" data-feedback-image>
+        <figcaption>Review the screenshot before sending. Maps, video or external content may be incomplete.</figcaption>
+        <button type="button" class="exds-feedback-secondary" data-action="feedback#removeScreenshot">Remove screenshot</button>
+      </figure>
+      <p class="exds-feedback-error" role="alert" data-feedback-error><%= feedback.errors.full_messages.to_sentence %></p>
+      <footer class="exds-feedback-foot">
+        <small id="quick-feedback-note">Only Sillage admins can read this.<br>Your current page is included.</small>
+        <%= form.button "Send", type: :submit, class: "exds-feedback-send" %>
+      </footer>
+    </div>
+    <div class="exds-feedback-receipt" data-feedback-receipt role="status" tabindex="-1" hidden>
+      <%= sillage_icon "circle-check", size: 24, stroke_width: 1.5 %>
+      <strong>Thanks for the feedback.</strong>
+      <p>Saved for the Sillage team.</p>
+      <button type="button" class="exds-feedback-secondary" data-action="feedback#reset">Share another thought</button>
+    </div>
+  <% end %>
+<% end %>

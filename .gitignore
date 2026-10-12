@@ -33,3 +33,4 @@
 # OS/editor noise
 .DS_Store
 *.swp
+/public/vendor/feedback/

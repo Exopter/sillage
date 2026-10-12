@@ -2,6 +2,8 @@
 draw Rails.root.join("config/landing_importmap.rb")
 
 pin "application"
+pin "feedback_annotations", to: "lib/feedback_annotations.js"
+pin "html2canvas-pro", to: "/vendor/feedback/2.5.2/html2canvas-pro.esm.js", preload: false
 pin "@hotwired/turbo-rails", to: "turbo.min.js"
 pin "@hotwired/stimulus", to: "stimulus.min.js"
 pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"

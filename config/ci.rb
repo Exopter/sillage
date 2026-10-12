@@ -33,6 +33,7 @@ CI.run do
   step "Tests: Recorder presence lifecycle", "node test/javascript/recorder_presence_test.mjs"
   step "Tests: Recorder identity lifecycle", "node test/javascript/recorder_identity_test.mjs"
   step "Tests: Assembly configuration form", "node test/javascript/assembly_form_test.mjs"
+  step "Tests: Feedback annotations and submission", "node test/javascript/feedback_test.mjs"
   step "Tests: Table selection", "node test/javascript/table_selection_test.mjs"
   step "Tests: Signal asynchronous lifecycle", "node test/javascript/signal_lifecycle_test.mjs"
   step "Tests: IMU quality and calibration", "node test/javascript/imu_health_test.mjs"

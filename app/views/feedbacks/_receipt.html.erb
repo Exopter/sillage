@@ -1,0 +1,8 @@
+<%= turbo_frame_tag "feedback-composer" do %>
+  <div class="exds-feedback-receipt" role="status">
+    <%= sillage_icon "circle-check", size: 24, stroke_width: 1.5 %>
+    <strong>Thanks for the feedback.</strong>
+    <p>Saved. Your input helps us improve Sillage.</p>
+    <%= link_to "Share another thought", new_feedback_path(page_path: feedback.page_path) %>
+  </div>
+<% end %>

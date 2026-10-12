@@ -1,0 +1,31 @@
+<% content_for :title, "Feedback" %>
+<section class="core-users">
+  <%= render "core/navigation" %>
+  <div class="core-users-header">
+    <div><span class="section-eyebrow">Sillage Core</span><h1>Feedback</h1><p>Ideas and problems shared by the team.</p></div>
+  </div>
+  <% if @feedbacks.empty? %><section class="core-panel"><p>No feedback yet.</p></section><% end %>
+  <% @feedbacks.each do |feedback| %>
+    <article class="core-panel">
+      <strong><%= Feedback::CATEGORIES.fetch(feedback.category) %></strong>
+      <span class="status-pill"><%= feedback.status.titleize %></span>
+      <small><%= feedback.user.email_address %> · <%= feedback.created_at.utc.strftime("%d %b %Y, %H:%M UTC") %></small>
+      <%= simple_format(feedback.description) %>
+      <% if feedback.page_path.present? %><p>Related page: <%= feedback.page_path %></p><% end %>
+      <% if feedback.screenshot.attached? %>
+        <%= link_to attachment_path(feedback.screenshot.attachment), target: "_blank", rel: "noopener", aria: { label: "Open annotated screenshot" } do %>
+          <%= image_tag attachment_path(feedback.screenshot.attachment), class: "exds-feedback-evidence", alt: "Screenshot with the user's annotations", loading: "lazy" %>
+        <% end %>
+      <% end %>
+      <%= form_with model: feedback, url: core_feedback_path(feedback), class: "core-form" do |form| %>
+        <%= form.label :status, "Status", for: "feedback-status-#{feedback.id}" %>
+        <%= form.select :status, Feedback::STATUSES.map { |status| [status.titleize, status] }, {}, id: "feedback-status-#{feedback.id}" %>
+        <%= form.submit "Update status", class: "button-secondary" %>
+      <% end %>
+    </article>
+  <% end %>
+  <nav aria-label="Feedback pages">
+    <% if @page > 1 %><%= link_to "Previous", core_feedbacks_path(page: @page - 1), class: "button-secondary" %><% end %>
+    <% if @has_next_page %><%= link_to "Next", core_feedbacks_path(page: @page + 1), class: "button-secondary" %><% end %>
+  </nav>
+</section>

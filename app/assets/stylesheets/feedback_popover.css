@@ -1,0 +1,75 @@
+/* Native popover contract: icon trigger, compact composer, inline receipt. */
+.exds-feedback-trigger {
+  position: fixed;
+  right: max(var(--ex-space-5), env(safe-area-inset-right));
+  bottom: max(var(--ex-space-5), env(safe-area-inset-bottom));
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--ex-line-200);
+  border-radius: 50%;
+  background: var(--ex-vapor-50);
+  color: var(--ex-graphite-600);
+  box-shadow: var(--ex-shadow-panel);
+  cursor: pointer;
+}
+.exds-feedback-trigger:hover { color: var(--ex-carbon-950); border-color: var(--ex-aqua-500); }
+.exds-feedback-trigger:focus-visible,
+.exds-feedback-panel button:focus-visible,
+.exds-feedback-panel a:focus-visible { outline: 2px solid var(--ex-aqua-500); outline-offset: 3px; }
+.exds-feedback-panel {
+  position: fixed;
+  inset: auto max(var(--ex-space-5), env(safe-area-inset-right)) max(76px, calc(env(safe-area-inset-bottom) + 56px)) auto;
+  width: min(344px, calc(100vw - 40px));
+  max-height: calc(100dvh - 110px);
+  box-sizing: border-box;
+  overflow: auto;
+  margin: 0;
+  padding: var(--ex-space-5);
+  border: 1px solid var(--ex-line-200);
+  border-radius: var(--ex-radius-surface);
+  background: var(--ex-vapor-50);
+  color: var(--ex-carbon-950);
+  box-shadow: var(--ex-shadow-raised);
+  font-family: var(--ex-font-sans);
+}
+.exds-feedback-panel::backdrop { background: transparent; }
+.exds-feedback-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ex-space-3); margin-bottom: var(--ex-space-4); }
+.exds-feedback-head h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.02em; }
+.exds-feedback-close { display: grid; place-items: center; padding: var(--ex-space-1); border: 0; background: transparent; color: var(--ex-graphite-600); cursor: pointer; }
+.exds-feedback-form { display: grid; gap: var(--ex-space-3); }
+.exds-feedback-kinds { display: flex; gap: var(--ex-space-1); margin: 0; padding: 0; border: 0; }
+.exds-feedback-kinds legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.exds-feedback-kind { position: relative; flex: 1; cursor: pointer; }
+.exds-feedback-kind input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.exds-feedback-kind span { display: block; padding: var(--ex-space-2); text-align: center; border: 1px solid transparent; border-radius: var(--ex-radius-instrument); color: var(--ex-graphite-600); font-size: 12px; }
+.exds-feedback-kind input:checked + span { background: var(--ex-state-live-bg); color: var(--ex-state-live-text); border-color: var(--ex-aqua-500); }
+.exds-feedback-kind input:focus-visible + span { outline: 2px solid var(--ex-aqua-500); outline-offset: 2px; }
+.exds-feedback-form textarea { box-sizing: border-box; width: 100%; min-height: 112px; max-height: 240px; resize: vertical; padding: var(--ex-space-3); border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-instrument); background: var(--ex-white); color: var(--ex-carbon-950); font: inherit; font-size: 13px; line-height: 1.6; }
+.exds-feedback-form textarea:focus { outline: 2px solid var(--ex-aqua-500); outline-offset: 2px; }
+.exds-feedback-form label[for] { font-size: 12px; color: var(--ex-graphite-600); }
+.exds-feedback-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--ex-space-3); }
+.exds-feedback-foot small { color: var(--ex-graphite-600); font-size: 11px; line-height: 1.4; }
+.exds-feedback-send { padding: var(--ex-space-2) var(--ex-space-4); border: 0; border-radius: var(--ex-radius-instrument); background: var(--ex-carbon-950); color: var(--ex-vapor-50); font: inherit; font-size: 12px; cursor: pointer; }
+.exds-feedback-send:disabled { opacity: .5; cursor: wait; }
+.exds-feedback-error { margin: 0; color: var(--ex-state-fault-text); font-size: 12px; line-height: 1.5; }
+.exds-feedback-receipt { display: grid; justify-items: start; gap: var(--ex-space-3); padding-block: var(--ex-space-3); }
+.exds-feedback-receipt p { margin: 0; color: var(--ex-graphite-600); font-size: 13px; line-height: 1.6; }
+.exds-feedback-receipt a { color: var(--ex-state-live-text); font-size: 12px; }
+.exds-feedback-editor { display: grid; gap: var(--ex-space-3); }
+.exds-feedback-editor[hidden], .exds-feedback-receipt[hidden], .exds-feedback-preview[hidden] { display: none; }
+.exds-feedback-secondary { border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-instrument); padding: var(--ex-space-2) var(--ex-space-3); background: var(--ex-white); color: var(--ex-graphite-600); font: inherit; font-size: 12px; cursor: pointer; }
+.exds-feedback-secondary:disabled { opacity: .5; cursor: wait; }
+.exds-feedback-preview { margin: 0; display: grid; gap: var(--ex-space-2); }
+.exds-feedback-preview img { display: block; width: 100%; max-height: 160px; object-fit: contain; border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-instrument); }
+.exds-feedback-preview figcaption { font-size: 11px; line-height: 1.4; color: var(--ex-graphite-600); }
+.exds-feedback-annotation { position: fixed; inset: 0; width: 100%; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; overflow: hidden; overscroll-behavior: contain; }
+.exds-feedback-annotation::backdrop { background: transparent; }
+.exds-feedback-annotation canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.exds-feedback-tools { position: absolute; left: 50%; bottom: max(var(--ex-space-5), env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: var(--ex-space-2); box-sizing: border-box; width: max-content; max-width: calc(100vw - 32px); padding: var(--ex-space-3); border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-surface); background: var(--ex-vapor-50); box-shadow: var(--ex-shadow-raised); color: var(--ex-carbon-950); font: 12px var(--ex-font-sans); }
+.exds-feedback-tools p { margin: 0; flex-basis: 100%; text-align: center; }
+.exds-feedback-tools button:focus-visible { outline: 2px solid var(--ex-aqua-500); outline-offset: 2px; }
+.exds-feedback-evidence { display: block; width: 100%; max-height: 420px; object-fit: contain; object-position: left; border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-instrument); }

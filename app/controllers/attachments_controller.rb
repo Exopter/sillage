@@ -8,7 +8,8 @@ class AttachmentsController < ApplicationController
 
     no_store
     blob = attachment.blob
-    disposition = attachment.record_type == "Flight" && attachment.name == "video" ? "inline" : "attachment"
+    inline = (attachment.record_type == "Flight" && attachment.name == "video") || attachment.record_type == "Feedback"
+    disposition = inline ? "inline" : "attachment"
     response.headers["Accept-Ranges"] = "bytes"
     if blob.service.is_a?(ActiveStorage::Service::DiskService)
       # Keep native file streaming and open-ended seeking for large local videos.
@@ -29,6 +30,8 @@ class AttachmentsController < ApplicationController
 
   def accessible?(attachment)
     case record = attachment.record
+    when Feedback
+      Current.user.admin?
     when Flight
       record.owned_by?(Current.user) || (attachment.name == "video" && record.visible_to?(Current.user))
     when FlightImport, SignalSession

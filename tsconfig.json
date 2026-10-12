@@ -11,6 +11,7 @@
     "moduleResolution": "Bundler",
     "noEmit": true,
     "paths": {
+      "feedback_annotations": ["./app/javascript/lib/feedback_annotations.js"],
       "exs1_contract": [
         "./app/javascript/lib/exs1_contract.js"
       ],

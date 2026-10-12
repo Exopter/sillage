@@ -42,6 +42,7 @@ RUN bundle install && \
 COPY . .
 COPY --from=frontend /frontend/public/vendor/cesium /rails/public/vendor/cesium
 COPY --from=frontend /frontend/public/vendor/three /rails/public/vendor/three
+COPY --from=frontend /frontend/public/vendor/feedback /rails/public/vendor/feedback
 
 RUN bundle exec bootsnap precompile -j 1 app/ lib/
 RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile

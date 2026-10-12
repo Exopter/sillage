@@ -8,6 +8,7 @@ class User < ApplicationRecord
   has_secure_password validations: false, reset_token: { expires_in: 30.minutes }
 
   has_many :sessions, dependent: :destroy
+  has_many :feedbacks, dependent: :restrict_with_error
   has_many :flight_imports, dependent: :restrict_with_error
   has_many :flights, dependent: :restrict_with_error
   has_many :signal_sessions, dependent: :restrict_with_error

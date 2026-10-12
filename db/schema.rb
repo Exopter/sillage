@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_11_193000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_12_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -203,6 +203,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_11_193000) do
     t.index ["embedded_controller_id"], name: "index_fdr_wifi_uploads_on_embedded_controller_id"
     t.index ["flight_import_id"], name: "index_fdr_wifi_uploads_on_flight_import_id"
     t.index ["token"], name: "index_fdr_wifi_uploads_on_token", unique: true
+  end
+
+  create_table "feedbacks", force: :cascade do |t|
+    t.string "category", null: false
+    t.datetime "created_at", null: false
+    t.text "description", null: false
+    t.string "page_path"
+    t.string "status", default: "new", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["created_at"], name: "index_feedbacks_on_created_at"
+    t.index ["user_id"], name: "index_feedbacks_on_user_id"
   end
 
   create_table "flight_imports", force: :cascade do |t|
@@ -719,6 +731,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_11_193000) do
   add_foreign_key "fdr_wifi_profiles", "wifi_credentials"
   add_foreign_key "fdr_wifi_uploads", "embedded_controllers"
   add_foreign_key "fdr_wifi_uploads", "flight_imports"
+  add_foreign_key "feedbacks", "users"
   add_foreign_key "flight_imports", "aircraft"
   add_foreign_key "flight_imports", "flights", column: "target_flight_id"
   add_foreign_key "flight_imports", "users"
