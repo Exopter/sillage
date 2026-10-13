@@ -1,0 +1,7 @@
+<% content_for :title, "New folder" %>
+<% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><% end %>
+
+<section class="operations-page is-narrow">
+  <header class="operations-heading"><div><h1>New folder</h1><p>Give this group of flights a name.</p></div></header>
+  <section class="workspace-panel workspace-form-panel"><%= render "form", folder: @folder %></section>
+</section>

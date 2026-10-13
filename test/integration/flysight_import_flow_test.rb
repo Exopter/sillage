@@ -157,7 +157,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     import = users(:julien).flight_imports.create!(import_type: "flysight", status: "failed",
       source_filename: "BROKEN.CSV", error_message: "Invalid telemetry header")
     get flights_path
-    assert_select "tbody", text: /Invalid telemetry header/
+    assert_select ".exds-browser-entries", text: /Invalid telemetry header/
     get flights_path(recording: import.id)
     assert_response :success
     assert_select "h1", "Flights"
@@ -283,20 +283,17 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_select ".sillage-live-badge", count: 0
     assert_select ".sillage-account-menu"
     assert_select "form[action='#{logout_path}'][method='post'] button", text: "Log out"
-    assert_select ".flights-table"
-    assert_select ".flights-table tbody tr", minimum: 1
-    assert_select ".flights-row[data-controller='row-link'][data-row-link-url-value='#{flight_path(flight)}']"
-    assert_select "a.flights-name[href=?]", flight_path(flight), text: flight.name
-    assert_select ".flights-row[data-row-link-url-value=?] .flights-cell-note", flight_path(flight), text: flight.code
+    assert_select ".exds-browser"
+    assert_select ".exds-browser-entry", minimum: 1
+    assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(flight)
+    assert_select ".exds-browser-entry-copy strong", text: flight.name
     assert_select "a[href='#{flights_path}']", text: "Flights"
-    assert_select "a[href='#{new_flight_import_path}']", text: "Import data"
+    assert_select "a[href='#{new_flight_import_path}'][aria-label='Import data']"
     assert_select ".sillage-room-link", text: /Signal/
     assert_select ".sillage-room-link.is-separated", text: /Signal/
     assert_select ".sillage-room-link", count: 5
     assert_select ".sillage-core-link[href='#{core_path}']", text: "Core", count: 1
-    assert_select ".sillage-subtabs .sillage-subtab", 3
-    assert_select ".sillage-subtabs .sillage-subtab", text: "Flight prep"
-    assert_select ".sillage-subtabs .sillage-subtab", text: "HUD"
+    assert_select ".sillage-subtabs", count: 0
     assert_select ".sillage-room-link", text: /Forge/, count: 1
 
     get forge_path
@@ -312,15 +309,11 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
 
     get new_flight_import_path
     assert_response :success
-    assert_sillage_header crumb: "Pre-flight", title: "Import flight data"
+    assert_sillage_header crumb: "Operations", title: "Flights"
 
     get flight_path(flight)
     assert_response :success
     assert_sillage_header crumb: "Replay & analysis", title: flight.code
-
-    get flight_hud_path
-    assert_response :success
-    assert_sillage_header crumb: "Pilot display", title: "HUD preview"
   end
 
   test "logout clears the local session" do

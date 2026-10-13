@@ -1,0 +1,6 @@
+<li class="exds-browser-member" data-member-id="<%= member&.id %>">
+  <span class="exds-browser-member-avatar" aria-hidden="true"><%= member&.email_address&.first&.upcase %></span>
+  <span class="exds-browser-member-email"><%= member&.email_address %></span>
+  <%= hidden_field_tag "flight_folder[member_ids][]", member&.id, id: nil %>
+  <button type="button" class="exds-browser-icon-button is-quiet" aria-label="Remove <%= member&.email_address %>" title="Remove member" data-action="folder-members#remove"><%= sillage_icon "x", size: 17 %></button>
+</li>

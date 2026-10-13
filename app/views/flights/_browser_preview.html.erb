@@ -1,0 +1,35 @@
+<%= turbo_frame_tag "flight-preview", class: "exds-browser-preview", role: "region", aria: { label: "Flight details" } do %>
+  <button type="button" class="button-secondary exds-browser-mobile-back" data-action="flight-browser#backToFlights"><%= sillage_icon "chevron-left", size: 16 %> Back to flights</button>
+  <% if entry %>
+    <% flight = entry.is_a?(Flight) %>
+    <% owned = !flight || entry.owned_by?(Current.user) %>
+    <header class="exds-browser-preview-heading"><div><h2><%= browser_name(entry) %></h2><p class="exds-browser-caption"><%= flight ? entry.code : entry.import_type.upcase %></p></div>
+      <% if flight && owned %><%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button", aria: { label: "Edit flight" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 17 %><% end %><% end %>
+    </header>
+    <% if @preview_points.any? %>
+      <div data-controller="flight-preview-map" data-flight-preview-map-points-value="<%= @preview_points.to_json %>">
+        <div class="exds-browser-map"><div class="exds-browser-map-canvas" data-flight-preview-map-target="canvas" role="img" aria-label="Recorded flight route"></div></div>
+        <p class="exds-browser-map-status" data-flight-preview-map-target="status" role="status">Loading recorded route…</p>
+      </div>
+    <% else %>
+      <div class="exds-browser-map exds-browser-empty"><%= sillage_icon(flight && entry.preparation? ? "plane" : "route", size: 48) %><strong><%= flight && entry.preparation? ? "Ready for preparation" : "No recorded route" %></strong><span><%= flight && entry.preparation? ? "The route will appear after recording a flight." : "This recording has no GPS track to preview." %></span></div>
+    <% end %>
+    <dl class="exds-browser-metadata">
+      <div><dt>Aircraft</dt><dd><%= logbook_value(entry.aircraft&.registration) %></dd></div>
+      <div><dt>Duration</dt><dd><%= logbook_duration(browser_duration(entry)) %></dd></div>
+      <div><dt><%= flight && entry.preparation? ? "Created" : "Recorded" %></dt><dd><%= logbook_date(entry) %></dd></div>
+      <div><dt>Status</dt><dd><% state, label = flight ? logbook_status(entry) : recording_logbook_status(entry) %><span class="status-dot is-<%= state %>"><span></span><%= label %></span></dd></div>
+      <% if flight && (owned || entry.folder&.visible_to?(Current.user)) %>
+        <div data-folder-color-id="<%= entry.folder_id %>" style="--exds-folder-color: <%= browser_folder_color(entry.folder) %>"><dt>Folder</dt><dd><%= sillage_icon "folder", size: 22, class_name: "exds-browser-folder-icon" %><%= entry.folder&.name || "Unfiled" %>
+          <% if owned %>
+            <button type="button" class="exds-browser-icon-button is-quiet" title="Move flight" aria-label="Move flight" data-action="flight-browser#moveFlight" data-flight-key="<%= browser_key(entry) %>" data-flight-name="<%= browser_name(entry) %>" data-folder-id="<%= entry.folder_id || 'unfiled' %>"><%= sillage_icon "folder", size: 17 %><%= sillage_icon "chevron-down", size: 12 %></button>
+          <% end %>
+        </dd></div>
+      <% end %>
+      <div><dt>Visibility</dt><dd><%= sillage_icon(browser_visibility(entry) == "private" ? "lock-keyhole" : "users", size: 19) %><%= browser_visibility(entry).capitalize %><% if flight && entry.folder %><small>From folder</small><% elsif flight && owned %><%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button is-quiet", title: "Edit flight visibility", aria: { label: "Edit flight visibility" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %><% end %><% end %></dd></div>
+    </dl>
+    <%= link_to browser_open_path(entry), class: "button-primary", data: { turbo_frame: (flight && entry.preparation? ? "flight-browser" : "_top") } do %><%= sillage_icon "arrow-up-right", size: 18 %> <%= flight ? "Open flight" : "Open recording" %><% end %>
+  <% else %>
+    <div class="exds-browser-empty"><%= sillage_icon "plane", size: 40 %><strong>Select a flight</strong><span>Its route and details will appear here.</span></div>
+  <% end %>
+<% end %>

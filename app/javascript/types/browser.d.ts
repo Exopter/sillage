@@ -11,5 +11,8 @@ declare module "https://cdn.jsdelivr.net/npm/chart.js@4.4.9/+esm" {
 
 declare module "@hotwired/stimulus-loading" {
   export function eagerLoadControllersFrom(path: string, application: import("@hotwired/stimulus").Application): void
+  export function lazyLoadControllersFrom(path: string, application: import("@hotwired/stimulus").Application): void
 }
-declare module "@hotwired/turbo-rails" {}
+declare module "@hotwired/turbo-rails" {
+  export const Turbo: { visit(url: string): void; cache: { clear(): void } }
+}

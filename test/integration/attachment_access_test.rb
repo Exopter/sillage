@@ -50,6 +50,18 @@ class AttachmentAccessTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "folder membership authorizes video ranges and revocation applies immediately" do
+    folder = users(:julien).flight_folders.create!(name: "Video review", visibility: "shared", members: [ users(:operator) ])
+    @flight.update!(folder: folder)
+    sign_in_as users(:operator)
+    get attachment_path(@video), headers: { "Range" => "bytes=0-3" }
+    assert_response :partial_content
+    assert_equal "0123", response.body
+    folder.memberships.destroy_all
+    get attachment_path(@video), headers: { "Range" => "bytes=0-3" }
+    assert_response :not_found
+  end
+
   test "missing stored files return not found after authorization" do
     @video.blob.service.delete(@video.blob.key)
     get attachment_path(@video)

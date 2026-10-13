@@ -1,0 +1,8 @@
+<% if @target_flight %>
+  <dl class="exds-browser-metadata">
+    <div><dt>Flight</dt><dd><%= @target_flight.code %> · <%= @target_flight.name %></dd></div>
+    <div><dt>Aircraft</dt><dd><%= @target_flight.display_aircraft %></dd></div>
+    <div><dt>Location</dt><dd><%= @target_flight.display_location %></dd></div>
+  </dl>
+<% end %>
+<%= render "shared/upload_form", target_flight: @target_flight %>

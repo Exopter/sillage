@@ -13,25 +13,25 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
   test "logbook filters and search include team flights without exposing another owner's private data" do
     get flights_path
     assert_response :success
-    assert_select "a.flights-name[href=?]", flight_path(@private)
-    assert_select "a.flights-name[href=?]", flight_path(@shared)
-    assert_select "a.flights-name[href=?]", flight_path(@hidden), count: 0
+    assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@private)
+    assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@shared)
+    assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@hidden), count: 0
     assert_select "input[name='entries[]'][value=?]", "flight:#{@shared.id}", count: 0
-    assert_select "input[name='entries[]'][value=?]", "flight:#{@private.id}", count: 1
+    assert_select "input[type='checkbox'][name='entries[]'][value=?]", "flight:#{@private.id}", count: 1
     assert_includes response.headers["Cache-Control"], "no-store"
 
     get flights_path(visibility: "private")
-    assert_select "a.flights-name[href=?]", flight_path(@private)
-    assert_select "a.flights-name[href=?]", flight_path(@shared), count: 0
-    assert_select "a.flights-name[href=?]", flight_path(@hidden), count: 0
+    assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@private)
+    assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@shared), count: 0
+    assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@hidden), count: 0
 
     get flights_path(visibility: "team", q: "mission")
-    assert_select "a.flights-name", count: 1
-    assert_select "a.flights-name[href=?]", flight_path(@shared)
-    assert_select "input[name='visibility'][value='team']"
+    assert_select "a.exds-browser-entry-link", count: 1
+    assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@shared, visibility: "public", q: "mission")
+    assert_select "input[name='visibility'][value='public']"
 
     get flights_path(q: "Confidential")
-    assert_select "a.flights-name", count: 0
+    assert_select "a.exds-browser-entry-link", count: 0
   end
 
   test "private flights are inaccessible even to another administrator" do
@@ -59,7 +59,7 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "[data-controller='flight-viewer']"
     assert_select "form[action=?]", flight_path(@shared), count: 0
-    assert_select ".mode-badge", text: "Team"
+    assert_select ".mode-badge", text: "Public"
     assert_includes response.body, "Shared flight notes"
     assert_select "meta[name='turbo-cache-control'][content='no-cache']"
   end
@@ -102,7 +102,7 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
     get flight_path(@private)
     assert_response :not_found
     get flights_path
-    assert_select "a.flights-name[href=?]", flight_path(@private), count: 0
+    assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@private), count: 0
   end
 
   test "creation defaults to private and accepts only the two supported visibility values" do
@@ -128,26 +128,26 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
   test "team visibility never exposes unshared raw recordings" do
     recording = @owner.flight_imports.create!(source_filename: "Private source", import_type: "exofdr", status: "pending")
     get flights_path(filter: "all", visibility: "team")
-    assert_select "a.flights-name[href*=?]", "recording=#{recording.id}", count: 0
+    assert_select "a.exds-browser-entry-link[data-open-url*=?]", "recording=#{recording.id}", count: 0
     get flights_path(filter: "all", visibility: "private")
-    assert_select "a.flights-name[href*=?]", "recording=#{recording.id}"
+    assert_select "a.exds-browser-entry-link[data-open-url*=?]", "recording=#{recording.id}"
 
     source = @other.flight_imports.create!(source_filename: "Unshared source filename", import_type: "flysight", status: "imported")
     @shared.update!(flight_import: source)
     get flights_path(q: "Unshared source filename")
-    assert_select "a.flights-name", count: 0
+    assert_select "a.exds-browser-entry-link", count: 0
     sign_in_as @other
     get flights_path(q: "Unshared source filename")
-    assert_select "a.flights-name[href=?]", flight_path(@shared)
+    assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@shared, q: "Unshared source filename")
   end
 
   test "team pagination retains visibility query and status filter" do
     31.times { |index| @other.flights.create!(name: "Review #{index}", visibility: "team") }
     get flights_path(visibility: "team", filter: "all", q: "Review")
-    assert_select "tbody tr", count: 30
-    assert_select "a[rel='next'][href*='visibility=team'][href*='filter=all'][href*='q=Review']"
+    assert_select ".exds-browser-entry", count: 30
+    assert_select "a[rel='next'][href*='visibility=public'][href*='filter=all'][href*='q=Review']"
     get flights_path(visibility: "team", filter: "all", q: "Review", page: 2)
-    assert_select "tbody tr", count: 1
+    assert_select ".exds-browser-entry", count: 1
     assert_select "a[rel='next']", count: 0
   end
 

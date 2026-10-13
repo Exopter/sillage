@@ -6,10 +6,15 @@ Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
 
   # Make code changes take effect immediately without server restart.
-  config.enable_reloading = true
+  # Acceptance mode avoids scanning a slow host-mounted tree on every request.
+  # Restart the server after code changes when this mode is enabled.
+  fast_preview = ENV["SILLAGE_FAST_PREVIEW"] == "1"
+  config.enable_reloading = !fast_preview
 
   # Do not eager load code on boot.
-  config.eager_load = false
+  config.eager_load = fast_preview
+  config.log_level = :warn if fast_preview
+  config.assets.sweep_cache = !fast_preview
 
   # Show full error reports.
   config.consider_all_requests_local = true
@@ -41,10 +46,10 @@ Rails.application.configure do
   config.active_support.deprecation = :log
 
   # Raise an error on page load if there are pending migrations.
-  config.active_record.migration_error = :page_load
+  config.active_record.migration_error = fast_preview ? false : :page_load
 
   # Highlight code that triggered database queries in logs.
-  config.active_record.verbose_query_logs = true
+  config.active_record.verbose_query_logs = !fast_preview
 
   # Append comments with runtime information tags to SQL queries in logs.
   config.active_record.query_log_tags_enabled = true
@@ -62,7 +67,7 @@ Rails.application.configure do
   # config.i18n.raise_on_missing_translations = true
 
   # Annotate rendered view with file names.
-  config.action_view.annotate_rendered_view_with_filenames = true
+  config.action_view.annotate_rendered_view_with_filenames = !fast_preview
 
   # Uncomment if you wish to allow Action Cable access from any origin.
   # config.action_cable.disable_request_forgery_protection = true

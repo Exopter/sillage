@@ -17,3 +17,28 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
+
+.exds-selection-field {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.exds-selection-field select {
+  min-width: 0;
+  max-width: min(28ch, 100%);
+  min-height: var(--control-h);
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--ds-radius);
+  background: var(--surface-card);
+  color: var(--text-body);
+  font: inherit;
+}
+
+.exds-selection-field select:focus-visible {
+  outline: 2px solid var(--ex-sky-500);
+  outline-offset: 2px;
+}

@@ -1,0 +1,14 @@
+<div data-controller="folder-color" data-folder-color-url-value="<%= color_flight_folder_path(folder) %>" data-folder-color-id-value="<%= folder.id %>" data-folder-color-color-value="<%= folder.color %>"
+  data-action="turbo:before-cache@document->folder-color#close resize@window->folder-color#close turbo:frame-load@document->folder-color#refresh">
+  <button type="button" class="exds-browser-icon-button is-quiet" title="Change folder color" aria-label="Change folder color" popovertarget="folder-color-<%= folder.id %>" data-folder-color-target="trigger"><%= sillage_icon "palette", size: 17 %></button>
+  <div id="folder-color-<%= folder.id %>" class="exds-browser-color-popover" popover="auto" aria-label="Folder color" data-folder-color-target="palette" data-action="beforetoggle->folder-color#position keydown->folder-color#navigate">
+    <div class="exds-browser-color-options" role="group" aria-label="Choose a color">
+      <% FlightBrowserHelper::FOLDER_COLOR_LABELS.each do |color, label| %>
+        <button type="button" class="exds-browser-color-swatch" aria-label="<%= label %>" title="<%= label %>" aria-pressed="<%= folder.color == color %>" style="--exds-folder-color: <%= browser_color_token(color) %>" data-folder-color-target="swatch" data-color="<%= color %>" data-action="folder-color#choose">
+          <span class="exds-browser-color-dot"><%= sillage_icon "check", size: 14 %></span>
+        </button>
+      <% end %>
+    </div>
+    <p class="exds-browser-color-error" role="alert" data-folder-color-target="error" hidden></p>
+  </div>
+</div>

@@ -3,9 +3,10 @@ module Flights
     FILTERS = %w[flights set_aside all].freeze
     PER_PAGE = 30
 
-    def initialize(user:, filter:, query: nil, visibility: nil)
+    def initialize(user:, filter:, query: nil, visibility: nil, folder: nil)
       @user, @filter, @query = user, filter, query.to_s.strip
-      @visibility = visibility.presence_in(Flight::VISIBILITIES)
+      @visibility = (visibility == "team" ? "public" : visibility).presence_in(Flight::EFFECTIVE_VISIBILITIES)
+      @folder = folder.presence
     end
 
     def page(number)
@@ -18,7 +19,7 @@ module Flights
         .take(PER_PAGE + 1).skip(([ number.to_i, 1 ].max - 1) * PER_PAGE)
       rows = ApplicationRecord.connection.select_all(query)
       flights = Flight.visible_to(@user).where(id: rows.select { |row| row["kind"] == "flight" }.map { |row| row["id"] })
-        .includes(:flight_import, :aircraft).index_by(&:id)
+        .includes(:flight_import, :aircraft, :folder).index_by(&:id)
       imports = @user.flight_imports.where(id: rows.select { |row| row["kind"] == "import" }.map { |row| row["id"] })
         .includes(:aircraft).index_by(&:id)
       rows.filter_map { |row| (row["kind"] == "flight" ? flights : imports)[row["id"]] }
@@ -30,7 +31,14 @@ module Flights
       visible = Flight.visible_to(@user)
       scope = visible.where.not(flight_import_id: FlightImport.set_aside.select(:id))
         .or(visible.where(flight_import_id: nil))
-      scope = scope.where(visibility: @visibility) if @visibility
+      scope = scope.merge(Flight.with_effective_visibility(@visibility)) if @visibility
+      if @folder
+        if @folder == "unfiled"
+          scope = scope.where(user_id: @user.id, folder_id: nil)
+        else
+          scope = scope.where(folder_id: FlightFolder.visible_to(@user).find(@folder).id)
+        end
+      end
       scope = scope.none if @filter == "set_aside"
       if @query.present?
         scope = scope.left_joins(:aircraft, :flight_import).where(
@@ -41,7 +49,8 @@ module Flights
 
     def import_scope
       scope = @user.flight_imports
-      scope = scope.none if @visibility == "team"
+      scope = scope.none if @folder
+      scope = scope.none if @visibility.in?(%w[public shared])
       with_flights = @user.flights.where.not(flight_import_id: nil).select(:flight_import_id)
       scope = scope.where.not(id: with_flights).or(scope.set_aside)
       scope = scope.set_aside if @filter == "set_aside"

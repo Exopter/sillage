@@ -1,0 +1,6 @@
+<%= turbo_frame_tag "folder-sharing" do %>
+  <dialog class="exds-browser-dialog" data-controller="folder-sharing" aria-labelledby="sharing-title">
+    <h2 id="sharing-title"><%= @folder.persisted? ? "Sharing and members" : "New folder" %></h2>
+    <%= render "form", folder: @folder, dialog: true %>
+  </dialog>
+<% end %>

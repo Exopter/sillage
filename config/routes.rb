@@ -130,13 +130,20 @@ Rails.application.routes.draw do
       end
     end
   end
-  get "flight/hud" => "dashboard#hud", as: :flight_hud
 
   resources :flight_imports, only: [ :new, :create, :show, :destroy ] do
     member { post :include_in_flights }
   end
+  resources :flight_folders, except: :show, path: "flight-folders" do
+    collection { get :member_search, path: "members" }
+    member { patch :color, action: :update_color }
+  end
   resources :flights do
-    collection { delete :bulk_destroy }
+    collection do
+      get :preview
+      delete :bulk_destroy
+      post :bulk_action
+    end
   end
   resources :attachments, only: :show
 end

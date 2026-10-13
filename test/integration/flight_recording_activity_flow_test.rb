@@ -21,15 +21,15 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
     get flights_path
     assert_select "a[href*=?]", "recording=#{import.id}", count: 0
     get flights_path(filter: "set_aside")
-    assert_select "nav[aria-label='Flights filters'] a[aria-current='page']", text: "Set aside"
-    assert_select "a.flights-name[href*=?]", "recording=#{import.id}", text: "FDR000001.BIN"
+    assert_select "nav[aria-label='Library'] a[aria-current='page']", text: "Excluded recordings"
+    assert_select "a.exds-browser-entry-link[data-open-url*=?]", "recording=#{import.id}", text: /FDR000001.BIN/
     assert_includes response.body, "Stationary"
     get flights_path(filter: "all")
-    assert_select "a.flights-name[href*=?]", "recording=#{import.id}", count: 1
+    assert_select "a.exds-browser-entry-link[data-open-url*=?]", "recording=#{import.id}", count: 1
     get flight_import_path(import)
     assert_response :redirect
     follow_redirect!
-    assert_select ".sillage-subtabs a[aria-current='page']", text: "Flights"
+    assert_select ".exds-browser", count: 1
     assert_select "form[action=?]", include_in_flights_flight_import_path(import)
     assert_includes response.body, "Download FDR000001.BIN"
   end
@@ -51,7 +51,7 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
     assert_equal flight.id, import.flights.sole.id
     assert_equal original_source, import.source_files.first.download
     get flights_path
-    assert_select "a.flights-name[href=?]", flight_path(flight), count: 1
+    assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(flight), count: 1
   end
 
   test "queue failure rolls back inclusion so a subsequent click can retry" do
@@ -90,7 +90,7 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
     [ "' OR 1=1 --", "%", "_", "'; DROP TABLE flights; --" ].each do |query|
       get flights_path(filter: "all", q: query, page: "1; DROP TABLE flights")
       assert_response :success
-      assert_select "a.flights-name[href*=?]", "recording=#{import.id}", count: 0
+      assert_select "a.exds-browser-entry-link[data-open-url*=?]", "recording=#{import.id}", count: 0
     end
     assert Flight.table_exists?
   end
@@ -116,8 +116,8 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
     flight = import.flights.sole
     import.update!(included_in_flights_at: nil)
     get flights_path(filter: "all", q: "FDR000001")
-    assert_select "a.flights-name[href*=?]", "recording=#{import.id}", count: 1
-    assert_select "a.flights-name[href=?]", flight_path(flight), count: 0
+    assert_select "a.exds-browser-entry-link[data-open-url*=?]", "recording=#{import.id}", count: 1
+    assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(flight), count: 0
     assert_no_difference [ -> { Flight.count }, -> { TrackPoint.count } ] do
       assert_no_enqueued_jobs only: ExoFdrImportJob do
         post include_in_flights_flight_import_path(import)
@@ -132,7 +132,7 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
     ExoFdr::ImportService.new(import).call
     assert_equal "needs_review", import.reload.activity_classification
     get flights_path
-    assert_select "a.flights-name[href=?]", flight_path(import.flights.sole)
+    assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(import.flights.sole)
     assert_includes response.body, "Needs review"
   end
 
@@ -151,11 +151,11 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
         activity_classification: "technical")
     end
     get flights_path(filter: "set_aside", q: "Archived")
-    assert_select "tbody tr", count: 30
+    assert_select ".exds-browser-entry", count: 30
     assert_select "input[name='filter'][value='set_aside']"
     assert_select "a[rel='next'][href*='filter=set_aside']"
     get flights_path(filter: "set_aside", q: "Archived", page: 2)
-    assert_select "tbody tr", count: 2
+    assert_select ".exds-browser-entry", count: 2
     assert_select "a[rel='next']", count: 0
   end
 

@@ -35,6 +35,8 @@
 /public/assets
 /public/vendor/cesium/
 /public/vendor/feedback/
+/public/vendor/leaflet/
+/public/vendor/three/
 
 # Keep deployment config out of the image.
 /config/deploy*.yml

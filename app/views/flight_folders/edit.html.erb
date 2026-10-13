@@ -1,0 +1,7 @@
+<% content_for :title, "Folder settings" %>
+<% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><% end %>
+
+<section class="operations-page is-narrow">
+  <header class="operations-heading"><div><h1>Folder settings</h1><p><%= @folder.name %></p></div></header>
+  <section class="workspace-panel workspace-form-panel"><%= render "form", folder: @folder %></section>
+</section>

@@ -28,6 +28,7 @@
 /vendor/bundle/
 /public/assets/
 /public/vendor/cesium/
+/public/vendor/leaflet/
 /public/vendor/three/
 
 # OS/editor noise

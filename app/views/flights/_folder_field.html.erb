@@ -1,0 +1,3 @@
+<%= form.label :folder_id, "Folder" %>
+<%= form.collection_select :folder_id, @form_folders, :id, :name, { include_blank: "Unfiled" }, aria: { describedby: "flight-folder-help" } %>
+<p class="operations-help" id="flight-folder-help">The flight inherits its folder's visibility. Only folders you can contribute to are listed.</p>

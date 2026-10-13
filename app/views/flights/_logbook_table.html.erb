@@ -5,8 +5,10 @@
       <p>Prepare a flight, acquire it live, or import data from the field.</p>
     </div>
     <%= form_with url: flights_path, method: :get, class: "flights-search" do |form| %>
+      <%= form.hidden_field :view, value: "list", id: nil %>
       <%= form.hidden_field :filter, value: @filter || "flights" %>
       <%= form.hidden_field :visibility, value: @visibility || "all" %>
+      <%= form.hidden_field :folder, value: @folder_filter %>
       <label class="search-control">
         <span class="sr-only">Search flights and recordings</span>
         <%= sillage_icon "search", size: 16 %>
@@ -16,7 +18,7 @@
     <%= link_to new_flight_import_path, class: "button-secondary" do %>
       <%= sillage_icon "upload", size: 17 %><span>Import data</span>
     <% end %>
-    <%= link_to new_flight_path, class: "button-primary" do %>
+    <%= link_to new_flight_path(folder: @folder&.id), class: "button-primary" do %>
       <%= sillage_icon "plus", size: 17 %><span>New flight</span>
     <% end %>
   </header>
@@ -26,7 +28,7 @@
   <div class="workspace-navigation-groups">
     <nav class="workspace-tabs workspace-segmented-tabs" aria-label="Flights filters">
       <% { "flights" => "Flights", "set_aside" => "Set aside", "all" => "All" }.each do |value, label| %>
-        <%= link_to label, flights_path(filter: value, q: local_assigns[:query].presence, visibility: @visibility.presence_in(Flight::VISIBILITIES)),
+        <%= link_to label, flights_path(filter: value, q: local_assigns[:query].presence, visibility: @visibility.presence_in(Flight::VISIBILITIES), folder: @folder_filter, view: "list"),
           class: ["workspace-tab", ("is-active" if (@filter || "flights") == value)],
           aria: { current: ((@filter || "flights") == value ? "page" : nil) } %>
       <% end %>
@@ -34,22 +36,45 @@
 
     <nav class="workspace-tabs workspace-segmented-tabs" aria-label="Flight visibility">
       <% { "all" => "All", "private" => "Private", "team" => "Team" }.each do |value, label| %>
-        <%= link_to label, flights_path(filter: @filter || "flights", q: local_assigns[:query].presence, visibility: value),
+        <%= link_to label, flights_path(filter: @filter || "flights", q: local_assigns[:query].presence, visibility: value, folder: @folder_filter, view: "list"),
           class: ["workspace-tab", ("is-active" if (@visibility || "all") == value)],
           aria: { current: ((@visibility || "all") == value ? "page" : nil) } %>
       <% end %>
     </nav>
   </div>
 
-  <%= form_with url: bulk_destroy_flights_path, method: :delete, class: "flights-table-wrap",
+  <div class="workspace-filterbar">
+    <%= form_with url: flights_path, method: :get, class: "workspace-actions workspace-state-filter" do |form| %>
+      <%= form.hidden_field :view, value: "list", id: nil %>
+      <%= form.hidden_field :filter, value: @filter || "flights", id: nil %>
+      <%= form.hidden_field :q, value: local_assigns[:query], id: nil %>
+      <%= form.hidden_field :visibility, value: @visibility || "all", id: nil %>
+      <label class="exds-selection-field" for="folder-filter">
+        <span>Folder</span>
+        <%= form.select :folder, [["All folders", ""], ["Unfiled", "unfiled"]] + @folders.map { |folder| [folder.name, folder.id.to_s] }, { selected: @folder_filter }, id: "folder-filter" %>
+      </label>
+      <%= form.submit "Apply", class: "button-secondary" %>
+      <%= link_to "New folder", new_flight_folder_path, class: "button-secondary" %>
+    <% end %>
+  </div>
+
+  <%= form_with url: bulk_action_flights_path, method: :post, class: "flights-table-wrap",
     data: { controller: "table-selection", action: "submit->table-selection#submit turbo:before-cache@document->table-selection#reset" } do |form| %>
-    <%= form.hidden_field :filter, value: @filter || "flights", id: nil %>
+    <%= form.hidden_field :view, value: "list", id: nil %>
+      <%= form.hidden_field :filter, value: @filter || "flights", id: nil %>
     <%= form.hidden_field :q, value: local_assigns[:query], id: nil %>
     <%= form.hidden_field :visibility, value: @visibility.presence_in(Flight::VISIBILITIES), id: nil %>
+    <%= form.hidden_field :folder, value: @folder_filter, id: nil %>
     <div class="exds-selection-toolbar" role="group" aria-label="Selection actions">
       <span role="status" aria-live="polite" data-table-selection-target="count">0 selected</span>
+      <label class="exds-selection-field">
+        <span>Move to</span>
+        <%= form.select :destination_folder_id, [["Choose folder", ""], ["Unfiled", "unfiled"]] + @folders.map { |folder| [folder.name, folder.id.to_s] }, {},
+          data: { table_selection_target: "destination", action: "change->table-selection#update" } %>
+      </label>
+      <button type="submit" name="operation" value="move" class="button-secondary" disabled data-table-selection-target="move">Move selected</button>
       <button type="button" class="button-secondary" disabled data-table-selection-target="clear" data-action="table-selection#reset">Clear selection</button>
-      <button type="submit" class="button-danger" disabled data-table-selection-target="delete"><%= sillage_icon "trash", size: 16 %> Delete selected</button>
+      <button type="submit" name="operation" value="delete" class="button-danger" disabled data-table-selection-target="delete"><%= sillage_icon "trash", size: 16 %> Delete selected</button>
     </div>
     <div class="flights-table-scroll">
     <table class="flights-table">
@@ -97,6 +122,9 @@
               <% if flight.name.present? && flight.name != flight.code %>
                 <span class="flights-cell-note flights-data"><%= flight.code %></span>
               <% end %>
+              <% if flight.owned_by?(Current.user) %>
+                <span class="flights-cell-note">Folder: <%= flight.folder&.name || "Unfiled" %></span>
+              <% end %>
             </td>
             <td><strong class="flights-data"><%= logbook_value(flight.aircraft&.registration) %></strong></td>
             <td><%= logbook_value(flight.location) %></td>
@@ -126,7 +154,7 @@
       </tbody>
     </table>
     <% if flights.empty? %>
-      <div class="workspace-empty"><%= local_assigns[:query].present? ? "No matching flights or recordings." : @filter == "set_aside" ? "No recordings set aside." : "No flight or recording yet." %></div>
+      <div class="workspace-empty"><%= @folder_filter ? "No flights match this folder and the current filters." : local_assigns[:query].present? ? "No matching flights or recordings." : @filter == "set_aside" ? "No recordings set aside." : "No flight or recording yet." %></div>
     <% end %>
     </div>
   <% end %>

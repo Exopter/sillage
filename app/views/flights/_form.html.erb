@@ -1,34 +1,37 @@
-<%= form_with model: flight, class: "operations-form" do |form| %>
+<%= form_with model: flight, class: "exds-browser-form", data: { turbo_frame: "flight-browser" } do |form| %>
+  <%= hidden_field_tag :return_to_browser, "1", id: nil %>
+  <% browser_context.each do |key, value| %><%= hidden_field_tag key, value, id: nil %><% end %>
   <% if flight.errors.any? %>
-    <div class="workspace-errors"><%= flight.errors.full_messages.to_sentence %></div>
+    <div class="workspace-errors" role="alert"><%= flight.errors.full_messages.to_sentence %></div>
   <% end %>
 
-  <div class="operations-form-grid">
-    <label class="is-wide">
+  <div class="exds-browser-form-grid">
+    <label class="exds-browser-field is-wide">
       <span>Flight name</span>
       <%= form.text_field :name, required: true, placeholder: "Prepared flight" %>
     </label>
-    <label>
+    <label class="exds-browser-field">
       <span>Aircraft</span>
       <%= form.collection_select :aircraft_id, @aircraft, :id, :display_name, { prompt: "Select aircraft" }, required: true %>
     </label>
-    <label>
+    <label class="exds-browser-field">
       <span>Location</span>
       <%= form.text_field :location, placeholder: "Optional operating location" %>
     </label>
-    <label class="is-wide">
+    <label class="exds-browser-field is-wide">
       <span>Notes</span>
-      <%= form.text_area :notes, rows: 5, placeholder: "Operational context, crew, configuration…" %>
+      <%= form.text_area :notes, rows: 3, placeholder: "Operational context, crew, configuration…" %>
     </label>
   </div>
 
-  <div class="details-form">
-    <%= render "flights/visibility_field", form: form %>
-  </div>
+  <fieldset class="exds-browser-fieldset">
+    <legend>Organization & access</legend>
+    <div class="exds-browser-field"><%= render "flights/folder_field", form: form %></div>
+    <div class="exds-browser-field"><%= render "flights/visibility_field", form: form %></div>
+  </fieldset>
 
-  <p class="operations-help">The flight starts in Preparation. Attach FlySight or ExoFDR data later, or open a linked Signal session.</p>
-  <div class="operations-form-actions">
-    <%= link_to "Cancel", flights_path, class: "button-secondary" %>
+  <div class="exds-browser-form-actions">
+    <%= link_to "Cancel", browser_path(selected: (browser_key(flight) if flight.persisted?)), class: "button-secondary", data: { turbo_frame: "flight-browser" } %>
     <%= form.submit flight.persisted? ? "Save flight" : "Create in Preparation", class: "button-primary" %>
   </div>
 <% end %>

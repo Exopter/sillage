@@ -14,7 +14,7 @@
     <link rel="icon" href="/icon.svg?v=exopter-ex-20261009" type="image/svg+xml">
 
     <%# Includes all stylesheet files in app/assets/stylesheets %>
-    <%= stylesheet_link_tag "exopter_fonts", "exopter_design_system", "application", "icon_button_edge", "selection_toolbar", "feedback_popover", "flights", "signal", "hangar_forge", "calibration_guide", "signal_strength", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "exopter_fonts", "exopter_design_system", "application", "icon_button_edge", "selection_toolbar", "column_browser", "feedback_popover", "flights", "signal", "hangar_forge", "calibration_guide", "signal_strength", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
 
@@ -98,38 +98,7 @@
           </details>
         </header>
 
-        <% if sillage_show_flight_tabs? %>
-          <nav class="sillage-subtabs" aria-label="Flights workspace">
-            <% sillage_flight_tabs.each do |tab| %>
-              <% classes = ["sillage-subtab", ("is-active" if tab[:id] == sillage_current_flight_tab), ("is-disabled" unless tab[:enabled])].compact.join(" ") %>
-              <% if tab[:href].present? %>
-                <%= link_to tab[:label], tab[:href], class: classes, aria: { current: ("page" if tab[:id] == sillage_current_flight_tab) } %>
-              <% else %>
-                <span class="<%= classes %>" aria-disabled="true"><%= tab[:label] %></span>
-              <% end %>
-            <% end %>
-          </nav>
-        <% end %>
-
-        <% if flash.any? %>
-          <div class="sillage-flashes" aria-label="Notifications">
-            <% flash.each do |type, message| %>
-              <% alert = type.to_s == "alert" %>
-              <div
-                class="flash <%= type %>"
-                role="<%= alert ? "alert" : "status" %>"
-                data-controller="flash"
-                data-flash-timeout-value="<%= alert ? 0 : 5000 %>"
-              >
-                <span class="flash-icon"><%= sillage_icon(alert ? "triangle-alert" : "circle-check", size: 17) %></span>
-                <span class="flash-message"><%= message %></span>
-                <button type="button" class="flash-dismiss" aria-label="Dismiss notification" data-action="flash#dismiss">
-                  <%= sillage_icon "x", size: 15 %>
-                </button>
-              </div>
-            <% end %>
-          </div>
-        <% end %>
+        <%= render "shared/flashes" unless sillage_flight_browser? %>
 
         <main class="sillage-content">
           <div class="<%= sillage_content_shell_class %>">

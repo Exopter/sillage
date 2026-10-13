@@ -1,0 +1,4 @@
+<%= form.hidden_field :filter, value: @filter, id: nil %>
+<%= form.hidden_field :visibility, value: @visibility.presence_in(Flight::EFFECTIVE_VISIBILITIES), id: nil %>
+<%= form.hidden_field :folder, value: @folder_filter, id: nil %>
+<%= form.hidden_field :q, value: @query, id: nil if local_assigns[:include_query] %>

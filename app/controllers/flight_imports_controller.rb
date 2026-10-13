@@ -1,7 +1,11 @@
 class FlightImportsController < ApplicationController
+  include FlightBrowser
+
   def new
+    no_store
     @aircraft = Aircraft.active.ordered
     @target_flight = Current.user.flights.find_by(id: params[:flight_id])
+    load_browser(panel: "import", focus: @target_flight)
   end
 
   def create

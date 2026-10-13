@@ -20,6 +20,18 @@ secrets are not imported into the application process.
 
 Open `http://localhost:3000`.
 
+For acceptance testing on slow host-mounted filesystems, start Rails with
+`SILLAGE_FAST_PREVIEW=1 bin/rails server`. This eagerly loads the application and
+disables development code/asset reloading and per-request migration scans, and logs
+warnings and errors. Run `bin/rails db:prepare` before starting; restart the server
+after code or asset changes.
+Omit the variable for normal development with automatic reloading.
+
+Folder previews use the pinned local Leaflet distribution at
+`/vendor/leaflet/1.9.4/`, with OpenStreetMap tiles and attribution. Preview requests
+only render the selected flight. The replay page caches derived telemetry with
+flight and telemetry versions; authorization is checked on every request.
+
 Cesium's pinned npm distribution is served from `/vendor/cesium/<version>/`.
 `bin/setup` and the Docker build copy its browser assets and license locally;
 run `npm ci && npm run assets:prepare` to refresh them after a dependency update.

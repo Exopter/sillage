@@ -3,23 +3,25 @@ require "test_helper"
 class OperationsFormLayoutTest < ActionDispatch::IntegrationTest
   setup { sign_in_as users(:julien) }
 
-  test "flight forms use the constrained shared form shell" do
+  test "flight forms use the contextual column browser form" do
     [ new_flight_path, edit_flight_path(flights(:one)) ].each do |path|
       get path
 
       assert_response :success
-      assert_select ".operations-page.is-narrow"
-      assert_select ".operations-panel.operations-form-panel > form.operations-form", count: 1
-      assert_select ".operations-form-actions", count: 1
+      assert_select "turbo-frame#flight-browser .exds-browser-sidebar"
+      assert_select "turbo-frame#flight-preview .exds-browser-editor > form.exds-browser-form", count: 1
+      assert_select ".exds-browser-form-actions", count: 1
+      assert_select ".operations-page", count: 0
     end
   end
 
-  test "direct import uses the same constrained form shell" do
+  test "direct import uses the contextual column browser with the upload controls" do
     get new_flight_import_path
 
     assert_response :success
-    assert_select ".operations-page.is-narrow"
-    assert_select ".operations-panel.operations-form-panel > form.operations-form", count: 1
+    assert_select "turbo-frame#flight-browser .exds-browser-sidebar"
+    assert_select "turbo-frame#flight-preview .exds-browser-editor > form.operations-form", count: 1
+    assert_select ".operations-page", count: 0
     assert_select ".import-source-picker", count: 1
     assert_select ".operations-form-actions.upload-actions", count: 1
   end

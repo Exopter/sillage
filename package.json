@@ -3,11 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "assets:prepare": "node script/prepare_cesium_assets.mjs && node script/prepare_three_assets.mjs",
+    "assets:prepare": "node script/prepare_cesium_assets.mjs && node script/prepare_three_assets.mjs && node script/prepare_leaflet_assets.mjs",
     "typecheck": "tsc --project tsconfig.json && tsc --project tsconfig.worker.json"
   },
   "devDependencies": {
     "@hotwired/stimulus": "3.2.2",
+    "@hotwired/turbo-rails": "8.0.23",
+    "@types/leaflet": "1.9.21",
     "@types/three": "0.186.0",
     "@types/w3c-web-serial": "1.0.8",
     "@types/web-bluetooth": "0.0.21",
@@ -18,6 +20,7 @@
   "dependencies": {
     "cesium": "1.124.0",
     "html2canvas-pro": "2.5.2",
+    "leaflet": "1.9.4",
     "three": "0.186.1"
   }
 }

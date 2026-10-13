@@ -1,5 +1,6 @@
 class FlightsController < ApplicationController
   include Pagination
+  include FlightBrowser
 
   before_action :set_flight, only: [ :show, :edit, :update, :destroy ]
   before_action :require_flight_owner, only: [ :edit, :update, :destroy ]
@@ -14,17 +15,25 @@ class FlightsController < ApplicationController
         return
       end
     end
-    @query = params[:q].to_s.strip
-    @filter = params[:filter].presence_in(Flights::Logbook::FILTERS) || (@flight_import&.set_aside? ? "set_aside" : "flights")
-    @visibility = params[:visibility].presence_in(Flight::VISIBILITIES) || "all"
-    @page = [ params[:page].to_i, 1 ].max
-    entries = Flights::Logbook.new(user: Current.user, filter: @filter, query: @query, visibility: @visibility).page(@page)
-    @next_page = @page + 1 if entries.size > Flights::Logbook::PER_PAGE
-    @flights = entries.first(Flights::Logbook::PER_PAGE)
+    load_browser
+  end
+
+  def preview
+    load_browser_context
+    @selected_entry = if params[:kind] == "import"
+      Current.user.flight_imports.find(params[:id])
+    else
+      Flight.visible_to(Current.user).includes(:aircraft, :folder).find(params[:id])
+    end
+    @destination_folders = FlightFolder.contributable_to(Current.user).ordered
+    @preview_points = Flights::RoutePreview.call(@selected_entry)
+    render partial: "flights/browser_preview", locals: { entry: @selected_entry }
   end
 
   def new
     @flight = Current.user.flights.new(status: "preparation", name: "Prepared flight")
+    load_browser(panel: "new")
+    @flight.folder = @folder if @folder&.contributable_by?(Current.user)
     load_form_options
   end
 
@@ -36,38 +45,31 @@ class FlightsController < ApplicationController
 
     if @flight.errors.empty? && @flight.save
       @flight.capture_configuration!
-      redirect_to @flight, notice: "Flight created in preparation."
+      redirect_to flight_path(@flight, **(params[:return_to_browser] == "1" ? browser_return_parameters : {})), notice: "Flight created in preparation."
     else
+      load_browser(panel: "new")
       load_form_options
       render :new, status: :unprocessable_entity
     end
   end
 
   def edit
+    load_browser(panel: "edit", focus: @flight)
     load_form_options
   end
 
   def show
     load_form_options
     if @flight.preparation?
+      load_browser(panel: "preparation", focus: @flight)
       render :preparation
       return
     end
 
-    @track_points = sampled_track_points(limit: 2_000)
-    @sensor_samples = sampled_sensor_samples(limit_per_type: 1_200)
-    @sensor_counts = @flight.sensor_samples.group(:sensor_type).count
-    @ground_altitude_m = @flight.min_altitude_m || @track_points.filter_map(&:altitude_m).min
-    @flight_analysis = Flights::FlightAnalysis.new(
-      track_points: @track_points,
-      sensor_samples: @sensor_samples,
-      origin_time: @flight.started_at
-    ).call
-    @analysis = analysis_payload(@flight_analysis)
-    @visualization_points = @track_points.map { |point| serialize_point(point) }
-    @visualization_sensors = @sensor_samples.map { |sample| serialize_sensor_sample(sample) }
+    # Authorize on every request; cache only derived telemetry, never permissions or HTML.
+    payload = Rails.cache.fetch([ "flight-replay-v1", @flight.cache_key_with_version, telemetry_version ], expires_in: 30.minutes) { replay_payload }
+    @sensor_counts, @flight_analysis, @analysis, @visualization_points, @visualization_sensors, @bounds = payload
     @cesium_ion_token = cesium_ion_token
-    @bounds = bounds_payload(@flight_analysis.bounds)
   end
 
   def update
@@ -83,7 +85,8 @@ class FlightsController < ApplicationController
     if @flight.update(attributes)
       @flight.capture_configuration!(replace: true) if @flight.saved_change_to_aircraft_id?
       enqueue_video_processing(video_upload) if video_upload.present?
-      respond_to_upload_success(flight_path(@flight), t(".success"))
+      destination = params[:return_to_browser] == "1" ? flights_path(**browser_return_parameters, selected: "flight:#{@flight.id}") : flight_path(@flight)
+      respond_to_upload_success(destination, t(".success"))
     else
       respond_to_upload_failure(@flight.errors.full_messages.to_sentence)
     end
@@ -105,15 +108,45 @@ class FlightsController < ApplicationController
     redirect_to selection_return_path, status: :see_other, alert: "The selection could not be deleted. Please try again."
   end
 
+  def bulk_action
+    return bulk_destroy if params[:operation] == "delete"
+    unless params[:operation] == "move"
+      redirect_to selection_return_path, status: :see_other, alert: "Choose a selection action."
+      return
+    end
+
+    count = Flights::MoveSelection.new(user: Current.user, entries: params[:entries], folder_id: params[:destination_folder_id]).call
+    redirect_to selection_return_path, status: :see_other, notice: "#{count} #{'flight'.pluralize(count)} moved."
+  rescue Flights::MoveSelection::InvalidSelection => error
+    redirect_to selection_return_path, status: :see_other, alert: error.message
+  end
+
   private
+
+  def telemetry_version
+    [ @flight.track_points, @flight.sensor_samples ].map do |scope|
+      count, last_id, updated_at = scope.pick(Arel.sql("COUNT(*)"), Arel.sql("MAX(id)"), Arel.sql("MAX(updated_at)"))
+      [ count, last_id, updated_at&.utc&.iso8601(6) ]
+    end
+  end
+
+  def replay_payload
+    points = sampled_track_points(limit: 2_000)
+    sensors = sampled_sensor_samples(limit_per_type: 1_200)
+    counts = @flight.sensor_samples.group(:sensor_type).count
+    @ground_altitude_m = @flight.min_altitude_m || points.filter_map(&:altitude_m).min
+    analysis = Flights::FlightAnalysis.new(track_points: points, sensor_samples: sensors, origin_time: @flight.started_at).call
+    [ counts, analysis, analysis_payload(analysis), points.map { |point| serialize_point(point) },
+      sensors.map { |sample| serialize_sensor_sample(sample) }, bounds_payload(analysis.bounds) ]
+  end
 
   def selection_return_path
     flights_path(filter: params[:filter].presence_in(Flights::Logbook::FILTERS) || "flights",
-      q: params[:q].to_s.strip.presence, visibility: params[:visibility].presence_in(Flight::VISIBILITIES))
+      q: params[:q].to_s.strip.presence, visibility: params[:visibility].presence_in(Flight::EFFECTIVE_VISIBILITIES), folder: params[:folder].presence)
   end
 
   def set_flight
-    @flight = Flight.visible_to(Current.user).find(params[:id])
+    @flight = Flight.visible_to(Current.user).includes(:folder, :aircraft).find(params[:id])
   end
 
   def require_flight_owner
@@ -133,6 +166,7 @@ class FlightsController < ApplicationController
     params.require(:flight).permit(
       :name,
       :visibility,
+      :folder_id,
       :location,
       :aircraft_id,
       :notes,
@@ -145,6 +179,10 @@ class FlightsController < ApplicationController
   end
 
   def load_form_options
+    @form_folders = FlightFolder.contributable_to(Current.user).ordered
+    if @flight&.owned_by?(Current.user) && @flight.folder_id_in_database
+      @form_folders = @form_folders.or(FlightFolder.where(id: @flight.folder_id_in_database).ordered)
+    end
     available_aircraft = Aircraft.active
     available_aircraft = available_aircraft.or(Aircraft.where(id: @flight.aircraft_id)) if @flight&.aircraft_id
     @aircraft = available_aircraft.ordered
@@ -189,6 +227,11 @@ class FlightsController < ApplicationController
   def respond_to_upload_failure(message)
     if request.format.json?
       render json: { error: message }, status: :unprocessable_entity
+    elsif params[:return_to_browser] == "1"
+      @flight.errors.add(:base, message) if @flight.errors.empty?
+      load_browser(panel: "edit")
+      load_form_options
+      render :edit, status: :unprocessable_entity
     else
       redirect_to(@flight, alert: message)
     end

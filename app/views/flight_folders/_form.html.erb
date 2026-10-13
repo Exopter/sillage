@@ -1,0 +1,31 @@
+<%= form_with model: folder, class: "workspace-form exds-browser-folder-form", data: { turbo_frame: "_top", controller: "folder-access" } do |form| %>
+  <%= hidden_field_tag :return_to_browser, "1" if local_assigns[:dialog] %>
+  <% if folder.errors.any? %><div class="workspace-errors" role="alert"><%= folder.errors.full_messages.to_sentence %></div><% end %>
+  <label><span>Folder name</span><%= form.text_field :name, required: true, maxlength: 100, autofocus: true, placeholder: "Flight tests" %></label>
+  <label><span>Visibility</span><%= form.select :visibility, [["Private", "private"], ["Public", "public"], ["Shared", "shared"]], {}, data: { folder_access_target: "visibility", action: "change->folder-access#update" } %></label>
+  <p class="exds-browser-caption" data-folder-access-target="description"></p>
+  <fieldset class="exds-browser-members" data-folder-access-target="members" data-controller="folder-members" data-folder-members-url-value="<%= member_search_flight_folders_path %>">
+    <legend>Members</legend>
+    <div class="exds-browser-member-search" data-action="focusout->folder-members#leaveSearch">
+      <label for="folder-member-search" class="sr-only">Add people by email</label>
+      <input id="folder-member-search" type="search" placeholder="Add people by email" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="folder-member-results" aria-describedby="folder-member-status" data-folder-members-target="search" data-action="input->folder-members#search keydown->folder-members#navigate focus->folder-members#search">
+      <div id="folder-member-results" class="exds-browser-member-results" role="listbox" aria-label="Matching people" data-folder-members-target="results" hidden></div>
+    </div>
+    <p id="folder-member-status" class="exds-browser-caption" role="status" data-folder-members-target="status">Type at least 2 characters to find someone.</p>
+    <%= hidden_field_tag "flight_folder[member_ids][]", "", id: nil %>
+    <% selected_members = @member_options.where(id: folder.member_ids).to_a %>
+    <ul class="exds-browser-member-list" aria-label="Added members" data-folder-members-target="list">
+      <% selected_members.each do |member| %>
+        <%= render "member", member: member %>
+      <% end %>
+    </ul>
+    <p class="exds-browser-caption" data-folder-members-target="empty" <%= "hidden" if selected_members.any? %>>No members added yet.</p>
+    <template data-folder-members-target="template"><%= render "member", member: nil %></template>
+    <p class="exds-browser-caption">Members can view every flight and add their own flights. Changes apply when you save.</p>
+  </fieldset>
+  <p class="exds-browser-caption">Every flight in this folder inherits its visibility. Unfiled flights use their individual visibility.</p>
+  <div class="exds-browser-dialog-actions">
+    <% if local_assigns[:dialog] %><button type="button" class="button-secondary" data-action="folder-sharing#close">Cancel</button><% else %><%= link_to "Cancel", flights_path(folder: folder.persisted? ? folder.id : nil), class: "button-secondary" %><% end %>
+    <%= form.submit folder.persisted? ? "Save folder" : "Create folder", class: "button-primary" %>
+  </div>
+<% end %>

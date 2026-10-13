@@ -4,10 +4,12 @@ class Flight < ApplicationRecord
   VIDEO_UPLOAD_EXTENSIONS = %w[.avi .m4v .mkv .mov .mp4 .webm].freeze
   LOCATION_SOURCES = %w[manual openstreetmap].freeze
   VISIBILITIES = %w[private team].freeze
+  EFFECTIVE_VISIBILITIES = %w[private public shared].freeze
 
   belongs_to :user
   belongs_to :flight_import, optional: true, inverse_of: :flights
   belongs_to :aircraft, optional: true
+  belongs_to :folder, class_name: "FlightFolder", optional: true, inverse_of: :flights
   has_many :imu_checks, dependent: :nullify
   has_many :track_points, dependent: :delete_all, inverse_of: :flight
   has_many :sensor_samples, dependent: :delete_all, inverse_of: :flight
@@ -27,16 +29,28 @@ class Flight < ApplicationRecord
   validates :video_exit_offset_seconds, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :video_duration_seconds, numericality: { greater_than: 0 }, allow_nil: true
   validate :video_upload_must_be_video
+  validate :folder_must_accept_owner, if: -> { new_record? || will_save_change_to_folder_id? || will_save_change_to_user_id? }
 
   scope :recent, -> { order(started_at: :desc, created_at: :desc) }
-  scope :visible_to, ->(user) { user ? where(user_id: user.id).or(where(visibility: "team")) : none }
+  scope :visible_to, ->(user) {
+    user ? where(user_id: user.id).or(where(folder_id: nil, visibility: "team")).or(where(folder_id: FlightFolder.visible_to(user).select(:id))) : none
+  }
+  scope :with_effective_visibility, ->(value) {
+    value == "private" ? where(folder_id: nil, visibility: "private").or(where(folder_id: FlightFolder.where(visibility: "private").select(:id))) :
+      value == "shared" ? where(folder_id: FlightFolder.where(visibility: "shared").select(:id)) :
+      where(folder_id: nil, visibility: "team").or(where(folder_id: FlightFolder.where(visibility: "public").select(:id)))
+  }
 
   def owned_by?(user)
     user.present? && user_id == user.id
   end
 
   def visible_to?(user)
-    user.present? && (owned_by?(user) || visibility == "team")
+    user.present? && (owned_by?(user) || (folder ? folder.visible_to?(user) : visibility == "team"))
+  end
+
+  def effective_visibility
+    folder&.visibility || (visibility == "team" ? "public" : "private")
   end
 
   STATUSES.each do |value|
@@ -89,6 +103,12 @@ class Flight < ApplicationRecord
   end
 
   private
+
+  def folder_must_accept_owner
+    return if folder_id.nil?
+
+    errors.add(:folder, "must allow the flight owner to contribute") unless folder&.contributable_by?(user)
+  end
 
   def assign_code
     if code.present?

@@ -23,7 +23,7 @@ class FlightDeletionFlowTest < ActionDispatch::IntegrationTest
     assert_redirected_to flights_path
     assert_not FlightImport.exists?(import.id)
     get flights_path(filter: "all", q: "Missing.BIN")
-    assert_select "tbody tr", count: 0
+    assert_select ".exds-browser-entry", count: 0
   end
 
   test "deleting a flight also removes its import" do

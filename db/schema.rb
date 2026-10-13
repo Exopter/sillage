@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_12_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_13_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -71,7 +71,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_210000) do
     t.index ["fdr_functional_configuration_id"], name: "index_assemblies_on_fdr_functional_configuration_id"
     t.index ["internal_number"], name: "index_assemblies_on_internal_number", unique: true
     t.index ["parent_id"], name: "index_assemblies_on_parent_id"
-    t.check_constraint "assembly_type IS NULL OR assembly_type::text = 'ExoFDR'::text AND fdr_functional_configuration_id IS NOT NULL AND (assembly_method::text = ANY (ARRAY['PERF'::character varying, 'PCB'::character varying]::text[])) AND serial_number IS NOT NULL AND name::text = serial_number::text", name: "assemblies_exofdr_identity"
+    t.check_constraint "assembly_type IS NULL OR assembly_type::text = 'ExoFDR'::text AND fdr_functional_configuration_id IS NOT NULL AND (assembly_method::text = ANY (ARRAY['PERF'::character varying::text, 'PCB'::character varying::text])) AND serial_number IS NOT NULL AND name::text = serial_number::text", name: "assemblies_exofdr_identity"
   end
 
   create_table "asset_identifiers", force: :cascade do |t|
@@ -217,6 +217,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_210000) do
     t.index ["user_id"], name: "index_feedbacks_on_user_id"
   end
 
+  create_table "flight_folder_memberships", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "flight_folder_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["flight_folder_id", "user_id"], name: "index_folder_memberships_on_folder_and_user", unique: true
+    t.index ["flight_folder_id"], name: "index_flight_folder_memberships_on_flight_folder_id"
+    t.index ["user_id"], name: "index_flight_folder_memberships_on_user_id"
+  end
+
+  create_table "flight_folders", force: :cascade do |t|
+    t.string "color", default: "graphite", null: false
+    t.datetime "created_at", null: false
+    t.string "name", limit: 100, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.string "visibility", default: "private", null: false
+    t.index "user_id, lower((name)::text)", name: "index_flight_folders_on_owner_and_name", unique: true
+    t.index ["user_id"], name: "index_flight_folders_on_user_id"
+    t.index ["visibility"], name: "index_flight_folders_on_visibility"
+    t.check_constraint "color::text = ANY (ARRAY['field'::character varying, 'sky'::character varying, 'aqua'::character varying, 'amber'::character varying, 'violet'::character varying, 'graphite'::character varying]::text[])", name: "flight_folder_color"
+    t.check_constraint "visibility::text = ANY (ARRAY['private'::character varying, 'public'::character varying, 'shared'::character varying]::text[])", name: "flight_folder_visibility"
+  end
+
   create_table "flight_imports", force: :cascade do |t|
     t.string "activity_classification"
     t.jsonb "activity_summary", default: {}, null: false
@@ -244,7 +268,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_210000) do
     t.index ["user_id", "activity_classification"], name: "index_flight_imports_on_user_id_and_activity_classification"
     t.index ["user_id", "source_sha256"], name: "index_flight_imports_on_user_and_source_sha256", unique: true, where: "(source_sha256 IS NOT NULL)"
     t.index ["user_id"], name: "index_flight_imports_on_user_id"
-    t.check_constraint "activity_classification::text = ANY (ARRAY['moving'::character varying, 'stationary'::character varying, 'technical'::character varying, 'needs_review'::character varying]::text[])", name: "flight_imports_activity_classification"
+    t.check_constraint "activity_classification::text = ANY (ARRAY['moving'::character varying::text, 'stationary'::character varying::text, 'technical'::character varying::text, 'needs_review'::character varying::text])", name: "flight_imports_activity_classification"
   end
 
   create_table "flights", force: :cascade do |t|
@@ -259,6 +283,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_210000) do
     t.datetime "ended_at"
     t.datetime "exit_at"
     t.bigint "flight_import_id"
+    t.bigint "folder_id"
     t.datetime "landing_at"
     t.string "location"
     t.string "location_source"
@@ -284,12 +309,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_210000) do
     t.index ["code"], name: "index_flights_on_code", unique: true
     t.index ["exit_at"], name: "index_flights_on_exit_at"
     t.index ["flight_import_id"], name: "index_flights_on_flight_import_id"
+    t.index ["folder_id"], name: "index_flights_on_folder_id"
     t.index ["started_at"], name: "index_flights_on_started_at"
     t.index ["status"], name: "index_flights_on_status"
     t.index ["user_id"], name: "index_flights_on_user_id"
     t.index ["video_processing_status"], name: "index_flights_on_video_processing_status"
     t.index ["visibility"], name: "index_flights_on_team_visibility", where: "((visibility)::text = 'team'::text)"
-    t.check_constraint "visibility::text = ANY (ARRAY['private'::character varying, 'team'::character varying]::text[])", name: "flights_visibility_check"
+    t.check_constraint "visibility::text = ANY (ARRAY['private'::character varying::text, 'team'::character varying::text])", name: "flights_visibility_check"
   end
 
   create_table "functions", force: :cascade do |t|
@@ -732,10 +758,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_210000) do
   add_foreign_key "fdr_wifi_uploads", "embedded_controllers"
   add_foreign_key "fdr_wifi_uploads", "flight_imports"
   add_foreign_key "feedbacks", "users"
+  add_foreign_key "flight_folder_memberships", "flight_folders", on_delete: :cascade
+  add_foreign_key "flight_folder_memberships", "users", on_delete: :cascade
+  add_foreign_key "flight_folders", "users"
   add_foreign_key "flight_imports", "aircraft"
   add_foreign_key "flight_imports", "flights", column: "target_flight_id"
   add_foreign_key "flight_imports", "users"
   add_foreign_key "flights", "aircraft"
+  add_foreign_key "flights", "flight_folders", column: "folder_id", on_delete: :nullify
   add_foreign_key "flights", "flight_imports"
   add_foreign_key "flights", "users"
   add_foreign_key "imu_checks", "embedded_controllers"

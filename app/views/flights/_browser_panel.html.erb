@@ -1,0 +1,21 @@
+<% title, description = {
+  "new" => ["New flight", "Prepare a flight, then attach recorded data or start a Signal session."],
+  "edit" => ["Edit flight", @flight&.code],
+  "preparation" => [@flight&.name, "#{@flight&.code} · Preparation"],
+  "import" => ["Import flight data", "Add FlySight or ExoFDR files from removable media."]
+}.fetch(@browser_panel) %>
+<%= turbo_frame_tag "flight-preview", class: "exds-browser-preview", role: "region", aria: { label: "Flight details" } do %>
+  <section class="exds-browser-editor" aria-labelledby="flight-panel-title">
+    <header class="exds-browser-editor-heading">
+      <div><h2 id="flight-panel-title"><%= title %></h2><p class="exds-browser-caption"><%= description %></p></div>
+      <%= link_to browser_path(selected: (@flight && @flight.persisted? ? browser_key(@flight) : nil)), class: "exds-browser-icon-button is-quiet", title: "Close panel", aria: { label: "Close panel" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "x", size: 18 %><% end %>
+    </header>
+    <% if %w[new edit].include?(@browser_panel) %>
+      <%= render "flights/form", flight: @flight %>
+    <% elsif @browser_panel == "preparation" %>
+      <%= render "flights/preparation_details" %>
+    <% else %>
+      <%= render "flight_imports/import_details" %>
+    <% end %>
+  </section>
+<% end %>

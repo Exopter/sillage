@@ -17,7 +17,7 @@
     <h2><%= recording_activity_label(@flight_import) %></h2>
     <p><%= recording_activity_reason(@flight_import) %></p>
     <% if @flight_import.set_aside? %>
-      <p>This recording is set aside in Flights. Its original file is retained.</p>
+      <p>This static test or technical recording is excluded from flights. Its original file is retained.</p>
     <% elsif @flight_import.included_in_flights_at? %>
       <p>Your decision to include this recording takes precedence over automatic classification.</p>
     <% end %>

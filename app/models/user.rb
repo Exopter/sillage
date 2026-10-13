@@ -11,6 +11,8 @@ class User < ApplicationRecord
   has_many :feedbacks, dependent: :restrict_with_error
   has_many :flight_imports, dependent: :restrict_with_error
   has_many :flights, dependent: :restrict_with_error
+  has_many :flight_folders, dependent: :destroy
+  has_many :flight_folder_memberships, dependent: :destroy
   has_many :signal_sessions, dependent: :restrict_with_error
   has_many :created_wifi_credentials,
     class_name: "WifiCredential", foreign_key: :created_by_id,

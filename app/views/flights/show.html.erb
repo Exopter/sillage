@@ -51,7 +51,7 @@
     <div class="flight-replay-title">
       <span><%= @flight.name %></span>
     </div>
-    <span class="mode-badge is-neutral"><%= @flight.visibility.capitalize %></span>
+    <span class="mode-badge is-neutral"><%= @flight.effective_visibility.capitalize %></span>
   </header>
 
   <div class="flight-replay-content">
@@ -312,6 +312,7 @@
             <%= form.label :location, t("flights.form.location") %>
             <%= form.text_field :location %>
             <%= render "flights/visibility_field", form: form %>
+            <%= render "flights/folder_field", form: form %>
             <div class="flight-details-time-grid">
               <div><%= form.label :exit_at, t("flights.form.exit_at") %><%= form.datetime_field :exit_at, value: @flight.exit_at&.strftime("%Y-%m-%dT%H:%M:%S") %></div>
               <div><%= form.label :opening_at, t("flights.form.opening_at") %><%= form.datetime_field :opening_at, value: @flight.opening_at&.strftime("%Y-%m-%dT%H:%M:%S") %></div>
@@ -334,7 +335,7 @@
             <% end %>
             <div><dt>Notes</dt><dd><%= @flight.notes.presence || "—" %></dd></div>
           </dl>
-          <p class="operations-help">Shared with the team. Only the owner can edit, delete or change visibility.</p>
+          <p class="operations-help">You can view this flight. Only its owner can edit, move or delete it.</p>
         <% end %>
       </div>
 
