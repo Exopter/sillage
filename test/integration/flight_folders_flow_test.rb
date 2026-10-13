@@ -22,6 +22,8 @@ class FlightFoldersFlowTest < ActionDispatch::IntegrationTest
     assert_includes response.headers["Cache-Control"], "no-store"
     get new_flight_folder_path
     assert_select "input[name='flight_folder[name]'][maxlength='100']"
+    assert_select "input[type=radio][name='flight_folder[color]']", count: 6
+    assert_select "input[name='flight_folder[color]'][checked][value=graphite]"
     assert_difference "@owner.flight_folders.count", 1 do
       post flight_folders_path, params: { flight_folder: { name: "  Training  ", user_id: @other.id } }
     end
@@ -56,6 +58,11 @@ class FlightFoldersFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "folder colors persist across creation editing and shared views and reject values outside the palette" do
+    get new_flight_folder_path, headers: { "Turbo-Frame" => "folder-sharing" }
+    assert_select "dialog input[name='flight_folder[color]'][checked][value=graphite]"
+    post flight_folders_path, params: { flight_folder: { name: "", color: "violet" } }
+    assert_response :unprocessable_entity
+    assert_select "input[name='flight_folder[color]'][checked][value=violet]"
     post flight_folders_path, params: { flight_folder: { name: "Colored campaign", color: "violet" } }
     created = @owner.flight_folders.find_by!(name: "Colored campaign")
     assert_equal "violet", created.color

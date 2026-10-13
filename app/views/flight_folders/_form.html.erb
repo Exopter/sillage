@@ -2,6 +2,19 @@
   <%= hidden_field_tag :return_to_browser, "1" if local_assigns[:dialog] %>
   <% if folder.errors.any? %><div class="workspace-errors" role="alert"><%= folder.errors.full_messages.to_sentence %></div><% end %>
   <label><span>Folder name</span><%= form.text_field :name, required: true, maxlength: 100, autofocus: true, placeholder: "Flight tests" %></label>
+  <% unless folder.persisted? %>
+    <fieldset class="exds-browser-color-field">
+      <legend>Color</legend>
+      <div class="exds-browser-color-options">
+        <% FlightBrowserHelper::FOLDER_COLOR_LABELS.each do |color, label| %>
+          <label class="exds-browser-color-radio" title="<%= label %>" style="--exds-folder-color: <%= browser_color_token(color) %>">
+            <%= form.radio_button :color, color, aria: { label: label } %>
+            <span class="exds-browser-color-swatch" aria-hidden="true"><span class="exds-browser-color-dot"><%= sillage_icon "check", size: 14 %></span></span>
+          </label>
+        <% end %>
+      </div>
+    </fieldset>
+  <% end %>
   <label><span>Visibility</span><%= form.select :visibility, [["Private", "private"], ["Public", "public"], ["Shared", "shared"]], {}, data: { folder_access_target: "visibility", action: "change->folder-access#update" } %></label>
   <p class="exds-browser-caption" data-folder-access-target="description"></p>
   <fieldset class="exds-browser-members" data-folder-access-target="members" data-controller="folder-members" data-folder-members-url-value="<%= member_search_flight_folders_path %>">

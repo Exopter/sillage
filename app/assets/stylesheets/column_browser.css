@@ -35,6 +35,16 @@
 .exds-browser-color-dot svg { visibility: hidden; }
 .exds-browser-color-swatch[aria-pressed="true"] svg { visibility: visible; }
 .exds-browser-color-error { max-width: 224px; margin: 8px 4px 2px; color: var(--ex-state-fault-text); font: 12px/1.4 var(--ex-font-sans); }
+.exds-browser-color-field { min-width: 0; margin: 0; padding: 0; border: 0; }
+.exds-browser-color-field legend { margin-bottom: 6px; padding: 0; color: var(--ex-graphite-600); font: 600 10px/1 var(--ex-font-mono); letter-spacing: .07em; text-transform: uppercase; }
+.exds-browser-color-field .exds-browser-color-options { grid-template-columns: repeat(6, 44px); }
+.exds-browser-color-radio { position: relative; width: 44px; height: 44px; }
+.exds-browser-color-radio input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.exds-browser-color-radio .exds-browser-color-swatch { width: 44px; height: 44px; pointer-events: none; }
+.exds-browser-color-radio:hover .exds-browser-color-swatch { background: var(--ex-vapor-100); }
+.exds-browser-color-radio input:checked + .exds-browser-color-swatch { border-color: var(--ex-carbon-900); }
+.exds-browser-color-radio input:checked + .exds-browser-color-swatch svg { visibility: visible; }
+.exds-browser-color-radio input:focus-visible + .exds-browser-color-swatch { outline: 2px solid var(--ex-aqua-500); outline-offset: 2px; }
 .exds-browser-section-label { display: flex; align-items: center; justify-content: space-between; margin: 20px 24px 8px; padding-top: 20px; border-top: 1px solid var(--ex-line-200); color: var(--ex-graphite-600); font: 11px var(--ex-font-mono); text-transform: uppercase; letter-spacing: .08em; }
 .exds-browser-section-label a { text-transform: none; letter-spacing: 0; }
 .exds-browser-collection { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--ex-white); border-right: 1px solid var(--ex-line-200); }
