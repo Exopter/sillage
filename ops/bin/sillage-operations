@@ -51,10 +51,54 @@ acquire_lock() {
   fi
 }
 
+# Persist failures across timer invocations. A missing heartbeat still expires normally.
+readiness_signal() {
+  local status="$1" state="$2" now previous=0 count=0
+  now=$(date +%s) || return
+  if [[ -f "$state" ]]; then
+    read -r previous count < "$state" || return
+    if [[ ! "$previous" =~ ^[0-9]+$ || ! "$count" =~ ^[0-9]+$ ]]; then
+      echo "Invalid readiness state" >&2
+      return 1
+    fi
+  fi
+  if (( status == 0 )); then
+    rm -f "$state" || return
+    echo success
+    return
+  fi
+  # Do not combine unrelated failures after a monitor interruption.
+  if (( now < previous || now - previous > 180 )); then count=0; fi
+  if (( count < 2 )); then count=$((count + 1)); fi
+  printf '%s %s\n' "$now" "$count" > "${state}.tmp" || return
+  mv "${state}.tmp" "$state" || return
+  echo "Readiness failed: consecutive cycles ${count}/2" >&2
+  if (( count >= 2 )); then echo fail; else echo log; fi
+}
+
+monitor_ready() {
+  local output status=0 signal
+  output=$(check_ready 2>&1) || status=$?
+  printf '%s\n' "$output"
+  signal=$(readiness_signal "$status" "$STATE_DIRECTORY/ready.failures") || return
+  case "$signal" in
+    success) ping_healthcheck "$HEALTHCHECKS_READY_PING_URL" "" "$output" ;;
+    log|fail) ping_healthcheck "$HEALTHCHECKS_READY_PING_URL" "/$signal" "$output" ;;
+  esac
+  return "$status"
+}
+
 check_ready() {
   local response
-  response=$(curl --fail --silent --show-error --max-time 30 https://sillage.exopter.com/ready) || return
-  grep --quiet --extended-regexp '^[[:space:]]*\{[[:space:]]*"status"[[:space:]]*:[[:space:]]*"ok"' <<<"$response" || return
+  response=$(curl --fail-with-body --silent --show-error --connect-timeout 5 --max-time 30 https://sillage.exopter.com/ready) || {
+    local status=$?
+    printf 'Readiness request failed: %s\n' "$response" >&2
+    return "$status"
+  }
+  grep --quiet --extended-regexp '^[[:space:]]*\{[[:space:]]*"status"[[:space:]]*:[[:space:]]*"ok"' <<<"$response" || {
+    printf 'Invalid readiness response: %s\n' "$response" >&2
+    return 1
+  }
   echo "Sillage readiness is healthy."
 }
 
@@ -137,7 +181,7 @@ case "${1:-}" in
   ready)
     require_variable HEALTHCHECKS_READY_PING_URL
     acquire_lock ready
-    run_monitored "$HEALTHCHECKS_READY_PING_URL" no check_ready
+    monitor_ready
     ;;
   postgresql-monitor)
     require_variable HEALTHCHECKS_POSTGRESQL_ARCHIVE_PING_URL

@@ -13,4 +13,4 @@ ProtectHome=true
 ProtectSystem=strict
 ReadWritePaths=/run/lock /var/lib/sillage-operations
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-TimeoutStartSec=45
+TimeoutStartSec=75

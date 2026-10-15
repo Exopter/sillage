@@ -11,6 +11,7 @@ CI.run do
   step "Style: No unused CSS selectors", "ruby script/check_unused_css_selectors"
   step "Style: Documentation boundary", "ruby script/check_documentation_boundary"
   step "Style: Production operations scripts", "bash -n ops/bin/sillage-operations"
+  step "Tests: Readiness alert confirmation", "python3 test/operations/readiness_monitor_test.py"
   step "Tests: Operations failure propagation", "bash test/operations/failure_propagation_test.sh"
   step "Style: JavaScript type safety", "npm run typecheck"
   step "Tests: Browser module graph", "node test/javascript/importmap_modules_test.mjs"
