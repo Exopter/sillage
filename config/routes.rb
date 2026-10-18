@@ -72,16 +72,6 @@ Rails.application.routes.draw do
       end
     end
     resources :wifi_credentials, only: :update, path: "wifi-credentials"
-    resources :builds do
-      member do
-        post :clone
-        patch :refresh_snapshot
-      end
-    end
-    resources :test_runs, only: %i[index show] do
-      member { patch :validate }
-    end
-    resource :bench_token, only: %i[create destroy]
   end
 
   namespace :core do
@@ -125,9 +115,6 @@ Rails.application.routes.draw do
           post :events
           patch :complete
         end
-      end
-      namespace :bench do
-        resources :test_runs, only: :create, param: :uuid, path: "test-runs"
       end
     end
   end

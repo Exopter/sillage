@@ -17,7 +17,6 @@ module Hangar
     end
 
     def show
-      @test_runs = @part.test_runs.includes(:build).recent
       @part_installations = @part.part_installations.includes(:assembly).recent
     end
 

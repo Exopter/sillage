@@ -13,7 +13,6 @@ class Assembly < ApplicationRecord
   has_many :part_installations, dependent: :restrict_with_error
   has_many :active_part_installations, -> { active }, class_name: "PartInstallation"
   has_many :parts, through: :active_part_installations
-  has_many :builds, dependent: :restrict_with_error
   has_many :installations, as: :installable, dependent: :restrict_with_error
 
   normalizes :internal_number, with: ->(number) { number.to_s.strip.upcase.presence }
@@ -152,7 +151,6 @@ class Assembly < ApplicationRecord
       blockers << "a permanent ExoFDR identity; retire this assembly instead" if controlled_fdr?
       blockers << "part installation history" if part_installations.exists?
       blockers << "subassemblies" if children.exists?
-      blockers << "build history" if builds.exists?
       blockers << "installation history" if installations.exists?
     end
   end

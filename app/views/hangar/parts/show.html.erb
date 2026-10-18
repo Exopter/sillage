@@ -30,21 +30,6 @@
     <% if @part.notes.present? %><p class="workspace-notes"><%= simple_format @part.notes %></p><% end %>
   </section>
 
-  <section class="workspace-panel">
-    <h2>Test evidence</h2>
-    <% if @test_runs.any? %>
-      <div class="workspace-list">
-        <% @test_runs.each do |run| %>
-          <%= link_to forge_test_run_path(run), class: "workspace-list-row" do %>
-            <span><strong><%= run.recipe_id %></strong><small><%= run.build.code %> · <%= l run.ran_at, format: :short %></small></span>
-            <span class="workspace-status is-<%= run.outcome %>"><%= run.outcome.titleize %></span>
-          <% end %>
-        <% end %>
-      </div>
-    <% else %>
-      <div class="workspace-empty">No standalone test targets this part.</div>
-    <% end %>
-  </section>
 </div>
 
 <section class="workspace-panel">

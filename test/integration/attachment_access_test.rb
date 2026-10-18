@@ -115,20 +115,4 @@ class AttachmentAccessTest < ActionDispatch::IntegrationTest
     get attachment_path(@video)
     assert_response :not_found
   end
-
-  test "Forge artifacts remain downloadable by signed in team members" do
-    build = Build.create!(assembly: create_exofdr_assembly(name: "Attachment test"), created_by: users(:julien))
-    run = TestRun.create!(build:, operator: users(:julien), uuid: SecureRandom.uuid,
-      recipe_id: "FDR_SMOKE_V1", recipe_version: "1", recipe_sha256: "a" * 64,
-      ingestion_sha256: "b" * 64, outcome: "passed", ran_at: Time.current)
-    run.artifacts.attach(io: StringIO.new("test evidence"), filename: "result.txt")
-    sign_in_as users(:operator)
-    get forge_test_run_path(run)
-    assert_response :success
-    assert_select "a[href=?]", attachment_path(run.artifacts.first)
-    get attachment_path(run.artifacts.first)
-    assert_response :success
-    assert_equal "test evidence", response.body
-    assert_includes response.headers["Cache-Control"], "no-store"
-  end
 end

@@ -29,7 +29,6 @@
         <span>Connect BLE</span>
       </button>
     <% elsif @assembly %>
-      <%= link_to "Create build", new_forge_build_path(build: { assembly_id: @assembly.id }), class: "button-primary" %>
       <%= link_to "Open ExoFDR assembly", hangar_assembly_path(@assembly), class: "button-secondary" %>
     <% end %>
   </div>

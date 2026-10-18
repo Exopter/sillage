@@ -36,8 +36,6 @@ class AttachmentsController < ApplicationController
       record.owned_by?(Current.user) || (attachment.name == "video" && record.visible_to?(Current.user))
     when FlightImport, SignalSession
       record.user_id == Current.user.id
-    when TestRun
-      true
     else
       false
     end

@@ -9,7 +9,6 @@ class Part < ApplicationRecord
   has_one :active_part_installation, -> { active }, class_name: "PartInstallation"
   has_one :assembly, through: :active_part_installation
   has_one :embedded_controller, dependent: :restrict_with_error, inverse_of: :part
-  has_many :test_runs, dependent: :restrict_with_error
   has_many :installations, as: :installable, dependent: :restrict_with_error
 
   before_validation :synchronize_installation_state
@@ -94,7 +93,6 @@ class Part < ApplicationRecord
   def deletion_blockers
     [].tap do |blockers|
       blockers << "assembly installation history" if part_installations.exists?
-      blockers << "test history" if test_runs.exists?
       blockers << "installation history" if installations.exists?
       blockers << "an embedded controller record" if embedded_controller.present?
     end

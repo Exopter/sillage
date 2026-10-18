@@ -1292,10 +1292,6 @@
   grid-template-columns: minmax(0, 2fr) minmax(270px, 1fr);
 }
 
-.workspace-grid.is-build-index {
-  grid-template-columns: minmax(0, 2fr) minmax(270px, 1fr);
-}
-
 .workspace-stack {
   display: grid;
   align-content: start;
@@ -1382,8 +1378,7 @@
 
 .workspace-strong-link,
 .workspace-list-row strong,
-.assembly-tree-node a,
-.build-snapshot-node a {
+.assembly-tree-node a {
   color: var(--ds-ink, #10181a);
   font-weight: 700;
   text-decoration: none;
@@ -1444,14 +1439,12 @@
 }
 
 .workspace-status.is-available,
-.workspace-status.is-passed,
 .workspace-status.is-validated {
   color: var(--ex-state-ready-text, #315a26);
   background: var(--ex-state-ready-bg, rgba(140, 255, 77, 0.18));
 }
 
-.workspace-status.is-installed,
-.workspace-status.is-locked {
+.workspace-status.is-installed {
   color: var(--ex-state-live-text, #00615b);
   background: var(--ex-state-live-bg, rgba(47, 214, 198, 0.14));
 }
@@ -1619,22 +1612,7 @@
   overflow-wrap: anywhere;
 }
 
-.configuration-diff {
-  margin-top: 12px;
-}
-
-.configuration-diff dd {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 7px;
-  font-family: var(--ex-font-mono, ui-monospace, monospace);
-  font-size: 12px;
-}
-
-.workspace-mono,
-.workspace-reference-list code,
-.artifact-manifest code,
-.token-reveal code {
+.workspace-mono {
   font-family: var(--ex-font-mono, ui-monospace, monospace);
   font-size: 12px;
 }
@@ -1646,28 +1624,24 @@
   border-radius: 6px;
 }
 
-.assembly-tree-node,
-.build-snapshot-node {
+.assembly-tree-node {
   padding: 13px;
   background: var(--ds-panel-2, #fbfcfb);
   border: 1px solid var(--border-rule);
   border-radius: 8px;
 }
 
-.assembly-tree-node header,
-.build-snapshot-node header {
+.assembly-tree-node header {
   display: flex;
   gap: 10px;
   align-items: baseline;
 }
 
-.assembly-tree-node header span,
-.build-snapshot-node header span {
+.assembly-tree-node header span {
   color: var(--ds-muted, #5f6c6b);
 }
 
-.assembly-tree-node ul,
-.build-snapshot-node ul {
+.assembly-tree-node ul {
   display: grid;
   gap: 7px;
   padding: 0;
@@ -1675,16 +1649,14 @@
   list-style: none;
 }
 
-.assembly-tree-node li,
-.build-snapshot-node li {
+.assembly-tree-node li {
   display: grid;
   grid-template-columns: minmax(90px, 0.5fr) minmax(100px, 0.6fr) minmax(160px, 1.4fr);
   gap: 10px;
   align-items: baseline;
 }
 
-.assembly-tree-node li small,
-.build-snapshot-node li small {
+.assembly-tree-node li small {
   color: var(--ds-muted, #5f6c6b);
 }
 
@@ -1698,70 +1670,6 @@
 
 .assembly-tree-child {
   padding: 12px 0 0 18px;
-}
-
-.workspace-reference-list,
-.artifact-manifest {
-  display: grid;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.workspace-reference-list code,
-.artifact-manifest > div {
-  padding: 9px 10px;
-  background: var(--ds-panel-2, #fbfcfb);
-  border-radius: 5px;
-}
-
-.artifact-manifest > div {
-  display: grid;
-  gap: 3px;
-}
-
-.artifact-manifest span {
-  color: var(--ds-muted, #5f6c6b);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-
-.measurement-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.measurement-grid > div {
-  display: grid;
-  gap: 4px;
-  padding: 13px;
-  background: var(--ds-panel-2, #fbfcfb);
-  border-radius: 6px;
-}
-
-.measurement-grid span {
-  color: var(--ds-muted, #5f6c6b);
-  font-size: 12px;
-}
-
-.measurement-grid strong {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.token-reveal {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.token-reveal code {
-  overflow-wrap: anywhere;
-}
-
-.bench-access code {
-  font-family: var(--ex-font-mono, ui-monospace, monospace);
 }
 
 .device-activity-meta {
@@ -1783,7 +1691,6 @@
 @media (max-width: 800px) {
   .workspace-grid,
   .workspace-grid.is-assembly,
-  .workspace-grid.is-build-index,
   .workspace-form-grid {
     grid-template-columns: 1fr;
   }
@@ -1829,8 +1736,7 @@
     border-bottom: 1px solid var(--border-rule, #d4dfdc);
   }
 
-  .assembly-tree-node li,
-  .build-snapshot-node li {
+  .assembly-tree-node li {
     grid-template-columns: 1fr;
     gap: 2px;
   }

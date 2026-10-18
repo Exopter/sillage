@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_18_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_18_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -80,29 +80,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_120000) do
     t.string "identifiable_type", null: false
     t.datetime "updated_at", null: false
     t.index ["identifiable_type", "identifiable_id"], name: "index_asset_identifiers_on_identifiable", unique: true
-  end
-
-  create_table "builds", force: :cascade do |t|
-    t.string "arduino_core_version", default: "3.3.10", null: false
-    t.bigint "assembly_id", null: false
-    t.json "assembly_snapshot", default: {}, null: false
-    t.string "code", null: false
-    t.datetime "created_at", null: false
-    t.bigint "created_by_id", null: false
-    t.string "firmware_sha256"
-    t.datetime "locked_at"
-    t.text "notes"
-    t.json "notion_references", default: [], null: false
-    t.bigint "previous_build_id"
-    t.text "source_diff"
-    t.string "source_diff_sha256"
-    t.boolean "source_dirty", default: false, null: false
-    t.string "source_revision"
-    t.datetime "updated_at", null: false
-    t.index ["assembly_id"], name: "index_builds_on_assembly_id"
-    t.index ["code"], name: "index_builds_on_code", unique: true
-    t.index ["created_by_id"], name: "index_builds_on_created_by_id"
-    t.index ["previous_build_id"], name: "index_builds_on_previous_build_id"
   end
 
   create_table "device_activities", force: :cascade do |t|
@@ -664,34 +641,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_120000) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
-  create_table "test_runs", force: :cascade do |t|
-    t.json "artifact_manifest", default: [], null: false
-    t.bigint "build_id", null: false
-    t.datetime "created_at", null: false
-    t.string "ingestion_sha256", null: false
-    t.json "measurements", default: {}, null: false
-    t.text "notes"
-    t.bigint "operator_id", null: false
-    t.string "outcome", null: false
-    t.bigint "part_id"
-    t.datetime "ran_at", null: false
-    t.string "recipe_id", null: false
-    t.string "recipe_sha256", null: false
-    t.string "recipe_version", null: false
-    t.datetime "updated_at", null: false
-    t.string "uuid", null: false
-    t.datetime "validated_at"
-    t.bigint "validated_by_id"
-    t.text "validation_note"
-    t.index ["build_id"], name: "index_test_runs_on_build_id"
-    t.index ["operator_id"], name: "index_test_runs_on_operator_id"
-    t.index ["outcome"], name: "index_test_runs_on_outcome"
-    t.index ["part_id"], name: "index_test_runs_on_part_id"
-    t.index ["uuid"], name: "index_test_runs_on_uuid", unique: true
-    t.index ["validated_at"], name: "index_test_runs_on_validated_at"
-    t.index ["validated_by_id"], name: "index_test_runs_on_validated_by_id"
-  end
-
   create_table "track_points", force: :cascade do |t|
     t.float "altitude_m"
     t.float "course_accuracy_deg"
@@ -727,8 +676,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_120000) do
   end
 
   create_table "users", force: :cascade do |t|
-    t.datetime "bench_token_created_at"
-    t.string "bench_token_digest"
     t.datetime "created_at", null: false
     t.datetime "disabled_at"
     t.string "email_address", null: false
@@ -740,7 +687,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_120000) do
     t.string "password_digest"
     t.string "role", default: "user", null: false
     t.datetime "updated_at", null: false
-    t.index ["bench_token_digest"], name: "index_users_on_bench_token_digest", unique: true
     t.index ["disabled_at"], name: "index_users_on_disabled_at"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
     t.index ["role"], name: "index_users_on_role"
@@ -762,9 +708,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_120000) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "assemblies", "assemblies", column: "parent_id"
   add_foreign_key "assemblies", "fdr_functional_configurations"
-  add_foreign_key "builds", "assemblies"
-  add_foreign_key "builds", "builds", column: "previous_build_id"
-  add_foreign_key "builds", "users", column: "created_by_id"
   add_foreign_key "device_activities", "embedded_controllers"
   add_foreign_key "device_activities", "users", column: "actor_id"
   add_foreign_key "embedded_controllers", "parts"
@@ -814,10 +757,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_120000) do
   add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
-  add_foreign_key "test_runs", "builds"
-  add_foreign_key "test_runs", "parts"
-  add_foreign_key "test_runs", "users", column: "operator_id"
-  add_foreign_key "test_runs", "users", column: "validated_by_id"
   add_foreign_key "track_points", "active_storage_blobs", column: "source_blob_id"
   add_foreign_key "track_points", "fdr_recordings"
   add_foreign_key "track_points", "flights"

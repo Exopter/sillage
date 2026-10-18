@@ -46,17 +46,4 @@ class OperationsDomainTest < ActiveSupport::TestCase
     assert_includes error.record.errors[:base], "Part must be available and outside another assembly or aircraft"
     assert_nil part.reload.assembly
   end
-
-  test "validated test runs are immutable" do
-    function = Function.create!(code: "QUAL-IMMUTABLE", name: "Qualification")
-    assembly = Assembly.create!(name: "Qualification assembly")
-    create_installed_part(assembly:, function:, model: "Sensor")
-    build = Build.create!(code: "FDR-DEV-991", assembly:, created_by: users(:julien), arduino_core_version: "3.3")
-    run = TestRun.create!(uuid: SecureRandom.uuid, build:, operator: users(:julien), recipe_id: "QUAL", recipe_version: "1", recipe_sha256: "a" * 64, ingestion_sha256: "b" * 64, outcome: "passed", ran_at: Time.current)
-    run.validate_by!(users(:julien), note: "Reviewed")
-
-    assert_not run.update(notes: "Changed later")
-    assert_includes run.errors[:base], "Validated test runs are immutable"
-    assert_not run.destroy
-  end
 end

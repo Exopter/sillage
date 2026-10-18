@@ -42,22 +42,5 @@
       <% end %>
     </section>
 
-    <section class="workspace-panel">
-      <div class="workspace-panel-header"><h2>Engineering evidence</h2><span>Latest records</span></div>
-      <% if @latest_build %>
-        <dl class="workspace-details">
-          <div><dt>Latest build</dt><dd><%= link_to @latest_build.code, forge_build_path(@latest_build), class: "workspace-strong-link" %></dd></div>
-          <div><dt>Build state</dt><dd><span class="workspace-status <%= @latest_build.locked? ? "is-locked" : "is-draft" %>"><%= @latest_build.locked? ? "Frozen" : "Draft" %></span></dd></div>
-          <div><dt>Test runs</dt><dd><%= @recent_test_runs.size %> recent</dd></div>
-        </dl>
-        <% @recent_test_runs.each do |run| %>
-          <%= link_to forge_test_run_path(run), class: "workspace-list-row" do %><span><strong><%= run.recipe_id %></strong><small><%= run.build.code %> · <%= l run.ran_at, format: :short %></small></span><span class="workspace-status is-<%= run.outcome %>"><%= run.outcome.titleize %></span><% end %>
-        <% end %>
-      <% elsif @assembly %>
-        <div class="workspace-empty">No build exists for this physical configuration yet.</div>
-      <% else %>
-        <div class="workspace-empty">Assign this controller to an installed Controller part before creating an assembly build.</div>
-      <% end %>
-    </section>
   </div>
 </div>

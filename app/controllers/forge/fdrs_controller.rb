@@ -16,8 +16,6 @@ module Forge
 
     def show
       @available_controller_parts = available_controller_parts
-      @latest_build = @assembly&.builds&.recent&.first
-      @recent_test_runs = @assembly ? TestRun.joins(:build).where(builds: { assembly_id: @assembly.id }).recent.limit(5) : TestRun.none
     end
 
     def update
@@ -38,8 +36,6 @@ module Forge
       else
         load_fdr_context
         @available_controller_parts = available_controller_parts
-        @latest_build = @assembly&.builds&.recent&.first
-        @recent_test_runs = TestRun.none
         render :show, status: :unprocessable_entity
       end
     end

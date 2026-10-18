@@ -17,11 +17,7 @@ class DeviceActivity < ApplicationRecord
     "recording_mode_requested" => "Persistent recording mode requested",
     "mavlink_identity_observed" => "MAVLink identity observed",
     "installed_in_aircraft" => "Physical asset installed",
-    "removed_from_aircraft" => "Physical asset removed",
-    "build_created" => "Build created",
-    "build_cloned" => "Build cloned",
-    "test_run_synchronized" => "Test run synchronized",
-    "test_run_validated" => "Test run validated"
+    "removed_from_aircraft" => "Physical asset removed"
   }.freeze
 
   belongs_to :embedded_controller
@@ -87,14 +83,6 @@ class DeviceActivity < ApplicationRecord
       "Installed in #{details["aircraft_registration"]}."
     when "removed_from_aircraft"
       "Removed from #{details["aircraft_registration"]}."
-    when "build_created"
-      details["build_code"].to_s
-    when "build_cloned"
-      "#{details["build_code"]} cloned from #{details["previous_build_code"]}."
-    when "test_run_synchronized"
-      "#{details["recipe_id"]} on #{details["build_code"]} · #{details["outcome"].to_s.titleize}"
-    when "test_run_validated"
-      "#{details["recipe_id"]} on #{details["build_code"]}."
     else
       "Recorded by #{source.titleize}."
     end
