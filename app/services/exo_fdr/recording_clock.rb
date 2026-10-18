@@ -1,5 +1,8 @@
 module ExoFdr
   class RecordingClock
+    # UBX NAV-PVT requires validDate, validTime and fullyResolved together.
+    UTC_VALID_MASK = 0x07
+
     attr_reader :started_at, :origin_us
 
     def initialize(records = [])
@@ -22,7 +25,7 @@ module ExoFdr
     private
 
     def gps_recorded_at(record)
-      return unless record["type"] == "gps_pvt" && record["utc_valid"].to_i.positive?
+      return unless record["type"] == "gps_pvt" && (record["utc_valid"].to_i & UTC_VALID_MASK) == UTC_VALID_MASK
 
       Time.utc(
         record["year"], record["month"], record["day"], record["hour"], record["minute"], record["second"],

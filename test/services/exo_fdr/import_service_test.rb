@@ -83,11 +83,12 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
     travel_to Time.utc(2026, 7, 30) do
       original.update!(imu_mount_profile: Imu::Mount::NATIVE)
     end
-    gps_payload = [ 123_456, 2026, 7, 29, 10, 11, 6, 1, 80, 0, 3, 1, 0, 12,
+    gps_payload = [ 123_456, 2026, 7, 29, 10, 11, 6, 7, 80, 0, 3, 1, 0, 12,
       57_168_000, 441_994_000, 700_000, 642_000, 1_000, 1_500,
       20_000, 5_000, -1_000, 20_600, 3_600_000, 500, 10_000, 125 ].pack("VvC6Vl<C4l<4V2l<5V2v")
     invalid_utc = gps_payload.dup
-    invalid_utc.setbyte(11, 0)
+    invalid_utc[4, 2] = [ 2020 ].pack("v")
+    invalid_utc.setbyte(11, 0xf0)
     imu_payload = [ 5, 3, 0, 0, 1, 0, 0 ].pack("CCve4")
     binary = fdr_binary([
       { sequence: 0, timestamp_us: 1_000_000, type: 2, payload: imu_payload },
@@ -99,9 +100,14 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
     ExoFdr::ImportService.new(flight_import).call
     flight = flight_import.flights.sole
     assert_equal Time.utc(2026, 7, 29, 10, 11, 0), flight.started_at
+    assert_equal flight.started_at, flight_import.reload.log_started_at
+    assert_match(/\AFLT-2026-/, flight.code)
+    assert_equal "ExoFDR 2026-07-29 10:11", flight.name
     assert_equal flight.started_at + 7, flight.ended_at
     assert_equal [ 1, 6 ], flight.track_points.ordered.pluck(:elapsed_seconds)
+    assert_equal [ flight.started_at + 1, flight.started_at + 6 ], flight.track_points.ordered.pluck(:recorded_at)
     assert_equal [ 0, 7 ], flight.sensor_samples.ordered.pluck(:elapsed_seconds)
+    assert_equal [ flight.started_at, flight.started_at + 7 ], flight.sensor_samples.ordered.pluck(:recorded_at)
     assert_equal [ Imu::Mount::BELLY ], flight.sensor_samples.map { |s| s.readings["mount_profile"] }.uniq,
       "SD import resolves the capture-time mounting and installation, not the current assembly or profile"
     assert_equal 7, flight.duration_seconds
@@ -111,7 +117,7 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
   end
 
   test "a replayed UTC anchor preserves the physical origin of a rotated file" do
-    gps = [ 123_456, 2026, 7, 29, 10, 11, 6, 1, 80, 0, 3, 1, 0, 12,
+    gps = [ 123_456, 2026, 7, 29, 10, 11, 6, 7, 80, 0, 3, 1, 0, 12,
       57_168_000, 441_994_000, 700_000, 642_000, 1_000, 1_500,
       20_000, 5_000, -1_000, 20_600, 3_600_000, 500, 10_000, 125 ].pack("VvC6Vl<C4l<4V2l<5V2v")
     anchor = { sequence: 1, timestamp_us: 7_000_000, type: 1, payload: gps }
@@ -192,7 +198,7 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
     {
       "type" => "gps_pvt",
       "timestamp_us" => timestamp_us,
-      "utc_valid" => utc ? 1 : 0,
+      "utc_valid" => utc ? 7 : 0,
       "year" => utc&.year,
       "month" => utc&.month,
       "day" => utc&.day,

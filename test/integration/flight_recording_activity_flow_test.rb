@@ -163,7 +163,7 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
 
   def stationary_import(**attributes)
     records = (0..30).map do |time|
-      payload = [ time * 1_000, 2026, 9, 7, 10, 0, time, 1, 80, 0, 3, 1, 0, 12,
+      payload = [ time * 1_000, 2026, 9, 7, 10, 0, time, 7, 80, 0, 3, 1, 0, 12,
         100_000_000, 440_000_000, 100_000, 100_000, 1_000, 2_000,
         30, 0, 0, 30, 0, 50, 10_000, 125 ].pack("VvC6Vl<C4l<4V2l<5V2v")
       { sequence: time, timestamp_us: time * 1_000_000, type: 1, payload: }
