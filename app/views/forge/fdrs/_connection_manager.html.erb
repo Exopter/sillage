@@ -165,7 +165,7 @@
   <section class="workspace-panel" data-fdr-import-queue data-command-url="<%= api_v1_fdr_import_commands_path %>" hidden>
     <header class="workspace-panel-header">
       <h2>Recorder files</h2>
-      <p class="workspace-muted">Automatic import · newest first · recordings of at least 1 minute. Skipped files stay on the microSD.</p>
+      <p class="workspace-muted">Automatic import · newest first. Short recordings and recordings without significant GPS movement stay on the microSD.</p>
     </header>
     <div class="workspace-actions">
       <button type="button" class="button-secondary" data-import-action="priority">Import selected now</button>
@@ -176,7 +176,8 @@
     </div>
     <p class="workspace-muted" data-import-notice role="status" aria-live="polite"></p>
     <p class="workspace-muted">Duration includes time on the ground. Dates use GPS time and your local time zone; unavailable dates remain unknown.</p>
-    <label><input type="checkbox" data-import-show-short> Show recordings under 1 minute</label>
+    <label><input type="checkbox" data-import-show-short> Show recordings excluded by filters</label>
+    <p class="workspace-muted">Files under 1 minute or without detected significant GPS movement are hidden after analysis, including missing or invalid GPS data. Manual import remains available.</p>
     <p class="workspace-muted" data-import-filter-summary></p>
     <div class="workspace-table-wrap">
       <table class="workspace-table">

@@ -60,6 +60,17 @@ class ExoFdr::ActivityAssessmentTest < ActiveSupport::TestCase
     assert_equal "needs_review", assessment.result(stats: { "partial_tail_bytes" => 3 })["classification"]
   end
 
+  test "firmware streaming classification matches the shared activity fixtures" do
+    root = ENV.fetch("EXOPTER_FDR_PATH", Rails.root.join("../fdr").to_s)
+    cases = JSON.parse(File.read(File.join(root, "protocol/recording_activity_cases.json")))
+    cases.each do |fixture|
+      assessment = ExoFdr::ActivityAssessment.new
+      fixture.fetch("records").each { |record| assessment.observe(record) }
+      stats = fixture["corrupt"] ? { "crc_errors" => 1 } : {}
+      assert_equal fixture.fetch("classification"), assessment.result(stats: stats)["classification"], fixture.fetch("name")
+    end
+  end
+
   private
 
   def assess(records)

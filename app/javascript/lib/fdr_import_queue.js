@@ -181,16 +181,16 @@ export class FdrImportQueue {
     if (!body) return
     for (const index of this.selected) {
       const entry = this.entries.get(index)
-      if (!entry || entry.flags & (1 | 2 | 16) || (!this.showShort && isShortRecording(entry))) this.selected.delete(index)
+      if (!entry || entry.flags & (1 | 2 | 16) || (!this.showShort && isFilteredRecording(entry))) this.selected.delete(index)
     }
     body.replaceChildren()
     const all = [...this.entries.values()]
-    const visible = all.filter((entry) => this.showShort || !isShortRecording(entry))
+    const visible = all.filter((entry) => this.showShort || !isFilteredRecording(entry))
     const summary = this.element?.querySelector("[data-import-filter-summary]")
-    if (summary) summary.textContent = `${all.length - visible.length} short recordings hidden in the loaded files.`
+    if (summary) summary.textContent = `${all.length - visible.length} recordings hidden by filters in the loaded files.`
     if (!visible.length) {
       const row = document.createElement("tr"), cell = document.createElement("td")
-      cell.colSpan = 6; cell.textContent = "No recordings match this filter. Show short recordings or load older files."
+      cell.colSpan = 6; cell.textContent = "No recordings match this filter. Show excluded recordings or load older files."
       row.append(cell); body.append(row)
     }
     for (const entry of visible.sort((a, b) => b.fileIndex - a.fileIndex)) {
@@ -202,7 +202,8 @@ export class FdrImportQueue {
       input.disabled = Boolean(entry.flags & (1 | 2 | 16)); input.setAttribute("aria-label", `Select ${filename}`)
       selectCell.append(input); row.append(selectCell)
       const state = entry.flags & 1 ? "Recording" : entry.flags & 16 ? "Damaged" : entry.flags & 2 ? "Imported"
-        : entry.flags & 8 ? "Priority" : entry.flags & 4 ? "Skipped" : entry.flags & 32 ? "Deferred" : isShortRecording(entry) ? "Manual import only" : "Available"
+        : entry.flags & 8 ? "Priority" : entry.flags & 4 ? "Skipped" : entry.flags & 32 ? "Deferred" : entry.flags & 64 ? "No significant GPS movement · manual import only"
+        : entry.flags & 128 ? "Technical · manual import only" : isShortRecording(entry) ? "Manual import only" : "Available"
       for (const text of [filename, formatRecordingDate(entry.startedAtUnixMs), formatRecordingDuration(entry.durationMs), formatRecordingSize(entry.sizeBytes), state]) {
         const cell = document.createElement("td"); cell.textContent = text; row.append(cell)
       }
@@ -298,4 +299,9 @@ export function formatRecordingDate(timestamp) {
   if (!timestamp || !Number.isFinite(timestamp)) return "Unknown date"
   return new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric",
     hour: "2-digit", minute: "2-digit", second: "2-digit", timeZoneName: "short" }).format(new Date(timestamp))
+}
+
+/** @param {Entry} entry */
+export function isFilteredRecording(entry) {
+  return isShortRecording(entry) || Boolean(entry.flags & (64 | 128))
 }
