@@ -1,6 +1,6 @@
 <div class="workspace-grid is-assembly">
   <section class="workspace-panel is-wide">
-    <div class="workspace-panel-header"><h2>Composition</h2><span><%= pluralize @assembly.snapshot_part_numbers.size, "serialized part" %></span></div>
+    <div class="workspace-panel-header"><h2>Composition</h2><span><%= @assembly.controlled_fdr? ? "Sensors and peripherals" : pluralize(@assembly.snapshot_part_numbers.size, "serialized part") %></span></div>
     <%= render "hangar/assemblies/tree", assembly: @assembly %>
   </section>
 
