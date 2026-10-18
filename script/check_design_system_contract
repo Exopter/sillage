@@ -19,6 +19,8 @@ abort "FeedbackPopover CSS differs from the shared component." unless File.binre
 recorder_workspace = File.join(ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(ROOT, "..", "design_system")), "components/data/RecorderWorkspace.css")
 abort "RecorderWorkspace CSS differs from the shared component." unless File.binread(recorder_workspace) == File.binread(File.join(ROOT, "app/assets/stylesheets/recorder_workspace.css"))
 VIEW_GLOB = File.join(ROOT, "app/views/**/*.erb")
+session_history = File.join(ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(ROOT, "..", "design_system")), "components/data/SessionHistory.css")
+abort "SessionHistory CSS differs from the shared component." unless File.binread(session_history) == File.binread(File.join(ROOT, "app/assets/stylesheets/session_history.css"))
 RUBY_GLOBS = [ File.join(ROOT, "app/helpers/**/*.rb") ].freeze
 JAVASCRIPT_GLOB = File.join(ROOT, "app/javascript/**/*.js")
 STYLESHEET_GLOB = File.join(ROOT, "app/assets/stylesheets/**/*.css")

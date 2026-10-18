@@ -20,4 +20,19 @@ assert.equal(history.chart, null)
 history.hasChartTarget = false
 await history.connect()
 assert.equal(history.chart, null, "empty histories do not load chart dependencies")
+const button = {dataset: {datasetIndex: "1"}, setAttribute(name, value) { this[name] = value }}
+let visible = true
+let updates = 0
+history.chart = {
+  isDatasetVisible(index) { assert.equal(index, 1); return visible },
+  setDatasetVisibility(index, value) { assert.equal(index, 1); visible = value },
+  update(mode) { assert.equal(mode, "none"); updates++ }
+}
+history.toggleMetric({currentTarget: button})
+assert.equal(visible, false)
+assert.equal(button["aria-pressed"], "false")
+history.toggleMetric({currentTarget: button})
+assert.equal(visible, true)
+assert.equal(button["aria-pressed"], "true")
+assert.equal(updates, 2, "accessible legend updates only the selected chart")
 console.log("Signal radio history preserves missing data, report gaps and chart lifecycle")

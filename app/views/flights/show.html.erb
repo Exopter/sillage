@@ -36,6 +36,7 @@
   data-controller="flight-viewer"
   data-flight-viewer-points-value="<%= json_escape(@visualization_points.to_json) %>"
   data-flight-viewer-sensors-value="<%= json_escape(@visualization_sensors.to_json) %>"
+  data-flight-viewer-radio-value="<%= json_escape(@radio_signal.to_json) %>"
   data-flight-viewer-bounds-value="<%= json_escape(@bounds.to_json) %>"
   data-flight-viewer-analysis-value="<%= json_escape(@analysis.to_json) %>"
   data-flight-viewer-cesium-token-value="<%= @cesium_ion_token %>"
@@ -83,18 +84,6 @@
       </section>
     <% end %>
 
-    <%= render "imu_checks/history", checks: @flight.imu_checks.recent.limit(10) %>
-    <% if @flight.signal_sessions.exists? %>
-      <section class="workspace-panel" aria-label="Signal radio history">
-        <div class="workspace-panel-header"><h2>Signal radio history</h2><span>Complete sessions, including before and after the onboard recording</span></div>
-        <div class="workspace-list"><% @flight.signal_sessions.recent.each do |session| %>
-          <%= link_to signal_session_radio_history_path(session.uuid), class: "workspace-list-row" do %><span><strong>Radio history</strong><small><%= l session.started_at, format: :long %> · <%= session.status.capitalize %></small></span><%= sillage_icon "chevron-right", size: 18 %><% end %>
-        <% end %></div>
-      </section>
-    <% end %>
-
-    <% quality_events = @flight.operator_events.where("metadata ->> 'source' = ?", "imu_health").order(occurred_at: :desc).limit(100) %>
-    <% if quality_events.any? %><details class="workspace-panel"><summary>IMU quality timeline</summary><% quality_events.each do |event| %><p class="workspace-mono"><%= l event.occurred_at, format: :short %> · <%= event.label %></p><% end %></details><% end %>
     <section class="flight-overview-strip" aria-label="Flight overview">
       <div>
         <span>Total recording</span>
@@ -186,7 +175,8 @@
           ["total-speed", "Total speed", "is-violet", false],
           ["glide", "Glide ratio", "is-coral", false],
           ["distance", "Distance", "is-graphite", false],
-          ["load", "G-force", "is-field", false]
+          ["load", "G-force", "is-field", false],
+          ["radio-signal", "Radio signal", "is-violet", @radio_signal.any? { |row| row[:ground_dbm] }]
         ].each do |metric, label, color_class, checked| %>
           <label class="flight-metric-toggle <%= color_class %>">
             <input
@@ -257,6 +247,10 @@
         </article>
       </div>
     </section>
+    <% @radio_histories.each do |history| %>
+      <%= render "signal_radio_histories/chart", session: history.session, rows: history.rows, session_duration: history.duration %>
+    <% end %>
+    <%= render "flights/imu_quality", events: @imu_quality_events, checks: @imu_checks %>
     </div>
 
     <section class="flight-instrument-panel video-sync">

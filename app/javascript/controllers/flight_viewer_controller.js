@@ -55,6 +55,7 @@ const CESIUM_TILE_PROVIDER = "CESIUM_ION"
  * @property {boolean} hasVideoExitOffsetLabelTarget
  * @property {unknown} pointsValue
  * @property {unknown} sensorsValue
+ * @property {{t:number, ground_dbm:number|null, session_id:number}[]} radioValue
  * @property {import("../types/flight").FlightBounds} boundsValue
  * @property {import("../types/flight").FlightAnalysis} analysisValue
  * @property {boolean} hasAnalysisValue
@@ -176,6 +177,7 @@ export default class extends TypedController {
   static values = {
     points: Array,
     sensors: Array,
+    radio: Array,
     bounds: Object,
     analysis: Object,
     cesiumToken: String,
@@ -554,7 +556,8 @@ export default class extends TypedController {
       this.metricDataset("total-speed", "Total speed", totalSpeedRows, (point) => this.kilometersPerHour(point.totalSpeed), this.colors.violet, "speed", "km/h", false),
       this.metricDataset("glide", "Glide ratio", this.points, (point) => point.glide, this.colors.coral, "ratio", "", false),
       this.metricDataset("distance", "Distance", distanceRows, (point) => point.distance / 1000, this.colors.graphite, "distance", "km", false),
-      this.metricDataset("load", "G-force", loadRows, (sample) => sample.load, this.colors.field, "load", "g", false)
+      this.metricDataset("load", "G-force", loadRows, (sample) => sample.load, this.colors.field, "load", "g", false),
+      this.radioDataset()
     ]
 
     this.unifiedChart = this.createTimeChart(this.unifiedChartTarget, datasets, {
@@ -562,10 +565,31 @@ export default class extends TypedController {
       speed: this.axis("right", "Speed · km/h", false),
       distance: this.axis("left", "Distance · km", false),
       ratio: this.axis("right", "Glide ratio", false),
-      load: this.axis("right", "Load · g", false)
+      load: this.axis("right", "Load · g", false),
+      radio: this.axis("right", "Ground RX · dBm", false)
     })
     this.refreshUnifiedAxes()
     this.syncMetricControls()
+  }
+
+  /** @returns {import("../types/flight").FlightDataset} */
+  radioDataset() {
+    const rows = (this.radioValue || []).filter((row) => this.timeInsideRange(row.t, this.timelineStart, this.flightDuration))
+      .sort((a, b) => a.t - b.t)
+    const data = rows.flatMap((row, index) => {
+      const point = { x: row.t, y: this.number(row.ground_dbm) ?? NaN }
+      const previous = rows[index - 1]
+      // Preserve missing measurements and never connect separate receptions.
+      return previous && (row.t - previous.t > 3 || row.session_id !== previous.session_id)
+        ? [{ x: previous.t + Math.min(0.001, (row.t - previous.t) / 2), y: NaN }, point]
+        : [point]
+    })
+    return {
+      metric: "radio-signal", label: "Radio signal", unit: "dBm", yAxisID: "radio",
+      data: data.some((point) => isFiniteNumber(point.y)) ? data : [],
+      borderColor: this.colors.violet, backgroundColor: this.colors.violet,
+      hidden: false, spanGaps: false, tension: 0, pointRadius: 1
+    }
   }
 
   /** @param {string|undefined} requestedPhase @param {{movePlayhead?:boolean}} [options] */
@@ -814,6 +838,7 @@ export default class extends TypedController {
     this.metricToggleTargets.forEach((toggle) => {
       const datasetIndex = this.unifiedChart?.data.datasets.findIndex((dataset) => dataset.metric === toggle.dataset.metric) ?? -1
       toggle.disabled = datasetIndex < 0
+      if (toggle.dataset.metric === "radio-signal" && datasetIndex < 0) toggle.checked = false
       toggle.closest("label")?.classList.toggle("is-unavailable", datasetIndex < 0)
     })
   }
@@ -1961,6 +1986,8 @@ export default class extends TypedController {
 
       const index = this.nearestDataIndexAtElapsed(dataset.data, elapsed)
       if (index === null) return null
+      if (dataset.metric === "radio-signal" && (!isFiniteNumber(dataset.data[index].y) ||
+        Math.abs(dataset.data[index].x - elapsed) > 1.5)) return null
 
       return { datasetIndex, index }
     }).filter((item) => item !== null)

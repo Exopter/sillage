@@ -2,25 +2,7 @@
 <header class="operations-heading">
   <div><span class="section-eyebrow"><%= @signal_session.flight&.code || "Signal session" %></span><h1>Radio history</h1><p><%= l @signal_session.started_at, format: :long %> · <%= @rows.size %> received reports · <%= @signal_session.status.capitalize %></p></div>
   <div class="workspace-actions">
-    <%= link_to "Export CSV", signal_session_radio_history_path(@signal_session.uuid, format: :csv), class: "button-secondary", data: { turbo: false } %>
     <% if @signal_session.flight %><%= link_to "Back to flight", flight_path(@signal_session.flight), class: "button-secondary" %><% else %><%= link_to "Back to Signal", signal_path(view: "home"), class: "button-secondary" %><% end %>
   </div>
 </header>
-<p class="workspace-muted">Received signal strength at Ground and Air, with receiver noise. SiK dBm values are approximate. Transmit power is not reported.</p>
-<section class="workspace-panel" data-controller="signal-radio-history" data-signal-radio-history-rows-value="<%= @rows.to_json %>" data-signal-radio-history-duration-value="<%= @duration %>">
-  <div class="workspace-panel-header"><h2>Full session</h2><span>Ground RX: Air to Ground · Air RX: Ground to Air</span></div>
-  <% if @rows.any? %>
-    <div class="flight-chart-stage"><canvas class="unified-analysis-chart" data-signal-radio-history-target="chart" aria-label="Ground and Air received signal strength and noise over the complete Signal session" role="img"></canvas></div>
-    <p class="workspace-muted" data-signal-radio-history-target="status" role="status">Loading radio chart. All reports remain available in the CSV export.</p>
-    <div class="workspace-table-wrap"><table class="workspace-table">
-      <thead><tr><th>Measurement</th><th>Minimum</th><th>Maximum</th></tr></thead>
-      <tbody><% [["Ground RX", :ground_dbm, "dBm"], ["Air RX", :air_dbm, "dBm"], ["Ground signal / noise", :ground_margin_db, "dB"], ["Air signal / noise", :air_margin_db, "dB"]].each do |label, key, unit| %>
-        <% values = @rows.filter_map { |row| row[key] } %>
-        <tr><th scope="row"><%= label %></th><td><%= values.empty? ? "Unavailable" : "#{values.min.round(1)} #{unit}" %></td><td><%= values.empty? ? "Unavailable" : "#{values.max.round(1)} #{unit}" %></td></tr>
-      <% end %></tbody>
-    </table></div>
-    <p class="workspace-muted">Gaps longer than 3 seconds and unavailable measurements remain blank. A report does not prove that aircraft telemetry was received. CSV includes raw RSSI, noise, buffer availability and cumulative error counters; counters are not packet-loss percentages.</p>
-  <% else %>
-    <div class="workspace-empty">No radio reports were received during this session. Historical signal strength cannot be reconstructed without those reports.</div>
-  <% end %>
-</section>
+<%= render "signal_radio_histories/chart", session: @signal_session, rows: @rows, session_duration: @duration %>

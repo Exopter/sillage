@@ -5,7 +5,7 @@ class SignalRadioHistoriesController < ApplicationController
     @signal_session = visible.where.not(status: "discarded").find_by!(uuid: params[:signal_session_id])
     history = Signal::RadioHistory.new(@signal_session)
     @rows = history.rows
-    @duration = [ (@signal_session.ended_at || Time.current) - @signal_session.started_at, @rows.last&.fetch(:elapsed_seconds).to_f ].max
+    @duration = history.duration
     respond_to do |format|
       format.html
       format.csv { send_data history.to_csv, filename: "signal-#{@signal_session.uuid}-radio.csv", type: "text/csv" }

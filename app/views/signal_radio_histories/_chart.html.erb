@@ -1,0 +1,36 @@
+<% ground = rows.filter_map { |row| row[:ground_dbm] } %>
+<section class="exds-history" aria-label="Signal radio history" data-controller="signal-radio-history" data-signal-radio-history-rows-value="<%= rows.to_json %>" data-signal-radio-history-duration-value="<%= session_duration %>">
+  <header class="exds-history__heading">
+    <div>
+      <span class="exds-history__eyebrow">Signal · full session</span>
+      <h2>Radio signal</h2>
+      <p><%= session.started_at.utc.strftime("%d %b %Y · %H:%M:%S") %><%= " to #{session.ended_at.utc.strftime('%H:%M:%S')}" if session.ended_at %> UTC · Includes reception before and after the onboard recording.</p>
+    </div>
+    <div class="exds-history__actions">
+      <span class="exds-history__badge"><%= session.status.capitalize %></span>
+      <%= link_to signal_session_radio_history_path(session.uuid, format: :csv), class: "button-secondary", data: { turbo: false } do %>
+        <%= sillage_icon "download", size: 16 %><span>Export CSV</span>
+      <% end %>
+    </div>
+  </header>
+  <% if rows.any? %>
+    <dl class="exds-history__metrics">
+      <div class="exds-history__metric"><dt>Weakest Ground RX</dt><dd><%= ground.empty? ? "N/A" : ground.min.round(1) %> <small>dBm</small></dd></div>
+      <div class="exds-history__metric"><dt>Strongest Ground RX</dt><dd><%= ground.empty? ? "N/A" : ground.max.round(1) %> <small>dBm</small></dd></div>
+      <div class="exds-history__metric"><dt>Received reports</dt><dd><%= number_with_delimiter(rows.size) %></dd></div>
+      <div class="exds-history__metric"><dt>Session duration</dt><dd><%= duration(session_duration) %> <small>min:sec</small></dd></div>
+    </dl>
+    <div class="exds-history__legend" role="group" aria-label="Radio chart measurements">
+      <% [["Ground RX", "var(--ex-violet-500)", false], ["Air RX", "var(--ex-sky-500)", false], ["Ground noise", "var(--ex-violet-500)", true], ["Air noise", "var(--ex-sky-500)", true]].each_with_index do |(label, color, noise), index| %>
+        <button type="button" aria-pressed="true" data-action="signal-radio-history#toggleMetric" data-dataset-index="<%= index %>">
+          <span class="exds-history__swatch <%= "exds-history__swatch--dashed" if noise %>" style="--history-color: <%= color %>" aria-hidden="true"></span><%= label %>
+        </button>
+      <% end %>
+    </div>
+    <div class="exds-history__plot"><canvas data-signal-radio-history-target="chart" aria-label="Ground and Air received signal strength and noise over the complete Signal session" role="img"></canvas></div>
+    <p class="exds-history__footnote" data-signal-radio-history-target="status" role="status">Loading radio chart. All reports remain available in the CSV export.</p>
+    <p class="exds-history__footnote">Ground RX is the signal received on the ground; Air RX is received onboard. Approximate SiK dBm. Missing measurements and gaps over 3 seconds stay blank.</p>
+  <% else %>
+    <div class="workspace-empty">No radio reports were received during this session. Historical signal strength cannot be reconstructed without those reports.</div>
+  <% end %>
+</section>

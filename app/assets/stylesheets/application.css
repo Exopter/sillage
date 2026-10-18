@@ -1507,6 +1507,7 @@ body {
 
 .analysis-mode-banner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   margin: 0 0 18px;
@@ -1781,6 +1782,8 @@ body {
 
 .flight-analysis-workspace {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 12px;
   margin: -22px -22px 0;
   padding: 14px 22px 18px;
@@ -2210,7 +2213,7 @@ body {
 
 .flight-metric-controls {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(9, minmax(0, 1fr));
   gap: 8px 14px;
   margin-top: 10px;
 }

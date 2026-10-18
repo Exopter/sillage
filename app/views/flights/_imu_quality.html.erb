@@ -1,0 +1,50 @@
+<% if events.any? || checks.any? %>
+  <% attention_count = events.count { |event| imu_event_presentation(event)[:tone] == "caution" } %>
+  <% preflight = checks.find { |check| check.kind == "preflight" } %>
+  <section class="exds-history" aria-label="IMU quality">
+    <header class="exds-history__heading">
+      <div><span class="exds-history__eyebrow">Recorder health</span><h2>IMU quality</h2><p>Recorded status changes and checks for this flight.</p></div>
+      <span class="exds-history__badge">Historical evidence</span>
+    </header>
+    <dl class="exds-history__metrics">
+      <div class="exds-history__metric"><dt>Status changes</dt><dd><%= number_with_delimiter(events.size) %></dd></div>
+      <div class="exds-history__metric"><dt>Changes with alerts</dt><dd><%= number_with_delimiter(attention_count) %></dd></div>
+      <div class="exds-history__metric"><dt>Last preflight check</dt><dd class="exds-history__text-value"><%= imu_check_result(preflight) %></dd></div>
+    </dl>
+    <% if events.any? %>
+      <div class="exds-history__subheading"><h3>Status timeline</h3><span>Most recent first · UTC</span></div>
+      <ol class="exds-history__events"><%= render partial: "flights/imu_event", collection: events.first(3), as: :event %></ol>
+      <% if events.size > 3 %>
+        <details class="exds-history__more">
+          <summary>Show <%= events.size - 3 %> earlier changes</summary>
+          <ol class="exds-history__events" start="4"><%= render partial: "flights/imu_event", collection: events.drop(3), as: :event %></ol>
+        </details>
+      <% end %>
+    <% end %>
+    <% if checks.any? %>
+      <div class="exds-history__subheading"><h3>Recorded checks</h3><span>Latest <%= checks.size %> · UTC</span></div>
+      <ol class="exds-history__events">
+        <% checks.each do |check| %>
+          <li class="exds-history__event">
+            <time class="exds-history__time" datetime="<%= check.created_at.iso8601 %>"><%= check.created_at.utc.strftime("%H:%M:%S") %><small><%= check.created_at.utc.strftime("%d %b %Y %Z") %></small></time>
+            <div class="exds-history__event-body <%= "exds-history__event-body--fault" if check.outcome == "failed" %>">
+              <strong class="exds-history__event-title"><%= check.kind.humanize %></strong>
+              <p><%= check.summary["reason"] %></p>
+              <% Array(check.summary["warnings"]).each do |warning| %><p><%= warning %></p><% end %>
+              <details class="exds-history__detail">
+                <summary>Check details</summary>
+                <dl>
+                  <div><dt>Roll / pitch</dt><dd><%= check.summary["roll_mean"]&.round(2) || "N/A" %>° / <%= check.summary["pitch_mean"]&.round(2) || "N/A" %>°</dd></div>
+                  <div><dt>Recorder</dt><dd><%= check.evidence.dig("configuration", "assembly", "serial_number").presence || "Historical identity unavailable" %></dd></div>
+                  <div><dt>Boot / firmware</dt><dd><%= check.boot_id %> / <%= check.firmware %></dd></div>
+                </dl>
+              </details>
+            </div>
+            <span class="exds-history__badge <%= "exds-history__badge--caution" if check.invalidated_at || check.summary["warnings"].present? %> <%= "exds-history__badge--fault" if check.outcome == "failed" %>"><%= imu_check_result(check) %></span>
+          </li>
+        <% end %>
+      </ol>
+    <% end %>
+    <p class="exds-history__footnote">These events describe what Signal reported at the time. Gaps in reception do not establish IMU health between reports.</p>
+  </section>
+<% end %>

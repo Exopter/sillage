@@ -1,0 +1,18 @@
+<% presentation = imu_event_presentation(event) %>
+<li class="exds-history__event">
+  <time class="exds-history__time" datetime="<%= event.occurred_at.iso8601 %>"><%= event.occurred_at.utc.strftime("%H:%M:%S") %><small><%= event.occurred_at.utc.strftime("%d %b %Y %Z") %></small></time>
+  <div class="exds-history__event-body <%= "exds-history__event-body--caution" if presentation[:tone] == "caution" %>">
+    <strong class="exds-history__event-title"><%= presentation[:title] %></strong>
+    <% if presentation[:detail].present? %><p><%= presentation[:detail] %></p><% end %>
+    <details class="exds-history__detail">
+      <summary>Technical details</summary>
+      <p><%= presentation[:reason] %></p>
+      <% if event.metadata["invalidate_preflight_id"].present? %><p>Preflight check invalidated. A new check was required.</p><% end %>
+      <dl>
+        <div><dt>Recorder boot</dt><dd><%= event.metadata["boot_id"] || "Unavailable" %></dd></div>
+        <div><dt>IMU epoch</dt><dd><%= event.metadata["imu_epoch"] || "Unavailable" %></dd></div>
+      </dl>
+    </details>
+  </div>
+  <span class="exds-history__badge <%= "exds-history__badge--caution" if presentation[:tone] == "caution" %>"><%= presentation[:badge] %></span>
+</li>

@@ -57,7 +57,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_select ".flight-phase-button[data-phase='jump']", text: "Jump"
     assert_select ".flight-phase-button[data-phase='canopy']", text: "Canopy"
     assert_select ".flight-phase-button", text: /Freefall/, count: 0
-    assert_select ".flight-metric-toggle", count: 8
+    assert_select ".flight-metric-toggle", count: 9
     assert_select "canvas[data-flight-viewer-target='unifiedChart']", count: 1
     assert_select ".flight-analysis-visuals .trajectory-compact", count: 1
     assert_select ".flight-stat-card", count: 3

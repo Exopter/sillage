@@ -73,6 +73,40 @@ const runtimeSource = controllerSource
     (_, name) => `from "${new URL(`../../app/javascript/lib/${name}.js`, import.meta.url).href}"`)
 const { default: Viewer } = await import(`data:text/javascript;base64,${Buffer.from(runtimeSource).toString("base64")}`)
 
+const radioViewer = Object.assign(new Viewer(), {
+  timelineStart: 0, flightDuration: 30,
+  radioValue: [
+    {t: -600, ground_dbm: -40, session_id: 1},
+    {t: 0, ground_dbm: -57, session_id: 1},
+    {t: 1, ground_dbm: null, session_id: 1},
+    {t: 2, ground_dbm: -80, session_id: 1},
+    {t: 20, ground_dbm: -90, session_id: 1},
+    {t: 21, ground_dbm: -75, session_id: 2},
+    {t: 300, ground_dbm: -50, session_id: 2}
+  ]
+})
+const radioDataset = radioViewer.radioDataset()
+assert.equal(radioDataset.label, "Radio signal")
+assert.equal(radioDataset.unit, "dBm")
+assert.equal(radioDataset.yAxisID, "radio")
+assert.equal(radioDataset.hidden, false)
+assert.equal(radioDataset.spanGaps, false)
+assert.equal(radioDataset.tension, 0, "received strength is not smoothed into invented extrema")
+assert.deepEqual(radioDataset.data.filter(point => Number.isFinite(point.y)).map(point => point.x), [0, 2, 20, 21],
+  "session margins cannot extend the flight timeline")
+assert.equal(radioDataset.data.filter(point => Number.isNaN(point.y)).length, 3,
+  "unknown strength, reception gaps and separate sessions break the trace")
+const radioChart = {data: {datasets: [radioDataset]}, isDatasetVisible: () => true}
+assert.deepEqual(radioViewer.chartActiveElementsAtElapsed(radioChart, 20), [{datasetIndex: 0, index: 4}],
+  "the shared map/chart playhead selects the Ground RX report at the same flight time")
+for (const elapsed of [1, 10, 29]) {
+  assert.deepEqual(radioViewer.chartActiveElementsAtElapsed(radioChart, elapsed), [], "missing or stale reception has no tooltip marker")
+}
+radioViewer.radioValue = [{t: 2, ground_dbm: null, session_id: 1}]
+assert.deepEqual(radioViewer.radioDataset().data, [], "unavailable reception does not enable an empty curve")
+radioViewer.radioValue = []
+assert.deepEqual(radioViewer.radioDataset().data, [], "flights without Signal history remain supported")
+
 const drawnMarkers = []
 let activeCursorElements = []
 let tooltipCursorElements = []

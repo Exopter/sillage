@@ -70,6 +70,10 @@ class FlightsController < ApplicationController
     payload = Rails.cache.fetch([ "flight-replay-quality", Flights::TrackQuality::VERSION, @flight.cache_key_with_version, @telemetry_version ], expires_in: 30.minutes) { replay_payload }
     @sensor_counts, @flight_analysis, @analysis, @visualization_points, @visualization_sensors, @bounds, @track_quality = payload
     @cesium_ion_token = cesium_ion_token
+    @radio_histories = Signal::RadioHistory.for_flight(@flight)
+    @radio_signal = Signal::RadioHistory.ground_signal_for(@flight, histories: @radio_histories)
+    @imu_quality_events = @flight.operator_events.where("metadata ->> 'source' = ?", "imu_health").order(occurred_at: :desc, id: :desc).to_a
+    @imu_checks = @flight.imu_checks.recent.limit(10).to_a
   end
 
   def update
