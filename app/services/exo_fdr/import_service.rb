@@ -177,6 +177,7 @@ module ExoFdr
             heading_deg: record["heading_motion_deg_e5"].to_f / 100_000,
             course_accuracy_deg: record["heading_accuracy_deg_e5"].to_f / 100_000,
             gps_fix: record["fix_type"],
+            gps_flags: record["gps_flags"],
             satellite_count: record["satellites"]
           )
         when "imu"

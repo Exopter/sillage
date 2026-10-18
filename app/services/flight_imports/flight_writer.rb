@@ -21,10 +21,11 @@ module FlightImports
     def call
       metrics = Flights::TrackMetrics.new(@track_points.to_a)
       points = metrics.prepared_points
-      analysis = Flights::FlightAnalysis.new(track_points: points, sensor_samples: analysis_samples).call
+      processed = Flights::TrackProcessing.new(track_points: points, sensor_samples: analysis_samples,
+        origin_time: @started_at, sensor_count: @sensor_samples.size).call
+      analysis = processed.analysis
       bounds = analysis.bounds
-      summary = metrics.summary(points, sensor_count: @sensor_samples.size, bounds:)
-        .merge(analysis_summary(analysis))
+      summary = processed.summary
       summary[:ended_at] = @started_at + analysis.timeline_end if @started_at
       flight = persist_flight(summary.compact, bounds)
 
@@ -79,21 +80,6 @@ module FlightImports
       else
         @flight_import.flights.create!(attributes)
       end
-    end
-
-    def analysis_summary(analysis)
-      {
-        min_altitude_m: analysis.altitude_min,
-        max_altitude_m: analysis.altitude_max,
-        altitude_loss_m: altitude_loss(analysis),
-        duration_seconds: analysis.duration_seconds
-      }
-    end
-
-    def altitude_loss(analysis)
-      return unless analysis.altitude_min && analysis.altitude_max
-
-      analysis.altitude_max - analysis.altitude_min
     end
 
     def insert_records(model, flight, records, attributes)

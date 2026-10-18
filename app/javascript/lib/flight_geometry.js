@@ -1,5 +1,5 @@
-/** @type {Array<"height" | "hspeed" | "vspeed" | "glide" | "distance">} */
-const optionalFlightFields = ["height", "hspeed", "vspeed", "glide", "distance"]
+/** @type {Array<"height" | "hspeed" | "vspeed" | "glide" | "distance" | "segment">} */
+const optionalFlightFields = ["height", "hspeed", "vspeed", "glide", "distance", "segment"]
 
 /** @param {unknown} value @returns {value is number} */
 export function isFiniteNumber(value) { return typeof value === "number" && Number.isFinite(value) }
@@ -69,12 +69,26 @@ export function sampleFlightPoint(elapsed, points) {
     const previousTime = finiteNumber(previous.t) ?? 0
     const nextTime = finiteNumber(next.t) ?? previousTime
     if (elapsed > nextTime) continue
+    if (elapsed === previousTime) return { ...previous, t: elapsed }
+    if (elapsed === nextTime) return { ...next, t: elapsed }
+    if ((previous.segment ?? 0) !== (next.segment ?? 0)) return null
 
     const span = Math.max(nextTime - previousTime, 0.001)
     return interpolateFlightPoint(previous, next, (elapsed - previousTime) / span, elapsed)
   }
 
   return { ...points[points.length - 1], t: elapsed }
+}
+
+/** @param {import("../types/flight").FlightPoint[]} points */
+export function flightSegments(points) {
+  /** @type {import("../types/flight").FlightPoint[][]} */
+  const segments = []
+  points.forEach((point, index) => {
+    if (index === 0 || (point.segment ?? 0) !== (points[index - 1].segment ?? 0)) segments.push([])
+    segments[segments.length - 1].push(point)
+  })
+  return segments
 }
 
 /**

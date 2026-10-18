@@ -66,8 +66,9 @@ class FlightsController < ApplicationController
     end
 
     # Authorize on every request; cache only derived telemetry, never permissions or HTML.
-    payload = Rails.cache.fetch([ "flight-replay-v1", @flight.cache_key_with_version, telemetry_version ], expires_in: 30.minutes) { replay_payload }
-    @sensor_counts, @flight_analysis, @analysis, @visualization_points, @visualization_sensors, @bounds = payload
+    @telemetry_version = Flights::ProcessedTrack.version(@flight)
+    payload = Rails.cache.fetch([ "flight-replay-quality", Flights::TrackQuality::VERSION, @flight.cache_key_with_version, @telemetry_version ], expires_in: 30.minutes) { replay_payload }
+    @sensor_counts, @flight_analysis, @analysis, @visualization_points, @visualization_sensors, @bounds, @track_quality = payload
     @cesium_ion_token = cesium_ion_token
   end
 
@@ -125,21 +126,16 @@ class FlightsController < ApplicationController
 
   private
 
-  def telemetry_version
-    [ @flight.track_points, @flight.sensor_samples ].map do |scope|
-      count, last_id, updated_at = scope.pick(Arel.sql("COUNT(*)"), Arel.sql("MAX(id)"), Arel.sql("MAX(updated_at)"))
-      [ count, last_id, updated_at&.utc&.iso8601(6) ]
-    end
-  end
-
   def replay_payload
-    points = sampled_track_points(limit: 2_000)
+    processed = Flights::ProcessedTrack.call(@flight, version: @telemetry_version)
+    analysis = processed.fetch(:analysis)
+    boundaries = analysis.bounds.values.compact.map { |timestamp| @flight.started_at && timestamp - @flight.started_at }
+    points = Flights::SampleTrack.call(processed.fetch(:points), limit: 2_000, boundaries: boundaries)
     sensors = sampled_sensor_samples(limit_per_type: 1_200)
     counts = @flight.sensor_samples.group(:sensor_type).count
-    @ground_altitude_m = @flight.min_altitude_m || points.filter_map(&:altitude_m).min
-    analysis = Flights::FlightAnalysis.new(track_points: points, sensor_samples: sensors, origin_time: @flight.started_at).call
+    @ground_altitude_m = analysis.altitude_min
     [ counts, analysis, analysis_payload(analysis), points.map { |point| serialize_point(point) },
-      sensors.map { |sample| serialize_sensor_sample(sample) }, bounds_payload(analysis.bounds) ]
+      sensors.map { |sample| serialize_sensor_sample(sample) }, bounds_payload(analysis.bounds), processed.fetch(:quality) ]
   end
 
   def selection_return_path
@@ -246,24 +242,6 @@ class FlightsController < ApplicationController
     end
   end
 
-  def sampled_track_points(limit:)
-    scope = @flight.track_points.ordered
-    count = scope.count
-    return scope.to_a if count <= limit
-
-    step = (count.to_f / limit).ceil
-    TrackPoint.find_by_sql([ <<~SQL.squish, @flight.id, step ])
-      SELECT *
-      FROM (
-        SELECT track_points.*, ROW_NUMBER() OVER (ORDER BY elapsed_seconds, recorded_at) AS row_index
-        FROM track_points
-        WHERE flight_id = ?
-      )
-      WHERE ((row_index - 1) % ?) = 0
-      ORDER BY elapsed_seconds, recorded_at
-    SQL
-  end
-
   def sampled_sensor_samples(limit_per_type:)
     @flight.sensor_samples.distinct.pluck(:sensor_type).flat_map do |sensor_type|
       scope = @flight.sensor_samples.where(sensor_type: sensor_type).ordered
@@ -286,15 +264,16 @@ class FlightsController < ApplicationController
 
   def serialize_point(point)
     {
-      t: point.elapsed_seconds&.round(3),
-      lat: point.lat,
-      lon: point.lon,
-      alt: point.altitude_m,
-      height: height_from_ground(point.altitude_m),
-      hspeed: point.horizontal_speed_mps,
-      vspeed: point.vertical_speed_mps,
-      glide: point.glide_ratio,
-      distance: point.distance_from_start_m
+      t: point[:elapsed_seconds]&.round(3),
+      lat: point[:lat],
+      lon: point[:lon],
+      alt: point[:altitude_m],
+      height: height_from_ground(point[:altitude_m]),
+      hspeed: point[:horizontal_speed_mps],
+      vspeed: point[:vertical_speed_mps],
+      glide: point[:glide_ratio],
+      distance: point[:distance_from_start_m],
+      segment: point[:segment]
     }
   end
 

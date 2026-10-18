@@ -18,11 +18,11 @@ module Flights
       distance = 0.0
 
       @points.map do |point|
-        distance += haversine_distance(previous, point) if previous
+        distance += haversine_distance(previous, point) if previous && previous[:segment] == point[:segment]
         previous = point
 
-        horizontal_speed = speed(point[:vel_n_mps], point[:vel_e_mps])
-        vertical_speed = point[:vel_d_mps]&.to_f
+        horizontal_speed = speed(point[:vel_n_mps], point[:vel_e_mps]) || point[:horizontal_speed_mps]
+        vertical_speed = point[:vel_d_mps]&.to_f || point[:vertical_speed_mps]
 
         point.merge(
           elapsed_seconds: point[:elapsed_seconds] || (point[:recorded_at] && origin_time ? point[:recorded_at] - origin_time : nil),

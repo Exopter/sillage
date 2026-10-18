@@ -2,6 +2,7 @@ export interface FlightPoint {
   t: number; lat: number; lon: number; alt: number;
   height?: number | null; hspeed?: number | null; vspeed?: number | null; glide?: number | null;
   distance?: number | null; visualAlt?: number | null; groundAlt?: number | null; datumOffset?: number | null;
+  segment?: number;
 }
 export type TelemetryPoint = Partial<Omit<FlightPoint,"alt">> & {alt?: number | null}
 export interface SensorSample {

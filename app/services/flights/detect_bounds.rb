@@ -24,6 +24,7 @@ module Flights
       @next_invalid = Array.new(@points.size)
       next_invalid = @points.size
       (@points.size - 1).downto(0) do |index|
+        next_invalid = index + 1 if @points[index + 1] && @points[index][:segment] != @points[index + 1][:segment]
         next_invalid = index unless elapsed_seconds(@points[index]) && altitude_m(@points[index])
         @next_invalid[index] = next_invalid
       end
@@ -82,7 +83,7 @@ module Flights
       @points.each_with_index do |point, index|
         elapsed = elapsed_seconds(point)
         fast = elapsed && fast_freefall?(point)
-        if first && (!fast || elapsed - previous_elapsed > FREEFALL_MAX_SAMPLE_GAP_SECONDS)
+        if first && (!fast || elapsed - previous_elapsed > FREEFALL_MAX_SAMPLE_GAP_SECONDS || @points[index - 1][:segment] != point[:segment])
           confirm_freefall_run(confirmed, first, index - 1)
           first = nil
         end
@@ -125,7 +126,7 @@ module Flights
 
       stop = @next_invalid[index]
       last = ((index...stop).bsearch { |i| elapsed_seconds(@points[i]) > start_elapsed + FREEFALL_LOOKAHEAD_SECONDS } || stop) - 1
-      if last == index && elapsed_seconds(@points[index + 1]) && altitude_m(@points[index + 1])
+      if last == index && elapsed_seconds(@points[index + 1]) && altitude_m(@points[index + 1]) && @points[index + 1][:segment] == point[:segment]
         last += 1
       end
       last
@@ -149,6 +150,7 @@ module Flights
         next if point[:elapsed_seconds].to_f <= exit_point[:elapsed_seconds].to_f + 8.0
         slow_window = @points[index, OPENING_SLOW_POINTS].to_a
         candidate = slow_window.size == OPENING_SLOW_POINTS &&
+          slow_window.all? { |row| row[:segment] == point[:segment] } &&
           last_fast && elapsed_seconds(last_fast).to_f >= elapsed_seconds(point).to_f - OPENING_FAST_LOOKBEHIND_SECONDS &&
           slow_window.all? { |window_point| vertical_speed_mps(window_point).to_f < OPENING_SLOW_DESCENT_MPS }
 
@@ -187,7 +189,7 @@ module Flights
           next unless elapsed && vertical && horizontal &&
             vertical.abs < OPENING_SLOW_DESCENT_MPS && horizontal < CANOPY_MAX_HORIZONTAL_SPEED_MPS
 
-          ends[index] = if ends[index + 1] && elapsed_seconds(@points[index + 1]) - elapsed <= CANOPY_MAX_SAMPLE_GAP_SECONDS
+          ends[index] = if ends[index + 1] && @points[index + 1][:segment] == point[:segment] && elapsed_seconds(@points[index + 1]) - elapsed <= CANOPY_MAX_SAMPLE_GAP_SECONDS
             ends[index + 1]
           else
             elapsed

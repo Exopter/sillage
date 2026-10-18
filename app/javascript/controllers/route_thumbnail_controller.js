@@ -20,7 +20,7 @@ export default class extends TypedController {
     ctx.beginPath()
     coords.forEach(([x, y], index) => {
       const px = (w - dx * scale) / 2 + (x - minX) * scale, py = (h - dy * scale) / 2 + (y - minY) * scale
-      if (index) ctx.lineTo(px, py); else ctx.moveTo(px, py)
+      if (index && (points[index][2] ?? 0) === (points[index - 1][2] ?? 0)) ctx.lineTo(px, py); else ctx.moveTo(px, py)
     })
     ctx.stroke()
   }

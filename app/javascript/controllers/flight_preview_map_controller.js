@@ -31,11 +31,17 @@ export default class extends TypedController {
       // Unwrap longitude so crossing the date line does not frame the whole globe.
       const origin = points[0][1]
       const route = points.map(([lat, lon]) => /** @type {import('leaflet').LatLngTuple} */ ([lat, origin + ((lon - origin + 540) % 360) - 180]))
+      /** @type {import('leaflet').LatLngTuple[][]} */
+      const segments = []
+      route.forEach((point, index) => {
+        if (!index || (this.pointsValue[index][2] ?? 0) !== (this.pointsValue[index - 1][2] ?? 0)) segments.push([])
+        segments[segments.length - 1].push(point)
+      })
       const style = getComputedStyle(this.element)
       const color = style.getPropertyValue("--ex-state-live-text").trim()
       const endpoint = style.getPropertyValue("--ex-white").trim()
       this.map = L.map(this.canvasTarget, { preferCanvas: true, scrollWheelZoom: false, zoomControl: true, attributionControl: true })
-      const line = L.polyline(route, { color, weight: 3 }).addTo(this.map)
+      const line = L.polyline(segments, { color, weight: 3 }).addTo(this.map)
       this.map.fitBounds(line.getBounds(), { padding: [24, 24], maxZoom: 15, animate: false })
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(this.map)
       for (const point of [route[0], route[route.length - 1]]) L.circleMarker(point, { radius: 5, color: endpoint, weight: 2, fillColor: color, fillOpacity: 1 }).addTo(this.map)

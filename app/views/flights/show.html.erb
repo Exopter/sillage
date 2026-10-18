@@ -70,6 +70,19 @@
       </section>
     <% end %>
 
+    <% if @track_quality[:rejected_count].positive? || @track_quality[:gaps].any? || @track_quality[:source_unavailable] %>
+      <section class="analysis-mode-banner" aria-label="GPS quality">
+        <strong><%= @track_quality[:gaps].any? { |gap| gap[:reasons].include?("altitude_discontinuity") } ? "GPS altitude uncertain" : "GPS quality" %></strong>
+        <span><%= number_with_delimiter(@track_quality[:rejected_count]) %> unreliable GPS samples excluded from analysis. Raw recordings are unchanged.</span>
+        <% if @track_quality[:gaps].any? %>
+          <span>Gaps in the chart and route mark uncertain GPS data. Distance excludes these gaps.</span>
+        <% end %>
+        <% altitude_gaps = @track_quality[:gaps].select { |gap| gap[:reasons].include?("altitude_discontinuity") } %>
+        <% if altitude_gaps.any? %><span>Altitude discontinuities at <%= altitude_gaps.first(8).map { |gap| duration(gap[:finish]) }.join(", ") %><%= " and more" if altitude_gaps.size > 8 %> from recording start.</span><% end %>
+        <% if @track_quality[:source_unavailable] %><span>Original GPS validity flags are unavailable for part of this recording; checks use the retained measurements.</span><% end %>
+      </section>
+    <% end %>
+
     <%= render "imu_checks/history", checks: @flight.imu_checks.recent.limit(10) %>
     <% if @flight.signal_sessions.exists? %>
       <section class="workspace-panel" aria-label="Signal radio history">

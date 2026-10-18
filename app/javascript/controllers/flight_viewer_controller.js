@@ -3,6 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 import {
   clamp,
   finiteNumber,
+  flightSegments,
   isFiniteNumber,
   normalizeFlightPoints,
   normalizeSensorSamples,
@@ -788,6 +789,8 @@ export default class extends TypedController {
 
   /** @param {import("../types/flight").FlightPoint} start @param {import("../types/flight").FlightPoint} finish */
   distanceIncrement(start, finish) {
+    if ((start.segment ?? 0) !== (finish.segment ?? 0)) return 0
+    if (isFiniteNumber(start.distance) && isFiniteNumber(finish.distance)) return Math.max(0, finish.distance - start.distance)
     const startTime = this.number(start?.t)
     const finishTime = this.number(finish?.t)
     const startSpeed = this.number(start?.hspeed)
@@ -1123,27 +1126,32 @@ export default class extends TypedController {
   addCesiumTrajectory(Cesium, viewer) {
     const points = this.cesiumPoints()
     const phasePoints = this.pointsInActivePhase(points)
-    const positions = phasePoints.flatMap((point) => [point.lon, point.lat, this.cesiumAltitude(point)])
     const markerElapsed = this.currentElapsed
     const markerPoint = this.samplePointAtElapsed(markerElapsed, points) || points[0]
     const markerLabelPoint = this.samplePointAtElapsed(markerElapsed, this.points) || this.points[0]
 
-    this.cesiumPath = viewer.entities.add({
-      name: this.label("trajectory"),
-      show: phasePoints.length > 1,
-      polyline: {
-        positions: positions.length ? Cesium.Cartesian3.fromDegreesArrayHeights(positions) : [],
-        width: 5,
-        material: new Cesium.PolylineGlowMaterialProperty({
-          glowPower: 0.22,
-          color: Cesium.Color.fromCssColorString(this.colors.aqua)
-        })
-      }
+    const segments = flightSegments(phasePoints)
+    if (!segments.length) segments.push([])
+    segments.forEach((segment, index) => {
+      const positions = segment.flatMap((point) => [point.lon, point.lat, this.cesiumAltitude(point)])
+      const path = viewer.entities.add({
+        name: this.label("trajectory"),
+        show: segment.length > 1,
+        polyline: {
+          positions: positions.length ? Cesium.Cartesian3.fromDegreesArrayHeights(positions) : [],
+          width: 5,
+          material: new Cesium.PolylineGlowMaterialProperty({
+            glowPower: 0.22,
+            color: Cesium.Color.fromCssColorString(this.colors.aqua)
+          })
+        }
+      })
+      if (index === 0) this.cesiumPath = path
     })
 
     this.cesiumMarker = viewer.entities.add({
       name: this.label("current_position"),
-      show: phasePoints.length > 0,
+      show: phasePoints.length > 0 && this.coordinatePointAtElapsed(markerElapsed, points) !== null,
       position: Cesium.Cartesian3.fromDegrees(markerPoint.lon, markerPoint.lat, this.cesiumAltitude(markerPoint)),
       point: {
         pixelSize: 14,
@@ -1313,7 +1321,7 @@ export default class extends TypedController {
   preserveCesiumDescentProfile(points) {
     return points.reduce((/** @type {import("../types/flight").FlightPoint[]} */ ordered, point, index) => {
       const previous = ordered[index - 1]
-      if (!previous) {
+      if (!previous || (previous.segment ?? 0) !== (point.segment ?? 0)) {
         ordered.push(point)
         return ordered
       }
@@ -1684,20 +1692,28 @@ export default class extends TypedController {
     return this.number("x" in point ? point.x : null)
   }
 
-  /** @template {{t:number}} T @param {string} metric @param {string} label @param {T[]} rows @param {(row:T)=>number|null|undefined} valueForRow @param {string} color @param {string} axis @param {string} unit @param {boolean} visible @returns {import("../types/flight").FlightDataset} */
+  /** @template {{t:number,segment?:number}} T @param {string} metric @param {string} label @param {T[]} rows @param {(row:T)=>number|null|undefined} valueForRow @param {string} color @param {string} axis @param {string} unit @param {boolean} visible @returns {import("../types/flight").FlightDataset} */
   metricDataset(metric, label, rows, valueForRow, color, axis, unit, visible) {
+    const data = rows.flatMap((row) => {
+      const x = this.number(row.t), y = this.number(valueForRow(row))
+      return isFiniteNumber(x) && isFiniteNumber(y) ? [{ x, y, segment: row.segment }] : []
+    })
     return {
       metric,
       label,
       unit,
-      data: rows.map((row) => ({ x: this.number(row.t), y: this.number(valueForRow(row)) }))
-        .filter((/** @type {{x:number|null,y:number|null}} */ point) => isChartPoint(point)),
+      data,
       borderColor: color,
       backgroundColor: color,
       yAxisID: axis,
       hidden: !visible,
-      spanGaps: true,
-      tension: 0.16
+      spanGaps: false,
+      segment: {
+        borderColor: (context) => {
+          return (data[context.p0DataIndex]?.segment ?? 0) === (data[context.p1DataIndex]?.segment ?? 0) ? color : "transparent"
+        }
+      },
+      tension: rows.some((row) => row.segment !== undefined) ? 0 : 0.16
     }
   }
 
@@ -1897,7 +1913,7 @@ export default class extends TypedController {
     this.currentElapsed = clampedElapsed
 
     if (this.cesiumMarker) {
-      this.cesiumMarker.show = visualPoints.length > 0 &&
+      this.cesiumMarker.show = visualPoint !== null && visualPoints.length > 0 &&
         this.timeInsideRange(clampedElapsed, visualPoints[0].t, visualPoints[visualPoints.length - 1].t)
     }
 
@@ -1965,6 +1981,9 @@ export default class extends TypedController {
       else high = middle
     }
 
+    const before = /** @type {import("chart.js").ScatterDataPoint & {segment?:number} | undefined} */ (data[low - 1])
+    const after = /** @type {import("chart.js").ScatterDataPoint & {segment?:number}} */ (data[low])
+    if (before && before.x < elapsed && elapsed < after.x && (before.segment ?? 0) !== (after.segment ?? 0)) return null
     const candidates = [ low, low - 1, low + 1 ].filter((index) => index >= 0 && index < data.length)
     return candidates.reduce((/** @type {number|null} */ closestIndex, index) => {
       if (closestIndex === null) return index
@@ -2335,6 +2354,3 @@ export default class extends TypedController {
     return this.clamp(this.exitElapsed(), this.timelineStart, this.flightDuration || 0)
   }
 }
-
-/** @param {{x:number|null,y:number|null}} point @returns {point is {x:number,y:number}} */
-function isChartPoint(point) { return isFiniteNumber(point.x) && isFiniteNumber(point.y) }

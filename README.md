@@ -32,6 +32,22 @@ Folder previews use the pinned local Leaflet distribution at
 only render the selected flight. The replay page caches derived telemetry with
 flight and telemetry versions; authorization is checked on every request.
 
+GPS quality checks run on the full track before phase detection and display
+sampling. Invalid fixes and excessive reported uncertainty are excluded from
+derived results. GPS discontinuities remain separate segments in charts, maps,
+distance calculations and replay interpolation. Original source files and stored
+telemetry rows are not rewritten. Older ExoFDR validity flags are read from the
+retained binary source and cached.
+
+To refresh only the derived summary and phase columns of an existing flight:
+
+```sh
+bin/rails 'flights:refresh_analysis[40]'
+```
+
+This operation leaves raw telemetry unchanged. Production execution requires
+explicit approval under the [workspace rules](../../AGENTS.md).
+
 Cesium's pinned npm distribution is served from `/vendor/cesium/<version>/`.
 `bin/setup` and the Docker build copy its browser assets and license locally;
 run `npm ci && npm run assets:prepare` to refresh them after a dependency update.

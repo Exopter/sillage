@@ -237,7 +237,8 @@ module Flights
           elapsed_seconds: numeric(value(record, :elapsed_seconds)),
           altitude_m: numeric(value(record, :altitude_m)),
           horizontal_speed_mps: numeric(value(record, :horizontal_speed_mps)),
-          vertical_speed_mps: numeric(value(record, :vertical_speed_mps))
+          vertical_speed_mps: numeric(value(record, :vertical_speed_mps)),
+          segment: value(record, :segment)
         }
       end
       SampleOrder.sort(normalized) { |point| point[:elapsed_seconds] || 0.0 }

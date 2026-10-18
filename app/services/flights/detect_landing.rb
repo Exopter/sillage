@@ -31,7 +31,7 @@ module Flights
           next
         end
 
-        if !start_index || elapsed - previous_elapsed > MAX_SAMPLE_GAP_SECONDS ||
+        if !start_index || @points[index - 1][:segment] != point[:segment] || elapsed - previous_elapsed > MAX_SAMPLE_GAP_SECONDS ||
             ([ maximum, altitude ].max - [ minimum, altitude ].min) > MAX_ALTITUDE_SPREAD_M
           start_index = index
           minimum = maximum = altitude
@@ -67,6 +67,7 @@ module Flights
       altitude = number(start, :altitude_m)
       while index.positive?
         previous = @points[index - 1]
+        break if previous[:segment] != @points[index][:segment]
         elapsed = number(previous, :elapsed_seconds)
         height = number(previous, :altitude_m)
         vertical = number(previous, :vertical_speed_mps)
