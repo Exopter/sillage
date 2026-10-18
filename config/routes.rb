@@ -55,6 +55,7 @@ Rails.application.routes.draw do
 
   resources :signal_sessions, only: :create do
     post :draft, on: :collection
+    resource :radio_history, only: :show, path: "radio", controller: "signal_radio_histories"
   end
   resources :flights, only: [] do
     resource :imu_check, only: :show, path: "preflight"

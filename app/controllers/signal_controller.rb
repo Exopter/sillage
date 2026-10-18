@@ -13,6 +13,7 @@ class SignalController < ApplicationController
       return
     end
     @retained_sessions = Current.user.signal_sessions.where(flight_id: nil).where.not(status: "discarded").recent
+    @completed_sessions = Current.user.signal_sessions.where(status: "completed").where.not(flight_id: nil).includes(:flight).recent.limit(20)
     @selected_flight = Current.user.flights.find_by(id: params[:flight_id])
     @imu_mount_profiles = EmbeddedController.where.not(device_id: nil).includes(part: :assembly).to_h { |controller| [ controller.device_id, controller.imu_mount_profile ] } if @active_session
   end

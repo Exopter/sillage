@@ -29,6 +29,8 @@ module Signal
         @session.complete!(ended_at: @ended_at)
         @session.flight
       end
+      SignalReconciliationJob.perform_later(@session) if @session.status == "completed" && @session.flight&.waiting_for_recording?
+      @session.flight
     end
 
     private

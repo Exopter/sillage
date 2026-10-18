@@ -140,6 +140,7 @@
           <% @retained_sessions.each do |session| %>
             <div class="signal-prep-row"><div><strong><%= l session.started_at, format: :short %></strong><span><%= session.uuid.first(8).upcase %> · Pending review</span></div>
               <%= link_to "Review session", signal_path(session: session.uuid, review: 1), class: "signal-tool-button" %>
+              <%= link_to "Radio history", signal_session_radio_history_path(session.uuid), class: "signal-tool-button" %>
             </div>
           <% end %>
         </section>
@@ -165,6 +166,14 @@
           </div>
         </section>
       </div>
+      <% if @completed_sessions.any? %>
+        <section class="signal-launch-card" aria-label="Completed sessions">
+          <div class="signal-launch-body"><span class="signal-k">History</span><h2>Completed sessions</h2><p>Review received signal strength across the complete acquisition.</p></div>
+          <% @completed_sessions.each do |session| %>
+            <div class="signal-prep-row"><div><strong><%= session.flight.code %></strong><span><%= l session.started_at, format: :long %></span></div><%= link_to "Radio history", signal_session_radio_history_path(session.uuid), class: "signal-tool-button" %></div>
+          <% end %>
+        </section>
+      <% end %>
     </div>
   </div>
 <% end %>

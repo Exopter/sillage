@@ -2003,7 +2003,8 @@ body {
   background: var(--ex-carbon-950);
 }
 
-.flight-analysis-workspace .flight-chart-stage {
+.flight-analysis-workspace .flight-chart-stage,
+.workspace-panel .flight-chart-stage {
   border-color: var(--ex-line-200);
   background: var(--ex-white);
 }

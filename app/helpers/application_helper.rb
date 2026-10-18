@@ -91,7 +91,7 @@ module ApplicationHelper
 
   def sillage_current_room
     return "feedback" if controller_path == "feedbacks"
-    return "signal" if controller_path == "signal" || controller_path == "signal_sessions"
+    return "signal" if %w[signal signal_sessions signal_radio_histories].include?(controller_path)
     return "hangar" if controller_path.start_with?("hangar/")
     return "forge" if controller_path.start_with?("forge/")
     return "core" if controller_path.start_with?("core/")
@@ -161,7 +161,7 @@ module ApplicationHelper
 
   def sillage_content_shell_class
     classes = [ "app-shell" ]
-    classes << "is-full-bleed" if sillage_current_flight_tab == "replay" || sillage_current_room == "signal"
+    classes << "is-full-bleed" if sillage_current_flight_tab == "replay" || %w[signal signal_sessions].include?(controller_path)
     classes << "is-full-bleed" if sillage_flight_browser?
     classes.uniq.join(" ")
   end

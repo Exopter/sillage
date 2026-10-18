@@ -575,7 +575,10 @@ export default class extends TypedController {
     this.telemetry = this.measurements.snapshot(now)
     const recordedAt = new Date(Number(BigInt(frame.receivedAtUs) / 1000n)).toISOString()
     if (decoded.name === "unknown") return
-    if (decoded.name === "gps" && this.telemetry.gps) {
+    if (decoded.name === "radio") {
+      this.pendingSamples.push({kind: "sensor", sensor_type: "RADIO", recorded_at: recordedAt,
+        readings: {...decoded, airTelemetryAgeMs: this.lastFrameAt ? Math.max(0, now - this.lastFrameAt) : null}})
+    } else if (decoded.name === "gps" && this.telemetry.gps) {
       /** @type {import("../types/signal").SignalSample} */
       const sample = { kind: "gps", recorded_at: recordedAt, latitude: decoded.latitude, longitude: decoded.longitude, gps_fix: decoded.fix }
       if (decoded.fix >= 3) sample.altitude_m = decoded.altitudeM

@@ -31,6 +31,7 @@ module ExoFdr
         import!
       end
       FdrRecordingActivityJob.perform_later(@flight_import) if @flight_import.activity_classification == "moving"
+      Signal::ReconcileRecording.new(@flight_import).call
       @flight_import
     end
 
