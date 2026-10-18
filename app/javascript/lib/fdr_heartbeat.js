@@ -3,6 +3,7 @@
 /** @param {RawStatus} status */
 export function normalizeSillageHeartbeatStatus(status = {}) {
   const upload = status.wifi_upload || {}
+  const importQueue = status.import_queue && typeof status.import_queue === "object" ? status.import_queue : null
   const recording = status.recording_control
   return {
     stateFlags: Number(status.state_flags || 0),
@@ -15,7 +16,8 @@ export function normalizeSillageHeartbeatStatus(status = {}) {
     activeFileIndex: Number(status.active_file_index || 0),
     lastSyncedFileIndex: Number(status.last_synced_file_index || 0),
     wifiUpload: {
-      state: String(upload.state || "disconnected"),
+      state: importQueue?.paused === true ? "paused" : String(upload.state || "disconnected"),
+      selective: importQueue?.version === 1,
       fileIndex: Number(upload.file_index || 0),
       offset: Number(upload.offset || 0),
       sizeBytes: Number(upload.size_bytes || 0),
@@ -61,7 +63,7 @@ export function describeWifiUpload(upload = {}) {
       if ((upload.deferredFiles || 0) > 0) return "Upload pass finished · temporary failures will retry automatically"
       return (upload.rejectedFiles || 0) > 0 || (upload.damagedFileIndex || 0) > 0
         ? "Upload finished · rejected recordings retained on the card"
-        : "All sealed recordings synchronized"
+        : upload.selective ? "All eligible recordings synchronized" : "All sealed recordings synchronized"
     case "paused":
       return size > 0
         ? `Automatic upload paused · ${filename} · ${percent}%`

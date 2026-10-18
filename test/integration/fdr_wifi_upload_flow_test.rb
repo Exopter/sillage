@@ -243,10 +243,26 @@ class FdrWifiUploadFlowTest < ActionDispatch::IntegrationTest
     assert_equal "verifying", response.headers.fetch("X-FDR-Upload-Status")
   end
 
+  test "selecting an already queued Wi-Fi upload promotes it without losing its staged bytes" do
+    upload = @recorder.fdr_wifi_uploads.create!(@manifest)
+    upload.append_chunk!(offset: 0, bytes: @binary)
+    upload.begin_verification!
+    body = @manifest.merge(priority: true).to_json
+    assert_enqueued_with(job: FdrWifiUploadFinalizeJob, queue: "priority_imports") do
+      post api_v1_fdr_wifi_uploads_path, params: body, headers: signed_headers(body, "create", content_type: "application/json")
+    end
+    assert_response :ok
+    assert upload.reload.priority?
+    assert_equal @binary, File.binread(upload.staged_path)
+    assert_no_enqueued_jobs do
+      post api_v1_fdr_wifi_uploads_path, params: body, headers: signed_headers(body, "create", content_type: "application/json")
+    end
+  end
+
   test "an enqueue error cannot strand an upload in verifying" do
     upload = @recorder.fdr_wifi_uploads.create!(@manifest)
     upload.append_chunk!(offset: 0, bytes: @binary)
-    replace_method(FdrWifiUploadFinalizeJob, :perform_later, ->(*) { false }) do
+    replace_method(FdrWifiUploadFinalizeJob, :set, ->(**) { Struct.new(:result) { def perform_later(*) = result }.new(false) }) do
       assert_raises(ActiveJob::EnqueueError) { upload.begin_verification! }
     end
     assert_equal "receiving", upload.reload.status

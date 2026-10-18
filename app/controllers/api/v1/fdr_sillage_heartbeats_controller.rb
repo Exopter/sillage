@@ -12,7 +12,7 @@ module Api
         version device_id firmware model sent_at uptime_ms state_flags
         sensor_validity alert_flags storage_free_mib storage_total_mib
         last_sync_result active_file_index last_synced_file_index diagnostics
-        wifi_upload recording_control
+        wifi_upload recording_control import_queue
       ].freeze
 
       allow_unauthenticated_access only: :create
@@ -39,6 +39,8 @@ module Api
         return head :unprocessable_entity unless payload["version"] == 1
         return head :unprocessable_entity unless valid_recording_control?(payload["recording_control"])
 
+        return head :unprocessable_entity unless valid_import_queue?(payload["import_queue"])
+
         seen_at = Time.current
         status = payload.slice(*STATUS_KEYS)
         recorder.update!(
@@ -51,6 +53,7 @@ module Api
         presence.update!(last_seen_at: seen_at, status:)
         reconcile_recording_command(recorder, payload["recording_control"], seen_at)
         attach_recording_command(recorder) if payload["recording_control"].is_a?(Hash)
+        reconcile_import_commands(recorder, payload["import_queue"], seen_at)
         head :accepted
       rescue JSON::ParserError, KeyError, EmbeddedController::AuthenticationKeyError
         head :unauthorized
@@ -59,6 +62,29 @@ module Api
       end
 
       private
+
+      def valid_import_queue?(queue)
+        return true if queue.nil?
+        return false unless queue.is_a?(Hash) && queue["version"] == 1 && [ true, false ].include?(queue["paused"])
+        return false unless %w[boot_id revision command_sequence command_result before_index next_before_index].all? { |key| queue[key].is_a?(Integer) && queue[key] >= 0 }
+        files = queue["files"]
+        files.is_a?(Array) && files.size <= 8 && files.all? do |file|
+          file.is_a?(Hash) && %w[file_index boot_id size_bytes flags].all? { |key| file[key].is_a?(Integer) && file[key] >= 0 } && file["file_index"].between?(1, 999_999) &&
+            (file["duration_ms"].nil? || (file["duration_ms"].is_a?(Integer) && file["duration_ms"].between?(0, 18_446_744_073_709_551)))
+        end
+      end
+
+      def reconcile_import_commands(recorder, queue, seen_at)
+        return unless queue.is_a?(Hash)
+        commands = recorder.fdr_import_commands
+        commands.pending.where("expires_at < ? OR recorder_boot_id != ?", seen_at, queue["boot_id"]).update_all(status: "expired", updated_at: seen_at)
+        command = commands.pending.find_by(id: queue["command_sequence"])
+        command&.update!(status: queue["command_result"].zero? ? "acknowledged" : "failed", result: queue["command_result"], acknowledged_at: seen_at)
+        pending = commands.pending.order(:id).first
+        return unless pending
+        response.headers["X-FDR-Import-Command"] = pending.wire_payload.unpack1("H*")
+        response.headers["X-FDR-Import-Signature"] = pending.signature
+      end
 
       def heartbeat_payload(presence)
         recorder = presence.embedded_controller

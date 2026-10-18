@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_13_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_18_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -145,6 +145,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_13_210000) do
     t.check_constraint "version >= 0", name: "fdr_configuration_version_nonnegative"
   end
 
+  create_table "fdr_import_commands", force: :cascade do |t|
+    t.datetime "acknowledged_at"
+    t.integer "action", null: false
+    t.datetime "created_at", null: false
+    t.bigint "embedded_controller_id", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "file_boot_id", default: 0, null: false
+    t.integer "file_index", default: 0, null: false
+    t.bigint "recorder_boot_id", null: false
+    t.bigint "requested_by_id", null: false
+    t.integer "result"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.index ["embedded_controller_id"], name: "index_fdr_import_commands_on_embedded_controller_id"
+    t.index ["requested_by_id"], name: "index_fdr_import_commands_on_requested_by_id"
+  end
+
   create_table "fdr_recording_commands", force: :cascade do |t|
     t.datetime "acknowledged_at"
     t.datetime "created_at", null: false
@@ -193,6 +210,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_13_210000) do
     t.string "filename", null: false
     t.bigint "flight_import_id"
     t.integer "format_version", null: false
+    t.boolean "priority", default: false, null: false
     t.integer "received_bytes", default: 0, null: false
     t.string "sha256", null: false
     t.integer "size_bytes", null: false
@@ -750,6 +768,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_13_210000) do
   add_foreign_key "device_activities", "embedded_controllers"
   add_foreign_key "device_activities", "users", column: "actor_id"
   add_foreign_key "embedded_controllers", "parts"
+  add_foreign_key "fdr_import_commands", "embedded_controllers"
+  add_foreign_key "fdr_import_commands", "users", column: "requested_by_id"
   add_foreign_key "fdr_recording_commands", "embedded_controllers"
   add_foreign_key "fdr_recording_commands", "users", column: "requested_by_id"
   add_foreign_key "fdr_recordings", "users"

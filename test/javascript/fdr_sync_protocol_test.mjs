@@ -1,4 +1,4 @@
-import { describeWifiUpload } from "../../app/javascript/lib/fdr_heartbeat.js"
+import { describeWifiUpload, normalizeSillageHeartbeatStatus } from "../../app/javascript/lib/fdr_heartbeat.js"
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 
@@ -63,6 +63,8 @@ assert.match(connectivitySource, /syncProgressTarget\.value = Math\.min\(offset,
 assert.match(connectivitySource, /syncProgressTarget\.removeAttribute\("value"\)/)
 assert.equal(describeWifiUpload({ state: "uploading", fileIndex: 1, sizeBytes: 100, offset: 25 }), "Uploading FDR000001.BIN · 25%")
 assert.equal(describeWifiUpload({ state: "complete" }), "All sealed recordings synchronized")
+assert.equal(describeWifiUpload(normalizeSillageHeartbeatStatus({wifi_upload:{state:"complete"}, import_queue:{version:1, paused:false}}).wifiUpload), "All eligible recordings synchronized")
+assert.equal(normalizeSillageHeartbeatStatus({wifi_upload:{state:"preparing"}, import_queue:{version:1, paused:true}}).wifiUpload.state, "paused")
 assert.match(connectivityViewSource, /Automatic resumable recording upload/)
 assert.match(connectivityViewSource, /fdr-connectivity#interruptUsbSync/)
 assert.match(connectivityViewSource, /fdr-connectivity#eraseSdRecordings/)
@@ -642,5 +644,42 @@ assert.throws(
   () => protocol.parseWifiResponse(unknownWifiError),
   { message: "The recorder reported an unknown Wi-Fi error. Reconnect it and try again." }
 )
+
+// The new catalogue has no digest; preparation carries the unchanged manifest
+// after its eight-byte scheduler prefix. Keep offsets interoperable with C++.
+const importClient = new protocol.UsbFdrClient({})
+const catalogue = new Uint8Array(32)
+const catalogueView = new DataView(catalogue.buffer)
+catalogueView.setUint32(0, 277, true); catalogueView.setUint32(4, 42, true)
+catalogueView.setBigUint64(8, 123456789n, true); catalogueView.setUint8(16, 4)
+catalogueView.setUint32(20, 12, true)
+catalogueView.setUint8(17, 1); catalogueView.setBigUint64(24, 29520000n, true)
+importClient.request = async (type, payload) => {
+  assert.equal(type, protocol.UsbMessage.IMPORT_CATALOG)
+  assert.equal(new DataView(payload.buffer).getUint32(0, true), 278)
+  return {payload:catalogue}
+}
+assert.deepEqual(await importClient.importCatalog(278), {fileIndex:277, bootId:42, sizeBytes:123456789, flags:4, revision:12, durationMs:29520000})
+assert.equal(protocol.parseImportCatalog(catalogue.slice(0, 24)).durationMs, null, "older catalogues remain readable")
+catalogueView.setUint8(17, 0)
+assert.equal(protocol.parseImportCatalog(catalogue).durationMs, null, "unknown duration never becomes zero")
+assert.throws(() => protocol.parseImportCatalog(catalogue.slice(0, 23)), /Invalid import catalog/)
+const preparation = new Uint8Array(80)
+const prepView = new DataView(preparation.buffer)
+prepView.setUint8(0, 2); prepView.setUint8(1, 1); prepView.setUint32(4, 12, true)
+prepView.setUint32(8, 277, true); prepView.setUint32(12, 42, true)
+prepView.setBigUint64(16, 123456789n, true); prepView.setUint16(24, 3, true)
+preparation.set(new TextEncoder().encode("FDR000277.BIN"), 28); preparation.fill(0xab, 48)
+importClient.request = async () => ({payload:preparation})
+assert.deepEqual(await importClient.nextImport(), {state:2, priority:true, revision:12, fileIndex:277, bootId:42,
+  sizeBytes:123456789, formatVersion:3, filename:"FDR000277.BIN", sha256:"ab".repeat(32)})
+importClient.request = async (type, payload) => {
+  assert.equal(type, protocol.UsbMessage.IMPORT_CONTROL)
+  assert.deepEqual([...payload], [1,0,0,0,21,1,0,0,42,0,0,0])
+  return {payload:Uint8Array.from([1,0,0,0,13,0,0,0])}
+}
+assert.deepEqual(await importClient.controlImport(1, 277, 42), {paused:false, revision:13})
+importClient.request = async () => ({payload:Uint8Array.from([1,1,0,0,13,0,0,0])})
+await assert.rejects(importClient.controlImport(1, 277, 42), /rejected this selection/)
 
 console.log("FDR synchronization protocol tests passed")

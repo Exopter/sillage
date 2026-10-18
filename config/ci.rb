@@ -26,6 +26,7 @@ CI.run do
   step "Tests: Signal workspace controls", "node test/javascript/signal_controls_test.mjs"
   step "Tests: Signal layout", "node test/javascript/signal_layout_test.mjs"
   step "Tests: FDR synchronization protocol", "node test/javascript/fdr_sync_protocol_test.mjs"
+  step "Tests: FDR import queue interruption and resume", "node test/javascript/fdr_import_queue_test.mjs"
   step "Tests: FDR API response contracts", "node test/javascript/fdr_api_test.mjs"
   step "Tests: FDR access restoration", "node test/javascript/fdr_access_restoration_test.mjs"
   step "Tests: FDR upload validation", "node test/javascript/fdr_upload_validation_test.mjs"

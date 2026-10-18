@@ -100,6 +100,15 @@ class FdrWifiUpload < ApplicationRecord
     end
   end
 
+  def prioritize!
+    with_lock do
+      return if priority?
+
+      update!(priority: true)
+      enqueue_verification! if status == "verifying"
+    end
+  end
+
   def complete!(flight_import:)
     update!(status: "complete", flight_import:, completed_at: Time.current, error_message: nil)
   end
@@ -131,7 +140,7 @@ class FdrWifiUpload < ApplicationRecord
   private
 
   def enqueue_verification!
-    raise ActiveJob::EnqueueError, "The Wi-Fi upload could not be queued." unless FdrWifiUploadFinalizeJob.perform_later(self)
+    raise ActiveJob::EnqueueError, "The Wi-Fi upload could not be queued." unless FdrWifiUploadFinalizeJob.set(queue: priority? ? "priority_imports" : "imports").perform_later(self)
   end
 
   def assign_token

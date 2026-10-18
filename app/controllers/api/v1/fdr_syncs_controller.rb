@@ -30,7 +30,7 @@ module Api
           :boot_id,
           :format_version,
           :size_bytes,
-          :sha256
+          :sha256, :priority
         )
       end
 

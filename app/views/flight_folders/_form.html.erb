@@ -1,4 +1,4 @@
-<%= form_with model: folder, class: "workspace-form exds-browser-folder-form", data: { turbo_frame: "_top", controller: "folder-access" } do |form| %>
+<%= form_with model: folder, class: "workspace-form", data: { turbo_frame: "_top", controller: "folder-access" } do |form| %>
   <%= hidden_field_tag :return_to_browser, "1" if local_assigns[:dialog] %>
   <% if folder.errors.any? %><div class="workspace-errors" role="alert"><%= folder.errors.full_messages.to_sentence %></div><% end %>
   <label><span>Folder name</span><%= form.text_field :name, required: true, maxlength: 100, autofocus: true, placeholder: "Flight tests" %></label>

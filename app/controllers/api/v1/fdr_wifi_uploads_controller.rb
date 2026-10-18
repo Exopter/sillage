@@ -18,7 +18,7 @@ module Api
         return head :content_too_large if @body.bytesize > MAX_MANIFEST_BYTES
 
         manifest = JSON.parse(@body).symbolize_keys.slice(
-          :filename, :file_index, :boot_id, :format_version, :size_bytes, :sha256
+          :filename, :file_index, :boot_id, :format_version, :size_bytes, :sha256, :priority
         )
         upload = @recorder.fdr_wifi_uploads.find_or_initialize_by(
           boot_id: Integer(manifest.fetch(:boot_id)),
@@ -31,6 +31,7 @@ module Api
         elsif !upload.manifest_matches?(manifest)
           return render json: { error: "This recorder file already has a different upload manifest." }, status: :conflict
         end
+        upload.prioritize! if manifest[:priority] == true
         upload.resume!
         render_upload(upload, status: created ? :created : :ok)
       rescue JSON::ParserError, KeyError, ArgumentError, TypeError, ActiveRecord::RecordInvalid => error

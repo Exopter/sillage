@@ -1,3 +1,4 @@
+import { FdrImportQueue } from "fdr_import_queue"
 import { objectPayload, readResponse, registrationPayload, importReceipt, authenticationHex, authenticationKey, commandSequence, heartbeatPayloads } from "fdr_api"
 import { normalizeSillageHeartbeatStatus, describeWifiUpload, normalizeSillageHeartbeatDiagnostics, sillageHeartbeatIdentity, formatSeenAt } from "fdr_heartbeat"
 import { Controller } from "@hotwired/stimulus"
@@ -219,6 +220,7 @@ export default class extends TypedController {
     if (this.initialized) return
 
     this.initialized = true
+    this.importQueue = new FdrImportQueue(/** @type {HTMLElement | null} */ (this.element.querySelector("[data-fdr-import-queue]")), () => this.usbUploadController?.abort())
     this.connectionGeneration += 1
     this.usbBusy = false
     this.usbClient = null
@@ -248,6 +250,7 @@ export default class extends TypedController {
     this.bleFacts = null
     this.bleAuthenticated = false
     this.wifiIdentity = null
+    this.importQueue?.wifi("", null)
     this.wifiIdentities = []
     this.wifiFacts = null
     this.wifiPollTimer = undefined
@@ -276,6 +279,7 @@ export default class extends TypedController {
   }
 
   disconnect() {
+    this.importQueue?.destroy()
     this.unregisterUsbPageRelease?.()
     this.unregisterUsbPageRelease = null
     void this.teardown()
@@ -557,8 +561,21 @@ export default class extends TypedController {
     return null
   }
 
-  /** @param {UsbFdrClient} client @param {{deviceId:string}} device */
+  /** @param {UsbFdrClient} client @param {Awaited<ReturnType<UsbFdrClient["hello"]>>} device */
   async synchronizeUsbFiles(client, device) {
+    if (this.importQueue && device.capabilities & UsbCapability.IMPORT_QUEUE) {
+      this.importQueue.attach(client, device)
+      return this.importQueue.run(client, device, {
+        active: () => this.usbClient === client && !this.usbSyncInterrupted,
+        upload: (manifest, blob, signal) => this.uploadFile(device, manifest, blob, { signal, priority: manifest.priority }),
+        progress: (manifest, offset) => {
+          this.syncProgressTarget.hidden = false
+          this.syncProgressTarget.max = manifest.sizeBytes || 1
+          this.syncProgressTarget.value = offset
+          this.syncDetailTarget.textContent = `${manifest.filename} · ${formatBytes(offset)} / ${formatBytes(manifest.sizeBytes)}`
+        }
+      })
+    }
     let synchronizedFiles = 0
     while (true) {
       this.ensureUsbSyncContinues()
@@ -619,6 +636,7 @@ export default class extends TypedController {
   }
 
   async interruptUsbSync() {
+    if (this.usbIdentity?.capabilities & UsbCapability.IMPORT_QUEUE) return this.importQueue?.action("pause")
     if (!this.usbSyncActive || this.usbSyncInterrupted) return
 
     const port = this.usbPort
@@ -804,6 +822,12 @@ export default class extends TypedController {
       pollInFlight = true
       try {
         await this.refreshUsbControlData(client)
+        if (!this.usbBusy && !this.usbSyncActive && this.usbAuthenticated && (this.usbIdentity?.capabilities & UsbCapability.IMPORT_QUEUE)) {
+          this.usbSyncActive = true
+          this.usbSyncInterrupted = false
+          try { this.updateUsbSynchronization(await this.synchronizeUsbFiles(client, this.usbIdentity)) }
+          finally { this.usbSyncActive = false; this.syncProgressTarget.hidden = true }
+        }
       } catch (caught) {
         const error = protocolError(caught)
         if (client !== this.usbClient) return
@@ -816,6 +840,7 @@ export default class extends TypedController {
   }
 
   async disconnectUsb() {
+    this.importQueue?.detach()
     window.clearInterval(this.usbPollTimer)
     this.usbPollTimer = undefined
     const client = this.usbClient
@@ -857,8 +882,8 @@ export default class extends TypedController {
     await client?.close()
   }
 
-  /** @param {{deviceId: string}} device @param {NonNullable<Awaited<ReturnType<UsbFdrClient["nextFile"]>>>} manifest @param {Blob} blob @param {{signal?: AbortSignal}} options */
-  async uploadFile(device, manifest, blob, { signal } = {}) {
+  /** @param {{deviceId: string}} device @param {NonNullable<Awaited<ReturnType<UsbFdrClient["nextFile"]>>>} manifest @param {Blob} blob @param {{signal?: AbortSignal, priority?: boolean}} options */
+  async uploadFile(device, manifest, blob, { signal, priority = false } = {}) {
     const form = new FormData()
     form.append("source_file", blob, manifest.filename)
     form.append("device_id", device.deviceId)
@@ -868,6 +893,7 @@ export default class extends TypedController {
     form.append("format_version", String(manifest.formatVersion))
     form.append("size_bytes", String(manifest.sizeBytes))
     form.append("sha256", manifest.sha256)
+    form.append("priority", String(priority))
     const response = await fetch(this.uploadUrlValue, {
       method: "POST",
       headers: { "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "" },
@@ -1038,6 +1064,7 @@ export default class extends TypedController {
   /** @param {import("../types/recorder").Heartbeat} heartbeat */
   renderSillageHeartbeat(heartbeat) {
     const status = normalizeSillageHeartbeatStatus(heartbeat.status)
+    this.importQueue?.wifi(heartbeat.recorder.device_id, heartbeat.status?.import_queue)
     this.wifiIdentity = sillageHeartbeatIdentity(heartbeat)
     this.wifiIdentities = [this.wifiIdentity]
     if (this.registeredRecorder?.device_id === this.wifiIdentity.deviceId && this.wifiIdentity.assembly !== undefined) {
@@ -1081,6 +1108,7 @@ export default class extends TypedController {
   renderMultipleSillageHeartbeats(heartbeats) {
     this.wifiIdentities = heartbeats.map(sillageHeartbeatIdentity)
     this.wifiIdentity = null
+    this.importQueue?.wifi("", null)
     this.wifiFacts = null
     this.wifiRecordingControlSupported = false
     this.renderWifiSynchronizationProgress()
@@ -1101,6 +1129,7 @@ export default class extends TypedController {
   disconnectSillageHeartbeat(detail, { error = null } = {}) {
     setAircraftConnection(AircraftConnectionTransport.WIFI, false)
     this.wifiIdentity = null
+    this.importQueue?.wifi("", null)
     this.wifiIdentities = []
     this.wifiFacts = null
     this.wifiRecordingControlSupported = false

@@ -22,6 +22,14 @@ class FdrSyncFlowTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "an explicitly selected USB recording uses the independent priority worker" do
+    with_upload do |upload, binary|
+      assert_enqueued_with(job: ExoFdrImportJob, queue: "priority_imports") do
+        FdrSync::Ingest.new(user: users(:julien), upload:, metadata: sync_params(upload, binary).merge(priority: true)).call
+      end
+    end
+  end
+
   test "rejects malformed manifests before hashing or storing uploads" do
     with_upload do |upload, binary|
       valid = sync_params(upload, binary)
@@ -95,7 +103,7 @@ class FdrSyncFlowTest < ActionDispatch::IntegrationTest
   test "an enqueue failure rolls back the receipt and a retry schedules a complete source" do
     with_upload do |upload, binary|
       [ ->(*) { raise ActiveJob::EnqueueError, "queue unavailable" }, ->(*) { false } ].each do |failure|
-        replace_method(ExoFdrImportJob, :perform_later, failure) do
+        replace_method(ExoFdrImportJob, :set, ->(**) { Struct.new(:failure) { def perform_later(*) = failure.call }.new(failure) }) do
           assert_no_difference -> { FlightImport.count } do
             assert_raises(ActiveJob::EnqueueError) do
               FdrSync::Ingest.new(user: users(:julien), upload:, metadata: sync_params(upload, binary)).call

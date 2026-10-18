@@ -86,6 +86,9 @@
       ],
       "imu_mount": [
         "./app/javascript/lib/imu_mount.js"
+      ],
+      "fdr_import_queue": [
+        "./app/javascript/lib/fdr_import_queue.js"
       ]
     },
     "strict": true,

@@ -48,7 +48,7 @@ module FdrSync
     def enqueue_import!(flight_import)
       return unless @enqueue
 
-      raise ActiveJob::EnqueueError, "The FDR import could not be queued." unless ExoFdrImportJob.perform_later(flight_import)
+      raise ActiveJob::EnqueueError, "The FDR import could not be queued." unless ExoFdrImportJob.set(queue: @metadata["priority"].to_s == "true" ? "priority_imports" : "imports").perform_later(flight_import)
     end
 
     def validate_metadata!

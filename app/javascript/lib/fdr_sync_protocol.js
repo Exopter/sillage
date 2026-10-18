@@ -257,6 +257,31 @@ export class UsbFdrClient {
     return device
   }
 
+  async importCatalog(beforeIndex = 0) {
+    const payload = new Uint8Array(4)
+    new DataView(payload.buffer).setUint32(0, beforeIndex, true)
+    const frame = await this.request(UsbMessage.IMPORT_CATALOG, payload, [UsbMessage.IMPORT_CATALOG_DATA])
+    return parseImportCatalog(frame.payload)
+  }
+
+  async nextImport() {
+    const frame = await this.request(UsbMessage.IMPORT_NEXT, new Uint8Array(), [UsbMessage.IMPORT_NEXT_DATA])
+    const view = dataView(frame.payload, Exs1Layout.IMPORT_PREPARATION, "import preparation")
+    return { state: view.getUint8(0), priority: view.getUint8(1) === 1, revision: view.getUint32(4, true),
+      ...parseFileManifest(frame.payload.slice(8)) }
+  }
+
+  /** @param {number} action */
+  async controlImport(action, fileIndex = 0, bootId = 0) {
+    const payload = new Uint8Array(Exs1Layout.IMPORT_CONTROL)
+    const view = new DataView(payload.buffer)
+    view.setUint8(0, action); view.setUint32(4, fileIndex, true); view.setUint32(8, bootId, true)
+    const frame = await this.request(UsbMessage.IMPORT_CONTROL, payload, [UsbMessage.IMPORT_CONTROL_DATA])
+    const result = dataView(frame.payload, Exs1Layout.IMPORT_CONTROL_RESULT, "import control")
+    if (result.getUint8(1) !== 0) throw new Error("The recorder rejected this selection. Refresh the recordings and try again.")
+    return { paused: result.getUint8(2) === 1, revision: result.getUint32(4, true) }
+  }
+
   /** @param {number} [afterFileIndex] */
   async nextFile(afterFileIndex = 0) {
     if (!Number.isInteger(afterFileIndex) || afterFileIndex < 0 || afterFileIndex > 0xffffffff) {
@@ -1206,3 +1231,13 @@ function joinBytes(left, right) {
 
 /** @param {unknown} value @returns {FdrProtocolError} */
 export function protocolError(value) { return value instanceof Error ? value : new Error(String(value)) }
+
+/** @param {BinaryValue} value */
+export function parseImportCatalog(value) {
+  const bytes = exactBytes(value)
+  const view = dataView(bytes, bytes.length === 24 ? 24 : Exs1Layout.IMPORT_CATALOG_ENTRY, "import catalog")
+  return { fileIndex: view.getUint32(0, true), bootId: view.getUint32(4, true),
+    sizeBytes: Number(view.getBigUint64(8, true)), flags: view.getUint8(16),
+    revision: view.getUint32(20, true),
+    durationMs: bytes.length >= 32 && view.getUint8(17) === 1 ? Number(view.getBigUint64(24, true)) : null }
+}

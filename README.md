@@ -154,10 +154,13 @@ samples and attachments remain intact. Missing sources stay visible for review.
 It does not run from page reads. Related recording boundaries can then be reconciled
 with `bin/rails runner 'FlightImport.where(activity_classification: "moving").find_each { |entry| FdrRecordingActivityJob.perform_later(entry) }'`.
 
-Imports use the dedicated `imports` queue. USB synchronization first stores a
+Automatic imports use the dedicated `imports` queue. Explicit FDR selections use
+`priority_imports`, with a separate worker in `config/queue.yml`; deploy both the
+import-command migration and worker configuration before enabling firmware `/59`.
+USB synchronization first stores a
 SHA-256-verified source and a queued receipt; the browser polls that receipt and
 acknowledges the recorder only after successful validation/import. Wi-Fi
-finalization validates and imports on the same queue. Failed imports retain their
+finalization uses the corresponding automatic or priority queue. Failed imports retain their
 source attachments and roll back partial flight data.
 
 There are no application quotas on recording size, sample count, source file

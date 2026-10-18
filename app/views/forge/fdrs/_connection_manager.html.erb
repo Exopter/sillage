@@ -161,6 +161,29 @@
     </article>
   </div>
 
+  <section class="workspace-panel" data-fdr-import-queue data-command-url="<%= api_v1_fdr_import_commands_path %>" hidden>
+    <header class="workspace-panel-header">
+      <h2>Recorder files</h2>
+      <p class="workspace-muted">Automatic import · newest first. Skipped files stay on the microSD.</p>
+    </header>
+    <div class="workspace-actions">
+      <button type="button" class="button-secondary" data-import-action="priority">Import selected now</button>
+      <button type="button" class="button-secondary" data-import-action="skip">Skip automatic import</button>
+      <button type="button" class="button-secondary" data-import-action="restore">Restore automatic import</button>
+      <button type="button" class="button-secondary" data-import-action="pause">Pause transfers</button>
+      <button type="button" class="button-secondary" data-import-action="refresh">Refresh</button>
+    </div>
+    <p class="workspace-muted" data-import-notice role="status" aria-live="polite"></p>
+    <p class="workspace-muted">Duration covers the recording, including time on the ground.</p>
+    <div class="workspace-table-wrap">
+      <table class="workspace-table">
+        <thead><tr><th scope="col">Select</th><th scope="col">File</th><th scope="col">Duration</th><th scope="col">Size</th><th scope="col">Status</th></tr></thead>
+        <tbody data-import-files></tbody>
+      </table>
+    </div>
+    <div data-import-older hidden><button type="button" class="button-secondary" data-import-action="older">Load older files</button></div>
+  </section>
+
   <section class="signal-fdr-overview" aria-labelledby="recorder-information-title">
     <header class="signal-fdr-section-head signal-fdr-overview-head">
       <div class="signal-fdr-overview-title">
