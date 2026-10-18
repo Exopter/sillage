@@ -1,5 +1,7 @@
 /** @typedef {Record<string, number | string | boolean | null>} RawFields */
-/** @typedef {{[key: string]: number | string | boolean | null | RawFields | undefined, wifi_upload?: RawFields, recording_control?: RawFields}} RawStatus */
+/** @typedef {{file_index: number, boot_id: number, size_bytes: number, flags: number, duration_ms?: number | null}} ImportFile */
+/** @typedef {{version: number, boot_id: number, revision: number, paused: boolean, command_sequence: number, command_result: number, before_index: number, next_before_index: number, files: ImportFile[]}} ImportQueue */
+/** @typedef {{[key: string]: number | string | boolean | null | RawFields | ImportQueue | undefined, wifi_upload?: RawFields, recording_control?: RawFields, import_queue?: ImportQueue}} RawStatus */
 /** @param {RawStatus} status */
 export function normalizeSillageHeartbeatStatus(status = {}) {
   const upload = status.wifi_upload || {}

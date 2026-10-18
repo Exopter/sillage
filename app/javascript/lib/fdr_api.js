@@ -103,6 +103,34 @@ function rawFields(value) {
   return /** @type {import("./fdr_heartbeat").RawFields} */ (fields)
 }
 
+/** @param {unknown} value @returns {import("./fdr_heartbeat").ImportQueue} */
+function importQueuePayload(value) {
+  const queue = objectPayload(value)
+  if (queue.version !== 1 || typeof queue.paused !== "boolean" || !Array.isArray(queue.files) || queue.files.length > 8) {
+    throw new Error("Sillage returned an invalid recorder file list.")
+  }
+  /** @param {unknown} number */
+  const integer = (number) => {
+    if (typeof number !== "number" || !Number.isInteger(number) || number < 0) throw new Error("Sillage returned an invalid recorder file field.")
+    return number
+  }
+  return {
+    version: queue.version, paused: queue.paused,
+    boot_id: integer(queue.boot_id), revision: integer(queue.revision),
+    command_sequence: integer(queue.command_sequence), command_result: integer(queue.command_result),
+    before_index: integer(queue.before_index), next_before_index: integer(queue.next_before_index),
+    files: queue.files.map((value) => {
+      const file = objectPayload(value)
+      const index = integer(file.file_index)
+      if (index < 1 || index > 999999) throw new Error("Sillage returned an invalid recorder file index.")
+      return {
+        file_index: index, boot_id: integer(file.boot_id), size_bytes: integer(file.size_bytes), flags: integer(file.flags),
+        duration_ms: file.duration_ms == null ? null : integer(file.duration_ms)
+      }
+    })
+  }
+}
+
 /** @param {unknown} value @returns {import("../types/recorder").Heartbeat[]} */
 export function heartbeatPayloads(value) {
   const payload = objectPayload(value)
@@ -119,6 +147,7 @@ export function heartbeatPayloads(value) {
     for (const key of ["wifi_upload", "recording_control", "diagnostics"]) {
       if (source[key] != null) status[key] = rawFields(source[key])
     }
+    if (source.import_queue != null) status.import_queue = importQueuePayload(source.import_queue)
     const command = heartbeat.recording_command == null ? null : objectPayload(heartbeat.recording_command)
     return {
       recorder: {device_id: requiredString(recorder.device_id, "recorder identifier"), assembly: recorderAssembly(recorder.assembly), firmware: typeof recorder.firmware === "string" ? recorder.firmware : undefined, model: typeof recorder.model === "string" ? recorder.model : undefined},

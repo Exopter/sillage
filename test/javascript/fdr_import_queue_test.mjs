@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
+import { heartbeatPayloads } from "../../app/javascript/lib/fdr_api.js"
 
 // Exercise the real orchestration with persistent partial-file storage and a
 // recorder fake that can change its selection during a transfer.
@@ -32,6 +33,28 @@ assert.equal(formatRecordingSize(4096), "4.0 KiB")
 assert.equal(formatRecordingSize(64), "64 B")
 const manifest = (fileIndex) => ({ state: 2, fileIndex, bootId: 10, sizeBytes: 8192, formatVersion: 3, filename: `FDR00000${fileIndex}.BIN`, sha256: "a".repeat(64), priority: false })
 const device = { deviceId: "ECU-123456", bootId: 10 }
+{
+  const element = { hidden: true, addEventListener() {}, querySelector() { return null }, querySelectorAll() { return [] } }
+  const queue = new FdrImportQueue(element, () => {})
+  const catalog = {
+    version: 1, boot_id: 10, revision: 2, paused: false, command_sequence: 0, command_result: 0,
+    before_index: 0, next_before_index: 292,
+    files: [{ file_index: 292, boot_id: 10, size_bytes: 14050664, flags: 0, duration_ms: 1558126 }]
+  }
+  const payload = (importQueue) => ({ heartbeats: [{ recorder: { device_id: device.deviceId }, seen_at: "2026-10-18T15:32:53Z", status: { import_queue: importQueue } }] })
+  const heartbeat = heartbeatPayloads(payload(catalog))[0]
+  queue.wifi(heartbeat.recorder.device_id, heartbeat.status.import_queue)
+  assert.equal(element.hidden, false, "the file panel opens from the parsed Wi-Fi response")
+  assert.equal(queue.entries.get(292).sizeBytes, 14050664)
+  assert.equal(queue.entries.get(292).durationMs, 1558126)
+  assert.equal(queue.cursor, 292)
+  assert.equal(queue.wifiReady, true)
+  for (const invalid of [{ ...catalog, files: {} }, { ...catalog, files: [{ ...catalog.files[0], flags: "0" }] }]) {
+    assert.throws(() => heartbeatPayloads(payload(invalid)), /invalid recorder file/)
+  }
+  queue.wifi(device.deviceId, heartbeatPayloads(payload(undefined))[0].status.import_queue)
+  assert.equal(element.hidden, true, "older firmware remains compatible without a file catalogue")
+}
 function fixture() {
   globalThis.partials = new Map()
   const acks = [], chunks = [], commands = [], completed = new Set()
