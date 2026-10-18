@@ -62,7 +62,7 @@ esac
     def test_persistent_outage_and_recovery(self):
         for result in ('timeout', 'http503', 'invalid'):
             self.assertNotEqual(self.run_probe(result).returncode, 0)
-        self.assertEqual(self.pings(), ['log', 'fail', 'fail'])
+        self.assertEqual(self.pings(), ['log', 'log', 'log'])
         self.run_probe('ok')
         self.assertEqual(self.pings()[-1], 'check')
 

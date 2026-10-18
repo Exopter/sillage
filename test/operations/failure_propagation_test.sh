@@ -17,7 +17,7 @@ assert_failure() {
     echo "Unexpected success: $*" >&2
     exit 1
   fi
-  [[ "$(cat "$STATE_DIRECTORY/pings")" == /fail ]]
+  [[ "$(cat "$STATE_DIRECTORY/pings")" == /log ]]
   [[ ! -e "$STATE_DIRECTORY/touches" ]]
 }
 

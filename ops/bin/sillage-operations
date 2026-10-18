@@ -28,7 +28,7 @@ run_monitored() {
   local send_start="$2"
   shift 2
 
-  [[ "$send_start" == "yes" ]] && ping_healthcheck "$url" "/start" "started"
+  # Only confirmed success refreshes the deadline; failures use the configured grace.
 
   local output
   if output=$("$@" 2>&1); then
@@ -36,7 +36,7 @@ run_monitored() {
     [[ -z "$output" ]] || printf '%s\n' "$output"
   else
     local status=$?
-    ping_healthcheck "$url" "/fail" "${output:-failed}"
+    ping_healthcheck "$url" "/log" "${output:-failed}"
     [[ -n "$output" ]] && printf '%s\n' "$output" >&2
     return "$status"
   fi
@@ -73,7 +73,8 @@ readiness_signal() {
   printf '%s %s\n' "$now" "$count" > "${state}.tmp" || return
   mv "${state}.tmp" "$state" || return
   echo "Readiness failed: consecutive cycles ${count}/2" >&2
-  if (( count >= 2 )); then echo fail; else echo log; fi
+  # Diagnostic counters do not bypass the server-side grace period.
+  echo log
 }
 
 monitor_ready() {
@@ -206,7 +207,7 @@ case "${1:-}" in
     require_variable HEALTHCHECKS_STORAGE_BACKUP_PING_URL
     acquire_lock active-storage
     if ! output=$(prune_storage 2>&1); then
-      ping_healthcheck "$HEALTHCHECKS_STORAGE_BACKUP_PING_URL" "/fail" "$output"
+      ping_healthcheck "$HEALTHCHECKS_STORAGE_BACKUP_PING_URL" "/log" "$output"
       printf '%s\n' "$output" >&2
       exit 1
     fi

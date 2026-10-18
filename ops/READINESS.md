@@ -1,10 +1,10 @@
 # Readiness alert confirmation
 
-The minute timer reports an outage only after two consecutive failed cycles,
-no more than 180 seconds apart. The first failure sends `/log`, not success or
-`/start`; it does not refresh the Healthchecks deadline. A successful probe
-clears the counter and immediately reports recovery. Missing monitor runs or
-failed ping delivery remain covered by the existing Healthchecks deadline.
+The minute timer sends `/log` for every failed cycle, never failure, synthetic
+success, or `/start`. Only a successful probe refreshes the Healthchecks deadline
+and reports recovery. Healthchecks applies its 15-minute grace after the next
+expected successful observation. Missing monitor runs and failed ping delivery
+remain covered by that same deadline. The counter is diagnostic only.
 
 The public readiness endpoint remains authoritative. HTTP failures, timeouts,
 and unhealthy response bodies count as failures. Probe errors remain visible
