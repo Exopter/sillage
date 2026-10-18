@@ -3,10 +3,10 @@
     data-action="keydown->flight-browser#navigate turbo:before-cache@document->flight-browser#reset dragend->flight-browser#endDrag">
     <%= render "shared/flashes" %>
     <header class="exds-browser-header">
-      <h1>Flights</h1>
+      <h1>Flight log</h1>
       <%= form_with url: flights_path, method: :get, class: "exds-browser-search" do |form| %>
         <%= render "flights/browser_filters", form: form %>
-        <label class="search-control"><%= sillage_icon "search", size: 18 %><span class="sr-only">Search flights and recordings</span><%= form.search_field :q, value: @query, placeholder: "Search flight, aircraft, location", autocomplete: "off" %></label>
+        <label class="search-control"><%= sillage_icon "search", size: 18 %><span class="sr-only">Search flights and recordings</span><%= form.search_field :q, value: @query, placeholder: "Search flight, description, location", autocomplete: "off" %></label>
       <% end %>
       <%= form_with url: flights_path, method: :get, data: { action: "change->flight-browser#filter" } do |form| %>
         <%= form.hidden_field :folder, value: @folder_filter, id: nil %><%= form.hidden_field :q, value: @query, id: nil %><%= form.hidden_field :filter, value: @filter, id: nil %>
@@ -61,10 +61,12 @@
               <div class="exds-browser-entry" aria-current="<%= selected %>" draggable="<%= owned && entry.is_a?(Flight) %>" data-entry="<%= browser_key(entry) %>" data-action="dragstart->flight-browser#startDrag">
                 <% if owned %><label><input type="checkbox" name="entries[]" value="<%= browser_key(entry) %>" data-table-selection-target="item" data-action="change->table-selection#update"><span class="sr-only">Select <%= browser_name(entry) %></span></label><% end %>
                 <%= link_to browser_preview_path(entry), class: "exds-browser-entry-link", draggable: false, data: { turbo_frame: "flight-preview", flight_browser_target: "entry", open_url: browser_open_path(entry), selected: selected, name: browser_name(entry), action: "click->flight-browser#select dblclick->flight-browser#open" }, aria: { label: "Preview #{browser_name(entry)}" } do %>
-                  <span class="exds-browser-thumbnail"><% if selected && @preview_points.any? %><canvas width="124" height="96" aria-hidden="true" data-controller="route-thumbnail" data-route-thumbnail-points-value="<%= @preview_points.to_json %>"></canvas><% else %><%= sillage_icon(entry.is_a?(FlightImport) ? "file-text" : entry.preparation? ? "plane" : "route", size: 24) %><% end %></span>
-                  <span class="exds-browser-entry-copy"><strong><%= browser_name(entry) %></strong><small><%= logbook_date(entry) %> · <%= logbook_duration(browser_duration(entry)) %></small>
+                  <span class="exds-browser-thumbnail"><% if selected && @preview_points.any? %><canvas width="124" height="96" aria-hidden="true" data-controller="route-thumbnail" data-route-thumbnail-points-value="<%= @preview_points.to_json %>"></canvas><% else %><%= sillage_icon(entry.is_a?(FlightImport) ? "file-text" : entry.logbook_view? ? "plane" : "route", size: 24) %><% end %></span>
+                  <span class="exds-browser-entry-copy"><strong><%= browser_name(entry) %></strong>
+                    <% if entry.is_a?(Flight) && entry.description.present? %><small><%= entry.description %></small><% end %>
+                    <small><%= logbook_date(entry) %><% if entry.is_a?(Flight) && entry.location.present? %> · <%= entry.location %><% end %><% if browser_duration(entry).present? %> · <%= logbook_duration(browser_duration(entry)) %><% end %></small>
                     <% entry_state, entry_status = entry.is_a?(Flight) ? logbook_status(entry) : recording_logbook_status(entry) %>
-                    <% unless entry_status == "Analysed" %><small><span class="status-dot is-<%= entry_state %>"><span></span><%= entry_status %></span></small><% end %>
+                    <% unless entry_status.in?(%w[Analysed Logged]) %><small><span class="status-dot is-<%= entry_state %>"><span></span><%= entry_status %></span></small><% end %>
                     <% if entry.is_a?(FlightImport) && entry.failed? %><small><%= entry.error_message %></small><% end %>
                   </span>
                   <span title="<%= browser_visibility(entry).capitalize %>"><%= sillage_icon(browser_visibility(entry) == "private" ? "lock-keyhole" : "users", size: 17) %><span class="sr-only"><%= browser_visibility(entry).capitalize %></span></span>

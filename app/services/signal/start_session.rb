@@ -40,7 +40,7 @@ module Signal
       return if @flight_id.blank?
 
       flight = @user.flights.find(@flight_id)
-      unless flight.preparation? || flight.live?
+      unless flight.preparation? || flight.live? || (flight.logged? && flight.fdr_id.present?)
         raise InvalidFlight, "Only a draft or live flight can receive a Signal session."
       end
       flight.update!(status: "live", started_at: flight.started_at || @started_at)

@@ -31,6 +31,7 @@ RUNTIME_CLASSES = Set.new(%w[
   is-quarantined
   is-ready
   is-retired
+  is-unknown
   notice
 ]).freeze
 

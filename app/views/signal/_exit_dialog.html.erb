@@ -6,7 +6,7 @@
   <div class="workspace-dialog-section">
     <p><%= flight ? "Save the final telemetry to #{flight.code} and end this session." : "Save the telemetry and event markers as a new flight, or discard this acquisition." %></p>
     <% unless flight %>
-      <div class="operations-form-grid"><label class="is-wide"><span>Flight name</span><input type="text" value="Signal flight" maxlength="160" data-signal-workspace-target="flightName" aria-label="Flight name"></label></div>
+      <div class="operations-form-grid"><label class="is-wide"><span>Description (optional)</span><input type="text" value="" maxlength="160" data-signal-workspace-target="flightName" aria-label="Description (optional)"></label></div>
       <p class="operations-help">Discard permanently deletes this session's telemetry and local capture. Onboard microSD recordings are unchanged.</p>
     <% end %>
     <p class="workspace-errors" role="alert" data-signal-workspace-target="exitError" hidden></p>

@@ -6,32 +6,51 @@
   <% end %>
 
   <div class="exds-browser-form-grid">
-    <label class="exds-browser-field is-wide">
-      <span>Flight name</span>
-      <%= form.text_field :name, required: true, placeholder: "Prepared flight" %>
+    <label class="exds-browser-field">
+      <span>Date *</span>
+      <%= form.date_field :flown_on, value: flight.flown_on || (flight.display_flown_on unless flight.errors[:flown_on].any?), required: true %>
     </label>
     <label class="exds-browser-field">
-      <span>Aircraft</span>
-      <%= form.collection_select :aircraft_id, @aircraft, :id, :display_name, { prompt: "Select aircraft" }, required: true %>
-    </label>
-    <label class="exds-browser-field">
-      <span>Location</span>
-      <%= form.text_field :location, placeholder: "Optional operating location" %>
+      <span>Time (optional)</span>
+      <%= form.time_field :flown_at %>
     </label>
     <label class="exds-browser-field is-wide">
-      <span>Notes</span>
-      <%= form.text_area :notes, rows: 3, placeholder: "Operational context, crew, configuration…" %>
+      <span>Location *</span>
+      <%= form.text_field :location, required: true, placeholder: "Airfield, drop zone or operating location" %>
+    </label>
+    <label class="exds-browser-field is-wide">
+      <span>Description (optional)</span>
+      <%= form.text_field :description, placeholder: "Canopy handling test" %>
+    </label>
+    <label class="exds-browser-field is-wide">
+      <span>Notes (optional)</span>
+      <%= form.text_area :notes, rows: 5, placeholder: "Observations, conditions and anything to remember…" %>
     </label>
   </div>
 
   <fieldset class="exds-browser-fieldset">
-    <legend>Organization & access</legend>
+    <legend>Equipment (optional)</legend>
+    <div class="exds-browser-form-grid">
+      <label class="exds-browser-field">
+        <span>Aircraft</span>
+        <%= form.collection_select :aircraft_id, @aircraft, :id, :display_name, { include_blank: "None" } %>
+      </label>
+      <label class="exds-browser-field">
+        <span>FDR</span>
+        <%= form.collection_select :fdr_id, @fdrs, :id, :display_name, { include_blank: "None" }, aria: { describedby: "flight-fdr-help" } %>
+      </label>
+    </div>
+    <p class="operations-help" id="flight-fdr-help">Link an FDR to enable recording imports and telemetry. You can add one later.</p>
+  </fieldset>
+
+  <details class="exds-browser-fieldset">
+    <summary>Organization &amp; access</summary>
     <div class="exds-browser-field"><%= render "flights/folder_field", form: form %></div>
     <div class="exds-browser-field"><%= render "flights/visibility_field", form: form %></div>
-  </fieldset>
+  </details>
 
   <div class="exds-browser-form-actions">
     <%= link_to "Cancel", browser_path(selected: (browser_key(flight) if flight.persisted?)), class: "button-secondary", data: { turbo_frame: "flight-browser" } %>
-    <%= form.submit flight.persisted? ? "Save flight" : "Create in Preparation", class: "button-primary" %>
+    <%= form.submit flight.persisted? ? "Save flight" : "Create flight", class: "button-primary" %>
   </div>
 <% end %>

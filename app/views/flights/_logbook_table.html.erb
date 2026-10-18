@@ -118,9 +118,9 @@
               <% end %>
             </td>
             <td>
-              <%= link_to flight.name.presence || flight.code, flight, class: "flights-name" %>
-              <% if flight.name.present? && flight.name != flight.code %>
-                <span class="flights-cell-note flights-data"><%= flight.code %></span>
+              <%= link_to flight.code, flight, class: "flights-name" %>
+              <% if flight.description.present? %>
+                <span class="flights-cell-note flights-data"><%= flight.description %></span>
               <% end %>
               <% if flight.owned_by?(Current.user) %>
                 <span class="flights-cell-note">Folder: <%= flight.folder&.name || "Unfiled" %></span>

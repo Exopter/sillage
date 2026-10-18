@@ -6,7 +6,7 @@ module FlightBrowserHelper
   end
 
   def browser_name(entry)
-    entry.is_a?(FlightImport) ? entry.source_filename.presence || "Recording" : entry.name.presence || entry.code
+    entry.is_a?(FlightImport) ? entry.source_filename.presence || "Recording" : entry.code
   end
 
   def browser_path(**options)
@@ -22,7 +22,7 @@ module FlightBrowserHelper
   def browser_open_path(entry)
     return flights_path(recording: entry.id, filter: @filter, anchor: "recording-details") if entry.is_a?(FlightImport)
 
-    flight_path(entry, **(entry.preparation? ? browser_context : {}))
+    flight_path(entry, **(entry.logbook_view? ? browser_context : {}))
   end
 
   def browser_duration(entry)

@@ -12,6 +12,9 @@ module MetricsHelper
   end
 
   def logbook_date(entry)
+    if entry.is_a?(Flight) && entry.flown_on
+      return [ entry.flown_on.strftime("%d %b %Y"), entry.flown_at&.strftime("%H:%M") ].compact.join(" · ")
+    end
     timestamp = entry.is_a?(FlightImport) ? entry.log_started_at : entry.display_started_at
     logbook_value(timestamp&.strftime("%d %b · %H:%M"))
   end
@@ -21,7 +24,7 @@ module MetricsHelper
   end
 
   def logbook_status(flight)
-    return [ "unknown", "Preparation" ] if flight.preparation?
+    return [ "unknown", "Logged" ] if flight.logged? || flight.preparation?
     return [ "live", "Live" ] if flight.live?
     return [ "caution", "Waiting for recording" ] if flight.waiting_for_recording?
     return [ "live", "Processing" ] if flight.processing?

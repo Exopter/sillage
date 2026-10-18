@@ -16,7 +16,7 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_select ".exds-browser[data-view=columns]"
     assert_select ".exds-browser-entry[aria-current=true][draggable=true][data-entry=?]", "flight:#{@flight.id}"
     assert_select ".exds-browser-entry-link[draggable=false]"
-    assert_select ".exds-browser-preview h2", text: @flight.name
+    assert_select ".exds-browser-preview h2", text: @flight.code
     assert_select ".exds-browser-preview a[href=?]", flight_path(@flight), text: /Open flight/
     assert_select "a[aria-label='Grid view']", count: 0
     assert_select "a[aria-label='List view']", count: 0
@@ -45,7 +45,7 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, secret.name
     assert_not_includes response.body, secret_folder.name
     get flights_path(selected: "flight:#{shared.id}")
-    assert_select ".exds-browser-preview h2", text: shared.name
+    assert_select ".exds-browser-preview h2", text: shared.code
     assert_select ".exds-browser-preview button[aria-label='Move flight']", count: 0
     assert_select ".exds-browser-entry[data-entry=?][draggable=false]", "flight:#{shared.id}"
     assert_not_includes response.body, secret_folder.name
@@ -89,31 +89,31 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_select "select[name='flight[folder_id]'] option[value=?][selected]", @folder.id.to_s
     post flights_path, params: context.merge(flight: { name: "Campaign draft", folder_id: @folder.id })
     assert_response :unprocessable_entity
-    assert_select "turbo-frame#flight-browser .workspace-errors", text: /Aircraft must be selected/
-    assert_select "input[name='flight[name]'][value='Campaign draft']"
+    assert_select "turbo-frame#flight-browser .workspace-errors", text: /Location/
+    assert_select "input[name='flight[description]'][value='Campaign draft']"
     assert_select ".exds-browser-sidebar a[aria-current=page]", text: /Campaign/
     assert_difference -> { Flight.count }, 1 do
-      post flights_path, params: context.merge(flight: { name: "Campaign draft", aircraft_id: aircraft(:pilatus).id, folder_id: @folder.id })
+      post flights_path, params: context.merge(flight: { name: "Campaign draft", flown_on: "2026-10-18", location: "Bouloc", fdr_id: create_exofdr_assembly.id, aircraft_id: aircraft(:pilatus).id, folder_id: @folder.id })
     end
     created = @owner.flights.find_by!(name: "Campaign draft")
     assert_redirected_to flight_path(created, folder: @folder.id, q: "Campaign")
     follow_redirect!
-    assert_select "#flight-panel-title", text: "Campaign draft"
-    assert_select "turbo-frame#flight-browser .flash.notice", text: /Flight created in preparation/
+    assert_select "#flight-panel-title", text: created.code
+    assert_select "turbo-frame#flight-browser .flash.notice", text: /Flight logged/
     assert_select ".exds-browser-entry[aria-current=true][data-entry=?]", "flight:#{created.id}"
     assert_select "a[href=?]", signal_path(flight_id: created.id)
   end
 
   test "editing keeps validation in the workspace and returns to the selected flight" do
     context = { folder: @folder.id.to_s, return_to_browser: "1" }
-    patch flight_path(@flight), params: context.merge(flight: { name: "" })
+    patch flight_path(@flight), params: context.merge(flight: { location: "" })
     assert_response :unprocessable_entity
-    assert_select "turbo-frame#flight-browser .workspace-errors", text: /Name can't be blank/
+    assert_select "turbo-frame#flight-browser .workspace-errors", text: /Location can't be blank/
     assert_select "#flight-panel-title", text: "Edit flight"
     patch flight_path(@flight), params: context.merge(flight: { name: "Renamed flight" })
     assert_redirected_to flights_path(folder: @folder.id, selected: "flight:#{@flight.id}")
     follow_redirect!
-    assert_select ".exds-browser-preview h2", text: "Renamed flight"
+    assert_select ".exds-browser-preview h2", text: @flight.code
     assert_select ".exds-browser-sidebar a[aria-current=page]", text: /Campaign/
   end
 

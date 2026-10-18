@@ -29,7 +29,7 @@
   ]
 %>
 
-<h1 class="sr-only"><%= @flight.name %></h1>
+<h1 class="sr-only"><%= @flight.code %></h1>
 
 <section
   class="flight-replay-page"
@@ -49,7 +49,7 @@
       <%= sillage_icon "chevron-right", size: 18, class_name: "is-back-icon" %>
     <% end %>
     <div class="flight-replay-title">
-      <span><%= @flight.name %></span>
+      <span><%= @flight.code %><% if @flight.description.present? %> · <%= @flight.description %><% end %></span>
     </div>
     <span class="mode-badge is-neutral"><%= @flight.effective_visibility.capitalize %></span>
   </header>
@@ -305,12 +305,18 @@
         </div>
         <% if @flight.owned_by?(Current.user) %>
           <%= form_with model: @flight, class: "details-form" do |form| %>
-            <%= form.label :name, t("flights.form.name") %>
-            <%= form.text_field :name %>
+            <%= form.label :description, "Description (optional)" %>
+            <%= form.text_field :description %>
             <%= form.label :aircraft_id, t("flights.form.aircraft") %>
             <%= form.collection_select :aircraft_id, @aircraft, :id, :display_name, { include_blank: "No aircraft" } %>
-            <%= form.label :location, t("flights.form.location") %>
-            <%= form.text_field :location %>
+            <%= form.label :flown_on, "Date *" %>
+            <%= form.date_field :flown_on, value: @flight.display_flown_on, required: true %>
+            <%= form.label :flown_at, "Time (optional)" %>
+            <%= form.time_field :flown_at %>
+            <%= form.label :location, "Location *" %>
+            <%= form.text_field :location, required: true %>
+            <%= form.label :fdr_id, "FDR (optional)" %>
+            <%= form.collection_select :fdr_id, @fdrs, :id, :display_name, { include_blank: "None" } %>
             <%= render "flights/visibility_field", form: form %>
             <%= render "flights/folder_field", form: form %>
             <div class="flight-details-time-grid">
@@ -327,7 +333,7 @@
           <% end %>
         <% else %>
           <dl class="details-grid">
-            <div><dt>Name</dt><dd><%= @flight.name %></dd></div>
+            <div><dt>Description</dt><dd><%= @flight.description %></dd></div>
             <div><dt>Aircraft</dt><dd><%= @flight.display_aircraft %></dd></div>
             <div><dt>Location</dt><dd><%= @flight.display_location %></dd></div>
             <% { "Exit" => @flight.exit_at, "Opening" => @flight.opening_at, "Landing" => @flight.landing_at }.each do |label, timestamp| %>

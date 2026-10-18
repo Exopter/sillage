@@ -180,14 +180,6 @@ body {
   line-height: 1.5;
 }
 
-.preparation-status-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border-rule);
-}
 
 .mode-badge {
   display: inline-grid;

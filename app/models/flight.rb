@@ -1,5 +1,5 @@
 class Flight < ApplicationRecord
-  STATUSES = %w[preparation live waiting_for_recording processing analysed review].freeze
+  STATUSES = %w[logged preparation live waiting_for_recording processing analysed review].freeze
   VIDEO_PROCESSING_STATUSES = %w[empty processing ready failed].freeze
   VIDEO_UPLOAD_EXTENSIONS = %w[.avi .m4v .mkv .mov .mp4 .webm].freeze
   LOCATION_SOURCES = %w[manual openstreetmap].freeze
@@ -9,6 +9,10 @@ class Flight < ApplicationRecord
   belongs_to :user
   belongs_to :flight_import, optional: true, inverse_of: :flights
   belongs_to :aircraft, optional: true
+  belongs_to :fdr, class_name: "Assembly", optional: true
+
+  # Preserve existing descriptions and compatibility with recording producers.
+  alias_attribute :description, :name
   belongs_to :folder, class_name: "FlightFolder", optional: true, inverse_of: :flights
   has_many :imu_checks, dependent: :nullify
   has_many :track_points, dependent: :delete_all, inverse_of: :flight
@@ -20,7 +24,10 @@ class Flight < ApplicationRecord
 
   before_validation :assign_code
 
-  validates :code, :name, presence: true
+  validates :code, presence: true
+  validates :flown_on, :location, presence: true, if: -> { logged? || validation_context == :logbook }
+  validate :fdr_must_be_recorder
+  validate :log_time_must_be_valid
   validates :code, uniqueness: true
   validates :status, inclusion: { in: STATUSES }
   validates :visibility, inclusion: { in: VISIBILITIES }
@@ -66,7 +73,19 @@ class Flight < ApplicationRecord
   end
 
   def display_aircraft
-    aircraft&.display_name || "To complete"
+    aircraft&.display_name || "Not linked"
+  end
+
+  def logbook_view?
+    logged? || preparation? || ((review? || processing?) && !flight_import_id && sample_count.zero? && sensor_sample_count.zero?)
+  end
+
+  def recording_enabled?
+    fdr_id.present? || flight_import_id.present? || signal_sessions.exists? || imu_checks.exists?
+  end
+
+  def display_flown_on
+    flown_on || display_started_at&.to_date
   end
 
   def display_location
@@ -104,6 +123,14 @@ class Flight < ApplicationRecord
 
   private
 
+  def fdr_must_be_recorder
+    errors.add(:fdr, "must be an ExoFDR") if fdr_id.present? && !fdr&.controlled_fdr?
+  end
+
+  def log_time_must_be_valid
+    errors.add(:flown_at, "is invalid") if flown_at_before_type_cast.present? && flown_at.nil?
+  end
+
   def folder_must_accept_owner
     return if folder_id.nil?
 
@@ -119,7 +146,7 @@ class Flight < ApplicationRecord
     end
     return unless new_record?
 
-    year = (started_at || Time.current).year
+    year = (flown_on || started_at || Time.current).year
     next_sequence = IdentifierSequence.next_value!("flight_code/#{year}")
     self.code = format("FLT-%04d-%03d", year, next_sequence)
   end

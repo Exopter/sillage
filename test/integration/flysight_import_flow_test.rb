@@ -26,7 +26,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
 
     follow_redirect!
     assert_response :success
-    assert_select "h1", "Flights"
+    assert_select "h1", "Flight log"
     assert_select "#recording-details h2", flight_import.source_filename
     assert_select ".status.pending", text: "Pending"
 
@@ -40,15 +40,15 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_redirected_to flight_path(flight)
     follow_redirect!
     assert_response :success
-    assert_select "h1", flight.name
+    assert_select "h1", flight.code
     assert_select ".flight-replay-page"
     assert_select "a", text: "Recording details", count: 0
     cesium_base_url = Rails.application.config.x.cesium_base_url
     assert_select ".flight-replay-page[data-flight-viewer-cesium-base-url-value=?]", cesium_base_url
     assert_select "link[rel='preload'][href=?]", "#{cesium_base_url}Cesium.js"
     assert_select "link[rel='stylesheet'][href=?]", "#{cesium_base_url}Widgets/widgets.css"
-    assert_select ".flight-replay-title span", text: flight.name
-    assert_select ".flight-replay-title", text: /FLT-\d{4}-\d{3}/, count: 0
+    assert_select ".flight-replay-title span", text: "#{flight.code} · #{flight.description}"
+    assert_select ".flight-replay-title", text: /FLT-\d{4}-\d{3}/, count: 1
     assert_select ".flight-recorded-at", count: 0
     assert_select ".flight-replay-header .mode-badge", text: "Private", count: 1
     assert_select ".flight-phase-button", count: 4
@@ -160,7 +160,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_select ".exds-browser-entries", text: /Invalid telemetry header/
     get flights_path(recording: import.id)
     assert_response :success
-    assert_select "h1", "Flights"
+    assert_select "h1", "Flight log"
     assert_select "#recording-details", text: /Invalid telemetry header/
     assert_select "#recording-details form[action=?]", flight_import_path(import)
     assert_select "meta[http-equiv='refresh']", count: 0
@@ -187,11 +187,12 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_select "form[action=?]", include_in_flights_flight_import_path(import)
   end
 
-  test "creates a prepared flight with an aircraft and optional location" do
+  test "creates a log entry with optional aircraft" do
     assert_difference -> { Flight.count }, 1 do
       post flights_path, params: {
         flight: {
-          name: "Test programme flight",
+          description: "Test programme flight",
+          flown_on: "2026-10-18",
           aircraft_id: aircraft(:pilatus).id,
           location: "Tournon"
         }
@@ -200,7 +201,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
 
     flight = Flight.order(:created_at).last
     assert_redirected_to flight_path(flight)
-    assert_equal "preparation", flight.status
+    assert_equal "logged", flight.status
     assert_equal aircraft(:pilatus), flight.aircraft
     assert_equal "Tournon", flight.location
     assert_equal "manual", flight.location_source
@@ -245,13 +246,13 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_select ".flash-dismiss[aria-label='Dismiss notification'][data-action='flash#dismiss']"
   end
 
-  test "rejects a manually prepared flight without an aircraft" do
+  test "rejects a manual log entry without date and location" do
     assert_no_difference -> { Flight.count } do
       post flights_path, params: { flight: { name: "Incomplete prepared flight" } }
     end
 
     assert_response :unprocessable_entity
-    assert_select ".workspace-errors", text: /Aircraft must be selected/
+    assert_select ".workspace-errors", text: /Location/
   end
 
   test "rejects an ExoFDR import without a source file" do
@@ -277,7 +278,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "link[rel='icon'][href='/icon.svg?v=exopter-ex-20261009'][type='image/svg+xml']"
-    assert_select "h1", "Flights"
+    assert_select "h1", "Flight log"
     assert_sillage_header crumb: "Operations", title: "Flights"
     assert_select ".sillage-mode-switcher", count: 0
     assert_select ".sillage-live-badge", count: 0
@@ -286,7 +287,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_select ".exds-browser"
     assert_select ".exds-browser-entry", minimum: 1
     assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(flight)
-    assert_select ".exds-browser-entry-copy strong", text: flight.name
+    assert_select ".exds-browser-entry-copy strong", text: flight.code
     assert_select "a[href='#{flights_path}']", text: "Flights"
     assert_select "a[href='#{new_flight_import_path}'][aria-label='Import data']"
     assert_select ".sillage-room-link", text: /Signal/

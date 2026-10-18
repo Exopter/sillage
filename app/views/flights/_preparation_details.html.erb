@@ -1,32 +1,13 @@
-<div class="preparation-status-row">
-  <span class="status-dot is-unknown"><span></span>Preparation</span>
-  <span class="mode-badge is-neutral">No source attached</span>
-  <span class="mode-badge is-neutral"><%= @flight.effective_visibility.capitalize %></span>
-</div>
 <dl class="exds-browser-metadata">
-  <div><dt>Aircraft</dt><dd><%= @flight.display_aircraft %></dd></div>
+  <div><dt>Date</dt><dd><%= logbook_date(@flight) %></dd></div>
   <div><dt>Location</dt><dd><%= @flight.display_location %></dd></div>
-  <div><dt>Configuration</dt><dd><%= @flight.configuration_snapshot.present? ? "Captured" : "To complete" %></dd></div>
-  <div><dt>Notes</dt><dd><%= @flight.notes.presence || "—" %></dd></div>
+  <div><dt>Visibility</dt><dd><%= @flight.effective_visibility.capitalize %></dd></div>
   <% if @flight.owned_by?(Current.user) || @flight.folder&.visible_to?(Current.user) %>
     <div><dt>Folder</dt><dd><%= @flight.folder ? link_to(@flight.folder.name, flights_path(folder: @flight.folder_id), data: { turbo_frame: "flight-browser" }) : "Unfiled" %></dd></div>
   <% end %>
 </dl>
 <% if @flight.owned_by?(Current.user) %>
   <%= link_to edit_flight_path(@flight, **browser_context), class: "button-secondary", data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %> Edit flight<% end %>
-  <section class="exds-browser-editor-section">
-    <h3>Ready for acquisition</h3>
-    <p class="exds-browser-caption">Start Signal to attach live telemetry automatically, or import FlySight / ExoFDR files from removable media.</p>
-    <div class="workspace-actions">
-      <%= link_to new_flight_import_path(**browser_context, flight_id: @flight.id), class: "button-secondary", data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "upload", size: 17 %> Import data<% end %>
-      <%= link_to signal_path(flight_id: @flight.id), class: "button-primary", data: { turbo: false } do %><%= sillage_icon "radio", size: 17 %> Start Signal session<% end %>
-    </div>
-  </section>
-  <section class="exds-browser-editor-section">
-    <%= link_to "Run preflight check", flight_imu_check_path(@flight), class: "button-secondary", data: { turbo_frame: "_top" } %>
-    <%= render "imu_checks/history", checks: @flight.imu_checks.recent.limit(10) %>
-    <p class="exds-browser-caption">Signal inherits this Flight ID, aircraft, and installed Hangar assets. The microSD recorder remains authoritative.</p>
-  </section>
-<% else %>
-  <p class="exds-browser-caption">You can view this flight. Only its owner can edit it or attach data.</p>
 <% end %>
+<%= render "flights/log_notes", flight: @flight %>
+<%= render "flights/log_equipment", flight: @flight %>

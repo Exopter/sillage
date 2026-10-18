@@ -19,7 +19,7 @@ module Flights
         .take(PER_PAGE + 1).skip(([ number.to_i, 1 ].max - 1) * PER_PAGE)
       rows = ApplicationRecord.connection.select_all(query)
       flights = Flight.visible_to(@user).where(id: rows.select { |row| row["kind"] == "flight" }.map { |row| row["id"] })
-        .includes(:flight_import, :aircraft, :folder).index_by(&:id)
+        .includes(:flight_import, :aircraft, :folder, :fdr).index_by(&:id)
       imports = @user.flight_imports.where(id: rows.select { |row| row["kind"] == "import" }.map { |row| row["id"] })
         .includes(:aircraft).index_by(&:id)
       rows.filter_map { |row| (row["kind"] == "flight" ? flights : imports)[row["id"]] }
@@ -42,9 +42,9 @@ module Flights
       scope = scope.none if @filter == "set_aside"
       if @query.present?
         scope = scope.left_joins(:aircraft, :flight_import).where(
-          "flights.name ILIKE :q OR flights.code ILIKE :q OR flights.location ILIKE :q OR aircraft.registration ILIKE :q OR (flights.user_id = :user_id AND flight_imports.source_filename ILIKE :q)", q: pattern, user_id: @user.id)
+          "flights.name ILIKE :q OR flights.notes ILIKE :q OR flights.code ILIKE :q OR flights.location ILIKE :q OR aircraft.registration ILIKE :q OR (flights.user_id = :user_id AND flight_imports.source_filename ILIKE :q)", q: pattern, user_id: @user.id)
       end
-      scope.select("flights.id, 'flight' AS kind, flights.started_at, flights.created_at")
+      scope.select("flights.id, 'flight' AS kind, COALESCE(flights.flown_on + COALESCE(flights.flown_at, '00:00'::time), flights.started_at) AS started_at, flights.created_at")
     end
 
     def import_scope

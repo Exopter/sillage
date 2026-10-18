@@ -1,0 +1,26 @@
+<section class="exds-browser-editor-section" aria-label="Flight equipment">
+  <h3>Equipment</h3>
+  <dl class="exds-browser-metadata">
+    <div><dt>Aircraft</dt><dd><%= flight.display_aircraft %></dd></div>
+    <div><dt>FDR</dt><dd><%= flight.fdr&.display_name || (flight.flight_import ? "Recording attached" : "Not linked") %></dd></div>
+  </dl>
+  <% if flight.owned_by?(Current.user) %>
+    <%= link_to "Edit equipment", edit_flight_path(flight, **browser_context), class: "button-secondary", data: { turbo_frame: "flight-browser" } %>
+    <% if flight.recording_enabled? %>
+      <section class="exds-browser-editor-section" aria-label="Flight recording">
+        <h3>Recording</h3>
+        <% if flight.processing? %><p role="status">Recording is being processed.</p><% elsif flight.review? %><p role="status">The recording needs review. You can retry the import.</p><% end %>
+        <div class="workspace-actions">
+          <%= link_to new_flight_import_path(**browser_context, flight_id: flight.id), class: "button-secondary", data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "upload", size: 17 %> Import data<% end %>
+          <% if flight.logged? || flight.preparation? || flight.live? %>
+            <%= link_to signal_path(flight_id: flight.id), class: "button-secondary", data: { turbo: false } do %><%= sillage_icon "radio", size: 17 %> Start Signal session<% end %>
+          <% end %>
+          <% if flight.fdr&.embedded_controller || flight.imu_checks.exists? %>
+            <%= link_to "Run preflight check", flight_imu_check_path(flight, controller_id: flight.fdr&.embedded_controller&.id), class: "button-secondary", data: { turbo_frame: "_top" } %>
+          <% end %>
+        </div>
+        <%= render "imu_checks/history", checks: flight.imu_checks.recent.limit(10) %>
+      </section>
+    <% end %>
+  <% end %>
+</section>

@@ -12,6 +12,9 @@ module Signal
       @signal_session.observe_mavlink_identity!(system_id: @system_id, component_id: @component_id)
       return unless @signal_session.flight
 
+      # A log entry keeps its explicitly selected equipment, including no aircraft.
+      return if @signal_session.flight.flown_on.present? && @signal_session.flight.aircraft_id.nil?
+
       aircraft = @signal_session.flight.aircraft
 
       if aircraft

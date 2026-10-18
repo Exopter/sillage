@@ -4,14 +4,20 @@ class FlightImportsController < ApplicationController
   def new
     no_store
     @aircraft = Aircraft.active.ordered
-    @target_flight = Current.user.flights.find_by(id: params[:flight_id])
+    @target_flight = Current.user.flights.find(params[:flight_id]) if params[:flight_id].present?
+    if @target_flight && !@target_flight.recording_enabled?
+      redirect_to edit_flight_path(@target_flight), alert: "Link an FDR to this flight before importing a recording."
+      return
+    end
     load_browser(panel: "import", focus: @target_flight)
   end
 
   def create
-    target_flight = Current.user.flights.find_by(id: import_params[:target_flight_id])
+    target_flight = Current.user.flights.find(import_params[:target_flight_id]) if import_params[:target_flight_id].present?
+    if target_flight && !target_flight.recording_enabled?
+      raise FlySight::Error, "Link an FDR to this flight before importing a recording."
+    end
     aircraft = target_flight&.aircraft || Aircraft.find_by(id: import_params[:aircraft_id])
-    raise FlySight::Error, "Select an aircraft." unless aircraft
 
     service = import_params[:import_type] == "exofdr" ? ExoFdr::ImportService : FlySight::ImportService
     flight_import = service.create!(

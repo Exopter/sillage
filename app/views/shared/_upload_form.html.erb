@@ -20,8 +20,8 @@
   <% unless local_assigns[:target_flight] %>
     <div class="operations-form-grid">
       <label class="is-wide">
-        <span>Aircraft</span>
-        <%= form.collection_select :aircraft_id, @aircraft, :id, :display_name, { prompt: "Select aircraft" }, required: true %>
+        <span>Aircraft (optional)</span>
+        <%= form.collection_select :aircraft_id, @aircraft, :id, :display_name, { include_blank: "None" } %>
       </label>
     </div>
   <% end %>

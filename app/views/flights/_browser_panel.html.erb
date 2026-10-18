@@ -1,7 +1,7 @@
 <% title, description = {
-  "new" => ["New flight", "Prepare a flight, then attach recorded data or start a Signal session."],
+  "new" => ["New flight", "Only date and location are required."],
   "edit" => ["Edit flight", @flight&.code],
-  "preparation" => [@flight&.name, "#{@flight&.code} · Preparation"],
+  "preparation" => [@flight&.code, @flight&.description],
   "import" => ["Import flight data", "Add FlySight or ExoFDR files from removable media."]
 }.fetch(@browser_panel) %>
 <%= turbo_frame_tag "flight-preview", class: "exds-browser-preview", role: "region", aria: { label: "Flight details" } do %>

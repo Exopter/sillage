@@ -23,7 +23,7 @@ class FlightsController < ApplicationController
     @selected_entry = if params[:kind] == "import"
       Current.user.flight_imports.find(params[:id])
     else
-      Flight.visible_to(Current.user).includes(:aircraft, :folder).find(params[:id])
+      Flight.visible_to(Current.user).includes(:aircraft, :folder, :fdr).find(params[:id])
     end
     @destination_folders = FlightFolder.contributable_to(Current.user).ordered
     @preview_points = Flights::RoutePreview.call(@selected_entry)
@@ -31,7 +31,7 @@ class FlightsController < ApplicationController
   end
 
   def new
-    @flight = Current.user.flights.new(status: "preparation", name: "Prepared flight")
+    @flight = Current.user.flights.new(status: "logged", flown_on: Date.current)
     load_browser(panel: "new")
     @flight.folder = @folder if @folder&.contributable_by?(Current.user)
     load_form_options
@@ -40,12 +40,11 @@ class FlightsController < ApplicationController
   def create
     attributes = flight_params
     prepare_manual_location(attributes)
-    @flight = Current.user.flights.new(attributes.merge(status: "preparation"))
-    @flight.errors.add(:aircraft, "must be selected") unless @flight.aircraft
+    @flight = Current.user.flights.new(attributes.merge(status: "logged"))
 
-    if @flight.errors.empty? && @flight.save
+    if @flight.save(context: :logbook)
       @flight.capture_configuration!
-      redirect_to flight_path(@flight, **(params[:return_to_browser] == "1" ? browser_return_parameters : {})), notice: "Flight created in preparation."
+      redirect_to flight_path(@flight, **(params[:return_to_browser] == "1" ? browser_return_parameters : {})), notice: "Flight logged."
     else
       load_browser(panel: "new")
       load_form_options
@@ -60,7 +59,7 @@ class FlightsController < ApplicationController
 
   def show
     load_form_options
-    if @flight.preparation?
+    if @flight.logbook_view?
       load_browser(panel: "preparation", focus: @flight)
       render :preparation
       return
@@ -82,7 +81,10 @@ class FlightsController < ApplicationController
       return
     end
 
-    if @flight.update(attributes)
+    @flight.flown_on ||= @flight.display_flown_on if attributes.key?(:location) && !attributes.key?(:flown_on)
+    @flight.assign_attributes(attributes)
+    context = attributes.key?(:flown_on) || attributes.key?(:location) ? :logbook : nil
+    if @flight.save(context:)
       @flight.capture_configuration!(replace: true) if @flight.saved_change_to_aircraft_id?
       enqueue_video_processing(video_upload) if video_upload.present?
       destination = params[:return_to_browser] == "1" ? flights_path(**browser_return_parameters, selected: "flight:#{@flight.id}") : flight_path(@flight)
@@ -146,7 +148,7 @@ class FlightsController < ApplicationController
   end
 
   def set_flight
-    @flight = Flight.visible_to(Current.user).includes(:folder, :aircraft).find(params[:id])
+    @flight = Flight.visible_to(Current.user).includes(:folder, :aircraft, :fdr).find(params[:id])
   end
 
   def require_flight_owner
@@ -165,6 +167,10 @@ class FlightsController < ApplicationController
   def flight_params
     params.require(:flight).permit(
       :name,
+      :description,
+      :flown_on,
+      :flown_at,
+      :fdr_id,
       :visibility,
       :folder_id,
       :location,
@@ -186,6 +192,9 @@ class FlightsController < ApplicationController
     available_aircraft = Aircraft.active
     available_aircraft = available_aircraft.or(Aircraft.where(id: @flight.aircraft_id)) if @flight&.aircraft_id
     @aircraft = available_aircraft.ordered
+    available_fdrs = Assembly.where(assembly_type: "ExoFDR").not_retired
+    available_fdrs = available_fdrs.or(Assembly.where(id: @flight.fdr_id)) if @flight&.fdr_id
+    @fdrs = available_fdrs.order(:serial_number)
   end
 
   def prepare_manual_location(attributes, current_location: nil)

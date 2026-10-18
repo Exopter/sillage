@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_18_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_18_220000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -291,7 +291,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_210000) do
     t.float "duration_seconds"
     t.datetime "ended_at"
     t.datetime "exit_at"
+    t.bigint "fdr_id"
     t.bigint "flight_import_id"
+    t.time "flown_at"
+    t.date "flown_on"
     t.bigint "folder_id"
     t.datetime "landing_at"
     t.string "location"
@@ -317,7 +320,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_210000) do
     t.index ["aircraft_id"], name: "index_flights_on_aircraft_id"
     t.index ["code"], name: "index_flights_on_code", unique: true
     t.index ["exit_at"], name: "index_flights_on_exit_at"
+    t.index ["fdr_id"], name: "index_flights_on_fdr_id"
     t.index ["flight_import_id"], name: "index_flights_on_flight_import_id"
+    t.index ["flown_on"], name: "index_flights_on_flown_on"
     t.index ["folder_id"], name: "index_flights_on_folder_id"
     t.index ["started_at"], name: "index_flights_on_started_at"
     t.index ["status"], name: "index_flights_on_status"
@@ -744,6 +749,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_210000) do
   add_foreign_key "flight_imports", "flights", column: "target_flight_id"
   add_foreign_key "flight_imports", "users"
   add_foreign_key "flights", "aircraft"
+  add_foreign_key "flights", "assemblies", column: "fdr_id"
   add_foreign_key "flights", "flight_folders", column: "folder_id", on_delete: :nullify
   add_foreign_key "flights", "flight_imports"
   add_foreign_key "flights", "users"

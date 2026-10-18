@@ -133,7 +133,7 @@ class FlightFoldersFlowTest < ActionDispatch::IntegrationTest
     get new_flight_path(folder: @folder.id)
     assert_select "select[name='flight[folder_id]'] option[selected][value=?]", @folder.id.to_s
     assert_no_difference "FlightFolder.count" do
-      post flights_path, params: { flight: { name: "Prepared", aircraft_id: aircraft(:pilatus).id, folder_id: @folder.id, visibility: "team" } }
+      post flights_path, params: { flight: { flown_on: "2026-10-18", location: "Bouloc", name: "Prepared", aircraft_id: aircraft(:pilatus).id, folder_id: @folder.id, visibility: "team" } }
     end
     flight = @owner.flights.order(:id).last
     assert_equal @folder.id, flight.folder_id

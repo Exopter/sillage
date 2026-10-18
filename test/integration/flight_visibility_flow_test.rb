@@ -109,7 +109,7 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
     get new_flight_path
     assert_select "select[name='flight[visibility]'] option[selected][value='private']"
     [ nil, "team" ].each do |visibility|
-      attributes = { name: "Prepared mission", aircraft_id: aircraft(:pilatus).id }
+      attributes = { flown_on: "2026-10-18", location: "Bouloc", name: "Prepared mission", aircraft_id: aircraft(:pilatus).id }
       attributes[:visibility] = visibility if visibility
       assert_difference "Flight.count", 1 do
         post flights_path, params: { flight: attributes }
