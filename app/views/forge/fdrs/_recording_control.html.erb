@@ -1,0 +1,23 @@
+        <div class="signal-fdr-recording-control"
+             data-fdr-connectivity-target="recordingControl"
+             data-state="unavailable"
+             role="group"
+             aria-labelledby="recording-title">
+          <div class="signal-fdr-recording-copy">
+            <strong id="recording-title">Recording</strong>
+            <small data-fdr-connectivity-target="recordingResult" role="status" hidden></small>
+          </div>
+          <button type="button"
+                  class="signal-fdr-recording-switch"
+                  role="switch"
+                  aria-checked="false"
+                  aria-label="Recording mode unavailable"
+                  disabled
+                  data-action="fdr-connectivity#toggleRecording"
+                  data-fdr-connectivity-target="recordingButton">
+            <span class="signal-fdr-recording-switch-track" aria-hidden="true">
+              <span class="signal-fdr-recording-switch-thumb"></span>
+            </span>
+            <span class="signal-fdr-recording-switch-label" data-fdr-connectivity-target="recordingButtonLabel">Unavailable</span>
+          </button>
+        </div>

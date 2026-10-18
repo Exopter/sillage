@@ -23,9 +23,15 @@
         <div><dt>Health</dt><dd><%= @fdr&.signal_presence&.health_label || "Not reported" %></dd></div>
         <div><dt>Last synchronization</dt><dd><%= @fdr&.signal_presence&.synchronization_label || "Not reported" %></dd></div>
       </dl>
-      <% if @fdr %><%= link_to "Recorder files", files_forge_fdr_path(@assembly&.serial_number || @fdr.id), class: "button-primary" %><% end %>
+      <% if @fdr %><%= link_to "Connections", connectivity_forge_fdr_path(@assembly&.serial_number || @fdr.id), class: "button-primary" %><% end %>
     </section>
   </div>
+  <% if @assembly %>
+    <section id="components" class="workspace-panel">
+      <div class="workspace-panel-header"><h2>Components</h2><%= link_to "Manage in Hangar", hangar_assembly_path(@assembly, view: "components") %></div>
+      <%= render "hangar/assemblies/tree", assembly: @assembly %>
+    </section>
+  <% end %>
   <% if @assembly.nil? %>
     <section class="workspace-panel">
       <h2>Finish FDR setup</h2>

@@ -46,7 +46,7 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
       assert_equal assembly.name, assembly.serial_number
       follow_redirect!
       follow_redirect!
-      assert_select ".fdr-connectivity-heading h2", assembly.name
+      assert_select ".exds-recorder-heading p", assembly.name
       assert_select ".workspace-header", text: /S\/N|Hardware definition/, count: 0
     end
   end
@@ -101,7 +101,7 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
     get hangar_assembly_path(assembly)
     assert_redirected_to forge_fdr_path(assembly.serial_number)
     follow_redirect!
-    assert_select "a[href='#{edit_hangar_assembly_path(assembly)}']", text: "Edit configuration"
+    assert_select "a[href='#{edit_hangar_assembly_path(assembly)}']", text: "Edit in Hangar"
     assert_select ".workspace-details dt", text: "Internal Asset ID", count: 0
     assert_select ".workspace-details dt", text: "ECU ID", count: 0
   end

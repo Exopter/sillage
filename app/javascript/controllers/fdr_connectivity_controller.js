@@ -1874,6 +1874,32 @@ export default class extends TypedController {
     this.wifiRegistrationStatusTarget.hidden = !message
   }
 
+  toggleConnections() {
+    const details = this.element.querySelector("[data-forge-connections]")
+    if (details instanceof HTMLDetailsElement) { details.open = !details.open; if (details.open) details.scrollIntoView({ block: "nearest", behavior: "smooth" }) }
+  }
+
+  async pauseImports() {
+    try { await this.importQueue?.action("pause") } catch (error) { this.importQueue?.notice(/** @type {Error} */ (error).message) }
+  }
+
+  renderWorkspaceContext() {
+    const connection = this.element?.querySelector("[data-forge-connection]")
+    if (!connection) return
+    const transports = [this.usbIdentity && "USB-C", this.bleIdentity && "Bluetooth", this.wifiIdentity && "Wi-Fi"].filter(Boolean)
+    connection.textContent = !this.recorderStatusTarget.hidden ? this.recorderStatusTarget.textContent : transports.length ? `Connected via ${transports.join(" + ")}` : "Not connected"
+    const storage = this.element.querySelector("[data-forge-storage]")
+    if (storage) storage.textContent = transports.length ? this.storageTarget.textContent : ""
+    if (!this.importQueue?.client && !this.importQueue?.wifiReady) {
+      const status = this.element.querySelector("[data-forge-import-status]")
+      const detail = this.element.querySelector("[data-forge-import-detail]")
+      const pause = this.element.querySelector("[data-forge-pause]")
+      if (status) status.textContent = "Recordings unavailable"
+      if (detail) detail.textContent = transports.length ? "Connect via USB-C or Wi-Fi to load recordings." : "Connect to view recordings."
+      if (pause instanceof HTMLElement) pause.hidden = true
+    }
+  }
+
   renderRecorderInformation() {
     this.renderConnectionIdentities()
     const usb = this.usbIdentity
@@ -1904,6 +1930,7 @@ export default class extends TypedController {
       this.storageTarget.textContent = "—"
       this.lastSyncTarget.textContent = "—"
       this.renderRecorderAlert(null)
+      this.renderWorkspaceContext()
       return
     }
 
@@ -1952,6 +1979,7 @@ export default class extends TypedController {
     this.healthTarget.textContent = health
     this.storageTarget.textContent = storage
     this.lastSyncTarget.textContent = synchronization
+    this.renderWorkspaceContext()
     this.renderRecorderAlert(this.usbRecorderError || this.usbFacts?.issue || this.bleFacts?.issue || this.wifiFacts?.issue)
   }
 

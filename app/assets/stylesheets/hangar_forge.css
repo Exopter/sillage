@@ -626,60 +626,6 @@
   margin: 0 auto;
 }
 
-.fdr-breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin: -3px 0 15px;
-  color: var(--text-muted, #5f6c6b);
-  font: 600 10px/1 var(--ex-font-mono, ui-monospace, monospace);
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-.fdr-breadcrumb a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.fdr-breadcrumb a:hover {
-  color: var(--ex-state-live-text, #00615b);
-}
-
-.fdr-connectivity-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 16px;
-}
-
-.fdr-connectivity-heading h2 {
-  margin: 5px 0 5px;
-  color: var(--text-strong, #10181a);
-  font-size: clamp(25px, 2.7vw, 35px);
-  line-height: 1.05;
-}
-
-.fdr-connectivity-heading p {
-  margin: 0;
-  color: var(--text-muted, #5f6c6b);
-  font: 500 13px/1.4 var(--ex-font-mono, ui-monospace, monospace);
-}
-
-.fdr-connectivity-actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 8px;
-}
-
-.fdr-connectivity-heading .button-secondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .fdr-connection-strip {
   display: grid;
   grid-template-columns: 1.1fr 1fr 1fr .7fr .85fr auto;
@@ -730,35 +676,6 @@
   color: var(--text-muted, #5f6c6b);
   font: 600 9px/1 var(--ex-font-mono, ui-monospace, monospace);
   letter-spacing: .04em;
-}
-
-.fdr-recorder-tabs {
-  display: flex;
-  width: max-content;
-  max-width: 100%;
-  gap: 3px;
-  margin-bottom: 26px;
-  padding: 3px;
-  border: 1px solid var(--border-rule, #d4dfdc);
-  border-radius: 7px;
-  background: var(--surface-panel, #eef3f1);
-}
-
-.fdr-recorder-tabs a,
-.fdr-recorder-tabs span {
-  padding: 8px 17px;
-  border-radius: 5px;
-  color: var(--text-muted, #5f6c6b);
-  font: 600 10px/1 var(--ex-font-mono, ui-monospace, monospace);
-  letter-spacing: .07em;
-  text-decoration: none;
-  text-transform: uppercase;
-}
-
-.fdr-recorder-tabs .is-active {
-  background: var(--surface-card, #fff);
-  color: var(--text-strong, #10181a);
-  box-shadow: var(--shadow-sm, 0 7px 20px rgba(16, 24, 26, .07));
 }
 
 .fdr-wifi-layout {
@@ -1127,19 +1044,6 @@
 }
 
 @media (max-width: 760px) {
-  .fdr-connectivity-heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .fdr-connectivity-actions {
-    width: 100%;
-  }
-
-  .fdr-connectivity-actions .button-secondary {
-    flex: 1;
-    justify-content: center;
-  }
 
   .fdr-connection-strip {
     grid-template-columns: 1fr;

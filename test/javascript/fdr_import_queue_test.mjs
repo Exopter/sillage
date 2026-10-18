@@ -20,7 +20,7 @@ const partialSource = `export class PartialFdrFile {
 const partialURL = `data:text/javascript;base64,${Buffer.from(partialSource).toString("base64")}`
 const source = (await readFile(new URL("../../app/javascript/lib/fdr_import_queue.js", import.meta.url), "utf8"))
   .replace('"fdr_partial_file"', JSON.stringify(partialURL))
-const { FdrImportQueue, formatRecordingDuration, formatRecordingSize, formatRecordingDate, isShortRecording, isFilteredRecording } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`)
+const { FdrImportQueue, groupRecordings, formatRecordingDuration, formatRecordingSize, formatRecordingDate, isShortRecording, isFilteredRecording } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`)
 assert.equal(formatRecordingDuration(1122000), "18 min 42 s")
 assert.equal(formatRecordingDuration(29520000), "8 h 12 min 00 s")
 assert.equal(formatRecordingDuration(90061000), "25 h 01 min 01 s")
@@ -160,6 +160,7 @@ assert.equal(isShortRecording({ durationMs: 0 }), true)
 {
   class Node {
     children = []
+    dataset = {}
     textContent = ""
     append(...nodes) { this.children.push(...nodes) }
     replaceChildren() { this.children = [] }
@@ -167,32 +168,40 @@ assert.equal(isShortRecording({ durationMs: 0 }), true)
   }
   const body = new Node(), summary = new Node()
   globalThis.document = { createElement() { return new Node() } }
-  const element = { addEventListener() {}, querySelector(selector) { return selector === "[data-import-files]" ? body : summary }, querySelectorAll() { return [] } }
+  const element = { addEventListener() {}, querySelector(selector) { return selector === "[data-import-files]" ? body : selector === "[data-import-filter-summary]" ? summary : null }, querySelectorAll() { return [] } }
   const queue = new FdrImportQueue(element, () => {})
+  const rows = () => body.children.filter((row) => row.children.length === 6)
   queue.entries.set(1, {fileIndex:1, flags:0, sizeBytes:100, durationMs:59999})
   queue.entries.set(2, {fileIndex:2, flags:0, sizeBytes:100, durationMs:60000, startedAtUnixMs:1792324797500})
   queue.entries.set(3, {fileIndex:3, flags:0, sizeBytes:100, durationMs:null})
   queue.selected.add(1)
   queue.render()
-  assert.equal(body.children.length, 2)
+  assert.equal(rows().length, 2)
   assert.equal(queue.selected.has(1), false, "hidden recordings are removed from selection")
-  assert.match(summary.textContent, /1 recordings hidden by filters/)
-  assert.equal(body.children[1].children.length, 6)
-  assert.match(body.children[1].children[2].textContent, /2026/)
+  assert.match(summary.textContent, /2 of 3 loaded/)
+  assert.equal(rows()[0].children[1].children[0].textContent, "Unknown date")
   queue.showShort = true; queue.render()
-  assert.equal(body.children.length, 3)
-  assert.equal(body.children[2].children[5].textContent, "Manual import only")
+  assert.equal(rows().length, 3)
+  assert.equal(rows()[2].children[4].children[0].textContent, "Manual import only")
   queue.entries.delete(2); queue.entries.delete(3); queue.showShort = false; queue.render()
   assert.match(body.children[0].children[0].textContent, /No recordings match/)
   queue.entries.set(4, {fileIndex:4, flags:64, sizeBytes:100, durationMs:120000})
   queue.entries.set(5, {fileIndex:5, flags:128, sizeBytes:100, durationMs:120000})
   queue.selected.add(4); queue.render()
   assert.equal(queue.selected.has(4), false)
-  assert.match(summary.textContent, /3 recordings hidden/)
+  assert.match(summary.textContent, /0 of 3 loaded/)
   queue.showShort = true; queue.render()
-  assert.equal(body.children.length, 3)
-  assert.match(body.children[1].children[5].textContent, /No significant GPS movement/)
-  assert.equal(body.children[1].children[0].children[0].disabled, false, "manual selection remains available")
+  assert.equal(rows().length, 3)
+  assert.equal(rows()[1].children[4].children[0].textContent, "No GPS movement")
+  assert.equal(rows()[1].children[0].children[0].disabled, false, "manual selection remains available")
+  queue.entries.set(6, {fileIndex:6, flags:2, sizeBytes:100, durationMs:120000})
+  queue.filter = "imported"; queue.render()
+  assert.equal(rows().length, 1)
+  assert.equal(rows()[0].children[0].children[0].disabled, true)
+  queue.filter = "all"; queue.search = "fdr000004"; queue.render()
+  assert.equal(rows().length, 1)
+  assert.match(rows()[0].children[1].children[1].textContent, /000004/)
+
   delete globalThis.document
 }
 
@@ -200,3 +209,26 @@ assert.equal(isFilteredRecording({durationMs:120000, flags:64}), true)
 assert.equal(isFilteredRecording({durationMs:120000, flags:128}), true)
 assert.equal(isFilteredRecording({durationMs:null, flags:0}), false)
 assert.equal(isFilteredRecording({durationMs:120000, flags:4}), false, "explicit skip remains visible")
+
+const recording = (fileIndex, date, flags = 0) => ({ fileIndex, startedAtUnixMs: date ? Date.parse(date) : null, flags, durationMs: 120000, sizeBytes: 100, bootId: 1 })
+const catalogue = [recording(10, "2026-10-18T16:00:00Z"), recording(9, null), recording(8, "2026-10-18T12:00:00Z"), recording(7, null), recording(6, "2026-10-17T09:00:00Z"), recording(5, null)]
+const groups = groupRecordings(catalogue.toReversed(), "UTC")
+assert.deepEqual(groups.map(g => g.rows.map(r => r.entry.fileIndex)), [[10, 9, 8], [7], [6], [5]])
+assert.equal(groups[0].label, "18 Oct 2026")
+assert.equal(groups[0].rows[1].bounds, "Between 12:00 and 16:00")
+assert.equal(groups[1].label, "17 Oct 2026 to 18 Oct 2026")
+assert.equal(groups[1].uncertain, true)
+assert.equal(groups[3].label, "Before 17 Oct 2026")
+assert.equal(groupRecordings([recording(2, null), recording(1, "2026-10-18T12:00:00Z")], "UTC")[0].label, "After 18 Oct 2026")
+assert.equal(groupRecordings([recording(2, null), recording(1, null)], "UTC").length, 1)
+assert.equal(groupRecordings([], "UTC").length, 0)
+assert.equal(formatRecordingDate(1e20), "Unknown date")
+assert.equal(formatRecordingDate(-1), "Unknown date")
+assert.equal(formatRecordingDate(NaN), "Unknown date")
+const midnight = [recording(3, "2026-10-18T00:30:00Z"), recording(2, null), recording(1, "2026-10-17T23:30:00Z")]
+assert.equal(groupRecordings(midnight, "UTC").length, 3)
+assert.equal(groupRecordings(midnight, "Europe/Paris").length, 1, "day grouping follows the viewer timezone")
+const conflict = groupRecordings([recording(3, "2026-10-17T09:00:00Z"), recording(2, null), recording(1, "2026-10-18T09:00:00Z")], "UTC")
+assert.match(conflict[1].rows[0].bounds, /timestamps conflict/)
+assert.deepEqual(conflict.flatMap(g => g.rows.map(r => r.entry.fileIndex)), [3, 2, 1])
+console.log("FDR chronological grouping, uncertainty, timezone and catalogue filter tests passed")

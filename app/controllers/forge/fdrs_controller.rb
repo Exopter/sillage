@@ -5,6 +5,8 @@ module Forge
     before_action :set_fdr, only: %i[show update parts files connectivity activity calibration]
     before_action :load_fdr_context, only: %i[show parts files connectivity activity calibration]
 
+    before_action :load_workspace
+
     def index
       @assemblies = Assembly.where(assembly_type: "ExoFDR").includes(:fdr_functional_configuration,
         active_fdr_board_installation: { embedded_controller: [ :signal_presence, :recorder_connections ] }).ordered
@@ -12,6 +14,9 @@ module Forge
       @unassigned_fdrs = @fdrs.reject { |fdr| fdr.assembly || fdr.fdr_board_installations.exists? }
       live_fdrs = @fdrs.select { |fdr| fdr.assembly && fdr.signal_presence&.fresh? }
       @default_wifi_configuration_fdr = live_fdrs.one? ? live_fdrs.first : (@fdrs.one? ? @fdrs.first : nil)
+      return if params[:connect] == "1"
+      selected = @assemblies.find { |assembly| assembly.serial_number == session[:forge_recorder] } || @assemblies.find { |assembly| assembly.id == @default_wifi_configuration_fdr&.assembly&.id } || @assemblies.first
+      redirect_to files_forge_fdr_path(selected.serial_number) if selected
     end
 
     def show
@@ -45,8 +50,7 @@ module Forge
 
     def parts
       return redirect_to forge_fdr_path(@fdr) unless @assembly
-      @available_parts = @assembly.serviceability_state == "retired" ? Part.none : Part.available.joins(:function).where.not(functions: { code: "CONTROLLER" }).includes(:function).ordered
-      @available_assemblies = Assembly.none
+      redirect_to forge_fdr_path(@assembly.serial_number, anchor: "components")
     end
 
     def calibration
@@ -82,6 +86,11 @@ module Forge
       @controller_part = @fdr&.part
     end
 
+    def load_workspace
+      @workspace_recorders = Assembly.where(assembly_type: "ExoFDR").includes(:fdr_functional_configuration, active_fdr_board_installation: :embedded_controller).ordered
+      session[:forge_recorder] = @assembly.serial_number if @assembly
+    end
+
     def load_setup_options
       @available_boards = EmbeddedController.where.not(id: FdrBoardInstallation.active.select(:embedded_controller_id)).ordered
       @available_fdrs = Assembly.not_retired.where(assembly_type: "ExoFDR").where.not(id: FdrBoardInstallation.active.select(:assembly_id)).ordered
@@ -91,14 +100,16 @@ module Forge
     def historical_records(model, timestamp)
       return model.where(embedded_controller_id: @fdr.id) unless @assembly
 
-      table = model.table_name
-      model.where(<<~SQL, @assembly.id)
-        EXISTS (SELECT 1 FROM fdr_board_installations bindings
-          WHERE bindings.assembly_id = ?
-            AND bindings.embedded_controller_id = #{table}.embedded_controller_id
-            AND bindings.installed_at <= #{table}.#{timestamp}
-            AND (bindings.removed_at IS NULL OR bindings.removed_at > #{table}.#{timestamp}))
-      SQL
+      bindings = FdrBoardInstallation.arel_table
+      records = model.arel_table
+      period = bindings[:installed_at].lteq(records[timestamp])
+        .and(bindings[:removed_at].eq(nil).or(bindings[:removed_at].gt(records[timestamp])))
+      matching = bindings.project(Arel.sql("1")).where(
+        bindings[:assembly_id].eq(@assembly.id)
+          .and(bindings[:embedded_controller_id].eq(records[:embedded_controller_id]))
+          .and(period)
+      )
+      model.where(matching.exists)
     end
   end
 end

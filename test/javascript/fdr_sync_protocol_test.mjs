@@ -17,10 +17,10 @@ const connectivitySource = await readFile(
   new URL("../../app/javascript/controllers/fdr_connectivity_controller.js", import.meta.url),
   "utf8"
 )
-const connectivityViewSource = await readFile(
+const connectivityViewSource = (await readFile(
   new URL("../../app/views/forge/fdrs/_connection_manager.html.erb", import.meta.url),
   "utf8"
-)
+)) + await readFile(new URL("../../app/views/forge/fdrs/_recording_control.html.erb", import.meta.url), "utf8")
 const wifiConnectivitySource = await readFile(
   new URL("../../app/javascript/controllers/fdr_wifi_configuration_controller.js", import.meta.url),
   "utf8"

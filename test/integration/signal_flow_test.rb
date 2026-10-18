@@ -484,19 +484,19 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-fdr-connectivity-target='bleDetail'][hidden]"
     assert_select "[data-fdr-connectivity-target='wifiNotice'][data-state='status'][role='status'][hidden]"
     assert_select "[data-fdr-connectivity-target='wifiDetail'][hidden]", text: ""
-    assert_select ".signal-fdr-overview [data-fdr-connectivity-target='recorderDevice']", text: "—"
+    assert_select ".signal-fdr-overview [data-fdr-connectivity-target='recorderDevice']", text: "Unavailable"
     assert_select "span[data-fdr-connectivity-target='recorderStatus'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderSource'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderAlert'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderAlertTechnical'][hidden]"
     assert_select ".signal-fdr-status-list > div", count: 5
     assert_equal %w[Recorder Synchronization Health Storage], css_select(".signal-fdr-status-list > div:not([hidden]) dt").map(&:text)
-    assert_select "[data-fdr-connectivity-target='recorderEcu']", text: "—"
+    assert_select "[data-fdr-connectivity-target='recorderEcu']", text: "Unavailable"
     assert_select ".signal-fdr-status-list dt", text: "Security", count: 0
     assert_select ".signal-fdr-status-list > div:first-child" do
-      assert_select "[data-fdr-connectivity-target='recorderDevice']", text: "—"
-      assert_select ".signal-fdr-firmware[data-fdr-connectivity-target='recorderFirmwareGroup'][hidden]", text: "(—)"
-      assert_select "[data-fdr-connectivity-target='recorderFirmware']", text: "—"
+      assert_select "[data-fdr-connectivity-target='recorderDevice']", text: "Unavailable"
+      assert_select ".signal-fdr-firmware[data-fdr-connectivity-target='recorderFirmwareGroup'][hidden]", text: "(Unavailable)"
+      assert_select "[data-fdr-connectivity-target='recorderFirmware']", text: "Unavailable"
     end
     assert_select ".signal-fdr-overview-head .signal-fdr-recording-control[data-fdr-connectivity-target='recordingControl'][data-state='unavailable'][role='group']", count: 1 do
       assert_select "strong#recording-title", text: "Recording"
@@ -509,10 +509,8 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
       end
       assert_select "[data-fdr-connectivity-target='recordingResult'][role='status'][hidden]", text: ""
     end
-    assert_select ".signal-fdr-status-list dd.signal-fdr-synchronization" do
-      synchronization_children = css_select(".signal-fdr-status-list dd.signal-fdr-synchronization > *")
-      assert_equal %w[lastSync syncProgress syncNotice], synchronization_children.map { |node| node["data-fdr-connectivity-target"] }
-      assert_select "[data-fdr-connectivity-target='lastSync']", text: "—"
+    assert_select "[data-fdr-connectivity-target='lastSync']", text: "Unavailable"
+    assert_select ".exds-recorder-progress" do
       assert_select "progress[data-fdr-connectivity-target='syncProgress'][aria-label='Synchronization progress'][hidden]"
       assert_select "[data-fdr-connectivity-target='syncNotice'][data-state='status'][role='status'][hidden]"
       assert_select "[data-fdr-connectivity-target='syncDetail'][hidden]"
@@ -545,7 +543,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     get shortcut["href"]
 
     assert_response :success
-    assert_select "a.is-active[aria-current='page'][href='#{connectivity_forge_fdr_path(@fdr)}']", text: "Connectivity"
+    assert_select ".exds-recorder-nav a[aria-current='page']", text: "Device"
   end
 
   test "explicit Signal home does not reopen another active session" do

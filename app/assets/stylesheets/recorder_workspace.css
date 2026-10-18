@@ -1,0 +1,114 @@
+/* Recorder workspace: shared sidebar, grouped catalogue and connection context. */
+.exds-recorder-page .sillage-content { padding: 0; }
+.exds-recorder-page .sillage-content > div { width: 100%; max-width: none; margin: 0; padding: 0; }
+.exds-recorder-workspace { display: grid; grid-template-columns: 244px minmax(0, 1fr); min-height: calc(100vh - 56px); color: var(--ex-carbon-900); font-family: var(--ex-font-sans); }
+.exds-recorder-sidebar { padding: var(--ex-space-8) var(--ex-space-3) var(--ex-space-6); background: var(--ex-vapor-50); border-right: 1px solid var(--ex-line-200); display: flex; flex-direction: column; gap: var(--ex-space-6); }
+.exds-recorder-sidebar > small { padding: 0 var(--ex-space-3); font-family: var(--ex-font-mono); color: var(--ex-graphite-600); font-size: 12px; }
+.exds-recorder-switcher { position: relative; }
+.exds-recorder-switcher summary { display: flex; align-items: center; justify-content: space-between; gap: var(--ex-space-2); padding: var(--ex-space-3); cursor: pointer; border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-instrument); background: var(--ex-white); list-style: none; }
+.exds-recorder-switcher summary::-webkit-details-marker { display: none; }
+.exds-recorder-switcher summary strong { font-size: 13px; overflow-wrap: anywhere; }
+.exds-recorder-switcher summary small { display: block; color: var(--ex-graphite-600); margin-top: var(--ex-space-1); font-size: 12px; }
+.exds-recorder-switcher > nav { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 10; padding: var(--ex-space-2); border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-surface); background: var(--ex-white); box-shadow: var(--ex-shadow-panel); }
+.exds-recorder-switcher > nav a { display: block; padding: var(--ex-space-3) var(--ex-space-2); font-size: 13px; color: var(--ex-carbon-900); text-decoration: none; overflow-wrap: anywhere; }
+.exds-recorder-switcher > nav a:hover { background: var(--ex-vapor-100); }
+.exds-recorder-nav { display: grid; gap: var(--ex-space-2); }
+.exds-recorder-nav a { display: flex; align-items: center; gap: var(--ex-space-4); min-height: 48px; padding: var(--ex-space-3) var(--ex-space-4); color: var(--ex-carbon-700); border-radius: var(--ex-radius-instrument); border-left: 3px solid transparent; font-size: 14px; text-decoration: none; }
+.exds-recorder-nav a:hover { background: var(--ex-vapor-100); }
+.exds-recorder-nav a[aria-current="page"] { background: var(--ex-state-live-bg); color: var(--ex-state-live-text); border-left-color: var(--ex-aqua-500); font-weight: 700; }
+.exds-recorder-nav--secondary { margin-top: auto; border-top: 1px solid var(--ex-line-200); padding-top: var(--ex-space-4); }
+.exds-recorder-content { min-width: 0; padding: var(--ex-space-8) var(--ex-space-10); }
+.exds-recorder-content > .fdr-connectivity { width: 100%; max-width: none; margin: 0; }
+.exds-recorder-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--ex-space-4); margin-bottom: var(--ex-space-6); }
+.exds-recorder-heading h1 { font-size: 32px; line-height: 1.2; letter-spacing: -.025em; margin: 0 0 var(--ex-space-2); }
+.exds-recorder-heading p { margin: 0; color: var(--ex-graphite-600); font-size: 15px; }
+.exds-recorder-heading .signal-fdr-recording-control { background: var(--ex-white); }
+.exds-recorder-manager { border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }
+.exds-recorder-context { display: flex; align-items: center; gap: var(--ex-space-6); padding: var(--ex-space-5) var(--ex-space-6); border: 1px solid var(--ex-line-200); background: var(--ex-white); border-radius: var(--ex-radius-instrument); margin-bottom: var(--ex-space-5); }
+.exds-recorder-context > div { display: flex; align-items: center; gap: var(--ex-space-4); min-width: 0; }
+.exds-recorder-context > div:first-child { flex: 1; }
+.exds-recorder-context strong { font-size: 14px; }
+.exds-recorder-context small { display: block; color: var(--ex-graphite-600); margin-top: var(--ex-space-1); font-size: 12px; }
+.exds-recorder-context > div > svg { color: var(--ex-state-live-text); flex-shrink: 0; }
+.exds-recorder-context > button { flex-shrink: 0; }
+.exds-recorder-manager > .signal-fdr-overview { padding: 0; background: transparent; border: 0; }
+.exds-recorder-manager .signal-fdr-recorder-alert, .exds-recorder-manager .signal-fdr-onboarding { margin-bottom: var(--ex-space-4); }
+.exds-recorder-connections { margin-bottom: var(--ex-space-5); }
+.exds-recorder-connections > summary { cursor: pointer; font-size: 14px; padding: var(--ex-space-3) 0; color: var(--ex-state-live-text); }
+.exds-recorder-connections .signal-fdr-transports { border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-surface); background: var(--ex-white); }
+.exds-recorder-progress:empty, .exds-recording-notice:empty { display: none; }
+.exds-recorder-progress { margin-bottom: var(--ex-space-4); font-size: 13px; color: var(--ex-graphite-600); }
+.exds-recorder-progress .signal-fdr-transport-notice { margin-top: var(--ex-space-2); }
+.exds-recording-catalog { min-width: 0; }
+.exds-recording-toolbar { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: var(--ex-space-3); margin: var(--ex-space-5) 0 var(--ex-space-4); }
+.exds-recording-filters { display: flex; flex-wrap: wrap; gap: var(--ex-space-2); }
+.exds-recording-filters button { min-height: 38px; padding: var(--ex-space-2) var(--ex-space-4); border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-instrument); background: var(--ex-white); color: var(--ex-carbon-900); font: inherit; font-size: 13px; cursor: pointer; }
+.exds-recording-filters button[aria-pressed="true"] { background: var(--ex-state-live-bg); color: var(--ex-state-live-text); }
+.exds-recording-search { display: flex; align-items: center; gap: var(--ex-space-2); padding: 0 var(--ex-space-3); background: var(--ex-white); border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-instrument); color: var(--ex-graphite-600); }
+.exds-recording-search input { width: 230px; max-width: 100%; min-height: 38px; padding: 0; border: 0; background: transparent; color: var(--ex-carbon-900); font: inherit; font-size: 14px; }
+.exds-recording-search:focus-within { outline: 2px solid var(--ex-aqua-500); outline-offset: 2px; }
+.exds-recording-search input:focus { outline: 0; }
+.exds-recording-selection { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ex-space-3); padding: var(--ex-space-3) var(--ex-space-4); margin-bottom: var(--ex-space-3); background: var(--ex-state-live-bg); border-radius: var(--ex-radius-instrument); font-size: 14px; }
+.exds-recording-selection[hidden] { display: none; }
+.exds-recording-selection > strong { margin-right: auto; }
+.exds-recording-table-wrap { overflow-x: auto; border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-instrument); background: var(--ex-white); }
+.exds-recording-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+.exds-recording-table th { color: var(--ex-graphite-600); font: 600 11px var(--ex-font-mono); letter-spacing: .06em; text-transform: uppercase; padding: var(--ex-space-4) var(--ex-space-5); }
+.exds-recording-table td { padding: var(--ex-space-4) var(--ex-space-5); border-top: 1px solid var(--ex-line-200); vertical-align: middle; font-variant-numeric: tabular-nums; }
+.exds-recording-table th:first-child, .exds-recording-table td:first-child { width: 44px; padding-right: 0; }
+.exds-recording-table input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--ex-state-live-text); cursor: pointer; }
+.exds-recording-table input:disabled { cursor: default; }
+.exds-recording-table td:nth-child(3), .exds-recording-table td:nth-child(4) { white-space: nowrap; }
+.exds-recording-table td:last-child { width: 44px; padding-left: 0; }
+.exds-recording-table tr[data-selected="true"] { background: var(--ex-state-live-bg); }
+.exds-recording-table .exds-recording-group th { background: var(--ex-vapor-50); border-top: 1px solid var(--ex-line-200); padding: var(--ex-space-3) var(--ex-space-5); color: var(--ex-carbon-900); font: 600 13px var(--ex-font-sans); text-transform: none; letter-spacing: 0; }
+.exds-recording-group small { margin-left: var(--ex-space-4); color: var(--ex-graphite-600); font-size: 12px; font-weight: 400; }
+.exds-recording-name { display: block; color: var(--ex-graphite-600); font: 12px var(--ex-font-mono); margin-top: var(--ex-space-2); }
+.exds-recording-bound { display: block; font-size: 12px; color: var(--ex-graphite-600); margin-top: var(--ex-space-1); }
+.exds-recording-state { display: flex; align-items: center; gap: var(--ex-space-2); font-size: 13px; }
+.exds-recording-state svg { flex-shrink: 0; color: var(--ex-graphite-500); }
+.exds-recording-state[data-state="imported"], .exds-recording-state[data-state="imported"] svg { color: var(--ex-state-live-text); }
+.exds-recording-state[data-state="damaged"] { color: var(--ex-state-fault-text); }
+.exds-recording-menu { position: relative; }
+.exds-recording-menu summary { cursor: pointer; list-style: none; display: grid; place-items: center; min-width: 32px; min-height: 32px; color: var(--ex-graphite-600); }
+.exds-recording-menu summary::-webkit-details-marker { display: none; }
+.exds-recording-menu > div { position: absolute; right: 0; bottom: 100%; z-index: 5; min-width: 180px; background: var(--ex-white); border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-instrument); box-shadow: var(--ex-shadow-panel); padding: var(--ex-space-1); }
+.exds-recording-menu button { display: block; width: 100%; text-align: left; padding: var(--ex-space-3); background: transparent; border: 0; font: 13px var(--ex-font-sans); color: var(--ex-carbon-900); cursor: pointer; }
+.exds-recording-menu button:hover { background: var(--ex-vapor-100); }
+.exds-recording-footer { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ex-space-4); margin-top: var(--ex-space-5); color: var(--ex-graphite-600); font-size: 12px; }
+.exds-recording-footer > label { display: flex; align-items: center; gap: var(--ex-space-2); cursor: pointer; }
+.exds-recording-footer > span:last-child { margin-left: auto; }
+.exds-recording-note { margin-top: var(--ex-space-3); font-size: 12px; color: var(--ex-graphite-600); }
+.exds-recording-notice { font-size: 13px; padding: var(--ex-space-3) 0; color: var(--ex-state-live-text); }
+.exds-recording-empty { padding: var(--ex-space-10) var(--ex-space-6); text-align: center; background: var(--ex-white); border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-surface); color: var(--ex-graphite-600); }
+.exds-recorder-content .workspace-panel { box-shadow: none; }
+.exds-recorder-workspace :is(button, a, summary, input):focus-visible { outline: 2px solid var(--ex-state-live-text); outline-offset: 3px; }
+@media (max-width: 1100px) {
+  .exds-recorder-workspace { grid-template-columns: 210px minmax(0, 1fr); }
+  .exds-recorder-content { padding: var(--ex-space-6); }
+  .exds-recorder-context { flex-wrap: wrap; gap: var(--ex-space-3); }
+  .exds-recording-table td, .exds-recording-table th { padding-left: var(--ex-space-3); padding-right: var(--ex-space-3); }
+}
+@media (max-width: 760px) {
+  .exds-recorder-workspace { display: block; }
+  .exds-recorder-sidebar { border-right: 0; border-bottom: 1px solid var(--ex-line-200); padding: var(--ex-space-3); gap: var(--ex-space-3); }
+  .exds-recorder-sidebar > small { display: none; }
+  .exds-recorder-nav { display: flex; flex-wrap: wrap; gap: var(--ex-space-1); }
+  .exds-recorder-nav a { min-height: 40px; padding: var(--ex-space-2) var(--ex-space-3); gap: var(--ex-space-2); }
+  .exds-recorder-nav--secondary { border: 0; padding: 0; margin: 0; }
+  .exds-recorder-content { padding: var(--ex-space-5) var(--ex-space-3); }
+  .exds-recorder-heading h1 { font-size: 26px; }
+  .exds-recording-table { min-width: 640px; }
+  .exds-recording-search, .exds-recording-search input { width: 100%; }
+  .exds-recorder-context { padding: var(--ex-space-4); }
+  .exds-recorder-context > div:first-child { flex-basis: 100%; }
+}
+
+.exds-recorder-workspace [hidden] { display: none !important; }
+.exds-recorder-connections:not([open]) { display: none; }
+.exds-recorder-manager .exds-recording-footer [data-import-action="pause"] { display: none; }
+.exds-recording-state::before { content: ""; width: 12px; height: 12px; border: 1px solid currentColor; border-radius: 50%; flex-shrink: 0; }
+.exds-recording-state[data-state="imported"]::before { content: "✓"; width: 16px; height: 16px; display: grid; place-items: center; background: var(--ex-state-live-text); color: var(--ex-white); font-size: 11px; }
+@media (min-width: 761px) {
+  .exds-recorder-sidebar { position: sticky; top: 57px; height: calc(100vh - 57px); box-sizing: border-box; align-self: start; overflow-y: auto; }
+}

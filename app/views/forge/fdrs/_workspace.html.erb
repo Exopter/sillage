@@ -1,0 +1,32 @@
+<% content_for :body_class, "exds-recorder-page" %>
+<% identifier = @assembly&.serial_number || @fdr&.id %>
+<% active = action_name == "files" ? :recordings : action_name == "calibration" ? :calibration : action_name == "activity" ? :history : :device %>
+<div class="exds-recorder-workspace">
+  <aside class="exds-recorder-sidebar" aria-label="Forge workspace">
+    <small>FORGE</small>
+    <details class="exds-recorder-switcher">
+      <summary aria-label="Choose recorder">
+        <span><strong><%= @assembly&.display_name || @fdr&.display_name || "Select a recorder" %></strong><small><%= @assembly ? "#{@assembly.functional_configuration} · #{@assembly.assembly_method_label}" : "Recorder workspace" %></small></span>
+        <%= sillage_icon "chevron-down", size: 16 %>
+      </summary>
+      <nav aria-label="Recorders">
+        <% @workspace_recorders.each do |recorder| %>
+          <%= link_to recorder.display_name, files_forge_fdr_path(recorder.serial_number), aria: { current: ("true" if recorder == @assembly) } %>
+        <% end %>
+        <%= link_to "Connect a new recorder", forge_path(connect: 1) %>
+      </nav>
+    </details>
+    <% if identifier %>
+      <nav class="exds-recorder-nav" aria-label="FDR sections">
+        <% [["Recordings", "file-text", files_forge_fdr_path(identifier), :recordings], ["Device", "code", forge_fdr_path(identifier), :device], ["Calibration", "settings", calibration_forge_fdr_path(identifier), :calibration]].each do |label, icon, path, tab| %>
+          <%= link_to path, aria: { current: ("page" if active == tab) } do %><%= sillage_icon icon, size: 18 %><span><%= label %></span><% end %>
+        <% end %>
+      </nav>
+    <% end %>
+    <nav class="exds-recorder-nav exds-recorder-nav--secondary" aria-label="Recorder management">
+      <% if identifier %><%= link_to activity_forge_fdr_path(identifier), aria: { current: ("page" if active == :history) } do %><%= sillage_icon "clock", size: 18 %><span>History</span><% end %><% end %>
+      <%= link_to forge_path(connect: 1) do %><%= sillage_icon "plus", size: 18 %><span>Add recorder</span><% end %>
+    </nav>
+  </aside>
+  <div class="exds-recorder-content"><%= yield %></div>
+</div>

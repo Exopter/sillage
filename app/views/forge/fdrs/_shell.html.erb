@@ -1,29 +1,18 @@
-<% identifier = @assembly&.serial_number || @fdr.id %>
-<% label = @fdr&.display_name || @assembly.display_name %>
-<nav class="fdr-breadcrumb" aria-label="FDR breadcrumb">
-  <%= link_to "Forge", forge_path %>
-  <%= sillage_icon "chevron-right", size: 13 %>
-  <%= link_to "FDRs", forge_fdrs_path %>
-  <%= sillage_icon "chevron-right", size: 13 %>
-  <span aria-current="page"><%= label %></span>
-</nav>
-<header class="fdr-connectivity-heading">
+<% label = @assembly&.display_name || @fdr&.display_name %>
+<header class="exds-recorder-heading">
   <div>
-    <span class="section-eyebrow">FDR</span>
-    <h2><%= label %></h2>
-    <p><%= @fdr&.device_model %><% if @fdr&.device_model.present? && @assembly&.functional_configuration %> · <% end %><%= @assembly&.functional_configuration %><% if @assembly %> · <%= @assembly.assembly_method_label %><% end %><% if @aircraft %> · Installed in <%= @aircraft.registration %><% end %></p>
+    <h1><%= { overview: "Device", files: "Recordings", connectivity: "Connections", calibration: "Calibration", activity: "History" }.fetch(active_tab, "Device") %></h1>
+    <p><%= label %></p>
   </div>
-  <% if active_tab == :connectivity %>
-    <div class="fdr-connectivity-actions">
+  <% if active_tab == :files %>
+    <%= render "recording_control" %>
+  <% elsif active_tab == :connectivity %>
+    <div class="workspace-actions">
       <button type="button" class="button-secondary" data-fdr-wifi-configuration-target="usbButton" data-action="fdr-wifi-configuration#connectUsb">Connect USB-C</button>
       <button type="button" class="button-secondary" data-fdr-wifi-configuration-target="bleButton" data-action="fdr-wifi-configuration#connectBle">Connect Bluetooth</button>
+      <%= link_to "Back to device", forge_fdr_path(@assembly&.serial_number || @fdr.id), class: "button-secondary" %>
     </div>
+  <% elsif active_tab == :overview && @assembly %>
+    <%= link_to "Edit in Hangar", edit_hangar_assembly_path(@assembly), class: "button-secondary" %>
   <% end %>
-  <% if @assembly %><div class="fdr-connectivity-actions"><%= link_to "Edit configuration", edit_hangar_assembly_path(@assembly), class: "button-secondary" %></div><% end %>
 </header>
-<nav class="fdr-recorder-tabs" aria-label="FDR sections">
-  <% { overview: ["Overview", forge_fdr_path(identifier)], parts: ["Parts", parts_forge_fdr_path(identifier)], files: ["Files", files_forge_fdr_path(identifier)], connectivity: ["Connectivity", connectivity_forge_fdr_path(identifier)], calibration: ["Calibration", calibration_forge_fdr_path(identifier)], activity: ["Activity", activity_forge_fdr_path(identifier)] }.each do |key, (name, path)| %>
-    <% next if key == :parts && !@assembly %>
-    <%= link_to name, path, class: ("is-active" if active_tab == key), aria: { current: ("page" if active_tab == key) } %>
-  <% end %>
-</nav>

@@ -45,9 +45,11 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
 
     get connectivity_forge_fdr_path(recorder)
     assert_response :success
-    assert_select "h2", text: "FDR setup required"
-    assert_select ".fdr-connectivity-heading", text: /FDR setup required/
-    assert_select ".fdr-connectivity-heading", text: /XIAO ESP32S3/
+    assert_select "h1", text: "Connections"
+    assert_select ".exds-recorder-heading", text: /FDR setup required/
+    get forge_fdr_path(recorder)
+    assert_response :success
+    assert_select ".workspace-details", text: /XIAO ESP32S3/
   end
 
   test "registration is idempotent for an already known physical recorder" do

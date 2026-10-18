@@ -70,13 +70,15 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     get hangar_assembly_path(@assembly)
     assert_redirected_to forge_fdr_path(@assembly.serial_number)
     follow_redirect!
-    assert_select "h2", @assembly.serial_number
+    assert_select ".exds-recorder-heading p", @assembly.serial_number
     assert_select ".workspace-details", text: /Wi-Fi hostname.*#{@assembly.serial_number.downcase}/m
     assert_select ".workspace-details dt", text: "ECU ID", count: 0
-    assert_select ".fdr-recorder-tabs", text: /Overview.*Parts.*Files.*Connectivity.*Calibration.*Activity/
+    assert_select ".exds-recorder-nav", text: /Recordings.*Device.*Calibration/
     assert_select ".workspace-panel", text: /FDR identity/
     assert_select ".workspace-details dt", text: "Hardware platform", count: 1
     get parts_forge_fdr_path(@assembly.serial_number)
+    assert_redirected_to forge_fdr_path(@assembly.serial_number, anchor: "components")
+    follow_redirect!
     assert_response :success
     assert_select ".assembly-function", "GPS"
     assert_select "main", text: /#{@fdr.device_id}/, count: 0
@@ -90,6 +92,31 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "input[name='function[code]']", count: 0
     assert_select "input[name='function[name]']", count: 1
+  end
+
+  test "Forge opens one recorder catalogue and remembers the selected recorder" do
+    sign_in_as users(:operator)
+    get files_forge_fdr_path(@assembly.serial_number)
+    assert_response :success
+    assert_select "h1", "Recordings"
+    assert_select "[data-fdr-import-queue]", count: 1
+    assert_select "[data-controller='fdr-connectivity'][data-fdr-connectivity-expected-device-id-value='#{@fdr.device_id}']", count: 1
+    assert_select ".exds-recorder-nav a[aria-current='page']", text: "Recordings"
+    assert_select ".exds-recorder-nav a", text: "Files", count: 0
+    assert_select "details[data-forge-connections]:not([open])", count: 1
+    assert_select "[data-import-filter]", count: 4
+    assert_select "[data-import-search][type='search']", count: 1
+    assert_select "[data-fdr-connectivity-target='recordingControl']", count: 1
+    assert_select "[data-fdr-connectivity-target='syncProgress']", count: 1
+    get forge_path
+    assert_redirected_to files_forge_fdr_path(@assembly.serial_number)
+    get forge_path(connect: 1)
+    assert_response :success
+    assert_select "[data-action='fdr-connectivity#connectUsb']", count: 1
+    get hangar_assembly_path(@assembly, view: "components")
+    assert_response :success
+    assert_select "h2", "Composition"
+    assert_select "form[action='#{remove_part_hangar_assembly_path(@assembly, part_id: @part.id)}']", count: 1
   end
 
   test "retired Forge and bench endpoints are not routable" do

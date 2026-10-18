@@ -17,10 +17,10 @@ class FdrUnifiedIdentityTest < ActionDispatch::IntegrationTest
     assert_equal @key, @board.fdr_auth_key
     assert_nil @board.part
     follow_redirect!
-    assert_select "h2", @assembly.serial_number
+    assert_select ".exds-recorder-heading p", @assembly.serial_number
     assert_select "dd", @assembly.serial_number.downcase
     assert_select "select[name='embedded_controller[part_id]']", count: 0
-    assert_select "a[href='#{files_forge_fdr_path(@assembly.serial_number)}']", text: "Files"
+    assert_select "a[href='#{files_forge_fdr_path(@assembly.serial_number)}']", text: "Recordings"
     assert_select "main", text: /ECU-E072A1F81D84/, count: 0
   end
 
@@ -92,6 +92,7 @@ class FdrUnifiedIdentityTest < ActionDispatch::IntegrationTest
       files_forge_fdr_path(@assembly.serial_number), calibration_forge_fdr_path(@assembly.serial_number),
       activity_forge_fdr_path(@assembly.serial_number) ].each do |path|
       get path
+      follow_redirect! if response.redirect?
       assert_response :success
     end
   end

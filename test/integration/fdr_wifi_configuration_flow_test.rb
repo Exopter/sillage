@@ -29,7 +29,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
     get connectivity_forge_fdr_path(@fdr)
 
     assert_response :success
-    assert_select "h2", text: @fdr.display_name
+    assert_select ".exds-recorder-heading p", text: @assembly.display_name
     assert_select "#saved-wifi-title", "Saved Wi-Fi networks"
     assert_select "[data-wifi-ssid='EXOPTER-LAB']"
     assert_select "button[data-action='fdr-wifi-configuration#connectUsb']", text: "Connect USB-C"
@@ -37,10 +37,10 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
     assert_select "button", text: "Apply to FDR"
     assert_select "body", text: /exopter-lab-secret/, count: 0
     assert_select ".sillage-persistent-fdr-connectivity", count: 0
-    assert_select ".fdr-recorder-tabs[aria-label='FDR sections']" do
-      assert_select "a[href='#{forge_fdr_path(@fdr)}']", text: "Overview"
-      assert_select "a.is-active[aria-current='page'][href='#{connectivity_forge_fdr_path(@fdr)}']", text: "Connectivity"
-      assert_select "a[href='#{activity_forge_fdr_path(@fdr)}']", text: "Activity"
+    assert_select ".exds-recorder-sidebar" do
+      assert_select "a[href='#{forge_fdr_path(@fdr)}']", text: "Device"
+      assert_select "a[aria-current='page'][href='#{forge_fdr_path(@fdr)}']", text: "Device"
+      assert_select "a[href='#{activity_forge_fdr_path(@fdr)}']", text: "History"
     end
   end
 
@@ -51,19 +51,19 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".fdr-connectivity"
-    assert_select ".fdr-connectivity-heading h2", text: @fdr.display_name
-    assert_select ".fdr-recorder-tabs[aria-label='FDR sections']" do
-      assert_select "a.is-active[aria-current='page'][href='#{forge_fdr_path(@fdr)}']", text: "Overview"
-      assert_select "a[href='#{connectivity_forge_fdr_path(@fdr)}']", text: "Connectivity"
+    assert_select ".exds-recorder-heading p", text: @assembly.display_name
+    assert_select ".exds-recorder-sidebar" do
+      assert_select "a[aria-current='page'][href='#{forge_fdr_path(@fdr)}']", text: "Device"
+      assert_select "a[href='#{files_forge_fdr_path(@fdr)}']", text: "Recordings"
     end
 
     get connectivity_forge_fdr_path(@fdr)
 
     assert_response :success
-    assert_select ".fdr-connectivity-heading h2", text: @fdr.display_name
-    assert_select ".fdr-recorder-tabs[aria-label='FDR sections']" do
-      assert_select "a[href='#{forge_fdr_path(@fdr)}']", text: "Overview"
-      assert_select "a.is-active[aria-current='page'][href='#{connectivity_forge_fdr_path(@fdr)}']", text: "Connectivity"
+    assert_select ".exds-recorder-heading p", text: @assembly.display_name
+    assert_select ".exds-recorder-sidebar" do
+      assert_select "a[href='#{forge_fdr_path(@fdr)}']", text: "Device"
+      assert_select "a[aria-current='page'][href='#{forge_fdr_path(@fdr)}']", text: "Device"
     end
   end
 

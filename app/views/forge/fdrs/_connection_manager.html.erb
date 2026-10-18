@@ -1,5 +1,5 @@
 <section id="sillage-fdr-connectivity"
-         class="signal-fdr-connectivity"
+         class="signal-fdr-connectivity <%= "exds-recorder-manager" if local_assigns[:workspace] %>"
          data-controller="fdr-connectivity"
          <% if local_assigns[:expected_device_id].present? %>data-fdr-connectivity-expected-device-id-value="<%= expected_device_id %>"<% end %>
          data-fdr-connectivity-upload-url-value="<%= api_v1_fdr_syncs_path %>"
@@ -7,12 +7,19 @@
          data-fdr-connectivity-authentication-url-value="<%= api_v1_fdr_authentication_path %>"
          data-fdr-connectivity-recording-command-url-value="<%= api_v1_fdr_recording_commands_path %>"
          data-fdr-connectivity-sillage-heartbeat-url-value="<%= api_v1_fdr_sillage_heartbeats_path %>">
-  <header class="signal-fdr-head">
-    <div>
-      <h2>Connect a recorder</h2>
-      <p>Identify and initialize a recorder, inspect its software state, synchronize recordings, or open its connectivity settings.</p>
+  <% if local_assigns[:workspace] %>
+    <%= render "shell", active_tab: :files %>
+    <div class="exds-recorder-context">
+      <div><%= sillage_icon "wifi", size: 24 %><span><strong data-forge-connection>Not connected</strong><small data-forge-identity><%= @assembly&.display_name || @fdr&.display_name %></small></span></div>
+      <div><%= sillage_icon "pause", size: 20 %><span><strong data-forge-import-status>Waiting for recorder</strong><small data-forge-import-detail>Connect to view recordings.</small></span></div>
+      <button type="button" class="button-primary" data-forge-pause data-action="fdr-connectivity#pauseImports" hidden>Pause imports</button>
+      <button type="button" class="button-secondary" data-action="fdr-connectivity#toggleConnections"><%= sillage_icon "settings", size: 16 %> Connections</button>
     </div>
-  </header>
+    <details class="exds-recorder-connections" data-forge-connections>
+      <summary>Connection options</summary>
+  <% else %>
+    <header class="signal-fdr-head"><div><h2>Connect a recorder</h2><p>Connect over USB-C or Bluetooth to identify and initialize a recorder.</p></div></header>
+  <% end %>
 
   <div class="signal-fdr-transports" aria-label="Recorder connections">
     <article class="signal-fdr-transport">
@@ -162,34 +169,19 @@
     </article>
   </div>
 
-  <section class="workspace-panel" data-fdr-import-queue data-command-url="<%= api_v1_fdr_import_commands_path %>" hidden>
-    <header class="workspace-panel-header">
-      <h2>Recorder files</h2>
-      <p class="workspace-muted">Automatic import · newest first. Short recordings and recordings without significant GPS movement stay on the microSD.</p>
-    </header>
-    <div class="workspace-actions">
-      <button type="button" class="button-secondary" data-import-action="priority">Import selected now</button>
-      <button type="button" class="button-secondary" data-import-action="skip">Skip automatic import</button>
-      <button type="button" class="button-secondary" data-import-action="restore">Restore automatic import</button>
-      <button type="button" class="button-secondary" data-import-action="pause">Pause transfers</button>
-      <button type="button" class="button-secondary" data-import-action="refresh">Refresh</button>
-    </div>
-    <p class="workspace-muted" data-import-notice role="status" aria-live="polite"></p>
-    <p class="workspace-muted">Duration includes time on the ground. Dates use GPS time and your local time zone; unavailable dates remain unknown.</p>
-    <label><input type="checkbox" data-import-show-short> Show recordings excluded by filters</label>
-    <p class="workspace-muted">Files under 1 minute or without detected significant GPS movement are hidden after analysis, including missing or invalid GPS data. Manual import remains available.</p>
-    <p class="workspace-muted" data-import-filter-summary></p>
-    <div class="workspace-table-wrap">
-      <table class="workspace-table">
-        <thead><tr><th scope="col">Select</th><th scope="col">File</th><th scope="col">Recorded at</th><th scope="col">Duration</th><th scope="col">Size</th><th scope="col">Status</th></tr></thead>
-        <tbody data-import-files></tbody>
-      </table>
-    </div>
-    <div data-import-older hidden><button type="button" class="button-secondary" data-import-action="older">Load older files</button></div>
-  </section>
+  <% if local_assigns[:workspace] %></details><% end %>
+  <div class="exds-recorder-progress">
+          <progress class="signal-fdr-progress" value="0" max="1" aria-label="Synchronization progress" data-fdr-connectivity-target="syncProgress" hidden></progress>
+          <div class="signal-fdr-transport-notice" data-fdr-connectivity-target="syncNotice" data-state="status" role="status" hidden>
+            <span class="signal-fdr-transport-notice-label" data-fdr-connectivity-target="syncNoticeLabel">Synchronization</span>
+            <small class="signal-fdr-transport-message" data-fdr-connectivity-target="syncDetail" hidden></small>
+            <small class="signal-fdr-technical" data-fdr-connectivity-target="syncTechnical" hidden></small>
+          </div>
+  </div>
+  <%= render "recordings" %>
 
   <section class="signal-fdr-overview" aria-labelledby="recorder-information-title">
-    <header class="signal-fdr-section-head signal-fdr-overview-head">
+    <header class="signal-fdr-section-head signal-fdr-overview-head" <%= "hidden" if local_assigns[:workspace] %>>
       <div class="signal-fdr-overview-title">
         <div><h3 id="recorder-information-title">Recorder information</h3></div>
         <span class="signal-fdr-recorder-status" hidden
@@ -198,29 +190,7 @@
       </div>
       <div class="signal-fdr-overview-actions">
         <span class="signal-fdr-source" data-fdr-connectivity-target="recorderSource" data-state="disconnected" hidden></span>
-        <div class="signal-fdr-recording-control"
-             data-fdr-connectivity-target="recordingControl"
-             data-state="unavailable"
-             role="group"
-             aria-labelledby="recording-title">
-          <div class="signal-fdr-recording-copy">
-            <strong id="recording-title">Recording</strong>
-            <small data-fdr-connectivity-target="recordingResult" role="status" hidden></small>
-          </div>
-          <button type="button"
-                  class="signal-fdr-recording-switch"
-                  role="switch"
-                  aria-checked="false"
-                  aria-label="Recording mode unavailable"
-                  disabled
-                  data-action="fdr-connectivity#toggleRecording"
-                  data-fdr-connectivity-target="recordingButton">
-            <span class="signal-fdr-recording-switch-track" aria-hidden="true">
-              <span class="signal-fdr-recording-switch-thumb"></span>
-            </span>
-            <span class="signal-fdr-recording-switch-label" data-fdr-connectivity-target="recordingButtonLabel">Unavailable</span>
-          </button>
-        </div>
+        <% unless local_assigns[:workspace] %><%= render "recording_control" %><% end %>
       </div>
     </header>
     <div class="signal-fdr-recorder-alert" data-fdr-connectivity-target="recorderAlert" role="alert" hidden>
@@ -240,33 +210,30 @@
         <span data-fdr-connectivity-target="wifiRegisterLabel">Add and initialize recorder</span>
       </button>
     </div>
+    <details <%= "open" unless local_assigns[:workspace] %>><summary>Recorder details and diagnostics</summary>
     <dl class="signal-fdr-status-list">
       <div>
         <dt>Recorder</dt>
         <dd class="signal-fdr-recorder-identification">
-          <span data-fdr-connectivity-target="recorderDevice">—</span>
-          <span class="signal-fdr-firmware" data-fdr-connectivity-target="recorderFirmwareGroup" hidden>(<span data-fdr-connectivity-target="recorderFirmware">—</span>)</span>
+          <span data-fdr-connectivity-target="recorderDevice">Unavailable</span>
+          <span class="signal-fdr-firmware" data-fdr-connectivity-target="recorderFirmwareGroup" hidden>(<span data-fdr-connectivity-target="recorderFirmware">Unavailable</span>)</span>
         </dd>
       </div>
       <div hidden>
         <dt>Hardware reference</dt>
-        <dd data-fdr-connectivity-target="recorderEcu">—</dd>
+        <dd data-fdr-connectivity-target="recorderEcu">Unavailable</dd>
       </div>
       <div>
         <dt>Synchronization</dt>
         <dd class="signal-fdr-synchronization">
-          <span data-fdr-connectivity-target="lastSync">—</span>
-          <progress class="signal-fdr-progress" value="0" max="1" aria-label="Synchronization progress" data-fdr-connectivity-target="syncProgress" hidden></progress>
-          <div class="signal-fdr-transport-notice" data-fdr-connectivity-target="syncNotice" data-state="status" role="status" hidden>
-            <span class="signal-fdr-transport-notice-label" data-fdr-connectivity-target="syncNoticeLabel">Synchronization</span>
-            <small class="signal-fdr-transport-message" data-fdr-connectivity-target="syncDetail" hidden></small>
-            <small class="signal-fdr-technical" data-fdr-connectivity-target="syncTechnical" hidden></small>
-          </div>
+          <span data-fdr-connectivity-target="lastSync">Unavailable</span>
+
         </dd>
       </div>
-      <div><dt>Health</dt><dd data-fdr-connectivity-target="health">—</dd></div>
-      <div><dt>Storage</dt><dd data-fdr-connectivity-target="storage">—</dd></div>
+      <div><dt>Health</dt><dd data-fdr-connectivity-target="health">Unavailable</dd></div>
+      <div><dt>Storage</dt><dd data-fdr-connectivity-target="storage">Unavailable</dd></div>
     </dl>
+    </details>
   </section>
 
   <details class="signal-fdr-tools">

@@ -1,0 +1,33 @@
+<section class="exds-recording-catalog" data-import-queue data-fdr-import-queue data-command-url="<%= api_v1_fdr_import_commands_path %>" hidden aria-label="Recorder recordings">
+  <div class="exds-recording-toolbar">
+    <div class="exds-recording-filters" role="group" aria-label="Filter recordings">
+      <% %w[All Available Imported Skipped].each do |filter| %>
+        <button type="button" data-import-filter="<%= filter.downcase %>" aria-pressed="<%= filter == "All" %>"><%= filter %></button>
+      <% end %>
+    </div>
+    <label class="exds-recording-search"><%= sillage_icon "search", size: 16 %><input type="search" data-import-search placeholder="Search recordings…" aria-label="Search loaded recordings"></label>
+  </div>
+  <div class="exds-recording-selection" data-import-selection hidden>
+    <strong data-import-selection-count>0 selected</strong>
+    <button type="button" class="button-secondary" data-import-action="priority">Import first</button>
+    <button type="button" class="button-secondary" data-import-action="skip">Skip</button>
+    <button type="button" class="button-secondary" data-import-action="restore">Restore</button>
+    <button type="button" class="button-secondary" data-import-clear>Clear selection</button>
+  </div>
+  <div class="exds-recording-table-wrap">
+    <table class="exds-recording-table">
+      <thead><tr><th><input type="checkbox" data-import-select-all aria-label="Select all available recordings in this view"></th><th scope="col">Recording</th><th scope="col">Duration</th><th scope="col">Size</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody data-import-files></tbody>
+    </table>
+  </div>
+  <div class="exds-recording-footer">
+    <label><input type="checkbox" data-import-show-short> Show excluded recordings</label>
+    <span><button type="button" class="button-secondary" data-import-action="older">Load older recordings</button></span>
+    <button type="button" class="button-secondary" data-import-action="refresh">Refresh</button>
+    <button type="button" class="button-secondary" data-import-action="pause">Pause imports</button>
+    <span data-forge-storage></span>
+  </div>
+  <p class="exds-recording-note" data-import-filter-summary></p>
+  <p class="exds-recording-note">Newest first. Undated files stay in sequence; date ranges come from neighbouring recordings. Times use your local timezone.</p>
+  <p class="exds-recording-notice" data-import-notice role="status" aria-live="polite"></p>
+</section>
