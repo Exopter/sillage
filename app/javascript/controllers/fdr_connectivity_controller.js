@@ -9,6 +9,7 @@ import {
   BleUuid,
   BleCapability,
   BleAuthenticationClient,
+  BleWifiClient,
   BleRecordingClient,
   USB_CHUNK_SIZE,
   USB_CONNECTION_ATTEMPTS,
@@ -16,6 +17,7 @@ import {
   UsbCapability,
   UsbErrorCode,
   UsbFdrClient,
+  UsbWifiClient,
   UsbMessage,
   formatStorageCapacity,
   formatUsbErrorDetails,
@@ -109,6 +111,7 @@ const ConnectionStatus = Object.freeze({
  * @property {HTMLElement} wifiRegisterLabelTarget
  * @property {HTMLElement} wifiRegistrationStatusTarget
  * @property {string} uploadUrlValue
+ * @property {string} expectedDeviceIdValue
  * @property {string} registrationUrlValue
  * @property {string} authenticationUrlValue
  * @property {string} recordingCommandUrlValue
@@ -195,6 +198,7 @@ export default class extends TypedController {
   registrationRequestToken = 0
 
   static values = {
+    expectedDeviceId: String,
     uploadUrl: String,
     registrationUrl: String,
     authenticationUrl: String,
@@ -406,6 +410,7 @@ export default class extends TypedController {
     try {
       const device = await this.connectUsbClient(port, session, client)
       if (!device) return
+      if (this.expectedDeviceIdValue && device.deviceId !== this.expectedDeviceIdValue) throw new Error("This recorder belongs to another FDR. Open its page in Forge.")
       if (!this.usbClient) return
       client = this.usbClient
       if (!this.usbSessionActive(session, client)) return
@@ -434,10 +439,13 @@ export default class extends TypedController {
         }
       }
       this.usbIdentity = device
-      this.refreshRecorderRegistration()
+      await this.refreshRecorderRegistration()
+      if (this.usbAuthenticated && (device.capabilities & UsbCapability.CANONICAL_NAME) && this.registeredRecorder?.identity_provisioning) {
+        await new UsbWifiClient(client).configureIdentity(this.registeredRecorder.identity_provisioning)
+      }
       setAircraftConnection(AircraftConnectionTransport.USB_C, true, { deviceId: device.deviceId })
       this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.CONNECTED)
-      this.usbDeviceTarget.textContent = recorderTechnicalLabel(device)
+      this.usbDeviceTarget.textContent = recorderLabel(this.resolvedIdentity(device))
       this.usbButtonTarget.textContent = "Disconnect USB-C"
       await this.refreshUsbControlData()
       if (!this.usbSessionActive(session, client)) return
@@ -973,6 +981,7 @@ export default class extends TypedController {
       status.readValue(), diagnostics.readValue(), deviceInformation.readValue()
     ])
     this.bleIdentity = parseBleDeviceInfo(deviceValue)
+    if (this.expectedDeviceIdValue && this.bleIdentity.deviceId !== this.expectedDeviceIdValue) throw new Error("This recorder belongs to another FDR. Open its page in Forge.")
     this.bleAuthenticated = false
     try {
       const authentication = new BleAuthenticationClient(authenticationCharacteristic)
@@ -991,10 +1000,13 @@ export default class extends TypedController {
       const error = protocolError(caught)
       this.showBleNotice(error.message, { state: "error", label: "Sillage authentication" })
     }
-    this.refreshRecorderRegistration()
+    await this.refreshRecorderRegistration()
+    if (this.bleAuthenticated && (this.bleIdentity.capabilities & BleCapability.CANONICAL_NAME) && this.registeredRecorder?.identity_provisioning) {
+      await new BleWifiClient(await service.getCharacteristic(BleUuid.wifi)).configureIdentity(this.registeredRecorder.identity_provisioning)
+    }
     setAircraftConnection(AircraftConnectionTransport.BLE, true, { deviceId: this.bleIdentity.deviceId })
     this.setConnectionStatus(this.bleStatusTarget, ConnectionStatus.CONNECTED)
-    this.bleDeviceTarget.textContent = recorderTechnicalLabel(this.bleIdentity)
+    this.bleDeviceTarget.textContent = recorderLabel(this.resolvedIdentity(this.bleIdentity))
     if (this.bleAuthenticated) this.hideBleNotice()
     this.setConnectionStatus(this.bleStatusTarget, ConnectionStatus.CONNECTED)
     this.renderStatus(parseBleStatus(statusValue), "ble")
@@ -1049,7 +1061,7 @@ export default class extends TypedController {
       const payload = await readResponse(response, "Sillage could not read recorder heartbeats.")
       if (!this.initialized || connectionGeneration !== this.connectionGeneration) return
 
-      const heartbeats = heartbeatPayloads(payload)
+      const heartbeats = heartbeatPayloads(payload).filter(heartbeat => !this.expectedDeviceIdValue || heartbeat.recorder.device_id === this.expectedDeviceIdValue)
       if (heartbeats.length === 0) return this.disconnectSillageHeartbeat("Waiting for signed Sillage heartbeat")
       if (heartbeats.length > 1) return this.renderMultipleSillageHeartbeats(heartbeats)
 
@@ -1071,7 +1083,7 @@ export default class extends TypedController {
       this.registeredRecorder.assembly = this.wifiIdentity.assembly
       this.registeredAircraft = heartbeat.aircraft || null
     }
-    this.wifiDeviceTarget.textContent = recorderTechnicalLabel(this.wifiIdentity)
+    this.wifiDeviceTarget.textContent = recorderLabel(this.resolvedIdentity(this.wifiIdentity))
     this.wifiDeviceTarget.removeAttribute("title")
     this.setConnectionStatus(this.wifiStatusTarget, ConnectionStatus.CONNECTED)
     this.setWifiAutomaticDetail(
@@ -1529,7 +1541,7 @@ export default class extends TypedController {
       if (requestToken !== this.registrationRequestToken) return
 
       if (payload.recorder) {
-        if (payload.recorder.device_id !== identity.deviceId) throw new Error("Sillage returned a different ECU identity.")
+        if (payload.recorder.device_id !== identity.deviceId) throw new Error("Sillage returned a different recorder identity.")
         if (this.usbAuthenticated && !payload.recorder.initialization_confirmed) {
           try {
             await this.confirmRecorderInitialization(payload.recorder, identity)
@@ -1578,7 +1590,7 @@ export default class extends TypedController {
     try {
       if (!recorder) {
         this.wifiRegisterLabelTarget.textContent = "Adding to Forge…"
-        this.setWifiRegistrationStatus("Registering the ECU in Forge…")
+        this.setWifiRegistrationStatus("Registering the FDR in Forge…")
         const registration = await this.createRecorderRegistration(identity)
         recorder = registration.recorder
         aircraft = registration.aircraft
@@ -1758,7 +1770,7 @@ export default class extends TypedController {
     this.registrationSubmitting = false
     this.updateResolvedConnections(recorder.device_id, aircraft)
     this.wifiLinkTarget.href = recorder.connectivity_url
-    this.setWifiLinkLabel(`Configure Wi-Fi for ${recorderLabel(recorder)} · ${recorderTechnicalLabel({deviceId:recorder.device_id})}`)
+    this.setWifiLinkLabel(`Open ${recorderLabel(recorder)}`)
     this.wifiLinkTarget.hidden = false
     this.recorderOnboardingTarget.hidden = true
     this.wifiRegisterButtonTarget.disabled = false
@@ -1963,7 +1975,7 @@ export default class extends TypedController {
     ]
     for (const [transport, identities, target, detail] of transports) {
       const resolved = identities.map((identity) => this.resolvedIdentity(identity))
-      detail.textContent = resolved.map(recorderTechnicalLabel).join(" / ")
+      detail.textContent = ""
       detail.hidden = !resolved.length
       target.title = detail.textContent
       if (!resolved.length) continue

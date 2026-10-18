@@ -36,3 +36,11 @@ assert.equal(heartbeatPayloads({heartbeats: [heartbeat]})[0].status.recording, t
 assert.throws(() => heartbeatPayloads({heartbeats: [{...heartbeat, status: {wifi_upload: {nested: {}}}}]}))
 assert.throws(() => heartbeatPayloads({heartbeats: "invalid"}))
 console.log("FDR API registration, receipts, commands and heartbeat boundary tests passed")
+
+const signedIdentity = {command: "01" + "00".repeat(40), signature: "ab".repeat(32)}
+const identityRecorder = {device_id: "ECU-E072A1F81D84", assembly: null, initialization_confirmed: true,
+  connectivity_url: "/forge/fdrs/EXOFDR-V1-PCB-01/connectivity", initialization_url: "/api/v1/fdrs/1/initialization",
+  identity_provisioning: signedIdentity}
+assert.deepEqual(registrationPayload({registered: true, recorder: identityRecorder}).recorder.identity_provisioning, signedIdentity)
+assert.throws(() => registrationPayload({registered: true, recorder: {...identityRecorder,
+  identity_provisioning: {...signedIdentity, command: "00"}}}), /invalid FDR name/)

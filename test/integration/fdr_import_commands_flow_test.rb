@@ -100,6 +100,21 @@ class FdrImportCommandsFlowTest < ActionDispatch::IntegrationTest
     publish # Earlier firmware can omit the optional duration.
   end
 
+  test "catalogue preserves UTC recording dates and rejects invalid values" do
+    [ nil, 1_792_324_797_500 ].each do |timestamp|
+      publish(files: [ @queue[:files].first.merge(started_at_unix_ms: timestamp) ])
+      stored = @recorder.reload.signal_presence.status.fetch("import_queue").fetch("files").first
+      if timestamp.nil?
+        assert_nil stored["started_at_unix_ms"]
+      else
+        assert_equal timestamp, stored["started_at_unix_ms"]
+      end
+    end
+    [ 0, -1, "2026-10-18", 1.5 ].each do |invalid|
+      publish(files: [ @queue[:files].first.merge(started_at_unix_ms: invalid) ], expected: :unprocessable_entity)
+    end
+  end
+
   private
 
   def command_params

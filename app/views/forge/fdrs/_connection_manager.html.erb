@@ -1,6 +1,7 @@
 <section id="sillage-fdr-connectivity"
          class="signal-fdr-connectivity"
          data-controller="fdr-connectivity"
+         <% if local_assigns[:expected_device_id].present? %>data-fdr-connectivity-expected-device-id-value="<%= expected_device_id %>"<% end %>
          data-fdr-connectivity-upload-url-value="<%= api_v1_fdr_syncs_path %>"
          data-fdr-connectivity-registration-url-value="<%= api_v1_fdr_registration_path %>"
          data-fdr-connectivity-authentication-url-value="<%= api_v1_fdr_authentication_path %>"
@@ -131,7 +132,7 @@
         </div>
         <div class="signal-fdr-channel-actions signal-fdr-channel-actions--wifi">
           <% wifi_configuration_url = @default_wifi_configuration_fdr ? connectivity_forge_fdr_path(@default_wifi_configuration_fdr) : "#{forge_fdrs_path}#registered-recorders" %>
-          <% wifi_configuration_label = @default_wifi_configuration_fdr ? "Configure Wi-Fi for #{@default_wifi_configuration_fdr.display_name} · #{@default_wifi_configuration_fdr.technical_reference}" : "Select a recorder for Wi-Fi configuration" %>
+          <% wifi_configuration_label = @default_wifi_configuration_fdr ? "Configure Wi-Fi for #{@default_wifi_configuration_fdr.display_name}" : "Select a recorder for Wi-Fi configuration" %>
           <%= link_to wifi_configuration_url,
             class: "signal-fdr-wifi-settings-link",
             title: wifi_configuration_label,
@@ -164,7 +165,7 @@
   <section class="workspace-panel" data-fdr-import-queue data-command-url="<%= api_v1_fdr_import_commands_path %>" hidden>
     <header class="workspace-panel-header">
       <h2>Recorder files</h2>
-      <p class="workspace-muted">Automatic import · newest first. Skipped files stay on the microSD.</p>
+      <p class="workspace-muted">Automatic import · newest first · recordings of at least 1 minute. Skipped files stay on the microSD.</p>
     </header>
     <div class="workspace-actions">
       <button type="button" class="button-secondary" data-import-action="priority">Import selected now</button>
@@ -174,10 +175,12 @@
       <button type="button" class="button-secondary" data-import-action="refresh">Refresh</button>
     </div>
     <p class="workspace-muted" data-import-notice role="status" aria-live="polite"></p>
-    <p class="workspace-muted">Duration covers the recording, including time on the ground.</p>
+    <p class="workspace-muted">Duration includes time on the ground. Dates use GPS time and your local time zone; unavailable dates remain unknown.</p>
+    <label><input type="checkbox" data-import-show-short> Show recordings under 1 minute</label>
+    <p class="workspace-muted" data-import-filter-summary></p>
     <div class="workspace-table-wrap">
       <table class="workspace-table">
-        <thead><tr><th scope="col">Select</th><th scope="col">File</th><th scope="col">Duration</th><th scope="col">Size</th><th scope="col">Status</th></tr></thead>
+        <thead><tr><th scope="col">Select</th><th scope="col">File</th><th scope="col">Recorded at</th><th scope="col">Duration</th><th scope="col">Size</th><th scope="col">Status</th></tr></thead>
         <tbody data-import-files></tbody>
       </table>
     </div>
@@ -244,8 +247,8 @@
           <span class="signal-fdr-firmware" data-fdr-connectivity-target="recorderFirmwareGroup" hidden>(<span data-fdr-connectivity-target="recorderFirmware">—</span>)</span>
         </dd>
       </div>
-      <div>
-        <dt>ECU</dt>
+      <div hidden>
+        <dt>Hardware reference</dt>
         <dd data-fdr-connectivity-target="recorderEcu">—</dd>
       </div>
       <div>

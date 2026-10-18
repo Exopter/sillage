@@ -41,7 +41,7 @@ class FdrFullIdentityTest < ActionDispatch::IntegrationTest
     assert_equal "ECU-F81D84", @legacy.technical_reference
     get calibration_forge_fdr_path(@legacy)
     assert_response :success
-    assert_select "title", text: /ECU-F81D84/
+    assert_select "title", text: /FDR setup required.*Calibration/
     assert_select "[data-imu-check-device-value='ECU-E072A1F81D84']"
     assert_equal key, @legacy.fdr_auth_key
     assert @legacy.initialized?

@@ -1,4 +1,4 @@
-<% content_for :title, "#{@fdr.display_name} · #{@fdr.technical_reference} connectivity" %>
+<% content_for :title, "#{@assembly&.display_name || @fdr.display_name} connectivity" %>
 
 <div
   class="fdr-connectivity"
@@ -33,7 +33,7 @@
       <%= sillage_icon "clock", size: 18 %>
       <span>Last read <strong data-fdr-wifi-configuration-target="lastRead">never</strong></span>
     </div>
-    <span class="fdr-device-id" data-fdr-wifi-configuration-target="bleDevice" title="<%= @fdr.technical_reference %>"><%= @fdr.display_name %></span>
+    <span class="fdr-device-id" data-fdr-wifi-configuration-target="bleDevice" title="<%= @fdr.display_name %>"><%= @fdr.display_name %></span>
   </section>
 
   <div class="fdr-wifi-layout">
@@ -57,7 +57,7 @@
               <span class="fdr-wifi-network">
                 <strong><%= profile.ssid %></strong>
                 <small class="<%= "is-pending" if profile.pending? %>">
-                  <%= profile.pending? ? "Not yet applied" : "Applied to #{ecu_label(profile.last_provisioned_device_id)}" %>
+                  <%= profile.pending? ? "Not yet applied" : "Applied to FDR" %>
                 </small>
               </span>
               <span class="fdr-wifi-cell-muted"><%= profile.security_label %></span>

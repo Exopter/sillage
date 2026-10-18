@@ -8,18 +8,18 @@ class RecorderIdentityFlowTest < ActionDispatch::IntegrationTest
     @ecu.create_signal_presence!(last_seen_at: Time.current, status: {})
   end
 
-  test "Forge shows the physical recorder first and the interchangeable ECU second" do
+  test "Forge presents a single FDR name without another ECU identifier" do
     label = "#{@assembly.serial_number}"
     get forge_fdrs_path
     assert_response :success
     assert_select "a.workspace-strong-link", text: label
-    assert_select "small", text: @ecu.device_id
+    assert_select "small", text: @ecu.device_id, count: 0
 
     [ forge_fdr_path(@ecu), connectivity_forge_fdr_path(@ecu), activity_forge_fdr_path(@ecu) ].each do |path|
       get path
       assert_response :success
       assert_select ".fdr-connectivity-heading h2", text: label
-      assert_select ".fdr-connectivity-heading p", text: /#{@ecu.device_id}/
+      assert_select ".fdr-connectivity-heading p", text: /#{@ecu.device_id}/, count: 0
     end
   end
 

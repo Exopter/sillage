@@ -1,6 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 import {
   BleUuid,
+  BleCapability,
+  UsbCapability,
   BleAuthenticationClient,
   BleWifiClient,
   UsbFdrClient,
@@ -78,7 +80,7 @@ const SECURITY_LABELS = new Map([
  * @property {BluetoothDevice | null} device
  * @property {BluetoothRemoteGATTServer | null} server
  * @property {BleWifiClient | null} wifiClient
- * @property {{ deviceId: string, firmware: string } | null} deviceInfo
+ * @property {{ deviceId: string, firmware: string, capabilities?: number } | null} deviceInfo
  * @property {"USB-C" | "BLE" | null} activeTransport
  * @property {boolean} bleAuthenticated
  * @property {string} initialDeviceLabel
@@ -256,6 +258,9 @@ export default class extends TypedController {
       this.usbPort = port
       this.deviceInfo = deviceInfo
       this.wifiClient = new UsbWifiClient(client)
+      if (this.usbAuthenticated && (deviceInfo.capabilities & UsbCapability.CANONICAL_NAME) && this.resolvedRecorder?.identity_provisioning) {
+        await this.wifiClient.configureIdentity(this.resolvedRecorder.identity_provisioning)
+      }
       this.renderConnection(status, "USB-C")
       this.startUsbKeepalive()
     } catch (caught) {
@@ -300,6 +305,9 @@ export default class extends TypedController {
     this.requireCurrentConnection(connectionGeneration)
     this.bleAuthenticated = true
     this.wifiClient = new BleWifiClient(wifiCharacteristic)
+    if (((this.deviceInfo.capabilities || 0) & BleCapability.CANONICAL_NAME) && this.resolvedRecorder?.identity_provisioning) {
+      await this.wifiClient.configureIdentity(this.resolvedRecorder.identity_provisioning)
+    }
     this.renderConnection(parseBleStatus(statusValue), "BLE")
   }
 
@@ -492,7 +500,7 @@ export default class extends TypedController {
     this.bleStatusTarget.dataset.state = "connected"
     const label = recorderLabel(this.resolvedRecorder || {})
     this.bleDeviceTarget.textContent = label
-    this.bleDeviceTarget.title = deviceInfo.deviceId
+    this.bleDeviceTarget.title = label
     if (!this.previewValue) {
       setAircraftConnection(transport === "USB-C" ? AircraftConnectionTransport.USB_C : AircraftConnectionTransport.BLE, true, {
         deviceId: deviceInfo.deviceId, recorderLabel: label, aircraftRegistration: this.resolvedAircraft?.registration

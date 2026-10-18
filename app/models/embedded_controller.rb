@@ -8,6 +8,8 @@ class EmbeddedController < ApplicationRecord
   class AuthenticationKeyError < StandardError; end
 
   belongs_to :part, optional: true, inverse_of: :embedded_controller
+  has_many :fdr_board_installations, dependent: :restrict_with_error
+  has_one :active_fdr_board_installation, -> { active }, class_name: "FdrBoardInstallation"
   has_many :imu_checks, dependent: :restrict_with_error
   has_one :signal_presence, dependent: :destroy
   has_many :recorder_connections, dependent: :destroy
@@ -29,6 +31,7 @@ class EmbeddedController < ApplicationRecord
     inclusion: { in: 1..255 }, allow_nil: true
   validate :mavlink_component_requires_system
   validate :part_has_controller_function
+  after_create :bind_legacy_installed_board
 
   scope :ordered, -> { order(Arel.sql("device_id IS NULL, device_id")) }
 
@@ -43,7 +46,7 @@ class EmbeddedController < ApplicationRecord
   end
 
   def display_name
-    assembly ? assembly.selection_label : "Unassigned ECU"
+    assembly ? assembly.selection_label : "FDR setup required"
   end
 
   def recorder_identity(at: nil)
@@ -67,7 +70,7 @@ class EmbeddedController < ApplicationRecord
   end
 
   def assembly
-    part&.assembly
+    active_fdr_board_installation&.assembly || (part&.assembly unless fdr_board_installations.exists?)
   end
 
   def imu_mount_profile(at: nil)
@@ -75,7 +78,12 @@ class EmbeddedController < ApplicationRecord
   end
 
   def assembly_at(time)
-    part&.assembly_at(time)
+    fdr_board_installations.covering(time).recent.first&.assembly ||
+      (part&.assembly_at(time) unless fdr_board_installations.exists?)
+  end
+
+  def forge_identifier
+    assembly&.serial_number.presence || id
   end
 
   def active_installation
@@ -162,6 +170,13 @@ class EmbeddedController < ApplicationRecord
   end
 
   private
+
+  def bind_legacy_installed_board
+    installation = part&.active_part_installation
+    return unless installation&.assembly&.controlled_fdr?
+
+    installation.assembly.fdr_board_installations.create!(embedded_controller: self, installed_at: installation.installed_at)
+  end
 
   def part_has_controller_function
     return if part.nil? || part.function&.code == "CONTROLLER"

@@ -39,7 +39,7 @@
           <% if @selected_assembly.controlled_fdr? %>
             <div><dt>Functional configuration</dt><dd><%= @selected_assembly.functional_configuration %></dd></div>
             <div><dt>Assembly method</dt><dd><%= @selected_assembly.assembly_method_label %></dd></div>
-            <div><dt>ECU ID</dt><dd><%= ecu_label(@selected_assembly.embedded_controller&.device_id) || "Not identified" %></dd></div>
+            <div><dt>Firmware</dt><dd><%= @selected_assembly.embedded_controller&.last_seen_firmware || "Not reported" %></dd></div>
           <% else %>
             <div><dt>Internal Asset ID</dt><dd><%= @selected_assembly.internal_number %></dd></div>
           <% end %>
@@ -51,11 +51,11 @@
         </dl>
         <div class="workspace-actions">
           <%= link_to "Open", hangar_assembly_path(@selected_assembly), class: "button-secondary is-compact" %>
-          <% if @selected_assembly.embedded_controller %><%= link_to "Open in Forge", forge_fdr_path(@selected_assembly.embedded_controller), class: "button-secondary is-compact" %><% end %>
+          <% if @selected_assembly.embedded_controller %><%= link_to "Open in Forge", forge_fdr_path(@selected_assembly.embedded_controller.forge_identifier), class: "button-secondary is-compact" %><% end %>
           <% unless @selected_assembly.controlled_fdr? %><%= button_to "Delete", hangar_assembly_path(@selected_assembly), method: :delete, class: "button-danger is-compact", form: { data: { turbo_confirm: "Delete #{@selected_assembly.internal_number} permanently? This cannot be undone." } } %><% end %>
         </div>
       </div>
-      <footer class="hangar-detail-note"><%= @selected_assembly.controlled_fdr? ? "The ExoFDR serial number remains stable when Parts, including the ECU, are replaced." : "Parts and nested Assemblies can be moved while their installation history remains traceable." %></footer>
+      <footer class="hangar-detail-note"><%= @selected_assembly.controlled_fdr? ? "The ExoFDR serial number remains stable when components are replaced." : "Parts and nested Assemblies can be moved while their installation history remains traceable." %></footer>
     </section>
   </div>
 <% else %>

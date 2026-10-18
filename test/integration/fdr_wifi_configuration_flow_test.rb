@@ -33,7 +33,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
     assert_select "#saved-wifi-title", "Saved Wi-Fi networks"
     assert_select "[data-wifi-ssid='EXOPTER-LAB']"
     assert_select "button[data-action='fdr-wifi-configuration#connectUsb']", text: "Connect USB-C"
-    assert_select "button[data-action='fdr-wifi-configuration#connectBle']", text: "Connect BLE"
+    assert_select "button[data-action='fdr-wifi-configuration#connectBle']", text: "Connect Bluetooth"
     assert_select "button", text: "Apply to FDR"
     assert_select "body", text: /exopter-lab-secret/, count: 0
     assert_select ".sillage-persistent-fdr-connectivity", count: 0

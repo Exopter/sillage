@@ -64,6 +64,8 @@ Rails.application.routes.draw do
     resources :fdrs, only: %i[index show update] do
       member do
         get :calibration
+        get :parts
+        get :files
         get :connectivity
         get :activity
       end

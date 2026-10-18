@@ -435,7 +435,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "button.signal-tool-button:not(.is-primary)[data-action='fdr-connectivity#connectUsb']", text: "Connect USB-C"
     assert_select "button[data-action='fdr-connectivity#connectBle']", text: "Connect BLE"
     assert_select "button.signal-tool-button.signal-fdr-auto-label[data-fdr-connectivity-target='wifiAutoLabel'][aria-label='Automatic Wi-Fi connection: waiting for signed Sillage heartbeat'][disabled]", text: "Automatic"
-    wifi_configuration_label = "Configure Wi-Fi for #{@fdr.display_name} · #{@fdr.technical_reference}"
+    wifi_configuration_label = "Configure Wi-Fi for #{@fdr.display_name}"
     assert_select ".signal-fdr-transport:nth-of-type(3) a.signal-fdr-wifi-settings-link[data-fdr-connectivity-target='wifiLink'][href='#{connectivity_forge_fdr_path(@fdr)}'][aria-label='#{wifi_configuration_label}'][title='#{wifi_configuration_label}']" do
       assert_select "svg"
       assert_select ".sr-only[data-fdr-connectivity-target='wifiLinkLabel']", text: wifi_configuration_label
@@ -490,7 +490,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-fdr-connectivity-target='recorderAlert'][hidden]"
     assert_select "[data-fdr-connectivity-target='recorderAlertTechnical'][hidden]"
     assert_select ".signal-fdr-status-list > div", count: 5
-    assert_equal %w[Recorder ECU Synchronization Health Storage], css_select(".signal-fdr-status-list dt").map(&:text)
+    assert_equal %w[Recorder Synchronization Health Storage], css_select(".signal-fdr-status-list > div:not([hidden]) dt").map(&:text)
     assert_select "[data-fdr-connectivity-target='recorderEcu']", text: "—"
     assert_select ".signal-fdr-status-list dt", text: "Security", count: 0
     assert_select ".signal-fdr-status-list > div:first-child" do

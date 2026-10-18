@@ -14,6 +14,8 @@ class Assembly < ApplicationRecord
   has_many :active_part_installations, -> { active }, class_name: "PartInstallation"
   has_many :parts, through: :active_part_installations
   has_many :installations, as: :installable, dependent: :restrict_with_error
+  has_many :fdr_board_installations, dependent: :restrict_with_error
+  has_one :active_fdr_board_installation, -> { active }, class_name: "FdrBoardInstallation"
 
   normalizes :internal_number, with: ->(number) { number.to_s.strip.upcase.presence }
   normalizes :serial_number, with: ->(number) { number.to_s.strip.upcase.presence }
@@ -32,6 +34,7 @@ class Assembly < ApplicationRecord
   validates :serial_number, uniqueness: { case_sensitive: false }, allow_blank: true
   validates :serial_number, format: { with: EXOFDR_SERIAL_PATTERN }, allow_blank: true, if: :controlled_fdr?
   validates :serial_number, presence: true, if: :controlled_fdr?, on: :update
+  validates :serial_number, length: { maximum: 29 }, allow_blank: true, if: :controlled_fdr?
   validates :serviceability_state, inclusion: { in: SERVICEABILITY_STATES }
   validates :imu_mount_profile, inclusion: { in: Imu::Mount::LABELS.keys }
   validate :exofdr_serial_number_is_generated, on: :create
@@ -102,7 +105,7 @@ class Assembly < ApplicationRecord
   end
 
   def embedded_controller
-    controller_part&.embedded_controller
+    active_fdr_board_installation&.embedded_controller || (controller_part&.embedded_controller unless fdr_board_installations.exists?)
   end
 
   def serial_label

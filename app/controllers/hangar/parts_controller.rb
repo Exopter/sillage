@@ -1,11 +1,13 @@
 module Hangar
   class PartsController < BaseController
     before_action :set_part, only: %i[show edit update destroy]
+    before_action :open_integrated_fdr, only: %i[show edit]
 
     def index
       @query = params[:q].to_s.strip
       @state = params[:state].presence_in(Part::STATES)
       @parts = Part.left_joins(:function).includes(:function, active_part_installation: :assembly).ordered
+        .where.not(id: EmbeddedController.where.not(part_id: nil).select(:part_id))
       if @query.present?
         pattern = "%#{Part.sanitize_sql_like(@query)}%"
         @parts = @parts.where(<<~SQL.squish, pattern:)
@@ -67,6 +69,12 @@ module Hangar
     end
 
     private
+
+    def open_integrated_fdr
+      controller = @part.embedded_controller
+      assembly = controller&.assembly || controller&.fdr_board_installations&.recent&.first&.assembly
+      redirect_to forge_fdr_path(assembly.serial_number) if assembly&.controlled_fdr?
+    end
 
     def set_part
       @part = Part.find(params[:id])

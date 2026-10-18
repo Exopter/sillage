@@ -1,0 +1,5 @@
+<% content_for :title, "#{@assembly.display_name} · Parts" %>
+<div class="fdr-connectivity">
+  <%= render "shell", active_tab: :parts %>
+  <%= render "hangar/assemblies/components" %>
+</div>

@@ -1,9 +1,9 @@
-<% content_for :title, "Embedded controllers" %>
+<% content_for :title, "FDRs" %>
 
 <header class="workspace-header recorder-fleet-header">
   <div>
-    <h1>Embedded controllers</h1>
-    <p>Technical identity, connectivity, and security state for interchangeable ExoFDR controller parts.</p>
+    <h1>FDRs</h1>
+    <p>One identity for each recorder, its files, configuration and connections.</p>
   </div>
 </header>
 
@@ -11,22 +11,23 @@
 
 <section id="registered-recorders" class="workspace-panel" data-controller="recorder-fleet">
   <div class="workspace-panel-header">
-    <h2>Registered controllers</h2>
-    <span><%= pluralize @fdrs.size, "controller" %></span>
+    <h2>Registered FDRs</h2>
+    <span><%= pluralize @assemblies.size, "FDR" %></span>
   </div>
-  <% if @fdrs.any? %>
+  <% if @assemblies.any? %>
     <div class="workspace-table-wrap">
       <table class="workspace-table">
-        <thead><tr><th>Recorder / ECU</th><th>Controller part</th><th>Firmware</th><th>Connection</th></tr></thead>
+        <thead><tr><th>FDR</th><th>Configuration</th><th>Firmware</th><th>Connection</th></tr></thead>
         <tbody>
-          <% @fdrs.each do |fdr| %>
-            <% snapshot = fdr.connection_snapshot %>
+          <% @assemblies.each do |assembly| %>
+            <% fdr = assembly.embedded_controller %>
+            <% snapshot = fdr ? fdr.connection_snapshot : {transports: [], last_seen_at: nil} %>
             <% labels = { "usb-c" => "USB-C", "ble" => "Bluetooth", "wifi" => "Wi-Fi", "ground-radio" => "Radio" } %>
             <% live = snapshot[:transports].any? %>
-            <tr data-recorder-fleet-target="row" data-device-id="<%= fdr.device_id %>">
-              <td><%= link_to fdr.display_name, forge_fdr_path(fdr), class: "workspace-strong-link" %><br><small class="workspace-muted"><%= fdr.technical_reference %></small></td>
-              <td><% if fdr.part %><%= link_to fdr.part.display_name, hangar_part_path(fdr.part), class: "workspace-strong-link" %><br><small class="workspace-muted">Asset ID <%= fdr.part.internal_number %></small><% else %><span class="workspace-muted">Not assigned</span><% end %></td>
-              <td data-recorder-firmware><%= fdr.last_seen_firmware.presence || "Not reported" %></td>
+            <tr data-recorder-fleet-target="row" data-device-id="<%= fdr&.device_id %>">
+              <td><%= link_to assembly.display_name, forge_fdr_path(assembly.serial_number), class: "workspace-strong-link" %></td>
+              <td><%= assembly.functional_configuration %> · <%= assembly.assembly_method_label %></td>
+              <td data-recorder-firmware><%= fdr&.last_seen_firmware.presence || "Not reported" %></td>
               <td><span data-recorder-connection class="workspace-status <%= live ? "is-installed" : "is-draft" %>"><%= live ? snapshot[:transports].map { |transport| labels.fetch(transport) }.join(" · ") : "Offline" %></span><br><small data-recorder-seen class="workspace-muted"><%= snapshot[:last_seen_at] ? "Last seen #{time_ago_in_words(snapshot[:last_seen_at])} ago" : "Never seen" %></small></td>
             </tr>
           <% end %>
@@ -34,6 +35,16 @@
       </table>
     </div>
   <% else %>
-    <div class="workspace-empty">No embedded controller is registered yet. Connect an ECU over USB-C or BLE to add it securely.</div>
+    <div class="workspace-empty">No FDR yet. Connect a recorder over USB-C or Bluetooth to set it up.</div>
   <% end %>
 </section>
+
+<% if @unassigned_fdrs.any? %>
+  <section class="workspace-panel" data-controller="recorder-fleet">
+    <h2>Finish setup</h2>
+    <% @unassigned_fdrs.each do |fdr| %>
+      <% snapshot = fdr.connection_snapshot %>
+      <p data-recorder-fleet-target="row" data-device-id="<%= fdr.device_id %>"><%= link_to "Set up FDR", forge_fdr_path(fdr) %> · <%= fdr.device_model || "Connected board" %> · <span data-recorder-firmware><%= fdr.last_seen_firmware %></span> · <span data-recorder-connection><%= snapshot[:transports].map { |transport| {"usb-c" => "USB-C", "ble" => "Bluetooth", "wifi" => "Wi-Fi", "ground-radio" => "Radio"}.fetch(transport) }.join(" · ").presence || "Offline" %></span><span data-recorder-seen></span></p>
+    <% end %>
+  </section>
+<% end %>

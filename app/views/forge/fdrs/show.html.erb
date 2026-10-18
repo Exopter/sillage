@@ -1,45 +1,59 @@
-<% content_for :title, "#{@fdr.display_name} · #{@fdr.technical_reference}" %>
-
+<% content_for :title, @assembly&.display_name || @fdr.display_name %>
 <div class="fdr-connectivity">
   <%= render "shell", active_tab: :overview %>
-
   <div class="workspace-grid">
     <section class="workspace-panel">
-      <div class="workspace-panel-header"><h2>Controller identity</h2><span>Learned from the ECU</span></div>
+      <div class="workspace-panel-header"><h2>FDR identity</h2><span>One recorder, one name</span></div>
       <dl class="workspace-details">
-        <div><dt>ECU ID</dt><dd class="workspace-mono"><%= ecu_label(@fdr.device_id).presence || "Not identified" %></dd></div>
-        <div><dt>Hardware platform</dt><dd><%= @fdr.device_model.presence || "Not reported" %></dd></div>
-        <div><dt>Firmware</dt><dd><%= @fdr.last_seen_firmware.presence || "Not reported" %></dd></div>
-        <div><dt>Last identified</dt><dd><%= @fdr.last_identified_at ? "#{time_ago_in_words(@fdr.last_identified_at)} ago" : "Never" %></dd></div>
-        <div><dt>MAVLink</dt><dd><%= @fdr.mavlink_identity_label.presence || "Not observed" %></dd></div>
+        <div><dt>Serial number</dt><dd><%= @assembly&.serial_number || "Setup required" %></dd></div>
+        <div><dt>Wi-Fi hostname</dt><dd class="workspace-mono"><%= @assembly&.serial_number&.downcase || "Available after setup" %></dd></div>
+        <div><dt>Bluetooth name</dt><dd><%= @assembly&.serial_number || "Available after setup" %></dd></div>
+        <div><dt>Hardware platform</dt><dd><%= @fdr&.device_model.presence || "Not reported" %></dd></div>
+        <div><dt>Firmware</dt><dd><%= @fdr&.last_seen_firmware.presence || "Not reported" %></dd></div>
+        <div><dt>Serviceability</dt><dd><%= @assembly&.serviceability_label || "Setup required" %></dd></div>
+        <% if @assembly %><div><dt>IMU mounting</dt><dd><%= Imu::Mount::LABELS.fetch(@assembly.imu_mount_profile) %></dd></div><% end %>
       </dl>
+      <% if @fdr %><p class="workspace-muted"><%= @fdr.signal_presence&.status&.dig("identity", "name") == @assembly&.serial_number && @assembly ? "Name confirmed by the recorder." : "The recorder name is applied automatically by compatible firmware when connected." %></p><% end %>
     </section>
-
     <section class="workspace-panel">
-      <div class="workspace-panel-header"><h2>Security and Signal</h2><span>Observed state</span></div>
-      <% presence = @fdr.signal_presence %>
+      <div class="workspace-panel-header"><h2>Security and connection</h2><span>Observed state</span></div>
       <dl class="workspace-details">
-        <div><dt>Initialization</dt><dd><span class="workspace-status <%= @fdr.initialized? ? "is-validated" : "is-blocked" %>"><%= @fdr.initialized? ? "Initialized" : "Required" %></span></dd></div>
-        <div><dt>Last Signal presence</dt><dd><%= presence&.last_seen_at ? "#{time_ago_in_words(presence.last_seen_at)} ago" : "Never" %></dd></div>
-        <div><dt>Health</dt><dd><%= presence&.health_label || "Not reported" %></dd></div>
-        <div><dt>Last synchronization</dt><dd><%= presence&.synchronization_label || "Not reported" %></dd></div>
+        <div><dt>Initialization</dt><dd><span class="workspace-status <%= @fdr&.initialized? ? "is-validated" : "is-blocked" %>"><%= @fdr&.initialized? ? "Initialized" : "Required" %></span></dd></div>
+        <div><dt>Last seen</dt><dd><%= @fdr&.last_identified_at ? "#{time_ago_in_words(@fdr.last_identified_at)} ago" : "Never" %></dd></div>
+        <div><dt>Health</dt><dd><%= @fdr&.signal_presence&.health_label || "Not reported" %></dd></div>
+        <div><dt>Last synchronization</dt><dd><%= @fdr&.signal_presence&.synchronization_label || "Not reported" %></dd></div>
       </dl>
-      <p class="workspace-muted">Heartbeat and telemetry samples remain in Signal; only the latest observed presence is summarized here.</p>
+      <% if @fdr %><%= link_to "Recorder files", files_forge_fdr_path(@assembly&.serial_number || @fdr.id), class: "button-primary" %><% end %>
     </section>
   </div>
-
-  <div class="workspace-grid">
+  <% if @assembly.nil? %>
     <section class="workspace-panel">
-      <div class="workspace-panel-header"><h2>Controller part</h2><span>Owned by Hangar</span></div>
-      <%= form_with model: @fdr, url: forge_fdr_path(@fdr), class: "workspace-form" do |form| %>
-        <% if @fdr.errors.any? %><div class="workspace-errors"><%= @fdr.errors.full_messages.to_sentence %></div><% end %>
-        <label>
-          <span>Controller part</span>
-          <%= form.collection_select :part_id, @available_controller_parts, :id, ->(part) { "#{part.display_name} · #{part.serial_number.presence || part.internal_number}" }, { include_blank: "No controller part assigned" } %>
-        </label>
-        <div class="workspace-actions"><%= form.submit "Update assignment", class: "button-primary" %></div>
+      <h2>Finish FDR setup</h2>
+      <p>Choose the hardware configuration. Sillage generates its permanent FDR name.</p>
+      <%= form_with url: forge_fdr_path(@fdr.forge_identifier), method: :patch, class: "workspace-form" do |form| %>
+        <label><span>Functional configuration</span><%= form.collection_select :configuration_id, @functional_configurations, :id, :label %></label>
+        <label><span>Assembly method</span><%= form.select :assembly_method, Assembly::ASSEMBLY_METHODS.map { |code, label| [label, code] } %></label>
+        <%= form.submit "Create FDR", class: "button-primary" %>
+      <% end %>
+      <% if @available_fdrs.any? %>
+        <h3>Use an existing FDR</h3>
+        <%= form_with url: forge_fdr_path(@fdr.forge_identifier), method: :patch, class: "workspace-inline-form" do |form| %>
+          <%= form.collection_select :assembly_id, @available_fdrs, :id, :serial_number %>
+          <%= form.submit "Use this FDR", class: "button-secondary" %>
+        <% end %>
       <% end %>
     </section>
-
-  </div>
+  <% elsif @assembly.controlled_fdr? %>
+    <details class="workspace-panel">
+      <summary><%= @fdr ? "Replace integrated board" : "Connect an integrated board" %></summary>
+      <p>Connect and initialize the new board in Forge first. The FDR name and recording history stay with this FDR.</p>
+      <% if @available_boards.any? %>
+        <%= form_with url: forge_fdr_path(@assembly.serial_number), method: :patch, class: "workspace-form" do |form| %>
+          <label><span>Connected board</span><%= form.collection_select :board_id, @available_boards, :id, ->(board) { "#{board.device_model || 'Board'} · #{board.last_seen_firmware || 'Firmware unknown'} · Last seen #{board.last_identified_at&.iso8601 || 'never'}" } %></label>
+          <%= form.hidden_field :replace_board, value: "1" %>
+          <%= form.submit(@fdr ? "Replace board" : "Use this board", class: "button-secondary") %>
+        <% end %>
+      <% else %><p class="workspace-muted">No unassigned board available.</p><% end %>
+    </details>
+  <% end %>
 </div>

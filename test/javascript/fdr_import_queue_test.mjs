@@ -20,7 +20,7 @@ const partialSource = `export class PartialFdrFile {
 const partialURL = `data:text/javascript;base64,${Buffer.from(partialSource).toString("base64")}`
 const source = (await readFile(new URL("../../app/javascript/lib/fdr_import_queue.js", import.meta.url), "utf8"))
   .replace('"fdr_partial_file"', JSON.stringify(partialURL))
-const { FdrImportQueue, formatRecordingDuration, formatRecordingSize } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`)
+const { FdrImportQueue, formatRecordingDuration, formatRecordingSize, formatRecordingDate, isShortRecording } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`)
 assert.equal(formatRecordingDuration(1122000), "18 min 42 s")
 assert.equal(formatRecordingDuration(29520000), "8 h 12 min 00 s")
 assert.equal(formatRecordingDuration(90061000), "25 h 01 min 01 s")
@@ -39,7 +39,7 @@ const device = { deviceId: "ECU-123456", bootId: 10 }
   const catalog = {
     version: 1, boot_id: 10, revision: 2, paused: false, command_sequence: 0, command_result: 0,
     before_index: 0, next_before_index: 292,
-    files: [{ file_index: 292, boot_id: 10, size_bytes: 14050664, flags: 0, duration_ms: 1558126 }]
+    files: [{ file_index: 292, boot_id: 10, size_bytes: 14050664, flags: 0, duration_ms: 1558126, started_at_unix_ms: 1792324797500 }]
   }
   const payload = (importQueue) => ({ heartbeats: [{ recorder: { device_id: device.deviceId }, seen_at: "2026-10-18T15:32:53Z", status: { import_queue: importQueue } }] })
   const heartbeat = heartbeatPayloads(payload(catalog))[0]
@@ -47,6 +47,7 @@ const device = { deviceId: "ECU-123456", bootId: 10 }
   assert.equal(element.hidden, false, "the file panel opens from the parsed Wi-Fi response")
   assert.equal(queue.entries.get(292).sizeBytes, 14050664)
   assert.equal(queue.entries.get(292).durationMs, 1558126)
+  assert.equal(queue.entries.get(292).startedAtUnixMs, 1792324797500)
   assert.equal(queue.cursor, 292)
   assert.equal(queue.wifiReady, true)
   for (const invalid of [{ ...catalog, files: {} }, { ...catalog, files: [{ ...catalog.files[0], flags: "0" }] }]) {
@@ -149,3 +150,39 @@ function fixture() {
   assert.equal(queue.cursor, 1, "pagination remains at the last manually loaded page")
 }
 console.log("FDR import queue interruption and resume tests passed")
+
+assert.equal(formatRecordingDate(null), "Unknown date")
+assert.match(formatRecordingDate(1792324797500), /2026/)
+assert.equal(isShortRecording({ durationMs: 59999 }), true)
+assert.equal(isShortRecording({ durationMs: 60000 }), false)
+assert.equal(isShortRecording({ durationMs: null }), false)
+assert.equal(isShortRecording({ durationMs: 0 }), true)
+{
+  class Node {
+    children = []
+    textContent = ""
+    append(...nodes) { this.children.push(...nodes) }
+    replaceChildren() { this.children = [] }
+    setAttribute() {}
+  }
+  const body = new Node(), summary = new Node()
+  globalThis.document = { createElement() { return new Node() } }
+  const element = { addEventListener() {}, querySelector(selector) { return selector === "[data-import-files]" ? body : summary }, querySelectorAll() { return [] } }
+  const queue = new FdrImportQueue(element, () => {})
+  queue.entries.set(1, {fileIndex:1, flags:0, sizeBytes:100, durationMs:59999})
+  queue.entries.set(2, {fileIndex:2, flags:0, sizeBytes:100, durationMs:60000, startedAtUnixMs:1792324797500})
+  queue.entries.set(3, {fileIndex:3, flags:0, sizeBytes:100, durationMs:null})
+  queue.selected.add(1)
+  queue.render()
+  assert.equal(body.children.length, 2)
+  assert.equal(queue.selected.has(1), false, "hidden recordings are removed from selection")
+  assert.match(summary.textContent, /1 short recordings hidden/)
+  assert.equal(body.children[1].children.length, 6)
+  assert.match(body.children[1].children[2].textContent, /2026/)
+  queue.showShort = true; queue.render()
+  assert.equal(body.children.length, 3)
+  assert.equal(body.children[2].children[5].textContent, "Manual import only")
+  queue.entries.delete(2); queue.entries.delete(3); queue.showShort = false; queue.render()
+  assert.match(body.children[0].children[0].textContent, /No recordings match/)
+  delete globalThis.document
+}

@@ -27,7 +27,7 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :created
     recorder = EmbeddedController.find_by!(device_id: "ECU-ABC123")
-    assert_equal "Unassigned ECU", recorder.display_name
+    assert_equal "FDR setup required", recorder.display_name
     assert_nil response.parsed_body.dig("recorder", "assembly")
     assert_equal "XIAO ESP32S3", recorder.device_model
     assert_equal "fdr_integrated/26", recorder.last_seen_firmware
@@ -35,7 +35,7 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
     assert_equal 191, recorder.mavlink_component_id
     assert recorder.last_identified_at
     assert_nil recorder.assembly
-    assert_equal connectivity_forge_fdr_path(recorder), response.parsed_body.dig("recorder", "connectivity_url")
+    assert_equal(recorder.assembly ? connectivity_forge_fdr_path(recorder.forge_identifier) : forge_fdr_path(recorder), response.parsed_body.dig("recorder", "connectivity_url"))
     assert_equal api_v1_fdr_initialization_path(recorder), response.parsed_body.dig("recorder", "initialization_url")
     assert_equal api_v1_fdr_access_restoration_path(recorder), response.parsed_body.dig("recorder", "access_restoration_url")
     assert_not response.parsed_body.dig("recorder", "initialization_confirmed")
@@ -45,8 +45,8 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
 
     get connectivity_forge_fdr_path(recorder)
     assert_response :success
-    assert_select "h2", text: "Unassigned ECU"
-    assert_select ".fdr-connectivity-heading", text: /ECU-ABC123/
+    assert_select "h2", text: "FDR setup required"
+    assert_select ".fdr-connectivity-heading", text: /FDR setup required/
     assert_select ".fdr-connectivity-heading", text: /XIAO ESP32S3/
   end
 
@@ -143,8 +143,8 @@ class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
     assert_equal "V0", response.parsed_body.dig("recorder", "functional_configuration")
     assert_equal "PERF", response.parsed_body.dig("recorder", "assembly_method")
     assert_not response.parsed_body.fetch("recorder").key?("hardware_definition")
-    assert_equal recorder.part.internal_number, response.parsed_body.dig("recorder", "controller_part_internal_number")
-    assert_equal connectivity_forge_fdr_path(recorder), response.parsed_body.dig("recorder", "connectivity_url")
+    assert_not response.parsed_body.fetch("recorder").key?("controller_part_internal_number")
+    assert_equal(recorder.assembly ? connectivity_forge_fdr_path(recorder.forge_identifier) : forge_fdr_path(recorder), response.parsed_body.dig("recorder", "connectivity_url"))
     assert_equal aircraft(:pilatus).registration, response.parsed_body.dig("aircraft", "registration")
     assert_equal aircraft(:pilatus).display_name, response.parsed_body.dig("aircraft", "display_name")
     assert_equal installation.installed_at.iso8601, response.parsed_body.dig("aircraft", "installed_at")

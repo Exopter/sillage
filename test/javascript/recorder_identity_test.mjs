@@ -28,7 +28,7 @@ const assembly = {name: "EXOFDR-V0-PERF-03", serial_number: "EXOFDR-V0-PERF-03",
 const recorder = {device_id: "ECU-A172E0", assembly, initialization_confirmed: true, connectivity_url: "/forge/fdrs/1/connectivity", initialization_url: "/api/v1/fdrs/1/initialization"}
 const label = "EXOFDR-V0-PERF-03"
 assert.equal(recorderLabel({assembly}), label)
-assert.equal(recorderLabel({assembly: null}), "Unassigned ECU")
+assert.equal(recorderLabel({assembly: null}), "FDR setup required")
 assert.equal(recorderLabel({}), "Recorder not identified")
 assert.equal(recorderTechnicalLabel({deviceId: recorder.device_id, assembly}), "ECU-A172E0")
 
@@ -56,19 +56,19 @@ connected.registrationLookupDeviceId = recorder.device_id
 connected.registrationLookupStartedAt = Date.now()
 for (const transport of ["usb", "ble", "wifi"]) {
   assert.equal(connected[`${transport}DeviceTarget`].textContent, label)
-  assert.match(connected[`${transport}IdentityDetailTarget`].textContent, /ECU-A172E0/)
+  assert.equal(connected[`${transport}IdentityDetailTarget`].textContent, "")
 }
 assert.equal(connected.recorderDeviceTarget.textContent, label)
 assert.equal(connected.recorderEcuTarget.textContent, recorder.device_id)
 assert.equal(aircraftConnectionLabel(currentAircraftConnections()), `${label} connected`)
-assert.match(connected.wifiLinkLabelTarget.textContent, /EXOFDR-V0-PERF-03.*ECU-A172E0/)
+assert.match(connected.wifiLinkLabelTarget.textContent, /EXOFDR-V0-PERF-03/)
 
 // Heartbeats refresh an assignment even while a USB registration is cached.
 connected.renderSillageHeartbeat({recorder: {...recorder, assembly: null, firmware: "fdr/26"}, seen_at: new Date().toISOString(), status: {}})
-assert.equal(connected.usbDeviceTarget.textContent, "Unassigned ECU")
-assert.equal(connected.recorderDeviceTarget.textContent, "Unassigned ECU")
+assert.equal(connected.usbDeviceTarget.textContent, "FDR setup required")
+assert.equal(connected.recorderDeviceTarget.textContent, "FDR setup required")
 assert.equal(connected.registeredRecorder.assembly, null)
-assert.equal(aircraftConnectionLabel(currentAircraftConnections()), "Unassigned ECU connected")
+assert.equal(aircraftConnectionLabel(currentAircraftConnections()), "FDR setup required connected")
 
 // A transport mismatch must not leave a single FDR looking authoritative.
 connected.bleIdentity = {deviceId: "ECU-ABC123", firmware: "fdr/26"}
@@ -99,7 +99,7 @@ await secondLookup
 requests[0](new Response(JSON.stringify({registered: true, recorder})))
 await firstLookup
 assert.equal(delayed.registeredRecorder.device_id, "ECU-ABC123")
-assert.equal(delayed.recorderDeviceTarget.textContent, "Unassigned ECU")
+assert.equal(delayed.recorderDeviceTarget.textContent, "FDR setup required")
 
 // Refresh the same ECU after an assignment change, without reconnecting it.
 delayed.registrationLookupStartedAt = 0
@@ -133,7 +133,7 @@ await wifiLookup
 wifi.deviceInfo = {deviceId: recorder.device_id, firmware: "fdr/26"}
 wifi.renderConnection({alertFlags: 0}, "USB-C")
 assert.equal(wifi.bleDeviceTarget.textContent, label)
-assert.equal(wifi.bleDeviceTarget.title, recorder.device_id)
+assert.equal(wifi.bleDeviceTarget.title, label)
 wifi.resetConnectionState()
 assert.equal(wifi.resolvedRecorder, null)
 wifi.expectedDeviceIdValue = ""

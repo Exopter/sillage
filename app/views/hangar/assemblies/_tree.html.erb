@@ -5,7 +5,7 @@
   </header>
   <% if assembly.parts.any? %>
     <ul>
-      <% assembly.parts.includes(:function).ordered.each do |part| %>
+      <% assembly.parts.includes(:function).ordered.reject { |part| assembly.controlled_fdr? && part.function.code == "CONTROLLER" }.each do |part| %>
         <li><span class="assembly-function"><%= part.function.name %></span><%= link_to part.display_name, hangar_part_path(part) %><small><%= part.serial_number.present? ? "S/N #{part.serial_number} · Asset ID #{part.internal_number}" : "Asset ID #{part.internal_number}" %></small></li>
       <% end %>
     </ul>

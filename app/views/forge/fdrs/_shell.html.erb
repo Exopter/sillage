@@ -1,48 +1,29 @@
+<% identifier = @assembly&.serial_number || @fdr.id %>
+<% label = @fdr&.display_name || @assembly.display_name %>
 <nav class="fdr-breadcrumb" aria-label="FDR breadcrumb">
   <%= link_to "Forge", forge_path %>
   <%= sillage_icon "chevron-right", size: 13 %>
-  <%= link_to "Embedded controllers", forge_fdrs_path %>
+  <%= link_to "FDRs", forge_fdrs_path %>
   <%= sillage_icon "chevron-right", size: 13 %>
-  <span aria-current="page"><%= @fdr.display_name %></span>
+  <span aria-current="page"><%= label %></span>
 </nav>
-
 <header class="fdr-connectivity-heading">
   <div>
-    <span class="section-eyebrow">Embedded controller</span>
-    <h2><%= @fdr.display_name %></h2>
-    <p>
-      <%= @fdr.technical_reference %> ·
-      Hardware platform: <%= @fdr.device_model.presence || "not reported" %>
-      <% if @controller_part %>· Part <%= @controller_part.internal_number %><% else %>· No controller part assigned<% end %>
-      <% if @aircraft %>· Installed in <%= @aircraft.registration %><% end %>
-    </p>
+    <span class="section-eyebrow">FDR</span>
+    <h2><%= label %></h2>
+    <p><%= @fdr&.device_model %><% if @fdr&.device_model.present? && @assembly&.functional_configuration %> · <% end %><%= @assembly&.functional_configuration %><% if @assembly %> · <%= @assembly.assembly_method_label %><% end %><% if @aircraft %> · Installed in <%= @aircraft.registration %><% end %></p>
   </div>
-
-  <div class="fdr-connectivity-actions">
-    <% if active_tab == :connectivity %>
-      <button type="button" class="button-secondary" data-fdr-wifi-configuration-target="usbButton" data-action="fdr-wifi-configuration#connectUsb">
-        <%= sillage_icon "usb-c", size: 16, stroke_width: 2.4 %>
-        <span>Connect USB-C</span>
-      </button>
-      <button type="button" class="button-secondary" data-fdr-wifi-configuration-target="bleButton" data-action="fdr-wifi-configuration#connectBle">
-        <%= sillage_icon "bluetooth", size: 16 %>
-        <span>Connect BLE</span>
-      </button>
-    <% elsif @assembly %>
-      <%= link_to "Open ExoFDR assembly", hangar_assembly_path(@assembly), class: "button-secondary" %>
-    <% end %>
-  </div>
+  <% if active_tab == :connectivity %>
+    <div class="fdr-connectivity-actions">
+      <button type="button" class="button-secondary" data-fdr-wifi-configuration-target="usbButton" data-action="fdr-wifi-configuration#connectUsb">Connect USB-C</button>
+      <button type="button" class="button-secondary" data-fdr-wifi-configuration-target="bleButton" data-action="fdr-wifi-configuration#connectBle">Connect Bluetooth</button>
+    </div>
+  <% end %>
+  <% if @assembly %><div class="fdr-connectivity-actions"><%= link_to "Edit configuration", edit_hangar_assembly_path(@assembly), class: "button-secondary" %></div><% end %>
 </header>
-
 <nav class="fdr-recorder-tabs" aria-label="FDR sections">
-  <%= link_to "Overview", forge_fdr_path(@fdr),
-    class: ("is-active" if active_tab == :overview),
-    aria: { current: ("page" if active_tab == :overview) } %>
-  <%= link_to "Connectivity", connectivity_forge_fdr_path(@fdr),
-    class: ("is-active" if active_tab == :connectivity),
-    aria: { current: ("page" if active_tab == :connectivity) } %>
-  <%= link_to "Calibration", calibration_forge_fdr_path(@fdr), class: ("is-active" if active_tab == :calibration) %>
-  <%= link_to "Activity", activity_forge_fdr_path(@fdr),
-    class: ("is-active" if active_tab == :activity),
-    aria: { current: ("page" if active_tab == :activity) } %>
+  <% { overview: ["Overview", forge_fdr_path(identifier)], parts: ["Parts", parts_forge_fdr_path(identifier)], files: ["Files", files_forge_fdr_path(identifier)], connectivity: ["Connectivity", connectivity_forge_fdr_path(identifier)], calibration: ["Calibration", calibration_forge_fdr_path(identifier)], activity: ["Activity", activity_forge_fdr_path(identifier)] }.each do |key, (name, path)| %>
+    <% next if key == :parts && !@assembly %>
+    <%= link_to name, path, class: ("is-active" if active_tab == key), aria: { current: ("page" if active_tab == key) } %>
+  <% end %>
 </nav>

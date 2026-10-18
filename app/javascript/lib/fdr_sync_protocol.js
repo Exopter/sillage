@@ -107,7 +107,8 @@ export const BleCapability = Object.freeze({
   WIFI_PROFILES: 1,
   WIFI_SCAN: 2,
   SILLAGE_AUTH: 4,
-  RECORDING_CONTROL: 8
+  RECORDING_CONTROL: 8,
+  CANONICAL_NAME: 16
 })
 
 export const WifiCommand = Object.freeze({
@@ -992,6 +993,18 @@ export class BleWifiClient {
     return this.request(encodeWifiSillage({ heartbeatUrl }), WifiResponse.ACK)
   }
 
+  /** @param {{command:string,signature:string}} identity */
+  configureIdentity(identity) {
+    if (!/^[0-9a-f]{82}$/i.test(identity.command) || !/^[0-9a-f]{64}$/i.test(identity.signature)) {
+      throw new Error("Invalid signed FDR identity.")
+    }
+    const hex = identity.command + identity.signature
+    const payload = new Uint8Array(2 + hex.length / 2)
+    payload.set([1, 11])
+    for (let index = 0; index < hex.length; index += 2) payload[2 + index / 2] = Number.parseInt(hex.slice(index, index + 2), 16)
+    return this.request(payload, WifiResponse.ACK)
+  }
+
   sillage() {
     return this.request(encodeWifiCommand(WifiCommand.GET_SILLAGE), WifiResponse.SILLAGE)
   }
@@ -1235,9 +1248,10 @@ export function protocolError(value) { return value instanceof Error ? value : n
 /** @param {BinaryValue} value */
 export function parseImportCatalog(value) {
   const bytes = exactBytes(value)
-  const view = dataView(bytes, bytes.length === 24 ? 24 : Exs1Layout.IMPORT_CATALOG_ENTRY, "import catalog")
+  const view = dataView(bytes, [24, 32].includes(bytes.length) ? bytes.length : Exs1Layout.IMPORT_CATALOG_ENTRY, "import catalog")
   return { fileIndex: view.getUint32(0, true), bootId: view.getUint32(4, true),
     sizeBytes: Number(view.getBigUint64(8, true)), flags: view.getUint8(16),
     revision: view.getUint32(20, true),
-    durationMs: bytes.length >= 32 && view.getUint8(17) === 1 ? Number(view.getBigUint64(24, true)) : null }
+    durationMs: bytes.length >= 32 && view.getUint8(17) === 1 ? Number(view.getBigUint64(24, true)) : null,
+    startedAtUnixMs: bytes.length >= 40 && view.getBigUint64(32, true) > 0n ? Number(view.getBigUint64(32, true)) : null }
 }

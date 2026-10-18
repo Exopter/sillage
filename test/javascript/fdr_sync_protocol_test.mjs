@@ -659,7 +659,7 @@ importClient.request = async (type, payload) => {
   assert.equal(new DataView(payload.buffer).getUint32(0, true), 278)
   return {payload:catalogue}
 }
-assert.deepEqual(await importClient.importCatalog(278), {fileIndex:277, bootId:42, sizeBytes:123456789, flags:4, revision:12, durationMs:29520000})
+assert.deepEqual(await importClient.importCatalog(278), {fileIndex:277, bootId:42, sizeBytes:123456789, flags:4, revision:12, durationMs:29520000, startedAtUnixMs:null})
 assert.equal(protocol.parseImportCatalog(catalogue.slice(0, 24)).durationMs, null, "older catalogues remain readable")
 catalogueView.setUint8(17, 0)
 assert.equal(protocol.parseImportCatalog(catalogue).durationMs, null, "unknown duration never becomes zero")
@@ -683,3 +683,9 @@ importClient.request = async () => ({payload:Uint8Array.from([1,1,0,0,13,0,0,0])
 await assert.rejects(importClient.controlImport(1, 277, 42), /rejected this selection/)
 
 console.log("FDR synchronization protocol tests passed")
+
+const datedCatalogue = new Uint8Array(40)
+datedCatalogue.set(catalogue)
+new DataView(datedCatalogue.buffer).setBigUint64(32, 1792324797500n, true)
+assert.equal(protocol.parseImportCatalog(datedCatalogue).startedAtUnixMs, 1792324797500)
+assert.equal(protocol.parseImportCatalog(catalogue).startedAtUnixMs, null)

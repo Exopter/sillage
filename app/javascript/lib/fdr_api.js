@@ -49,6 +49,7 @@ export function registrationPayload(value) {
     registered: true,
     recorder: {
       device_id: requiredString(recorder.device_id, "recorder identifier"),
+      ...(recorder.identity_provisioning == null ? {} : { identity_provisioning: identityProvisioning(recorder.identity_provisioning) }),
       assembly: recorderAssembly(recorder.assembly),
       connectivity_url: localPath(recorder.connectivity_url, "connectivity URL"),
       initialization_url: localPath(recorder.initialization_url, "initialization URL"),
@@ -125,7 +126,8 @@ function importQueuePayload(value) {
       if (index < 1 || index > 999999) throw new Error("Sillage returned an invalid recorder file index.")
       return {
         file_index: index, boot_id: integer(file.boot_id), size_bytes: integer(file.size_bytes), flags: integer(file.flags),
-        duration_ms: file.duration_ms == null ? null : integer(file.duration_ms)
+        duration_ms: file.duration_ms == null ? null : integer(file.duration_ms),
+        started_at_unix_ms: file.started_at_unix_ms == null ? null : integer(file.started_at_unix_ms)
       }
     })
   }
@@ -156,4 +158,15 @@ export function heartbeatPayloads(value) {
       recording_command: command ? {sequence: commandSequence(command.sequence), status: requiredString(command.status, "recording command status")} : null
     }
   })
+}
+
+/** @param {unknown} value */
+export function identityProvisioning(value) {
+  if (value == null) return null
+  const payload = objectPayload(value)
+  if (typeof payload.command !== "string" || !/^[0-9a-f]{82}$/i.test(payload.command) ||
+      typeof payload.signature !== "string" || !/^[0-9a-f]{64}$/i.test(payload.signature)) {
+    throw new Error("Sillage returned an invalid FDR name configuration.")
+  }
+  return {command: payload.command, signature: payload.signature}
 }

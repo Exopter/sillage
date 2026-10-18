@@ -45,7 +45,8 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
       assert_equal format("EXOFDR-V42-PERF-%02d", index + 1), assembly.name
       assert_equal assembly.name, assembly.serial_number
       follow_redirect!
-      assert_select ".workspace-header h2", assembly.name
+      follow_redirect!
+      assert_select ".fdr-connectivity-heading h2", assembly.name
       assert_select ".workspace-header", text: /S\/N|Hardware definition/, count: 0
     end
   end
@@ -91,18 +92,17 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
     assert_select "section[aria-label='Selected assembly details'] .workspace-actions" do
       assert_select "a", count: 2
       assert_select "a[href='#{hangar_assembly_path(assembly)}']", text: "Open"
-      assert_select "a[href='#{forge_fdr_path(controller)}']", text: "Open in Forge"
+      assert_select "a[href='#{forge_fdr_path(controller.forge_identifier)}']", text: "Open in Forge"
       assert_select "button", count: 0
     end
     assert_select "main", text: /Open controller in Forge/, count: 0
     assert_select ".hangar-details-body dt", text: "Internal Asset ID", count: 1
 
     get hangar_assembly_path(assembly)
-    assert_select "a[href='#{edit_hangar_assembly_path(assembly)}']", text: "Edit"
-    assert_select "a[href='#{forge_fdr_path(controller)}']", text: "Open in Forge"
-    assert_select "button", text: "Retire", count: 0
-    assert_select "button", text: "Delete", count: 0
-    assert_select ".workspace-details dt", text: "Internal Asset ID", count: 1
-    assert_select ".assembly-tree-node small", text: "Asset ID #{controller.part.internal_number}"
+    assert_redirected_to forge_fdr_path(assembly.serial_number)
+    follow_redirect!
+    assert_select "a[href='#{edit_hangar_assembly_path(assembly)}']", text: "Edit configuration"
+    assert_select ".workspace-details dt", text: "Internal Asset ID", count: 0
+    assert_select ".workspace-details dt", text: "ECU ID", count: 0
   end
 end

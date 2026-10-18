@@ -1,9 +1,11 @@
 class DeviceActivity < ApplicationRecord
   TITLES = {
-    "registered" => "ECU registered",
+    "registered" => "FDR registered",
+    "fdr_bound" => "FDR identity assigned",
+    "board_replaced" => "Integrated board replaced",
     "identity_corrected" => "ECU identity corrected",
     "authentication_prepared" => "Authentication prepared",
-    "initialized" => "ECU initialized",
+    "initialized" => "FDR initialized",
     "access_restoration_requested" => "Recorder access restoration requested",
     "access_restored" => "Recorder access restored",
     "assembly_linked" => "Legacy physical asset assignment changed",
@@ -40,6 +42,8 @@ class DeviceActivity < ApplicationRecord
 
   def description
     case event_type
+    when "fdr_bound", "board_replaced"
+      "#{details['serial_number']}. Existing recordings and board history retained."
     when "identity_corrected"
       "#{details['previous_device_id']} to #{details['device_id']}. Existing keys and history retained."
     when "access_restoration_requested"
@@ -47,7 +51,7 @@ class DeviceActivity < ApplicationRecord
     when "access_restored"
       "The existing authentication key was restored and the USB-C session authenticated."
     when "registered"
-      details["device_id"].presence || "The recorder was added to Forge."
+      "The recorder was added to Forge."
     when "assembly_linked"
       asset = details["asset_id"].presence
       previous = details["previous_asset_id"].presence
@@ -72,7 +76,7 @@ class DeviceActivity < ApplicationRecord
     when "wifi_profiles_reordered"
       "#{details["ssid"]} moved to priority #{details["position"].to_i + 1}."
     when "connectivity_provisioned"
-      "#{details["profile_count"]} Wi-Fi profiles applied to #{details["device_id"]}."
+      "#{details["profile_count"]} Wi-Fi profiles applied to the FDR."
     when "recording_mode_requested"
       state = ActiveModel::Type::Boolean.new.cast(details["requested_enabled"]) ? "on" : "off"
       "Recording mode #{state} requested over #{details["transport"].to_s.upcase}."

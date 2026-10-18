@@ -61,10 +61,7 @@ class ImuChecksFlowTest < ActionDispatch::IntegrationTest
 
   test "installed belly reference uses native quaternions and rejects a stale mounting" do
     assembly = create_exofdr_assembly
-    installed = create_embedded_controller(assembly:, device_id: "ECU-ABC124")
-    part = installed.part
-    installed.destroy!
-    @fdr.update!(part:)
+    FdrIdentity::BindBoard.new(assembly:, controller: @fdr).call
     post api_v1_imu_checks_path, params: @payload, as: :json
     assert_response :created
     old_reference = ImuCheck.last

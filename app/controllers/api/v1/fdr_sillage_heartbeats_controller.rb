@@ -12,7 +12,7 @@ module Api
         version device_id firmware model sent_at uptime_ms state_flags
         sensor_validity alert_flags storage_free_mib storage_total_mib
         last_sync_result active_file_index last_synced_file_index diagnostics
-        wifi_upload recording_control import_queue
+        wifi_upload recording_control import_queue identity
       ].freeze
 
       allow_unauthenticated_access only: :create
@@ -54,6 +54,13 @@ module Api
         reconcile_recording_command(recorder, payload["recording_control"], seen_at)
         attach_recording_command(recorder) if payload["recording_control"].is_a?(Hash)
         reconcile_import_commands(recorder, payload["import_queue"], seen_at)
+        if payload["identity"].is_a?(Hash) && payload["identity"]["version"] == 1
+          identity = FdrIdentity::NameProvisioning.payload(recorder)
+          if identity
+            response.headers["X-FDR-Identity"] = identity[:command]
+            response.headers["X-FDR-Identity-Signature"] = identity[:signature]
+          end
+        end
         head :accepted
       rescue JSON::ParserError, KeyError, EmbeddedController::AuthenticationKeyError
         head :unauthorized
@@ -70,6 +77,7 @@ module Api
         files = queue["files"]
         files.is_a?(Array) && files.size <= 8 && files.all? do |file|
           file.is_a?(Hash) && %w[file_index boot_id size_bytes flags].all? { |key| file[key].is_a?(Integer) && file[key] >= 0 } && file["file_index"].between?(1, 999_999) &&
+            (file["started_at_unix_ms"].nil? || (file["started_at_unix_ms"].is_a?(Integer) && file["started_at_unix_ms"].between?(1_577_836_800_000, 7_258_118_399_999))) &&
             (file["duration_ms"].nil? || (file["duration_ms"].is_a?(Integer) && file["duration_ms"].between?(0, 18_446_744_073_709_551)))
         end
       end

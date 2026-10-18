@@ -1,7 +1,7 @@
-<% content_for :title, "#{@fdr.technical_reference} · Calibration" %>
+<% content_for :title, "#{@assembly&.display_name || @fdr.display_name} · Calibration" %>
 <% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><% end %>
 <div class="fdr-connectivity">
   <%= render "shell", active_tab: :calibration %>
-  <%= render "imu_checks/guide", fdr: @fdr, kind: "calibration" %>
+  <% if @fdr %><%= render "imu_checks/guide", fdr: @fdr, kind: "calibration" %><% end %>
   <%= render "imu_checks/history", checks: @checks %>
 </div>

@@ -4,7 +4,7 @@ import { PartialFdrFile } from "fdr_partial_file"
 const ACTIONS = { priority: 1, skip: 2, restore: 3, pause: 4, resume: 5, catalog: 7 }
 /** @param {number} ms */
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-/** @typedef {{fileIndex: number, bootId: number, sizeBytes: number, flags: number, durationMs?: number | null}} Entry */
+/** @typedef {{fileIndex: number, bootId: number, sizeBytes: number, flags: number, durationMs?: number | null, startedAtUnixMs?: number | null}} Entry */
 /** @typedef {import("./fdr_sync_protocol").UsbFdrClient} Client */
 /** @typedef {Awaited<ReturnType<Client["nextImport"]>>} Preparation */
 
@@ -21,6 +21,7 @@ export class FdrImportQueue {
     this.running = false
     this.busy = false
     this.cursor = 0
+    this.showShort = false
     this.wifiReady = false
     /** @type {Set<number>} */ this.pendingCommands = new Set()
     this.checkingCommands = false
@@ -36,6 +37,7 @@ export class FdrImportQueue {
     this.change = (event) => {
       const input = event.target
       if (!(input instanceof HTMLInputElement)) return
+      if (input.hasAttribute("data-import-show-short")) { this.showShort = input.checked; this.render(); return }
       const index = Number(input.value)
       if (input.checked) this.selected.add(index)
       else this.selected.delete(index)
@@ -79,7 +81,7 @@ export class FdrImportQueue {
     if (queue.before_index === 0) this.entries.clear()
     for (const file of queue.files || []) this.entries.set(file.file_index, {
       fileIndex: file.file_index, bootId: file.boot_id, sizeBytes: file.size_bytes, flags: file.flags,
-      durationMs: file.duration_ms ?? null
+      durationMs: file.duration_ms ?? null, startedAtUnixMs: file.started_at_unix_ms ?? null
     })
     this.cursor = queue.next_before_index
     this.paused = queue.paused
@@ -179,10 +181,19 @@ export class FdrImportQueue {
     if (!body) return
     for (const index of this.selected) {
       const entry = this.entries.get(index)
-      if (!entry || entry.flags & (1 | 2 | 16)) this.selected.delete(index)
+      if (!entry || entry.flags & (1 | 2 | 16) || (!this.showShort && isShortRecording(entry))) this.selected.delete(index)
     }
     body.replaceChildren()
-    for (const entry of [...this.entries.values()].sort((a, b) => b.fileIndex - a.fileIndex)) {
+    const all = [...this.entries.values()]
+    const visible = all.filter((entry) => this.showShort || !isShortRecording(entry))
+    const summary = this.element?.querySelector("[data-import-filter-summary]")
+    if (summary) summary.textContent = `${all.length - visible.length} short recordings hidden in the loaded files.`
+    if (!visible.length) {
+      const row = document.createElement("tr"), cell = document.createElement("td")
+      cell.colSpan = 6; cell.textContent = "No recordings match this filter. Show short recordings or load older files."
+      row.append(cell); body.append(row)
+    }
+    for (const entry of visible.sort((a, b) => b.fileIndex - a.fileIndex)) {
       const row = document.createElement("tr")
       const selectCell = document.createElement("td")
       const input = document.createElement("input")
@@ -191,8 +202,8 @@ export class FdrImportQueue {
       input.disabled = Boolean(entry.flags & (1 | 2 | 16)); input.setAttribute("aria-label", `Select ${filename}`)
       selectCell.append(input); row.append(selectCell)
       const state = entry.flags & 1 ? "Recording" : entry.flags & 16 ? "Damaged" : entry.flags & 2 ? "Imported"
-        : entry.flags & 8 ? "Priority" : entry.flags & 4 ? "Skipped" : entry.flags & 32 ? "Deferred" : "Available"
-      for (const text of [filename, formatRecordingDuration(entry.durationMs), formatRecordingSize(entry.sizeBytes), state]) {
+        : entry.flags & 8 ? "Priority" : entry.flags & 4 ? "Skipped" : entry.flags & 32 ? "Deferred" : isShortRecording(entry) ? "Manual import only" : "Available"
+      for (const text of [filename, formatRecordingDate(entry.startedAtUnixMs), formatRecordingDuration(entry.durationMs), formatRecordingSize(entry.sizeBytes), state]) {
         const cell = document.createElement("td"); cell.textContent = text; row.append(cell)
       }
       body.append(row)
@@ -275,4 +286,16 @@ export function formatRecordingSize(bytes) {
   if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KiB`
   if (bytes < 1073741824) return `${(bytes / 1048576).toFixed(1)} MiB`
   return `${(bytes / 1073741824).toFixed(2)} GiB`
+}
+
+/** @param {Entry} entry */
+export function isShortRecording(entry) {
+  return typeof entry.durationMs === "number" && entry.durationMs >= 0 && entry.durationMs < 60000
+}
+
+/** @param {number | null | undefined} timestamp */
+export function formatRecordingDate(timestamp) {
+  if (!timestamp || !Number.isFinite(timestamp)) return "Unknown date"
+  return new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", timeZoneName: "short" }).format(new Date(timestamp))
 }

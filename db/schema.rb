@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_18_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_18_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -111,6 +111,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_180000) do
     t.datetime "updated_at", null: false
     t.index ["device_id"], name: "index_embedded_controllers_on_device_id", unique: true, where: "((device_id IS NOT NULL) AND ((device_id)::text <> ''::text))"
     t.index ["part_id"], name: "index_embedded_controllers_on_part_id", unique: true
+  end
+
+  create_table "fdr_board_installations", force: :cascade do |t|
+    t.bigint "assembly_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "embedded_controller_id", null: false
+    t.datetime "installed_at", null: false
+    t.datetime "removed_at"
+    t.datetime "updated_at", null: false
+    t.index ["assembly_id"], name: "index_fdr_board_installations_on_assembly_id"
+    t.index ["assembly_id"], name: "one_active_board_per_fdr", unique: true, where: "(removed_at IS NULL)"
+    t.index ["embedded_controller_id"], name: "index_fdr_board_installations_on_embedded_controller_id"
+    t.index ["embedded_controller_id"], name: "one_active_fdr_per_board", unique: true, where: "(removed_at IS NULL)"
+    t.check_constraint "removed_at IS NULL OR removed_at > installed_at", name: "fdr_board_installation_dates"
   end
 
   create_table "fdr_functional_configurations", force: :cascade do |t|
@@ -232,8 +246,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_180000) do
     t.index "user_id, lower((name)::text)", name: "index_flight_folders_on_owner_and_name", unique: true
     t.index ["user_id"], name: "index_flight_folders_on_user_id"
     t.index ["visibility"], name: "index_flight_folders_on_visibility"
-    t.check_constraint "color::text = ANY (ARRAY['field'::character varying, 'sky'::character varying, 'aqua'::character varying, 'amber'::character varying, 'violet'::character varying, 'graphite'::character varying]::text[])", name: "flight_folder_color"
-    t.check_constraint "visibility::text = ANY (ARRAY['private'::character varying, 'public'::character varying, 'shared'::character varying]::text[])", name: "flight_folder_visibility"
+    t.check_constraint "color::text = ANY (ARRAY['field'::character varying::text, 'sky'::character varying::text, 'aqua'::character varying::text, 'amber'::character varying::text, 'violet'::character varying::text, 'graphite'::character varying::text])", name: "flight_folder_color"
+    t.check_constraint "visibility::text = ANY (ARRAY['private'::character varying::text, 'public'::character varying::text, 'shared'::character varying::text])", name: "flight_folder_visibility"
   end
 
   create_table "flight_imports", force: :cascade do |t|
@@ -711,6 +725,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_180000) do
   add_foreign_key "device_activities", "embedded_controllers"
   add_foreign_key "device_activities", "users", column: "actor_id"
   add_foreign_key "embedded_controllers", "parts"
+  add_foreign_key "fdr_board_installations", "assemblies"
+  add_foreign_key "fdr_board_installations", "embedded_controllers"
   add_foreign_key "fdr_import_commands", "embedded_controllers"
   add_foreign_key "fdr_import_commands", "users", column: "requested_by_id"
   add_foreign_key "fdr_recording_commands", "embedded_controllers"

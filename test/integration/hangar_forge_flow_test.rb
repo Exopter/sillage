@@ -68,25 +68,18 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_select "input[name='assembly[device_id]']", count: 0
 
     get hangar_assembly_path(@assembly)
-    assert_response :success
+    assert_redirected_to forge_fdr_path(@assembly.serial_number)
+    follow_redirect!
     assert_select "h2", @assembly.serial_number
-    assert_select ".workspace-header", text: /#{@assembly.serial_number}/
-    assert_select ".workspace-details", text: /Functional configuration.*V0.*Assembly method.*Perfboard/m
-    assert_select "main", text: /Hardware definition/, count: 0
-    assert_select ".workspace-details", text: /Qualification/, count: 0
-    assert_select ".workspace-details", text: /Internal Asset ID.*#{@assembly.internal_number}/m
-    assert_select ".workspace-details", text: /ECU ID.*#{@fdr.device_id}/m
-    assert_select ".assembly-function", "GPS"
-    assert_select "h2", text: "Signal identity", count: 0
-    assert_select "a[href='#{forge_fdr_path(@fdr)}']", text: "Open in Forge"
-
-    get forge_fdr_path(@fdr)
-    assert_response :success
-    assert_select ".fdr-recorder-tabs", text: /Overview.*Connectivity.*Activity/
-    assert_select "a", text: /\A(?:Builds|Test runs|Create build)\z/, count: 0
-    assert_select ".workspace-panel", text: /Engineering evidence/, count: 0
-    assert_select ".workspace-panel", text: /Controller identity/
+    assert_select ".workspace-details", text: /Wi-Fi hostname.*#{@assembly.serial_number.downcase}/m
+    assert_select ".workspace-details dt", text: "ECU ID", count: 0
+    assert_select ".fdr-recorder-tabs", text: /Overview.*Parts.*Files.*Connectivity.*Calibration.*Activity/
+    assert_select ".workspace-panel", text: /FDR identity/
     assert_select ".workspace-details dt", text: "Hardware platform", count: 1
+    get parts_forge_fdr_path(@assembly.serial_number)
+    assert_response :success
+    assert_select ".assembly-function", "GPS"
+    assert_select "main", text: /#{@fdr.device_id}/, count: 0
 
     get new_hangar_aircraft_path
     assert_response :success
