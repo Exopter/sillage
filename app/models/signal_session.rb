@@ -12,6 +12,7 @@ class SignalSession < ApplicationRecord
   validates :uuid, :started_at, presence: true
   validates :uuid, uniqueness: true
   validates :status, inclusion: { in: STATUSES }
+  validates :materialization_status, inclusion: { in: %w[pending complete failed] }
   validates :mavlink_system_id, :mavlink_component_id,
     inclusion: { in: 1..255 }, allow_nil: true
 

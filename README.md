@@ -32,8 +32,9 @@ Folder previews use the pinned local Leaflet distribution at
 only read the selected flight's GPS geometry and cache its bounded route; they
 never load sensor streams or run phase analysis. The replay page caches derived
 telemetry with flight and telemetry versions; authorization is checked on every
-request. Full-resolution pressure analysis projects only required readings, and
-chart sampling loads bounded rows while retaining each sensor stream's endpoints.
+request. Conservative SQL bounds avoid loading pressure streams when GPS is
+sufficient; ambiguous readings and degraded GPS retain full-resolution pressure
+analysis. Chart sampling loads bounded rows while retaining stream endpoints.
 
 GPS quality checks run on the full track before phase detection and display
 sampling. Invalid fixes and excessive reported uncertainty are excluded from
@@ -64,6 +65,13 @@ Open `/signal` in desktop Chrome or Edge, start a session, then select
 **Connect radio** in the header. Choose the Holybro USB radio, not the recorder's USB
 port. Web Serial uses 57,600 baud and requires HTTPS or localhost. Both radios
 must already share the same SiK configuration.
+
+Saving an unassigned session commits its flight and a Solid Queue job together.
+The imports worker materializes retained batches using bounded bulk inserts and
+transactional checkpoints. Retries resume after the last committed batch without
+duplicating samples. The flight stays in Processing until completion, and recording
+reconciliation runs only afterward. Signal history exposes processing state and a
+retry action; raw batches and operator events remain available throughout.
 
 The worker supports the FDR radio messages, including truncated MAVLink 2
 payloads and HIGHRES_IMU. Sensor values expire independently after 1.5 seconds.

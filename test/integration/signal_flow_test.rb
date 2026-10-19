@@ -131,7 +131,11 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     end
     flight = session.reload.flight
     assert_equal "Range test", flight.name
-    assert_equal "waiting_for_recording", flight.status
+    assert_equal "processing", flight.status
+    assert_equal "pending", response.parsed_body.fetch("materialization_status")
+    assert_equal 0, flight.track_points.count
+    perform_enqueued_jobs only: SignalMaterializationJob
+    assert_equal "waiting_for_recording", flight.reload.status
     assert_equal 1, flight.track_points.count
     assert_equal 1, flight.sensor_samples.count
     assert_equal 1, flight.operator_events.count
@@ -144,6 +148,22 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
       post batches_api_v1_signal_session_path(uuid), params: payload, as: :json
       assert_response :success
     end
+  end
+
+  test "processing recovery is visible and owner scoped" do
+    session = users(:julien).signal_sessions.create!(started_at: Time.current)
+    Signal::CompleteSession.new(signal_session: session, disposition: "save").call
+    get signal_path(view: "home")
+    assert_select "button", text: "Retry processing"
+    assert_select "span", text: "Preparing flight. Your recording is saved."
+    assert_enqueued_with(job: SignalMaterializationJob) do
+      post retry_processing_signal_session_path(session.uuid)
+      assert_redirected_to signal_path(view: "home")
+    end
+    other = users(:operator).signal_sessions.create!
+    post retry_processing_signal_session_path(other.uuid)
+    assert_response :not_found
+    assert_equal "live", other.reload.status
   end
 
   test "discard clears an unassigned acquisition and cannot be reversed by replay" do

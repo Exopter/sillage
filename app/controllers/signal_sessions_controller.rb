@@ -4,6 +4,17 @@ class SignalSessionsController < ApplicationController
     redirect_to signal_path(view: "home"), notice: "Draft #{flight.code} created."
   end
 
+  def retry_processing
+    session = Current.user.signal_sessions.find_by!(uuid: params[:id])
+    unless session.status == "completed" && session.flight && session.materialization_status != "complete"
+      redirect_to signal_path(view: "home"), alert: "This session does not need processing."
+      return
+    end
+
+    Signal::CompleteSession.new(signal_session: session, disposition: "save").call
+    redirect_to signal_path(view: "home"), notice: "Flight processing resumed. Your recording is saved."
+  end
+
   def create
     signal_session = Signal::StartSession.new(
       user: Current.user,

@@ -50,9 +50,13 @@ class Signal::ReconcileRecordingTest < ActiveSupport::TestCase
     import = recording
     ExoFdr::ImportService.new(import).call
     source_id = import.flights.sole.id
-    perform_enqueued_jobs only: SignalReconciliationJob do
-      Signal::CompleteSession.new(signal_session: session, disposition: "save", name: "Late save", ended_at: @at + 20).call
-    end
+    Signal::CompleteSession.new(signal_session: session, disposition: "save", name: "Late save", ended_at: @at + 20).call
+    assert_equal "processing", session.reload.flight.status
+    Signal::ReconcileRecording.new(import).call
+    assert_nil import.reload.target_flight_id
+    assert Flight.exists?(source_id)
+    perform_enqueued_jobs only: SignalMaterializationJob
+    perform_enqueued_jobs only: SignalReconciliationJob
     assert_equal session.reload.flight_id, import.reload.target_flight_id
     assert_not Flight.exists?(source_id)
     assert_equal "Late save", session.flight.name

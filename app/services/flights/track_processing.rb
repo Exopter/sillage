@@ -15,7 +15,8 @@ module Flights
       endpoints = [ prepared.first, prepared.last ].compact.map do |point|
         point.slice(:recorded_at, :elapsed_seconds).merge(sensor_type: "TIMELINE")
       end
-      analysis = FlightAnalysis.new(track_points: points, sensor_samples: @sensors.chain(endpoints), origin_time: @origin).call
+      sensors = @sensors.respond_to?(:for_track) ? @sensors.for_track(points, origin_time: @origin) : @sensors
+      analysis = FlightAnalysis.new(track_points: points, sensor_samples: sensors.chain(endpoints), origin_time: @origin).call
       summary = metrics.summary(points, sensor_count: @sensor_count, bounds: analysis.bounds).merge(
         sample_count: @raw_points.size, duration_seconds: analysis.duration_seconds,
         min_altitude_m: analysis.altitude_min, max_altitude_m: analysis.altitude_max,

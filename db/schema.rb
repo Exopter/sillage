@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_19_120100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_19_130100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -500,6 +500,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_19_120100) do
     t.integer "sequence", null: false
     t.bigint "signal_session_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["signal_session_id", "id"], name: "index_signal_batches_for_materialization"
     t.index ["signal_session_id", "sequence"], name: "index_signal_batches_on_signal_session_id_and_sequence", unique: true
     t.index ["signal_session_id"], name: "index_signal_batches_on_signal_session_id"
   end
@@ -519,6 +520,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_19_120100) do
     t.datetime "ended_at"
     t.bigint "flight_id"
     t.integer "last_acknowledged_sequence", default: -1, null: false
+    t.string "materialization_status", default: "complete", null: false
+    t.bigint "materialized_batch_id", default: 0, null: false
     t.integer "mavlink_component_id"
     t.integer "mavlink_system_id"
     t.datetime "started_at", null: false
@@ -531,6 +534,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_19_120100) do
     t.index ["status"], name: "index_signal_sessions_on_status"
     t.index ["user_id"], name: "index_signal_sessions_on_user_id"
     t.index ["uuid"], name: "index_signal_sessions_on_uuid", unique: true
+    t.check_constraint "materialization_status::text = ANY (ARRAY['pending'::character varying::text, 'complete'::character varying::text, 'failed'::character varying::text])", name: "signal_materialization_status"
   end
 
   create_table "solid_cable_messages", force: :cascade do |t|

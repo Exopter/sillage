@@ -48,10 +48,12 @@ module Signal
     end
 
     # Called under the session lock, either during ingestion or first Flight assignment.
-    def materialize!(update_counts: true)
+    def materialize!(update_counts: true, writer: nil)
       return unless @signal_session.flight
 
       validate_samples! unless @samples
+      @writer = writer
+      @written_at = Time.current
       insert_track_points
       insert_sensor_samples
       mark_flight_live if update_counts
@@ -88,11 +90,11 @@ module Signal
           vertical_speed_mps: sample["vertical_speed_mps"],
           glide_ratio: sample["glide_ratio"],
           distance_from_start_m: sample["distance_from_start_m"],
-          created_at: Time.current,
-          updated_at: Time.current
+          created_at: @written_at,
+          updated_at: @written_at
         }
       end
-      TrackPoint.insert_all!(rows) if rows.any?
+      @writer ? @writer.track_points(rows) : TrackPoint.insert_all!(rows) if rows.any?
     end
 
     def insert_sensor_samples
@@ -105,11 +107,11 @@ module Signal
           recorded_at: sample["recorded_at"],
           elapsed_seconds: sample["elapsed_seconds"],
           readings: sample["readings"] || {},
-          created_at: Time.current,
-          updated_at: Time.current
+          created_at: @written_at,
+          updated_at: @written_at
         }
       end
-      SensorSample.insert_all!(rows) if rows.any?
+      @writer ? @writer.sensor_samples(rows) : SensorSample.insert_all!(rows) if rows.any?
     end
 
     def mark_flight_live

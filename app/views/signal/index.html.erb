@@ -170,7 +170,17 @@
         <section class="signal-launch-card" aria-label="Completed sessions">
           <div class="signal-launch-body"><span class="signal-k">History</span><h2>Completed sessions</h2><p>Review received signal strength across the complete acquisition.</p></div>
           <% @completed_sessions.each do |session| %>
-            <div class="signal-prep-row"><div><strong><%= session.flight.code %></strong><span><%= l session.started_at, format: :long %></span></div><%= link_to "Radio history", signal_session_radio_history_path(session.uuid), class: "signal-tool-button" %></div>
+            <div class="signal-prep-row">
+              <div><strong><%= session.flight.code %></strong><span><%= l session.started_at, format: :long %></span>
+                <% if session.materialization_status != "complete" %>
+                  <span><%= session.materialization_status == "failed" ? "Flight processing failed. Your recording is saved." : "Preparing flight. Your recording is saved." %></span>
+                <% end %>
+              </div>
+              <% if session.materialization_status != "complete" %>
+                <%= button_to "Retry processing", retry_processing_signal_session_path(session.uuid), class: "signal-tool-button", form: { data: { turbo: false } } %>
+              <% end %>
+              <%= link_to "Radio history", signal_session_radio_history_path(session.uuid), class: "signal-tool-button" %>
+            </div>
           <% end %>
         </section>
       <% end %>

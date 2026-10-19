@@ -110,6 +110,7 @@ module Api
           flight_id: signal_session.flight_id,
           flight_code: signal_session.flight&.code,
           status: signal_session.status,
+          materialization_status: signal_session.materialization_status,
           mavlink_system_id: signal_session.mavlink_system_id,
           mavlink_component_id: signal_session.mavlink_component_id,
           acknowledged_sequence: signal_session.last_acknowledged_sequence

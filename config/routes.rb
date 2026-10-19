@@ -54,6 +54,7 @@ Rails.application.routes.draw do
   end
 
   resources :signal_sessions, only: :create do
+    post :retry_processing, on: :member
     post :draft, on: :collection
     resource :radio_history, only: :show, path: "radio", controller: "signal_radio_histories"
   end

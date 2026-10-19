@@ -27,9 +27,15 @@ module Signal
 
         create_flight if @session.flight.nil?
         @session.complete!(ended_at: @ended_at)
+        if @session.materialization_status != "complete"
+          @session.flight.update!(status: "processing")
+          @session.update!(materialization_status: "pending")
+          job = SignalMaterializationJob.perform_later(@session)
+          raise ActiveJob::EnqueueError, "Could not enqueue Signal processing" unless job
+        end
         @session.flight
       end
-      SignalReconciliationJob.perform_later(@session) if @session.status == "completed" && @session.flight&.waiting_for_recording?
+      SignalReconciliationJob.perform_later(@session) if @session.status == "completed" && @session.materialization_status == "complete" && @session.flight&.waiting_for_recording?
       @session.flight
     end
 
@@ -37,16 +43,10 @@ module Signal
 
     def create_flight
       flight = @session.user.flights.create!(name: @name, status: "live", started_at: @session.started_at)
-      @session.update!(flight:)
-      @session.signal_batches.find_each do |batch|
-        IngestBatch.new(signal_session: @session, sequence: batch.sequence, payload: batch.payload).materialize!(update_counts: false)
-      end
-      flight.update!(sample_count: flight.track_points.count, sensor_sample_count: flight.sensor_samples.count)
+      @session.update!(flight:, materialization_status: "pending")
       @session.operator_events.update_all(flight_id: flight.id)
       IdentifySource.new(signal_session: @session, system_id: @session.mavlink_system_id,
         component_id: @session.mavlink_component_id).call
-      # A retained, already completed session can be saved later without changing its end time.
-      flight.update!(status: "waiting_for_recording", ended_at: @session.ended_at) if @session.status == "completed"
     end
   end
 end
