@@ -14,6 +14,6 @@ class ImuChecksController < ApplicationController
   private
 
   def set_flight
-    @flight = Current.user.flights.find(params[:flight_id])
+    @flight = Flight.visible_to(Current.user).find(params[:flight_id])
   end
 end

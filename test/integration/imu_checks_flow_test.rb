@@ -99,6 +99,22 @@ class ImuChecksFlowTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "flight collaborators can run preflight checks with their own attribution" do
+    post api_v1_imu_checks_path, params: @payload, as: :json
+    assert_response :created
+    @flight.update!(visibility: "team")
+    sign_in_as users(:operator)
+    get flight_imu_check_path(@flight)
+    assert_response :success
+    post api_v1_imu_checks_path, params: @payload.merge(uuid: SecureRandom.uuid, kind: "preflight", flight_id: @flight.id), as: :json
+    assert_response :created
+    assert_equal users(:operator), ImuCheck.last.user
+    assert_equal @flight, ImuCheck.last.flight
+    @flight.update!(visibility: "private")
+    get api_v1_imu_checks_path, params: { device_id: @fdr.device_id, flight_id: @flight.id }
+    assert_response :not_found
+  end
+
   test "gyro status zero permits calibration and preflight with a retained warning" do
     @samples.each { |sample| sample[:accuracy] = [ 2, 0, 3, 3 ] }
     post api_v1_imu_checks_path, params: @payload, as: :json
@@ -166,6 +182,8 @@ class ImuChecksFlowTest < ActionDispatch::IntegrationTest
     post api_v1_imu_checks_path, params: @payload.merge(uuid: SecureRandom.uuid, kind: "preflight", flight_id: @flight.id), as: :json
     check = ImuCheck.last
     session = SignalSession.create!(user: users(:julien), flight: @flight)
+    @flight.update!(visibility: "team")
+    sign_in_as users(:operator)
     post events_api_v1_signal_session_path(session.uuid), params: { event_uuid: SecureRandom.uuid,
       event_type: "warning", label: "IMU: quality unavailable", metadata: { source: "imu_health", invalidate_preflight_id: check.id } }, as: :json
     assert_response :created

@@ -53,7 +53,7 @@ module Api
           event.save!
           if @signal_session.flight && event.metadata["source"] == "imu_health" && event.metadata["invalidate_preflight_id"].present?
             @signal_session.flight.imu_checks.where(id: event.metadata["invalidate_preflight_id"],
-              user: Current.user, kind: "preflight", invalidated_at: nil).update_all(
+              kind: "preflight", invalidated_at: nil).update_all(
                 invalidated_at: event.occurred_at, invalidation_reason: event.label.to_s.first(200))
           end
         end
@@ -74,7 +74,7 @@ module Api
       private
 
       def set_signal_session
-        @signal_session = Current.user.signal_sessions.find_by!(uuid: params[:uuid])
+        @signal_session = SignalSession.accessible_to(Current.user).find_by!(uuid: params[:uuid])
       end
 
       def create_params

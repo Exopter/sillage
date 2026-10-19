@@ -19,6 +19,21 @@ class FlightImport < ApplicationRecord
     allow_nil: true
 
   scope :recent, -> { order(created_at: :desc) }
+  scope :accessible_to, ->(user) {
+    if user
+      visible = Flight.visible_to(user)
+      linked = where(id: visible.where.not(flight_import_id: nil).select(:flight_import_id))
+        .or(where(target_flight_id: visible.select(:id)))
+      # An archive can contain multiple flights. Sharing one must not expose or
+      # delete the other flights in that archive.
+      hidden = Flight.where.not(id: visible.select(:id))
+      where(user:).or(linked)
+        .where.not(id: hidden.where.not(flight_import_id: nil).select(:flight_import_id))
+        .merge(where(target_flight_id: nil).or(where(target_flight_id: visible.select(:id))))
+    else
+      none
+    end
+  }
   scope :set_aside, -> { where(status: "imported", activity_classification: SET_ASIDE_CLASSIFICATIONS,
     included_in_flights_at: nil, target_flight_id: nil) }
 

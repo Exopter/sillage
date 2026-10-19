@@ -10,25 +10,27 @@ class FlightFolderSharingFlowTest < ActionDispatch::IntegrationTest
     sign_in_as @member
   end
 
-  test "members read inherited private flights and contribute only their own flights" do
+  test "members manage every accessible flight while folder administration stays owner scoped" do
     get flights_path(folder: @folder.id, visibility: "shared")
     assert_response :success
     assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@flight)
-    assert_select "input[name='entries[]'][value=?]", "flight:#{@flight.id}", count: 0
+    assert_select "input[name='entries[]'][value=?]", "flight:#{@flight.id}", count: 1
     get preview_flights_path(id: @flight.id), headers: { "Turbo-Frame" => "flight-preview" }
     assert_response :success
     assert_select "turbo-frame#flight-preview"
     assert_select ".exds-browser-sidebar", count: 0
     assert_select "small", text: "From folder"
-    assert_select "button[aria-label='Move flight']", count: 0
+    assert_select "button[aria-label='Move flight']", count: 1
     get flight_path(@flight)
     assert_response :success
-    patch flight_path(@flight), params: { flight: { name: "Forbidden" } }
-    assert_response :not_found
+    patch flight_path(@flight), params: { flight: { name: "Collaborative update" } }
+    assert_response :redirect
+    assert_equal "Collaborative update", @flight.reload.name
+    assert_equal @owner.id, @flight.user_id
     get flight_import_path(@flight.flight_import)
-    assert_response :not_found
+    assert_redirected_to flight_path(@flight)
     get preview_flights_path(id: @flight.flight_import_id, kind: "import")
-    assert_response :not_found
+    assert_response :success
 
     own = @member.flights.create!(name: "Member's flight")
     post bulk_action_flights_path, params: { operation: "move", entries: [ "flight:#{own.id}" ], destination_folder_id: @folder.id }
@@ -38,8 +40,9 @@ class FlightFolderSharingFlowTest < ActionDispatch::IntegrationTest
     get new_flight_path(folder: @folder.id)
     assert_response :success
     post bulk_action_flights_path, params: { operation: "move", entries: [ "flight:#{own.id}", "flight:#{@flight.id}" ], destination_folder_id: "unfiled" }
-    assert_response :not_found
-    assert_equal @folder.id, own.reload.folder_id
+    assert_response :see_other
+    assert_nil own.reload.folder_id
+    assert_nil @flight.reload.folder_id
     patch flight_folder_path(@folder), params: { flight_folder: { visibility: "public" } }
     assert_response :not_found
   end

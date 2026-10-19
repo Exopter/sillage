@@ -75,7 +75,7 @@ module FlightImports
           target.track_points.delete_all
           target.sensor_samples.delete_all
           # A recording enriches the log entry without replacing user context.
-          target.update!(attributes.except(:name, :aircraft).merge(flight_import: @flight_import))
+          target.update!(attributes.except(:name, :aircraft, :user).merge(flight_import: @flight_import))
         end
       else
         @flight_import.flights.create!(attributes)

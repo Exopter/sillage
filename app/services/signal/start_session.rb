@@ -14,7 +14,7 @@ module Signal
     end
 
     def call
-      existing = @user.signal_sessions.find_by(uuid: @uuid) if @uuid
+      existing = SignalSession.accessible_to(@user).find_by(uuid: @uuid) if @uuid
       return existing if existing
 
       SignalSession.transaction do
@@ -39,7 +39,7 @@ module Signal
     def prepare_flight
       return if @flight_id.blank?
 
-      flight = @user.flights.find(@flight_id)
+      flight = Flight.visible_to(@user).find(@flight_id)
       unless flight.preparation? || flight.live? || (flight.logged? && flight.fdr_id.present?)
         raise InvalidFlight, "Only a draft or live flight can receive a Signal session."
       end

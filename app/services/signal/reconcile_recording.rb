@@ -31,8 +31,8 @@ module Signal
         candidate_ids = sessions.where(id: matching_session_ids).distinct.pluck(:flight_id)
         return unless candidate_ids.one?
 
-        target = @import.user.flights.find(candidate_ids.first)
-        return unless target.waiting_for_recording? && target.flight_import_id.nil?
+        target = Flight.visible_to(@import.user).find_by(id: candidate_ids.first)
+        return unless target&.waiting_for_recording? && target.flight_import_id.nil?
 
         Flights::MergeRecording.new(flight_import: @import, target_flight: target).call
       end

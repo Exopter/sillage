@@ -145,10 +145,14 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "recording panels remain owner only regardless of flight visibility" do
+  test "recording panels follow flight access regardless of uploader" do
     import = flight_imports(:one)
     other = User.create!(email_address: "other-import@example.com", password: "password123456")
     import.update!(user: other, status: "failed", error_message: "Private decoding details")
+    get flights_path(recording: import.id, visibility: "team")
+    assert_response :success
+    assert_includes response.body, "Private decoding details"
+    flights(:one).update!(user: other, visibility: "private")
     get flights_path(recording: import.id, visibility: "team")
     assert_response :not_found
   end

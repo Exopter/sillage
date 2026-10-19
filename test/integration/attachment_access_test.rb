@@ -75,7 +75,7 @@ class AttachmentAccessTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_path
   end
 
-  test "sharing a flight does not expose original uploads recordings or sibling private flights" do
+  test "sharing a flight exposes its own sources but not archives containing private siblings" do
     @flight.update!(visibility: "team")
     @flight.video_upload.attach(io: StringIO.new("original"), filename: "original.mp4", content_type: "video/mp4")
     import = @flight.flight_import
@@ -91,10 +91,12 @@ class AttachmentAccessTest < ActionDispatch::IntegrationTest
       assert_match(/attachment/, response.headers["Content-Disposition"])
     end
     sign_in_as users(:operator)
-    attachments.each do |attachment|
-      get attachment_path(attachment)
-      assert_response :not_found
-    end
+    get attachment_path(@flight.video_upload.attachment)
+    assert_response :success
+    get attachment_path(signal.raw_capture.attachment)
+    assert_response :success
+    get attachment_path(import.source_files.first)
+    assert_response :not_found
     get flight_path(sibling)
     assert_response :not_found
   end

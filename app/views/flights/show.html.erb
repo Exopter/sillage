@@ -61,7 +61,7 @@
       <section class="analysis-mode-banner" aria-label="Waiting for recording">
         <strong>Waiting for recording</strong>
         <span>Signal capture is complete. Import the microSD recording to analyse the authoritative flight data.</span>
-        <%= link_to "Import recording", new_flight_import_path(flight_id: @flight.id) if @flight.owned_by?(Current.user) %>
+        <%= link_to "Import recording", new_flight_import_path(flight_id: @flight.id) if @flight.visible_to?(Current.user) %>
       </section>
     <% end %>
     <% if @flight_analysis.degraded? %>
@@ -261,7 +261,7 @@
           <p><%= t("flights.video.hint") %></p>
         </div>
 
-        <% if @flight.owned_by?(Current.user) %>
+        <% if @flight.visible_to?(Current.user) %>
           <%= form_with model: @flight, html: { multipart: true, class: "video-upload-form", data: { controller: "upload", turbo: false, action: "submit->upload#start", upload_failed_label_value: t("flights.video.upload_failed"), upload_processing_label_value: t("flights.video.uploading") } } do |form| %>
             <label class="secondary-button video-upload-button">
               <%= sillage_icon "upload", size: 18 %>
@@ -288,7 +288,7 @@
           <video data-flight-viewer-target="video" data-action="loadedmetadata->flight-viewer#syncVideoFromFlight play->flight-viewer#videoPlaybackStarted pause->flight-viewer#videoPlaybackPaused seeked->flight-viewer#videoSeeked timeupdate->flight-viewer#videoTimeUpdated" class="flight-video" controls playsinline preload="metadata" src="<%= attachment_path(@flight.video.attachment) %>"></video>
         </div>
         <div class="video-sync-controls">
-          <% if @flight.owned_by?(Current.user) %>
+          <% if @flight.visible_to?(Current.user) %>
             <%= form_with model: @flight, class: "video-exit-form" do |form| %>
               <%= form.hidden_field :video_exit_offset_seconds, value: @flight.video_exit_offset_seconds, data: { flight_viewer_target: "videoExitOffsetInput" } %>
               <%= button_tag type: "button", class: "secondary-button", data: { action: "flight-viewer#markVideoExit" } do %>
@@ -318,7 +318,7 @@
             <h2><%= t("flights.show.details") %></h2>
           </div>
         </div>
-        <% if @flight.owned_by?(Current.user) %>
+        <% if @flight.visible_to?(Current.user) %>
           <%= form_with model: @flight, class: "details-form" do |form| %>
             <%= form.label :description, "Description (optional)" %>
             <%= form.text_field :description %>
@@ -353,12 +353,12 @@
               <div><dt><%= label %></dt><dd><%= timestamp ? l(timestamp, format: :long) : "—" %></dd></div>
             <% end %>
           </dl>
-          <p class="operations-help">You can view and comment on this flight. Only its owner can edit, move or delete the flight.</p>
+          <p class="operations-help">Flight access is required to edit, move or delete this flight.</p>
         <% end %>
         <%= render "flight_comments/comments", flight: @flight %>
       </div>
 
-      <% if @flight.owned_by?(Current.user) %>
+      <% if @flight.visible_to?(Current.user) %>
         <div class="flight-instrument-panel danger-panel">
           <div class="flight-section-heading">
             <div>

@@ -202,7 +202,7 @@ class FlightFoldersFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "bulk moves authorize the entire selection and destination before updating" do
-    other_flight = @other.flights.create!(name: "Visible other flight", visibility: "team")
+    other_flight = @other.flights.create!(name: "Inaccessible other flight", visibility: "private")
     [ "flight:#{other_flight.id}", "flight:999999999" ].each do |entry|
       post bulk_action_flights_path, params: { operation: "move", entries: [ "flight:#{@flight.id}", entry ], destination_folder_id: "unfiled" }
       assert_response :not_found

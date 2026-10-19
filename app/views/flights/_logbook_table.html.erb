@@ -110,7 +110,7 @@
             data-row-link-url-value="<%= flight_path(flight) %>"
             data-action="click->row-link#open">
             <td>
-              <% if flight.owned_by?(Current.user) %>
+              <% if flight.visible_to?(Current.user) %>
                 <label class="flights-selection-checkbox">
                   <input type="checkbox" name="entries[]" value="flight:<%= flight.id %>" data-table-selection-target="item" data-action="change->table-selection#update">
                   <span class="sr-only">Select <%= flight.code %></span>
@@ -122,7 +122,7 @@
               <% if flight.description.present? %>
                 <span class="flights-cell-note flights-data"><%= flight.description %></span>
               <% end %>
-              <% if flight.owned_by?(Current.user) %>
+              <% if flight.visible_to?(Current.user) %>
                 <span class="flights-cell-note">Folder: <%= flight.folder&.name || "Unfiled" %></span>
               <% end %>
             </td>
@@ -142,7 +142,7 @@
             </td>
             <td>
               <span class="status-dot is-<%= status_state %>"><span></span><%= status_label %></span>
-              <% if flight.owned_by?(Current.user) && flight.flight_import && !flight.flight_import.imported? %>
+              <% if flight.visible_to?(Current.user) && flight.flight_import && !flight.flight_import.imported? %>
                 <%= link_to recording_logbook_status(flight.flight_import).last, flights_path(recording: flight.flight_import_id, anchor: "recording-details"), class: "flights-cell-note" %>
                 <% if flight.flight_import.failed? %><span class="flights-cell-note"><%= flight.flight_import.error_message %></span><% end %>
               <% end %>

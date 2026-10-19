@@ -11,6 +11,19 @@ class Signal::ReconcileRecordingTest < ActiveSupport::TestCase
     @device = "ECU-E072A1F81D84"
   end
 
+  test "a collaborator's recording reconciles into a shared flight without changing its creator" do
+    session = signal_session
+    target = session.flight
+    target.update!(user: users(:operator), visibility: "team")
+    import = recording
+    ExoFdr::ImportService.new(import).call
+    assert_equal target.id, import.reload.target_flight_id
+    assert_equal users(:operator), target.reload.user
+    assert_equal @user, import.user
+    assert_equal "analysed", target.status
+    assert_equal target.id, session.reload.flight_id
+  end
+
   test "automatic import keeps Signal context and radio evidence and moves authoritative FDR provenance" do
     session = signal_session
     target = session.flight

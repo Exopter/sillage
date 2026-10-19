@@ -46,8 +46,8 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, secret_folder.name
     get flights_path(selected: "flight:#{shared.id}")
     assert_select ".exds-browser-preview h2", text: shared.code
-    assert_select ".exds-browser-preview button[aria-label='Move flight']", count: 0
-    assert_select ".exds-browser-entry[data-entry=?][draggable=false]", "flight:#{shared.id}"
+    assert_select ".exds-browser-preview button[aria-label='Move flight']", count: 1
+    assert_select ".exds-browser-entry[data-entry=?][draggable=true]", "flight:#{shared.id}"
     assert_not_includes response.body, secret_folder.name
   end
 

@@ -3,12 +3,11 @@ class FlightsController < ApplicationController
   include FlightBrowser
 
   before_action :set_flight, only: [ :show, :edit, :update, :destroy ]
-  before_action :require_flight_owner, only: [ :edit, :update, :destroy ]
   before_action :disable_caching
 
   def index
     if params[:recording].present?
-      @flight_import = Current.user.flight_imports.find(params[:recording])
+      @flight_import = FlightImport.accessible_to(Current.user).find(params[:recording])
       @recording_flights = @flight_import.flights.recent
       if @flight_import.imported? && !@flight_import.set_aside? && @recording_flights.one?
         redirect_to @recording_flights.first
@@ -21,9 +20,9 @@ class FlightsController < ApplicationController
   def preview
     load_browser_context
     @selected_entry = if params[:kind] == "import"
-      Current.user.flight_imports.find(params[:id])
+      FlightImport.accessible_to(Current.user).find(params[:id])
     else
-      Flight.visible_to(Current.user).includes(:aircraft, :folder, :fdr).find(params[:id])
+      Flight.visible_to(Current.user).includes(:aircraft, :fdr, folder: :memberships).find(params[:id])
     end
     @destination_folders = FlightFolder.contributable_to(Current.user).ordered
     @preview_points = Flights::RoutePreview.call(@selected_entry)
@@ -87,12 +86,19 @@ class FlightsController < ApplicationController
     end
 
     @flight.flown_on ||= @flight.display_flown_on if attributes.key?(:location) && !attributes.key?(:flown_on)
+    @flight.folder_assignment_user = Current.user
     @flight.assign_attributes(attributes)
     context = attributes.key?(:flown_on) || attributes.key?(:location) ? :logbook : nil
     if @flight.save(context:)
       @flight.capture_configuration!(replace: true) if @flight.saved_change_to_aircraft_id?
       enqueue_video_processing(video_upload) if video_upload.present?
-      destination = params[:return_to_browser] == "1" ? flights_path(**browser_return_parameters, selected: "flight:#{@flight.id}") : flight_path(@flight)
+      destination = if !@flight.visible_to?(Current.user)
+        flights_path(**browser_return_parameters)
+      elsif params[:return_to_browser] == "1"
+        flights_path(**browser_return_parameters, selected: "flight:#{@flight.id}")
+      else
+        flight_path(@flight)
+      end
       respond_to_upload_success(destination, t(".success"))
     else
       respond_to_upload_failure(@flight.errors.full_messages.to_sentence)
@@ -148,11 +154,7 @@ class FlightsController < ApplicationController
   end
 
   def set_flight
-    @flight = Flight.visible_to(Current.user).includes(:folder, :aircraft, :fdr).find(params[:id])
-  end
-
-  def require_flight_owner
-    raise ActiveRecord::RecordNotFound unless @flight.owned_by?(Current.user)
+    @flight = Flight.visible_to(Current.user).includes(:aircraft, :fdr, folder: :memberships).find(params[:id])
   end
 
   def disable_caching
@@ -186,7 +188,7 @@ class FlightsController < ApplicationController
 
   def load_form_options
     @form_folders = FlightFolder.contributable_to(Current.user).ordered
-    if @flight&.owned_by?(Current.user) && @flight.folder_id_in_database
+    if @flight&.visible_to?(Current.user) && @flight.folder_id_in_database
       @form_folders = @form_folders.or(FlightFolder.where(id: @flight.folder_id_in_database).ordered)
     end
     available_aircraft = Aircraft.active

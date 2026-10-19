@@ -40,7 +40,9 @@ class Flight < ApplicationRecord
   validates :video_exit_offset_seconds, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :video_duration_seconds, numericality: { greater_than: 0 }, allow_nil: true
   validate :video_upload_must_be_video
-  validate :folder_must_accept_owner, if: -> { new_record? || will_save_change_to_folder_id? || will_save_change_to_user_id? }
+  attr_accessor :folder_assignment_user
+
+  validate :folder_must_accept_contributor, if: -> { new_record? || will_save_change_to_folder_id? || will_save_change_to_user_id? }
 
   scope :recent, -> { order(started_at: :desc, created_at: :desc) }
   scope :visible_to, ->(user) {
@@ -139,10 +141,10 @@ class Flight < ApplicationRecord
     errors.add(:flown_at, "is invalid") if flown_at_before_type_cast.present? && flown_at.nil?
   end
 
-  def folder_must_accept_owner
+  def folder_must_accept_contributor
     return if folder_id.nil?
 
-    errors.add(:folder, "must allow the flight owner to contribute") unless folder&.contributable_by?(user)
+    errors.add(:folder, "must allow the person moving the flight to contribute") unless folder&.contributable_by?(folder_assignment_user || user)
   end
 
   def assign_code

@@ -6,7 +6,6 @@ module Flights
       raise ArgumentError, "Select one flight or recording." unless [ flight, flight_import ].compact.one?
 
       @flight, @flight_import = flight, flight_import
-      @user = (flight || flight_import).user
       @blob_ids = []
       @recording_ids = []
     end
@@ -14,8 +13,8 @@ module Flights
     def call
       Flight.transaction do
         flight_ids = @flight ? [ @flight.id ] : @flight_import.flights.pluck(:id)
-        related = @user.flight_imports.where(id: [ @flight&.flight_import_id, @flight_import&.id ].compact)
-          .or(@user.flight_imports.where(target_flight_id: flight_ids))
+        related = FlightImport.where(id: [ @flight&.flight_import_id, @flight_import&.id ].compact)
+          .or(FlightImport.where(target_flight_id: flight_ids))
         # Wi-Fi finalization locks upload before import; Signal completion locks
         # session before flight. Follow those same orders during deletion.
         FdrWifiUpload.where(flight_import_id: related.select(:id)).order(:id).lock.load
@@ -26,7 +25,7 @@ module Flights
           flight_ids = @flight_import.flights.reload.pluck(:id)
         end
         sessions = SignalSession.where(flight_id: flight_ids).order(:id).lock.to_a
-        flights = @user.flights.where(id: flight_ids).order(:id).lock.to_a
+        flights = Flight.where(id: flight_ids).order(:id).lock.to_a
         raise ActiveRecord::RecordNotFound unless flights.size == flight_ids.size
 
         source_ids = sample_identifiers(flight_ids, :source_blob_id)
@@ -102,15 +101,15 @@ module Flights
     def collect_recording_ids(entry)
       boots = entry.activity_summary["boot_ids"].to_a + entry.details.to_h["files"].to_a.filter_map { |file| file.dig("header", "boot_id") }
       key = entry.device_id.presence || "unidentified-import/#{entry.id}"
-      @recording_ids.concat(FdrRecording.where(user: @user, recorder_key: key, boot_id: boots.uniq).pluck(:id))
+      @recording_ids.concat(FdrRecording.where(user: entry.user, recorder_key: key, boot_id: boots.uniq).pluck(:id))
     end
 
     def remove_unused_recording_identities
-      FdrRecording.where(user: @user, id: @recording_ids.uniq).order(:id).lock.each do |recording|
+      FdrRecording.where(id: @recording_ids.uniq).order(:id).lock.each do |recording|
         next if TrackPoint.where(fdr_recording_id: recording.id).exists? || SensorSample.where(fdr_recording_id: recording.id).exists?
-        remaining = @user.flight_imports.where(device_id: recording.recorder_key)
+        remaining = FlightImport.where(user: recording.user, device_id: recording.recorder_key)
         if recording.recorder_key.start_with?("unidentified-import/")
-          remaining = remaining.or(@user.flight_imports.where(id: recording.recorder_key.delete_prefix("unidentified-import/")))
+          remaining = remaining.or(FlightImport.where(user: recording.user, id: recording.recorder_key.delete_prefix("unidentified-import/")))
         end
         next if remaining.any? do |entry|
           entry.activity_summary["boot_ids"].to_a.include?(recording.boot_id) ||

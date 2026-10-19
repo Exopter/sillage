@@ -56,10 +56,10 @@
           <%= render "flights/browser_filters", form: form, include_query: true %>
           <div class="exds-browser-entries">
             <% @flights.each do |entry| %>
-              <% owned = entry.is_a?(FlightImport) || entry.owned_by?(Current.user) %>
+              <% accessible = entry.is_a?(FlightImport) || entry.visible_to?(Current.user) %>
               <% selected = entry == @selected_entry %>
-              <div class="exds-browser-entry" aria-current="<%= selected %>" draggable="<%= owned && entry.is_a?(Flight) %>" data-entry="<%= browser_key(entry) %>" data-action="dragstart->flight-browser#startDrag">
-                <% if owned %><label><input type="checkbox" name="entries[]" value="<%= browser_key(entry) %>" data-table-selection-target="item" data-action="change->table-selection#update"><span class="sr-only">Select <%= browser_name(entry) %></span></label><% end %>
+              <div class="exds-browser-entry" aria-current="<%= selected %>" draggable="<%= accessible && entry.is_a?(Flight) %>" data-entry="<%= browser_key(entry) %>" data-action="dragstart->flight-browser#startDrag">
+                <% if accessible %><label><input type="checkbox" name="entries[]" value="<%= browser_key(entry) %>" data-table-selection-target="item" data-action="change->table-selection#update"><span class="sr-only">Select <%= browser_name(entry) %></span></label><% end %>
                 <%= link_to browser_preview_path(entry), class: "exds-browser-entry-link", draggable: false, data: { turbo_frame: "flight-preview", flight_browser_target: "entry", open_url: browser_open_path(entry), selected: selected, name: browser_name(entry), action: "click->flight-browser#select dblclick->flight-browser#open" }, aria: { label: "Preview #{browser_name(entry)}" } do %>
                   <span class="exds-browser-thumbnail"><% if selected && @preview_points.any? %><canvas width="124" height="96" aria-hidden="true" data-controller="route-thumbnail" data-route-thumbnail-points-value="<%= @preview_points.to_json %>"></canvas><% else %><%= sillage_icon(entry.is_a?(FlightImport) ? "file-text" : entry.logbook_view? ? "plane" : "route", size: 24) %><% end %></span>
                   <span class="exds-browser-entry-copy"><strong><%= browser_name(entry) %></strong>

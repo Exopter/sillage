@@ -5,7 +5,7 @@ class SignalSessionsController < ApplicationController
   end
 
   def retry_processing
-    session = Current.user.signal_sessions.find_by!(uuid: params[:id])
+    session = SignalSession.accessible_to(Current.user).find_by!(uuid: params[:id])
     unless session.status == "completed" && session.flight && session.materialization_status != "complete"
       redirect_to signal_path(view: "home"), alert: "This session does not need processing."
       return

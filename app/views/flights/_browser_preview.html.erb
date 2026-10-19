@@ -2,9 +2,9 @@
   <button type="button" class="button-secondary exds-browser-mobile-back" data-action="flight-browser#backToFlights"><%= sillage_icon "chevron-left", size: 16 %> Back to flights</button>
   <% if entry %>
     <% flight = entry.is_a?(Flight) %>
-    <% owned = !flight || entry.owned_by?(Current.user) %>
+    <% accessible = !flight || entry.visible_to?(Current.user) %>
     <header class="exds-browser-preview-heading"><div><h2><%= browser_name(entry) %></h2><p><%= flight ? entry.description : entry.import_type.upcase %></p></div>
-      <% if flight && owned %><%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button", aria: { label: "Edit flight" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 17 %><% end %><% end %>
+      <% if flight && accessible %><%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button", aria: { label: "Edit flight" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 17 %><% end %><% end %>
     </header>
     <% if @preview_points.any? %>
       <div data-controller="flight-preview-map" data-flight-preview-map-points-value="<%= @preview_points.to_json %>">
@@ -25,14 +25,14 @@
       <%= render "flights/log_equipment", flight: entry %>
     <% end %>
     <dl class="exds-browser-metadata">
-      <% if flight && (owned || entry.folder&.visible_to?(Current.user)) %>
+      <% if flight && (accessible || entry.folder&.visible_to?(Current.user)) %>
         <div data-folder-color-id="<%= entry.folder_id %>" style="--exds-folder-color: <%= browser_folder_color(entry.folder) %>"><dt>Folder</dt><dd><%= sillage_icon "folder", size: 22, class_name: "exds-browser-folder-icon" %><%= entry.folder&.name || "Unfiled" %>
-          <% if owned %>
+          <% if accessible %>
             <button type="button" class="exds-browser-icon-button is-quiet" title="Move flight" aria-label="Move flight" data-action="flight-browser#moveFlight" data-flight-key="<%= browser_key(entry) %>" data-flight-name="<%= browser_name(entry) %>" data-folder-id="<%= entry.folder_id || 'unfiled' %>"><%= sillage_icon "folder", size: 17 %><%= sillage_icon "chevron-down", size: 12 %></button>
           <% end %>
         </dd></div>
       <% end %>
-      <div><dt>Visibility</dt><dd><%= sillage_icon(browser_visibility(entry) == "private" ? "lock-keyhole" : "users", size: 19) %><%= browser_visibility(entry).capitalize %><% if flight && entry.folder %><small>From folder</small><% elsif flight && owned %><%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button is-quiet", title: "Edit flight visibility", aria: { label: "Edit flight visibility" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %><% end %><% end %></dd></div>
+      <div><dt>Visibility</dt><dd><%= sillage_icon(browser_visibility(entry) == "private" ? "lock-keyhole" : "users", size: 19) %><%= browser_visibility(entry).capitalize %><% if flight && entry.folder %><small>From folder</small><% elsif flight && accessible %><%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button is-quiet", title: "Edit flight visibility", aria: { label: "Edit flight visibility" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %><% end %><% end %></dd></div>
     </dl>
     <% unless flight && entry.logbook_view? %>
     <%= link_to browser_open_path(entry), class: "button-primary", data: { turbo_frame: (flight && entry.logbook_view? ? "flight-browser" : "_top") } do %><%= sillage_icon "arrow-up-right", size: 18 %> <%= flight ? "Open flight" : "Open recording" %><% end %>

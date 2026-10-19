@@ -16,7 +16,7 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
     assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@private)
     assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@shared)
     assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@hidden), count: 0
-    assert_select "input[name='entries[]'][value=?]", "flight:#{@shared.id}", count: 0
+    assert_select "input[name='entries[]'][value=?]", "flight:#{@shared.id}", count: 1
     assert_select "input[type='checkbox'][name='entries[]'][value=?]", "flight:#{@private.id}", count: 1
     assert_includes response.headers["Cache-Control"], "no-store"
 
@@ -46,41 +46,45 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
     assert_equal "private", @hidden.reload.visibility
   end
 
-  test "team preparation and replay are readable without modification controls" do
-    @shared.update!(status: "preparation")
+  test "team preparation and replay expose modification controls" do
+    @shared.update!(status: "preparation", fdr: create_exofdr_assembly)
     @shared.comments.create!(user: @shared.user, body: "Shared flight comment")
     get flight_path(@shared)
     assert_response :success
-    assert_select "a[href=?]", edit_flight_path(@shared), count: 0
-    assert_select "a[href=?]", new_flight_import_path(flight_id: @shared.id), count: 0
+    assert_select "a[href=?]", edit_flight_path(@shared), minimum: 1
+    assert_select "a[href=?]", new_flight_import_path(flight_id: @shared.id), minimum: 1
     assert_includes response.body, "Shared flight comment"
 
     @shared.update!(status: "analysed")
     get flight_path(@shared)
     assert_response :success
     assert_select "[data-controller='flight-viewer']"
-    assert_select "form[action=?]", flight_path(@shared), count: 0
+    assert_select "form[action=?]", flight_path(@shared), minimum: 1
     assert_select ".mode-badge", text: "Public"
     assert_includes response.body, "Shared flight comment"
     assert_select "meta[name='turbo-cache-control'][content='no-cache']"
   end
 
-  test "team access cannot edit delete change owner or attach recordings" do
+  test "team access can edit and delete without transferring authorship" do
     get edit_flight_path(@shared)
-    assert_response :not_found
-    patch flight_path(@shared), params: { flight: { visibility: "private", user_id: @owner.id, name: "Changed" } }
-    assert_response :not_found
-    delete flight_path(@shared)
-    assert_response :not_found
-    assert_equal "Team mission", @shared.reload.name
+    assert_response :success
+    patch flight_path(@shared), params: { flight: { user_id: @owner.id, name: "Changed" } }
+    assert_redirected_to flight_path(@shared)
+    assert_equal "Changed", @shared.reload.name
     assert_equal @other.id, @shared.user_id
+    delete flight_path(@shared)
+    assert_response :redirect
+    assert_not Flight.exists?(@shared.id)
+  end
 
-    assert_no_difference [ "Flight.count", "FlightImport.count" ] do
-      delete bulk_destroy_flights_path, params: { entries: [ "flight:#{@private.id}", "flight:#{@shared.id}" ] }
+  test "bulk deletion authorizes shared flights and rejects inaccessible flights atomically" do
+    assert_no_difference "Flight.count" do
+      delete bulk_destroy_flights_path, params: { entries: [ "flight:#{@shared.id}", "flight:#{@hidden.id}" ] }
       assert_response :not_found
     end
-    assert_raises(ActiveRecord::RecordNotFound) do
-      Signal::StartSession.new(user: @owner, flight_id: @shared.id).call
+    assert_difference "Flight.count", -2 do
+      delete bulk_destroy_flights_path, params: { entries: [ "flight:#{@private.id}", "flight:#{@shared.id}" ] }
+      assert_response :see_other
     end
   end
 
@@ -94,7 +98,7 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "a[href=?]", flight_import_path(@private.flight_import), count: 0
     get flight_import_path(@private.flight_import)
-    assert_response :not_found
+    assert_redirected_to flight_path(@private)
 
     sign_in_as @owner
     patch flight_path(@private), params: { flight: { visibility: "private" } }
@@ -126,7 +130,7 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
     assert_equal "private", @private.reload.visibility
   end
 
-  test "team visibility never exposes unshared raw recordings" do
+  test "team visibility exposes attached sources but not standalone raw recordings" do
     recording = @owner.flight_imports.create!(source_filename: "Private source", import_type: "exofdr", status: "pending")
     get flights_path(filter: "all", visibility: "team")
     assert_select "a.exds-browser-entry-link[data-open-url*=?]", "recording=#{recording.id}", count: 0
@@ -136,7 +140,7 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
     source = @other.flight_imports.create!(source_filename: "Unshared source filename", import_type: "flysight", status: "imported")
     @shared.update!(flight_import: source)
     get flights_path(q: "Unshared source filename")
-    assert_select "a.exds-browser-entry-link", count: 0
+    assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@shared, q: "Unshared source filename")
     sign_in_as @other
     get flights_path(q: "Unshared source filename")
     assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@shared, q: "Unshared source filename")

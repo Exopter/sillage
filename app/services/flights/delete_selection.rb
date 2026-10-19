@@ -13,9 +13,9 @@ module Flights
 
     def call
       Flight.transaction do
-        # Resolve the entire selection under the owner before deleting anything.
-        imports = @user.flight_imports.find(ids_for("import")).sort_by(&:id)
-        flights = @user.flights.find(ids_for("flight")).sort_by(&:id)
+        # Resolve the entire selection against current access before deleting anything.
+        imports = FlightImport.accessible_to(@user).find(ids_for("import")).sort_by(&:id)
+        flights = Flight.visible_to(@user).find(ids_for("flight")).sort_by(&:id)
         covered_flights = imports.flat_map { |entry| entry.flights.pluck(:id) }
         imports.each { |entry| DeleteRecording.new(flight_import: entry).call }
         flights.reject { |flight| covered_flights.include?(flight.id) }.each do |flight|

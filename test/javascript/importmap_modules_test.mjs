@@ -31,7 +31,7 @@ for (const file of javascriptFiles) {
     const capitalizedTarget = `${target[0].toUpperCase()}${target.slice(1)}`
     assert.match(
       source,
-      new RegExp(`\\b(?:${target}Target|${target}Targets|has${capitalizedTarget}Target)\\b`),
+      new RegExp(`\\b(?:${target}Target(?:Connected|Disconnected)?|${target}Targets|has${capitalizedTarget}Target)\\b`),
       `${path.relative(projectRoot, file)} declares unused Stimulus target ${JSON.stringify(target)}`
     )
   }

@@ -17,6 +17,9 @@ class SignalSession < ApplicationRecord
     inclusion: { in: 1..255 }, allow_nil: true
 
   scope :recent, -> { order(started_at: :desc) }
+  scope :accessible_to, ->(user) {
+    user ? where(flight_id: Flight.visible_to(user).select(:id)).or(where(user:, flight_id: nil)) : none
+  }
 
   def acknowledge!(sequence)
     return if sequence.to_i <= last_acknowledged_sequence

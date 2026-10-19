@@ -24,7 +24,7 @@ module FlightBrowser
     @flights = entries.first(Flights::Logbook::PER_PAGE)
     visible = Flight.visible_to(Current.user)
     @folder_counts = visible.where.not(flight_import_id: FlightImport.set_aside.select(:id)).or(visible.where(flight_import_id: nil)).group(:folder_id).count
-    @unfiled_count = Current.user.flights.where(folder_id: nil).count
+    @unfiled_count = visible.where(folder_id: nil).count
     @browser_title = @folder&.name || (@folder_filter == "unfiled" ? "Unfiled" : @filter == "set_aside" ? "Excluded recordings" : "All flights")
     @selected_entry = if panel
       @flights.find { |entry| entry == focus }

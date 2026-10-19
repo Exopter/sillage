@@ -14,7 +14,7 @@ class FlightFolderTest < ActiveSupport::TestCase
     flight = flights(:one)
     folder = users(:operator).flight_folders.create!(name: "Other owner")
     assert_not flight.update(folder: folder)
-    assert_includes flight.errors[:folder], "must allow the flight owner to contribute"
+    assert_includes flight.errors[:folder], "must allow the person moving the flight to contribute"
     assert_not flight.update(folder_id: 999_999_999)
     assert_nil flight.reload.folder_id
   end

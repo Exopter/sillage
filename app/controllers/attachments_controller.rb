@@ -33,9 +33,11 @@ class AttachmentsController < ApplicationController
     when Feedback
       Current.user.admin?
     when Flight
-      record.owned_by?(Current.user) || (attachment.name == "video" && record.visible_to?(Current.user))
-    when FlightImport, SignalSession
-      record.user_id == Current.user.id
+      record.visible_to?(Current.user)
+    when FlightImport
+      FlightImport.accessible_to(Current.user).exists?(record.id)
+    when SignalSession
+      record.flight ? record.flight.visible_to?(Current.user) : record.user_id == Current.user.id
     else
       false
     end

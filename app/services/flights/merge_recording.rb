@@ -13,8 +13,8 @@ module Flights
 
     def call
       @import.with_lock do
-        raise InvalidMerge, "Select a completed ExoFDR import owned by this flight's owner." unless
-          @import.imported? && @import.import_type == "exofdr" && @import.user_id == @target.user_id
+        raise InvalidMerge, "Select a completed ExoFDR import with access to the target flight." unless
+          @import.imported? && @import.import_type == "exofdr" && @target.visible_to?(@import.user)
 
         sources = @import.flights.reload.to_a
         raise InvalidMerge, "The import must contain exactly one flight." unless sources.one?

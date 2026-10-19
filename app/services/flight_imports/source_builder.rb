@@ -5,7 +5,7 @@ module FlightImports
         files = Array(uploaded_files).compact_blank
         raise error_class, empty_message if files.empty?
         raise error_class, "Sign in before importing a flight recording." unless user
-
+        raise error_class, "The target flight is not accessible." if target_flight && !target_flight.visible_to?(user)
 
         flight_import = user.flight_imports.create!(
           source_filename: files.map { |file| filename_for(file) }.join(", "),

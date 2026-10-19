@@ -1,6 +1,19 @@
 require "test_helper"
 
 class Signal::StartSessionTest < ActiveSupport::TestCase
+  test "a collaborator starts a session on a visible flight and retains acquisition attribution" do
+    flight = flights(:one)
+    flight.update!(status: "preparation", visibility: "team")
+    session = Signal::StartSession.new(user: users(:operator), flight_id: flight.id).call
+    assert_equal flight, session.flight
+    assert_equal users(:operator), session.user
+    assert_equal users(:julien), flight.reload.user
+    flight.update!(visibility: "private")
+    assert_raises(ActiveRecord::RecordNotFound) do
+      Signal::StartSession.new(user: users(:operator), flight_id: flight.id).call
+    end
+  end
+
   test "starts a live session on an existing flight" do
     flight = flights(:one)
     flight.update!(status: "preparation", configuration_snapshot: {}, visibility: "team")

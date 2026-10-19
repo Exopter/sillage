@@ -2,11 +2,11 @@
   <div><dt>Date</dt><dd><%= logbook_date(@flight) %></dd></div>
   <div><dt>Location</dt><dd><%= @flight.display_location %></dd></div>
   <div><dt>Visibility</dt><dd><%= @flight.effective_visibility.capitalize %></dd></div>
-  <% if @flight.owned_by?(Current.user) || @flight.folder&.visible_to?(Current.user) %>
+  <% if @flight.visible_to?(Current.user) || @flight.folder&.visible_to?(Current.user) %>
     <div><dt>Folder</dt><dd><%= @flight.folder ? link_to(@flight.folder.name, flights_path(folder: @flight.folder_id), data: { turbo_frame: "flight-browser" }) : "Unfiled" %></dd></div>
   <% end %>
 </dl>
-<% if @flight.owned_by?(Current.user) %>
+<% if @flight.visible_to?(Current.user) %>
   <%= link_to edit_flight_path(@flight, **browser_context), class: "button-secondary", data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %> Edit flight<% end %>
 <% end %>
 <%= render "flight_comments/comments", flight: @flight %>

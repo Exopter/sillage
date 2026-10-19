@@ -63,7 +63,7 @@ module Api
           return render_error("The connected recorder does not match the selected recorder. No check was saved.")
         end
         @fdr = EmbeddedController.find_by!(device_id: params.require(:device_id))
-        @flight = Current.user.flights.find(params[:flight_id]) if params[:flight_id].present?
+        @flight = Flight.visible_to(Current.user).find(params[:flight_id]) if params[:flight_id].present?
         if @flight&.aircraft && @fdr.aircraft != @flight.aircraft
           render_error("This recorder is not installed on the selected aircraft.")
         end

@@ -1,7 +1,7 @@
 class SignalRadioHistoriesController < ApplicationController
   def show
     no_store
-    visible = SignalSession.where(user: Current.user).or(SignalSession.where(flight_id: Flight.visible_to(Current.user).select(:id)))
+    visible = SignalSession.accessible_to(Current.user)
     @signal_session = visible.where.not(status: "discarded").find_by!(uuid: params[:signal_session_id])
     history = Signal::RadioHistory.new(@signal_session)
     @rows = history.rows

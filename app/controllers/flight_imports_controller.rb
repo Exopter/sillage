@@ -4,7 +4,7 @@ class FlightImportsController < ApplicationController
   def new
     no_store
     @aircraft = Aircraft.active.ordered
-    @target_flight = Current.user.flights.find(params[:flight_id]) if params[:flight_id].present?
+    @target_flight = Flight.visible_to(Current.user).find(params[:flight_id]) if params[:flight_id].present?
     if @target_flight && !@target_flight.recording_enabled?
       redirect_to edit_flight_path(@target_flight), alert: "Link an FDR to this flight before importing a recording."
       return
@@ -13,7 +13,7 @@ class FlightImportsController < ApplicationController
   end
 
   def create
-    target_flight = Current.user.flights.find(import_params[:target_flight_id]) if import_params[:target_flight_id].present?
+    target_flight = Flight.visible_to(Current.user).find(import_params[:target_flight_id]) if import_params[:target_flight_id].present?
     if target_flight && !target_flight.recording_enabled?
       raise FlySight::Error, "Link an FDR to this flight before importing a recording."
     end
@@ -35,7 +35,7 @@ class FlightImportsController < ApplicationController
   end
 
   def show
-    @flight_import = Current.user.flight_imports.find(params[:id])
+    @flight_import = FlightImport.accessible_to(Current.user).find(params[:id])
     @flights = @flight_import.flights.recent
 
     if @flight_import.imported? && !@flight_import.set_aside? && @flights.one?
@@ -46,7 +46,7 @@ class FlightImportsController < ApplicationController
   end
 
   def include_in_flights
-    flight_import = Current.user.flight_imports.where(import_type: "exofdr").find(params[:id])
+    flight_import = FlightImport.accessible_to(Current.user).where(import_type: "exofdr").find(params[:id])
     flight_import.include_in_flights!
     redirect_to flights_path(recording: flight_import.id), notice: "Recording included in Flights."
   rescue ExoFdr::Error => error
@@ -56,7 +56,7 @@ class FlightImportsController < ApplicationController
   end
 
   def destroy
-    flight_import = Current.user.flight_imports.find(params[:id])
+    flight_import = FlightImport.accessible_to(Current.user).find(params[:id])
     Flights::DeleteRecording.new(flight_import:).call
     redirect_to flights_path, notice: "Recording deleted."
   rescue ActiveJob::EnqueueError
