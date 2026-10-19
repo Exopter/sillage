@@ -4,6 +4,8 @@
 require "set"
 
 ROOT = File.expand_path("..", __dir__)
+comment_thread = File.join(ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(ROOT, "..", "design_system")), "components/data/CommentThread.css")
+abort "CommentThread CSS differs from the shared component." unless File.binread(comment_thread) == File.binread(File.join(ROOT, "app/assets/stylesheets/comment_thread.css"))
 column_browser = File.join(ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(ROOT, "..", "design_system")), "components/data/ColumnBrowser.css")
 abort "ColumnBrowser CSS differs from the shared component." unless File.binread(column_browser) == File.binread(File.join(ROOT, "app/assets/stylesheets/column_browser.css"))
 icon_button = File.join(ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(ROOT, "..", "design_system")), "components/forms/IconButtonEdge.css")

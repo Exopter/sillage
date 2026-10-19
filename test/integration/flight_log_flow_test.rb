@@ -28,20 +28,20 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     assert_nil flight.flown_at
     follow_redirect!
     assert_select "#flight-panel-title", flight.code
-    assert_select "textarea[name='flight[notes]']"
+    assert_select "textarea[name='flight_comment[body]']"
     assert_select "a", text: /Start Signal|Import data|Run preflight/, count: 0
     assert_select ".exds-browser-map", count: 0
     assert_not_includes response.body, "Preparation"
     assert_not_includes response.body, "No recorded route"
   end
 
-  test "date and location are both required and validation retains entered notes" do
+  test "date and location are both required and validation retains the initial comment" do
     [ { location: "Bouloc" }, { flown_on: "2026-10-18", location: "  " }, { flown_on: "invalid", location: "Bouloc" } ].each do |attributes|
       assert_no_difference "Flight.count" do
-        post flights_path, params: { flight: attributes.merge(notes: "Keep this observation") }
+        post flights_path, params: { flight: attributes.merge(initial_comment: "Keep this observation") }
       end
       assert_response :unprocessable_entity
-      assert_select "textarea[name='flight[notes]']", text: "Keep this observation"
+      assert_select "textarea[name='flight[initial_comment]']", text: "Keep this observation"
     end
   end
 
@@ -75,7 +75,8 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
 
   test "a recording preserves log metadata and optional aircraft" do
     fdr = create_exofdr_assembly
-    flight = log_entry(fdr:, description: "Canopy test", notes: "Keep my notes", flown_at: "14:35")
+    flight = log_entry(fdr:, description: "Canopy test", initial_comment: "Keep my observation", flown_at: "14:35")
+    comment = flight.comments.sole
     code = flight.code
     post flight_imports_path, params: { flight_import: { target_flight_id: flight.id, import_type: "flysight",
       source_files: [ fixture_file_upload("flysight_v2/TRACK.CSV", "text/csv"), fixture_file_upload("flysight_v2/SENSOR.CSV", "text/csv") ] } }
@@ -85,7 +86,8 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     assert flight.analysed?
     assert_equal code, flight.code
     assert_equal "Canopy test", flight.description
-    assert_equal "Keep my notes", flight.notes
+    assert_equal comment, flight.comments.sole
+    assert_equal "Keep my observation", comment.reload.body
     assert_equal "Bouloc", flight.location
     assert_equal Date.new(2026, 10, 18), flight.flown_on
     assert_equal "14:35", flight.flown_at.strftime("%H:%M")
@@ -93,22 +95,6 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     assert_equal fdr, flight.fdr
     assert flight.track_points.exists?
     assert flight.started_at
-  end
-
-  test "notes are editable by the owner searchable and never writable by another viewer" do
-    flight = log_entry(visibility: "team")
-    patch flight_path(flight), params: { return_to_browser: "1", flight: { notes: "Stable opening\nRepeat test" } }
-    assert_redirected_to flights_path(selected: "flight:#{flight.id}")
-    get flights_path(q: "Stable opening")
-    assert_select ".exds-browser-entry-copy strong", text: flight.code
-    sign_in_as users(:operator)
-    get preview_flights_path(id: flight.id, kind: "flight")
-    assert_response :success
-    assert_select "p", text: /Stable opening/
-    assert_select "textarea", count: 0
-    patch flight_path(flight), params: { flight: { notes: "Changed" } }
-    assert_response :not_found
-    assert_equal "Stable opening\nRepeat test", flight.reload.notes
   end
 
   test "log entries are ordered by flight date rather than entry creation date" do

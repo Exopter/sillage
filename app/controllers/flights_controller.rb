@@ -175,7 +175,7 @@ class FlightsController < ApplicationController
       :folder_id,
       :location,
       :aircraft_id,
-      :notes,
+      :initial_comment,
       :exit_at,
       :opening_at,
       :landing_at,

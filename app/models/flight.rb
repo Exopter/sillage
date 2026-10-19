@@ -19,10 +19,14 @@ class Flight < ApplicationRecord
   has_many :sensor_samples, dependent: :delete_all, inverse_of: :flight
   has_many :signal_sessions, dependent: :restrict_with_error
   has_many :operator_events, dependent: :delete_all
+  has_many :comments, class_name: "FlightComment", dependent: :delete_all, inverse_of: :flight
+  attr_accessor :initial_comment
   has_one_attached :video_upload
   has_one_attached :video
 
   before_validation :assign_code
+  after_create :create_initial_comment
+  validates :initial_comment, length: { maximum: FlightComment::MAX_LENGTH }, allow_blank: true
 
   validates :code, presence: true
   validates :flown_on, :location, presence: true, if: -> { logged? || validation_context == :logbook }
@@ -122,6 +126,10 @@ class Flight < ApplicationRecord
   end
 
   private
+
+  def create_initial_comment
+    comments.create!(user:, body: initial_comment) if initial_comment.present?
+  end
 
   def fdr_must_be_recorder
     errors.add(:fdr, "must be an ExoFDR") if fdr_id.present? && !fdr&.controlled_fdr?

@@ -42,7 +42,7 @@ module Flights
       scope = scope.none if @filter == "set_aside"
       if @query.present?
         scope = scope.left_joins(:aircraft, :flight_import).where(
-          "flights.name ILIKE :q OR flights.notes ILIKE :q OR flights.code ILIKE :q OR flights.location ILIKE :q OR aircraft.registration ILIKE :q OR (flights.user_id = :user_id AND flight_imports.source_filename ILIKE :q)", q: pattern, user_id: @user.id)
+          "flights.name ILIKE :q OR EXISTS (SELECT 1 FROM flight_comments WHERE flight_comments.flight_id = flights.id AND flight_comments.body ILIKE :q) OR flights.code ILIKE :q OR flights.location ILIKE :q OR aircraft.registration ILIKE :q OR (flights.user_id = :user_id AND flight_imports.source_filename ILIKE :q)", q: pattern, user_id: @user.id)
       end
       scope.select("flights.id, 'flight' AS kind, COALESCE(flights.flown_on + COALESCE(flights.flown_at, '00:00'::time), flights.started_at) AS started_at, flights.created_at")
     end

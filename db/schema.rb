@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_18_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_19_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -224,6 +224,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_220000) do
     t.bigint "user_id", null: false
     t.index ["created_at"], name: "index_feedbacks_on_created_at"
     t.index ["user_id"], name: "index_feedbacks_on_user_id"
+  end
+
+  create_table "flight_comments", force: :cascade do |t|
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.datetime "edited_at"
+    t.bigint "flight_id", null: false
+    t.boolean "imported_from_notes", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["flight_id", "created_at", "id"], name: "index_flight_comments_on_flight_id_and_created_at_and_id"
+    t.index ["flight_id"], name: "index_flight_comments_on_flight_id"
+    t.index ["flight_id"], name: "index_flight_comments_on_imported_note", unique: true, where: "imported_from_notes"
+    t.index ["user_id"], name: "index_flight_comments_on_user_id"
+    t.check_constraint "length(body) > 0", name: "flight_comments_body_present"
   end
 
   create_table "flight_folder_memberships", force: :cascade do |t|
@@ -742,6 +757,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_220000) do
   add_foreign_key "fdr_wifi_uploads", "embedded_controllers"
   add_foreign_key "fdr_wifi_uploads", "flight_imports"
   add_foreign_key "feedbacks", "users"
+  add_foreign_key "flight_comments", "flights"
+  add_foreign_key "flight_comments", "users"
   add_foreign_key "flight_folder_memberships", "flight_folders", on_delete: :cascade
   add_foreign_key "flight_folder_memberships", "users", on_delete: :cascade
   add_foreign_key "flight_folders", "users"

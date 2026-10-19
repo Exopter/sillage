@@ -22,10 +22,12 @@
       <span>Description (optional)</span>
       <%= form.text_field :description, placeholder: "Canopy handling test" %>
     </label>
-    <label class="exds-browser-field is-wide">
-      <span>Notes (optional)</span>
-      <%= form.text_area :notes, rows: 5, placeholder: "Observations, conditions and anything to remember…" %>
-    </label>
+    <% if flight.new_record? %>
+      <label class="exds-browser-field is-wide">
+        <span>Comment (optional)</span>
+        <%= form.text_area :initial_comment, rows: 5, maxlength: FlightComment::MAX_LENGTH, placeholder: "Observations, conditions and anything to remember…" %>
+      </label>
+    <% end %>
   </div>
 
   <fieldset class="exds-browser-fieldset">

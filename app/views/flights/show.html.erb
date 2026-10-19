@@ -339,8 +339,6 @@
               <div><%= form.label :opening_at, t("flights.form.opening_at") %><%= form.datetime_field :opening_at, value: @flight.opening_at&.strftime("%Y-%m-%dT%H:%M:%S") %></div>
               <div><%= form.label :landing_at, t("flights.form.landing_at") %><%= form.datetime_field :landing_at, value: @flight.landing_at&.strftime("%Y-%m-%dT%H:%M:%S") %></div>
             </div>
-            <%= form.label :notes, t("flights.form.notes") %>
-            <%= form.text_area :notes, rows: 4 %>
             <%= form.button class: "primary-button" do %>
               <%= sillage_icon "check", size: 18 %>
               <span><%= t("flights.form.save") %></span>
@@ -354,10 +352,10 @@
             <% { "Exit" => @flight.exit_at, "Opening" => @flight.opening_at, "Landing" => @flight.landing_at }.each do |label, timestamp| %>
               <div><dt><%= label %></dt><dd><%= timestamp ? l(timestamp, format: :long) : "—" %></dd></div>
             <% end %>
-            <div><dt>Notes</dt><dd><%= @flight.notes.presence || "—" %></dd></div>
           </dl>
-          <p class="operations-help">You can view this flight. Only its owner can edit, move or delete it.</p>
+          <p class="operations-help">You can view and comment on this flight. Only its owner can edit, move or delete the flight.</p>
         <% end %>
+        <%= render "flight_comments/comments", flight: @flight %>
       </div>
 
       <% if @flight.owned_by?(Current.user) %>

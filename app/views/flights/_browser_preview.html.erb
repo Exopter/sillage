@@ -21,7 +21,7 @@
       <% unless label == "Logged" %><div><dt>Status</dt><dd><span class="status-dot is-<%= state %>"><span></span><%= label %></span></dd></div><% end %>
     </dl>
     <% if flight %>
-      <%= render "flights/log_notes", flight: entry %>
+      <%= render "flight_comments/comments", flight: entry %>
       <%= render "flights/log_equipment", flight: entry %>
     <% end %>
     <dl class="exds-browser-metadata">
@@ -38,6 +38,6 @@
     <%= link_to browser_open_path(entry), class: "button-primary", data: { turbo_frame: (flight && entry.logbook_view? ? "flight-browser" : "_top") } do %><%= sillage_icon "arrow-up-right", size: 18 %> <%= flight ? "Open flight" : "Open recording" %><% end %>
     <% end %>
   <% else %>
-    <div class="exds-browser-empty"><%= sillage_icon "plane", size: 40 %><strong>Select a flight</strong><span>Its notes and details will appear here.</span></div>
+    <div class="exds-browser-empty"><%= sillage_icon "plane", size: 40 %><strong>Select a flight</strong><span>Its comments and details will appear here.</span></div>
   <% end %>
 <% end %>

@@ -130,6 +130,7 @@ Rails.application.routes.draw do
     member { patch :color, action: :update_color }
   end
   resources :flights do
+    resources :comments, controller: "flight_comments", only: [ :index, :create, :edit, :update, :destroy ]
     collection do
       get :preview
       delete :bulk_destroy

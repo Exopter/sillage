@@ -9,5 +9,5 @@
 <% if @flight.owned_by?(Current.user) %>
   <%= link_to edit_flight_path(@flight, **browser_context), class: "button-secondary", data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %> Edit flight<% end %>
 <% end %>
-<%= render "flights/log_notes", flight: @flight %>
+<%= render "flight_comments/comments", flight: @flight %>
 <%= render "flights/log_equipment", flight: @flight %>

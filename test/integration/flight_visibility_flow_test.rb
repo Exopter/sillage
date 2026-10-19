@@ -47,12 +47,13 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "team preparation and replay are readable without modification controls" do
-    @shared.update!(status: "preparation", notes: "Shared flight notes")
+    @shared.update!(status: "preparation")
+    @shared.comments.create!(user: @shared.user, body: "Shared flight comment")
     get flight_path(@shared)
     assert_response :success
     assert_select "a[href=?]", edit_flight_path(@shared), count: 0
     assert_select "a[href=?]", new_flight_import_path(flight_id: @shared.id), count: 0
-    assert_includes response.body, "Shared flight notes"
+    assert_includes response.body, "Shared flight comment"
 
     @shared.update!(status: "analysed")
     get flight_path(@shared)
@@ -60,7 +61,7 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-controller='flight-viewer']"
     assert_select "form[action=?]", flight_path(@shared), count: 0
     assert_select ".mode-badge", text: "Public"
-    assert_includes response.body, "Shared flight notes"
+    assert_includes response.body, "Shared flight comment"
     assert_select "meta[name='turbo-cache-control'][content='no-cache']"
   end
 
