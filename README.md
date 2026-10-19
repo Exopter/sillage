@@ -29,8 +29,11 @@ Omit the variable for normal development with automatic reloading.
 
 Folder previews use the pinned local Leaflet distribution at
 `/vendor/leaflet/1.9.4/`, with OpenStreetMap tiles and attribution. Preview requests
-only render the selected flight. The replay page caches derived telemetry with
-flight and telemetry versions; authorization is checked on every request.
+only read the selected flight's GPS geometry and cache its bounded route; they
+never load sensor streams or run phase analysis. The replay page caches derived
+telemetry with flight and telemetry versions; authorization is checked on every
+request. Full-resolution pressure analysis projects only required readings, and
+chart sampling loads bounded rows while retaining each sensor stream's endpoints.
 
 GPS quality checks run on the full track before phase detection and display
 sampling. Invalid fixes and excessive reported uncertainty are excluded from

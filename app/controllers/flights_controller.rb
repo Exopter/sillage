@@ -135,8 +135,8 @@ class FlightsController < ApplicationController
     analysis = processed.fetch(:analysis)
     boundaries = analysis.bounds.values.compact.map { |timestamp| @flight.started_at && timestamp - @flight.started_at }
     points = Flights::SampleTrack.call(processed.fetch(:points), limit: 2_000, boundaries: boundaries)
-    sensors = sampled_sensor_samples(limit_per_type: 1_200)
     counts = @flight.sensor_samples.group(:sensor_type).count
+    sensors = Flights::SampleSensors.call(@flight, limit_per_type: 1_200, counts:)
     @ground_altitude_m = analysis.altitude_min
     [ counts, analysis, analysis_payload(analysis), points.map { |point| serialize_point(point) },
       sensors.map { |sample| serialize_sensor_sample(sample) }, bounds_payload(analysis.bounds), processed.fetch(:quality) ]
@@ -243,26 +243,6 @@ class FlightsController < ApplicationController
       render :edit, status: :unprocessable_entity
     else
       redirect_to(@flight, alert: message)
-    end
-  end
-
-  def sampled_sensor_samples(limit_per_type:)
-    @flight.sensor_samples.distinct.pluck(:sensor_type).flat_map do |sensor_type|
-      scope = @flight.sensor_samples.where(sensor_type: sensor_type).ordered
-      count = scope.count
-      next scope.to_a if count <= limit_per_type
-
-      step = (count.to_f / limit_per_type).ceil
-      SensorSample.find_by_sql([ <<~SQL.squish, @flight.id, sensor_type, step ])
-        SELECT *
-        FROM (
-          SELECT sensor_samples.*, ROW_NUMBER() OVER (ORDER BY elapsed_seconds, recorded_at) AS row_index
-          FROM sensor_samples
-          WHERE flight_id = ? AND sensor_type = ?
-        )
-        WHERE ((row_index - 1) % ?) = 0
-        ORDER BY elapsed_seconds, recorded_at
-      SQL
     end
   end
 
