@@ -26,7 +26,7 @@
         <% if editing_comment&.id == comment.id %>
           <%= form_with model: current, url: flight_comment_path(flight, current), class: "exds-comment-edit", data: { action: "input->flight-comments#validate keydown->flight-comments#submitShortcut" } do |form| %>
             <% if current.errors.any? %><p class="workspace-errors" role="alert"><%= current.errors.full_messages.to_sentence %></p><% end %>
-            <label class="exds-browser-field"><span>Edit comment</span><%= form.text_area :body, id: "#{dom_id(current)}_body", rows: 3, maxlength: FlightComment::MAX_LENGTH, required: true, autofocus: true %></label>
+            <label class="exds-browser-field exds-comment-editor-field"><span>Edit comment</span><%= form.text_area :body, id: "#{dom_id(current)}_body", rows: 3, maxlength: FlightComment::MAX_LENGTH, required: true, autofocus: true %></label>
             <%= render "flight_comments/image_fields", form: form, comment: current, field_id: dom_id(current) %>
             <div class="exds-comment-edit-actions"><%= link_to "Cancel", flight_comments_path(flight), class: "button-secondary" %><%= form.submit "Save changes", class: "button-primary" %></div>
           <% end %>
@@ -55,7 +55,7 @@
   <% end %>
   <%= form_with model: new_comment, url: flight_comments_path(flight), class: "exds-comments-compose", data: { action: "input->flight-comments#validate keydown->flight-comments#submitShortcut" } do |form| %>
     <% if new_comment.errors.any? %><p class="workspace-errors" role="alert"><%= new_comment.errors.full_messages.to_sentence %></p><% end %>
-    <label class="exds-browser-field"><span>Add a comment</span><%= form.text_area :body, id: "#{dom_id(flight)}_new_comment_body", rows: 3, maxlength: FlightComment::MAX_LENGTH, required: true, placeholder: "Observations, conditions and anything to remember…" %></label>
+    <label class="exds-browser-field exds-comment-editor-field"><span>Add a comment</span><%= form.text_area :body, id: "#{dom_id(flight)}_new_comment_body", rows: 3, maxlength: FlightComment::MAX_LENGTH, required: true, placeholder: "Observations, conditions and anything to remember…" %></label>
     <%= render "flight_comments/image_fields", form: form, comment: new_comment, field_id: "#{dom_id(flight)}_new_comment" %>
     <div class="exds-comments-compose-actions"><small>Visible to people with flight access</small><%= form.submit "Post comment", class: "button-primary", disabled: new_comment.body.blank? %></div>
   <% end %>

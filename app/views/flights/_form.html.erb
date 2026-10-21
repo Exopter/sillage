@@ -23,11 +23,11 @@
       <%= form.text_field :description, placeholder: "Canopy handling test" %>
     </label>
     <% if flight.new_record? %>
-      <label class="exds-browser-field is-wide">
-        <span>Comment (optional)</span>
-        <%= form.text_area :initial_comment, rows: 5, maxlength: FlightComment::MAX_LENGTH, placeholder: "Observations, conditions and anything to remember…" %>
-      </label>
-      <div class="exds-browser-field is-wide" data-controller="flight-comments">
+      <div class="exds-browser-field is-wide exds-comment-editor" data-controller="flight-comments">
+        <label class="exds-browser-field exds-comment-editor-field">
+          <span>Comment (optional)</span>
+          <%= form.text_area :initial_comment, rows: 5, maxlength: FlightComment::MAX_LENGTH, placeholder: "Observations, conditions and anything to remember…" %>
+        </label>
         <%= render "flight_comments/image_upload", form: form, field: :initial_comment_images, field_id: "initial_comment", errors: flight.errors.any? %>
       </div>
     <% end %>

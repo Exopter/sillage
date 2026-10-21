@@ -1,3 +1,4 @@
+<%= render "flight_comments/image_upload", form: form, field: :images, field_id: field_id, errors: comment.errors.any? %>
 <% saved_images = comment.persisted? ? ActiveStorage::Attachment.where(record: comment, name: "images").includes(:blob) : [] %>
 <% if saved_images.any? %>
   <div class="exds-comment-images">
@@ -9,4 +10,3 @@
     <% end %>
   </div>
 <% end %>
-<%= render "flight_comments/image_upload", form: form, field: :images, field_id: field_id, errors: comment.errors.any? %>

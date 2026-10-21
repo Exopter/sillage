@@ -47,7 +47,11 @@
 .exds-comment-image figcaption { margin-top:var(--ex-space-1); color:var(--ex-graphite-600); font-size:12px; overflow-wrap:anywhere; }
 .exds-comment-image label { display:flex; align-items:center; gap:var(--ex-space-1); margin-top:var(--ex-space-1); font-size:12px; }
 .exds-comment-image input { width:auto; }
-.exds-comment-upload { margin-top:var(--ex-space-3); }
-.exds-comment-upload small { color:var(--ex-graphite-600); font-size:12px; }
-.exds-comment-upload input[type="file"] { width:100%; min-width:0; font:13px var(--ex-font-sans); }
-.exds-comment-images a:focus-visible, .exds-comment-upload input:focus-visible { outline:2px solid var(--ex-sky-500); outline-offset:2px; }
+.exds-comment-editor { gap:0; }
+.exds-comment-editor-field textarea { border-bottom-left-radius:0; border-bottom-right-radius:0; }
+.exds-comment-upload { display:flex; align-items:center; padding:2px var(--ex-space-1); border:1px solid var(--ex-line-300); border-top:0; border-radius:0 0 var(--ex-radius-instrument) var(--ex-radius-instrument); background:var(--ex-vapor-50); }
+.exds-comment-image-picker { position:relative; overflow:hidden; margin:0; }
+.exds-comment-image-picker input[type="file"] { position:absolute; inset:0; width:100%; height:100%; min-height:0; margin:0; padding:0; border:0; opacity:0; cursor:pointer; }
+.exds-comment-upload-error { margin:var(--ex-space-2) 0 0; color:var(--ex-state-fault-text); font-size:12px; }
+.exds-comment-images a:focus-visible, .exds-comment-image-picker:focus-within { outline:2px solid var(--ex-sky-500); outline-offset:2px; }
+@media(pointer:coarse) { .exds-comment-image-picker.exds-browser-icon-button { min-width:44px; min-height:44px; } }

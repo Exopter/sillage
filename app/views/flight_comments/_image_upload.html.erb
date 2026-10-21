@@ -1,6 +1,9 @@
-<label class="exds-browser-field exds-comment-upload">
-  <span>Add images (optional)</span>
-  <%= form.file_field field, id: "#{field_id}_images", multiple: true, accept: FlightComment::IMAGE_TYPES.join(","), data: { action: "change->flight-comments#previewImages" }, aria: { describedby: "#{field_id}_images_help" } %>
-  <small id="<%= field_id %>_images_help">JPEG, PNG, GIF or WebP. Up to 10 images, 10 MB each.<% if errors %> Please select new images again before saving.<% end %></small>
-</label>
+<div class="exds-comment-upload">
+  <label class="exds-browser-icon-button is-quiet exds-comment-image-picker" title="Add images: JPEG, PNG, GIF or WebP. Up to 10 images, 10 MB each.">
+    <%= sillage_icon "image", size: 18 %>
+    <%= form.file_field field, id: "#{field_id}_images", multiple: true, accept: FlightComment::IMAGE_TYPES.join(","), data: { action: "change->flight-comments#previewImages" }, aria: { label: "Add images", describedby: "#{field_id}_images_help" } %>
+  </label>
+  <small class="sr-only" id="<%= field_id %>_images_help">JPEG, PNG, GIF or WebP. Up to 10 images, 10 MB each.</small>
+</div>
+<% if errors %><p class="exds-comment-upload-error">Please select new images again before saving.</p><% end %>
 <div class="exds-comment-images" data-image-previews hidden aria-live="polite"></div>
