@@ -55,6 +55,17 @@ class ExoFdr::ActivityAssessmentTest < ActiveSupport::TestCase
     assert_equal "needs_review", assess([ { "type" => "imu", "timestamp_us" => 1 } ])["classification"]
   end
 
+  test "diagnostics do not hide sensor data markers unknown records or corruption" do
+    diagnostic = { "type" => "airspeed_diagnostic", "timestamp_us" => 1 }
+    assert_equal "technical", assess([ diagnostic ])["classification"]
+    %w[imu airspeed marker unknown_99].each do |type|
+      assert_equal "needs_review", assess([ diagnostic, { "type" => type, "timestamp_us" => 2 } ])["classification"]
+    end
+    assessment = ExoFdr::ActivityAssessment.new
+    assessment.observe(diagnostic)
+    assert_equal "needs_review", assessment.result(stats: { "crc_errors" => 1 })["classification"]
+  end
+
   test "damaged source data is never silently archived" do
     assessment = ExoFdr::ActivityAssessment.new
     assert_equal "needs_review", assessment.result(stats: { "partial_tail_bytes" => 3 })["classification"]

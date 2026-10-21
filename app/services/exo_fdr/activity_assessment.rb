@@ -35,7 +35,7 @@ module ExoFdr
       if %w[crc_errors malformed_headers skipped_bytes partial_tail_bytes sequence_gaps].any? { |key| stats[key].to_i.positive? }
         return decision(summary, "needs_review", "recovered_data")
       end
-      return decision(summary, "technical", "system_events_only") if (@types.keys - [ "system_event" ]).empty?
+      return decision(summary, "technical", "system_events_only") if (@types.keys - %w[system_event airspeed_diagnostic]).empty?
       return decision(summary, "needs_review", "no_reliable_gps") if @gps.empty?
 
       points = @gps.sort_by { |point| point[:time] }

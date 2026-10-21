@@ -13,7 +13,8 @@ module ExoFdr
       2 => "imu",
       3 => "airspeed",
       4 => "system_event",
-      5 => "marker"
+      5 => "marker",
+      6 => "airspeed_diagnostic"
     }.freeze
     IMU_NAMES = {
       0x01 => "accelerometer",
@@ -21,6 +22,10 @@ module ExoFdr
       0x03 => "magnetic_field_calibrated",
       0x05 => "rotation_vector"
     }.freeze
+    AIRSPEED_FAILURE_NAMES = %w[none command_bus_busy read_bus_busy command_error short_read
+      read_error repeated_frame sensor_status busy_timeout conversion_range temperature_step].freeze
+    AIRSPEED_DIAGNOSTIC_FIELDS = %w[diagnostic_version failure_reason_id phase i2c_error sensor_status
+      received_bytes bus_levels state_flags].freeze
 
     Result = Data.define(:header, :records, :stats)
 
@@ -157,6 +162,7 @@ module ExoFdr
       when 3 then decode_airspeed(payload)
       when 4 then decode_system_event(payload)
       when 5 then decode_marker(payload)
+      when 6 then decode_airspeed_diagnostic(payload)
       else { "raw_hex" => payload.unpack1("H*"), "payload_size" => payload.bytesize }
       end
     end
@@ -217,6 +223,24 @@ module ExoFdr
 
       marker_id, source_system, source_component, _reserved = payload.unpack("VCCv")
       { "marker_id" => marker_id, "source_system" => source_system, "source_component" => source_component }
+    end
+
+    def decode_airspeed_diagnostic(payload)
+      return raw_payload(payload) unless payload.bytesize == 92 && payload.getbyte(0) == 1
+
+      values = payload.unpack("C8a7CV14Q<e2l<")
+      result = AIRSPEED_DIAGNOSTIC_FIELDS.zip(values.first(8)).to_h
+      result.merge!("raw_hex" => values[8].unpack1("H*"), "last_successful_status" => values[9],
+        "attempt_duration_us" => values[10], "measurement_attempts" => values[11],
+        "accepted_samples" => values[12], "initialization_attempts" => values[13],
+        "failure_timestamp_us" => values[24], "zero_pressure_pa" => values[25],
+        "accepted_temperature_c" => values[26].finite? ? values[26] : nil,
+        "read_error" => values[27],
+        "failure_reason" => AIRSPEED_FAILURE_NAMES.fetch(values[1], "unknown_#{values[1]}"))
+      AIRSPEED_FAILURE_NAMES.drop(1).each.with_index do |name, index|
+        result["#{name}_count"] = values[14 + index]
+      end
+      result
     end
 
     def raw_payload(payload)

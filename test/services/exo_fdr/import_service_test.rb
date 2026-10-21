@@ -4,6 +4,25 @@ require_relative "../../support/exo_fdr_binary"
 class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
   include ExoFdrBinary
 
+  test "preserves I2C fault evidence and unavailable temperature through import" do
+    payload = [ 1, 4, 2, 255, 84, 3, 3, 7, [ "54800200000000" ].pack("H*"), 84,
+      25_123, 100, 50, 2, *(1..10), 1_234_567_890_123, 0.25, Float::NAN, 0 ].pack("C8a7CV14Q<e2l<")
+    flight_import = fdr_import(fdr_binary([
+      { type: 6, payload:, timestamp_us: 1_234_567_891_123, sequence: 0 }
+    ]), included_in_flights_at: Time.current)
+    ExoFdr::ImportService.new(flight_import).call
+    sample = flight_import.flights.sole.sensor_samples.sole
+    assert_equal "AIRSPEED_DIAGNOSTIC", sample.sensor_type
+    assert_equal "short_read", sample.readings.fetch("failure_reason")
+    assert_equal 255, sample.readings.fetch("i2c_error")
+    assert_equal "54800200000000", sample.readings.fetch("raw_hex")
+    assert_equal 4, sample.readings.fetch("short_read_count")
+    assert_equal 1_234_567_890_123, sample.readings.fetch("failure_timestamp_us")
+    assert_nil sample.readings.fetch("accepted_temperature_c")
+    assert_equal "technical", flight_import.activity_classification
+    assert_equal flight_import.source_files.first.blob_id, sample.source_blob_id
+  end
+
   test "preserves the recorded IMU frame and values through import without a second rotation" do
     readings = [ [ 0, 0.2, -0.4, 0.4, 0.8 ], [ 1, -0.4, 0.2, -0.4, 0.8 ], [ 99, 0.2, -0.4, 0.4, 0.8 ] ]
     binary = fdr_binary(readings.each_with_index.map do |values, sequence|

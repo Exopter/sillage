@@ -188,6 +188,12 @@ module ExoFdr
         when "airspeed"
           sensors << sensor_sample("AIRSPEED", record, recorded_at, elapsed,
             %w[sensor_pressure_pa differential_pressure_pa temperature_c airspeed_m_s]).merge(provenance(record, recording, blob))
+        when "airspeed_diagnostic"
+          keys = %w[diagnostic_version failure_reason_id failure_reason phase i2c_error sensor_status received_bytes
+            bus_levels state_flags raw_hex last_successful_status attempt_duration_us measurement_attempts
+            accepted_samples initialization_attempts failure_timestamp_us zero_pressure_pa accepted_temperature_c read_error payload_size] +
+            Decoder::AIRSPEED_FAILURE_NAMES.drop(1).map { |name| "#{name}_count" }
+          sensors << sensor_sample("AIRSPEED_DIAGNOSTIC", record, recorded_at, elapsed, keys).merge(provenance(record, recording, blob))
         when "system_event"
           sensors << sensor_sample("SYSTEM_EVENT", record, recorded_at, elapsed, %w[code severity text]).merge(provenance(record, recording, blob))
         when "marker"
