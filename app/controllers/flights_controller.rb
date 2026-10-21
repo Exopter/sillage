@@ -182,7 +182,8 @@ class FlightsController < ApplicationController
       :opening_at,
       :landing_at,
       :video_upload,
-      :video_exit_offset_seconds
+      :video_exit_offset_seconds,
+      initial_comment_images: []
     )
   end
 

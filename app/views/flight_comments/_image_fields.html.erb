@@ -1,0 +1,12 @@
+<% saved_images = comment.persisted? ? ActiveStorage::Attachment.where(record: comment, name: "images").includes(:blob) : [] %>
+<% if saved_images.any? %>
+  <div class="exds-comment-images">
+    <% saved_images.each do |image| %>
+      <figure class="exds-comment-image">
+        <%= image_tag attachment_path(image), alt: image.filename.to_s, loading: "lazy", decoding: "async" %>
+        <label><%= check_box_tag "flight_comment[remove_image_ids][]", image.id, comment.removed_image_ids&.include?(image.id.to_s), id: "remove_comment_image_#{image.id}" %> Remove image</label>
+      </figure>
+    <% end %>
+  </div>
+<% end %>
+<%= render "flight_comments/image_upload", form: form, field: :images, field_id: field_id, errors: comment.errors.any? %>

@@ -8,7 +8,8 @@ class AttachmentsController < ApplicationController
 
     no_store
     blob = attachment.blob
-    inline = (attachment.record_type == "Flight" && attachment.name == "video") || attachment.record_type == "Feedback"
+    inline = (attachment.record_type == "Flight" && attachment.name == "video") ||
+      attachment.record_type == "Feedback" || (attachment.record_type == "FlightComment" && attachment.name == "images")
     disposition = inline ? "inline" : "attachment"
     response.headers["Accept-Ranges"] = "bytes"
     if blob.service.is_a?(ActiveStorage::Service::DiskService)
@@ -34,6 +35,8 @@ class AttachmentsController < ApplicationController
       Current.user.admin?
     when Flight
       record.visible_to?(Current.user)
+    when FlightComment
+      attachment.name == "images" && record.flight.visible_to?(Current.user)
     when FlightImport
       FlightImport.accessible_to(Current.user).exists?(record.id)
     when SignalSession

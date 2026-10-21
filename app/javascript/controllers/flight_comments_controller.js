@@ -3,6 +3,42 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["timestamp"]
 
+  /** @type {Map<HTMLInputElement, string[]>} */
+  previewUrls = new Map()
+
+  disconnect() {
+    this.previewUrls.forEach((urls) => urls.forEach((url) => URL.revokeObjectURL(url)))
+    this.previewUrls.clear()
+  }
+
+  /** @param {Event} event */
+  previewImages(event) {
+    const input = event.target
+    if (!(input instanceof HTMLInputElement)) return
+    const preview = input.form?.querySelector("[data-image-previews]")
+    if (!(preview instanceof HTMLElement)) return
+    this.previewUrls.get(input)?.forEach((url) => URL.revokeObjectURL(url))
+    const urls = []
+    preview.replaceChildren()
+    for (const file of Array.from(input.files || [])) {
+      const figure = document.createElement("figure")
+      figure.className = "exds-comment-image"
+      if (["image/jpeg", "image/png", "image/gif", "image/webp"].includes(file.type)) {
+        const image = document.createElement("img")
+        image.src = URL.createObjectURL(file)
+        image.alt = file.name
+        urls.push(image.src)
+        figure.append(image)
+      }
+      const caption = document.createElement("figcaption")
+      caption.textContent = file.name
+      figure.append(caption)
+      preview.append(figure)
+    }
+    this.previewUrls.set(input, urls)
+    preview.hidden = !preview.childElementCount
+  }
+
   /** @param {HTMLTimeElement} element */
   timestampTargetConnected(element) {
     const format = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })

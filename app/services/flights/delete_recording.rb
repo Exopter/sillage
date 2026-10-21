@@ -40,6 +40,7 @@ module Flights
           entry.update!(target_flight_id: nil) if flight_ids.include?(entry.target_flight_id)
         end
         flights.each do |flight|
+          flight.comments.find_each { |comment| detach_files(comment) }
           detach_files(flight)
           flight.destroy!
         end

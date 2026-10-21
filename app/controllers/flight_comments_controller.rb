@@ -9,6 +9,7 @@ class FlightCommentsController < ApplicationController
 
   def create
     @new_comment = @flight.comments.build(comment_params.merge(user: Current.user))
+    assign_images(@new_comment)
     if @new_comment.save
       redirect_to flight_comments_path(@flight, result: "created"), status: :see_other
     else
@@ -22,7 +23,12 @@ class FlightCommentsController < ApplicationController
   end
 
   def update
-    if @comment.update(comment_params)
+    saved = @comment.with_lock do
+      @comment.assign_attributes(comment_params)
+      assign_images(@comment)
+      @comment.save
+    end
+    if saved
       redirect_to flight_comments_path(@flight, result: "updated"), status: :see_other
     else
       @editing_comment = @comment
@@ -51,6 +57,11 @@ class FlightCommentsController < ApplicationController
 
   def comment_params
     params.require(:flight_comment).permit(:body)
+  end
+
+  def assign_images(comment)
+    attributes = params.require(:flight_comment).permit(images: [], remove_image_ids: [])
+    comment.assign_images(uploads: attributes[:images], removal_ids: attributes[:remove_image_ids])
   end
 
   def render_comments(status: :ok)
