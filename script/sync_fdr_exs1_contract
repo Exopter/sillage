@@ -2,9 +2,10 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require_relative "../lib/sillage/canonical_source"
 
 ROOT = File.expand_path("..", __dir__)
-FDR_ROOT = File.expand_path(ENV.fetch("EXOPTER_FDR_PATH", File.join(ROOT, "..", "fdr")))
+FDR_ROOT = File.expand_path(ENV.fetch("EXOPTER_FDR_PATH", File.join(ROOT, "..", "flight-data-recorder")))
 SOURCE = File.join(FDR_ROOT, "protocol", "generated", "exs1_contract.js")
 TARGET = File.join(ROOT, "app", "javascript", "lib", "exs1_contract.js")
 
@@ -12,7 +13,7 @@ mode = ARGV.fetch(0, "--check")
 abort "Usage: ruby script/sync_fdr_exs1_contract [--check|--write]" unless %w[--check --write].include?(mode)
 abort "Canonical EXS1 binding not found at #{SOURCE}" unless File.file?(SOURCE)
 
-source = File.binread(SOURCE)
+source = Sillage::CanonicalSource.read(SOURCE)
 if mode == "--write"
   FileUtils.mkdir_p(File.dirname(TARGET))
   File.binwrite(TARGET, source)

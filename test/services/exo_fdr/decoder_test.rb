@@ -57,7 +57,7 @@ class ExoFdr::DecoderTest < ActiveSupport::TestCase
   end
 
   test "matches the shared Python corpus including provenance and recovery" do
-    root = Pathname.new(ENV.fetch("EXOPTER_FDR_PATH", Rails.root.join("..", "fdr").to_s)).expand_path
+    root = Pathname.new(ENV.fetch("EXOPTER_FDR_PATH", Rails.root.join("..", "flight-data-recorder").to_s)).expand_path
     reference = root.join("tools/decode_fdr.py")
     assert reference.exist?, "FDR Python reference is required; set EXOPTER_FDR_PATH."
     fixture = root.join("tests/fixtures/decoder_parity.json")

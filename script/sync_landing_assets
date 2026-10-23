@@ -2,9 +2,10 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require_relative "../lib/sillage/canonical_source"
 
 root = File.expand_path("..", __dir__)
-source_root = File.expand_path(ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(root, "..", "design_system")))
+source_root = File.expand_path(ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(root, "..", "design-system")))
 mode = ARGV.fetch(0, "--check")
 abort "Usage: ruby script/sync_landing_assets [--check|--write]" unless %w[--check --write].include?(mode)
 
@@ -25,7 +26,7 @@ files = {
 end
 
 files.each do |source_path, target_paths|
-  source = File.binread(File.join(source_root, source_path))
+  source = Sillage::CanonicalSource.read(File.join(source_root, source_path))
   Array(target_paths).each do |target_path|
     target = File.join(root, target_path)
     if mode == "--write"

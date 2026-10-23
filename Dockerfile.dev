@@ -1,0 +1,30 @@
+# syntax=docker/dockerfile:1
+
+FROM node:24-bookworm-slim AS frontend
+WORKDIR /frontend
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts --no-audit --no-fund
+COPY script/prepare_cesium_assets.mjs script/prepare_three_assets.mjs script/prepare_leaflet_assets.mjs script/
+RUN npm run assets:prepare
+
+FROM ruby:4.0.3-slim AS runtime-dependencies
+WORKDIR /rails
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y build-essential curl ffmpeg git libpq-dev libyaml-dev pkg-config postgresql-client python3 && \
+    rm -rf /var/lib/apt/lists/*
+COPY --from=frontend /usr/local/bin/node /usr/local/bin/node
+COPY --from=frontend /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
+    ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+ENV BUNDLE_PATH=/usr/local/bundle BUNDLE_JOBS=4 BUNDLE_RETRY=3
+COPY Gemfile Gemfile.lock ./
+RUN --mount=type=cache,target=/usr/local/bundle/cache bundle install
+
+FROM runtime-dependencies
+COPY . .
+COPY --from=frontend /frontend/node_modules /rails/node_modules
+COPY --from=frontend /frontend/public/vendor /rails/public/vendor
+ENV RAILS_ENV=development \
+    BOOTSNAP_CACHE_DIR=/rails/tmp/cache/bootsnap \
+    PARALLEL_WORKERS=1
+CMD ["ruby", "bin/rails", "server", "-b", "0.0.0.0", "-p", "3000"]

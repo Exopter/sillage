@@ -5,6 +5,55 @@ Solid Queue.
 
 ## Setup
 
+### Windows with Docker Compose Watch
+
+Keep this checkout under the Windows `work` directory. Docker Desktop must run
+Linux containers; PowerShell 7.2 or newer and Compose with Watch support are
+required. Keep sibling `../design-system` and `../flight-data-recorder` checkouts
+available for canonical contract checks.
+
+```powershell
+.\script\dev.ps1 up
+.\script\dev.ps1 status
+.\script\dev.ps1 logs
+```
+
+Open `http://localhost:3000`. Set `SILLAGE_DEV_PORT` before `up` to use another
+port. Source changes sync into the Linux application with normal Rails reloading.
+Configuration changes sync and restart Rails; Gemfile and npm manifest changes
+rebuild the image. Rerun `up` after changing Docker or Compose configuration.
+The launcher keeps Watch running in the background; its logs and process identity
+are stored under ignored `tmp/docker-dev/`.
+
+Run source-writing commands through the tools container so their output lands
+directly in the Windows checkout and Watch picks it up:
+
+```powershell
+.\script\dev.ps1 generate migration AddExampleToFlights example:string
+.\script\dev.ps1 rails db:migrate
+.\script\dev.ps1 rails db:rollback
+.\script\dev.ps1 destroy migration AddExampleToFlights
+.\script\dev.ps1 bundle update
+.\script\dev.ps1 npm run typecheck
+.\script\dev.ps1 test
+.\script\dev.ps1 ci
+.\script\dev.ps1 down
+```
+
+Roll back an applied migration before destroying it. The tools container mounts
+the Windows source directly; application execution, Ruby gems, npm dependencies,
+logs and caches stay in Linux. Do not generate source with `docker compose exec
+app`: Watch synchronizes toward Linux only. `test` and `ci` build a fresh source
+snapshot and use disposable containers, separate from the running server's files.
+`shell` opens a tools container for interactive commands.
+
+The dedicated PostgreSQL volume holds `sillage_docker_development` and
+`sillage_docker_test`. `down` preserves database and upload volumes. This setup
+does not import the native development database. Optional `.env.local` runtime
+values are loaded, with email, backups and monitoring disabled locally.
+
+### Native setup
+
 ```sh
 bin/setup
 bin/dev
@@ -116,7 +165,7 @@ rewrite source recordings. Run a new reference after the firmware update.
 ## Validation
 
 Run the checks locally before committing or deploying. GitHub Actions is disabled.
-Keep the sibling `../fdr` and `../design_system` checkouts available, or set
+Keep the sibling `../flight-data-recorder` and `../design-system` checkouts available, or set
 `EXOPTER_FDR_PATH` and `EXOPTER_DESIGN_SYSTEM_PATH` to their local paths.
 
 ```sh
@@ -138,10 +187,12 @@ motion starts with a still frame. Run `node test/javascript/landing_scene_test.m
 to verify the vendor module graph, model and animation resource lifecycle.
 
 - Shared design assets: [Exopter/design-system](https://github.com/Exopter/design-system)
-- Canonical tokens: `../design_system/tokens/exopter-tokens.css`
+- Canonical tokens: `../design-system/tokens/exopter-tokens.css`
 - Rails consumer copy: `app/assets/stylesheets/exopter_design_system.css`
 
-Check or refresh the byte-for-byte consumer copy from a sibling checkout:
+Check or refresh the consumer copy from a sibling checkout. Canonical text is
+normalized to LF when read so Windows line endings do not hide real content
+differences; binary assets remain byte-for-byte copies:
 
 ```sh
 ruby script/sync_design_system_tokens --check

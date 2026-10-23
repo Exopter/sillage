@@ -1,5 +1,5 @@
 /* Shared live calibration scene, target overlay and measured hold feedback. */
-.calibration-guide { display: grid; grid-template-columns: minmax(320px, 1.2fr) minmax(300px, 1fr); border: 1px solid var(--border-rule); border-radius: var(--radius); overflow: hidden; background: var(--surface-card); }
+.exds-calibration-guide { display: grid; grid-template-columns: minmax(320px, 1.2fr) minmax(300px, 1fr); border: 1px solid var(--border-rule); border-radius: var(--radius); overflow: hidden; background: var(--surface-card); }
 .calibration-visual { position: relative; min-height: 530px; background: radial-gradient(ellipse at 50% 36%, var(--ex-carbon-800), var(--ex-carbon-950) 68%); color: var(--ex-vapor-50); }
 .calibration-stage-header { position: absolute; inset: 24px 26px auto; display: flex; justify-content: space-between; gap: 16px; align-items: center; z-index: 1; font: 10px/1.5 var(--font-mono); letter-spacing: .07em; color: var(--ex-instrument-muted); }
 .calibration-legend { display: flex; gap: 18px; letter-spacing: 0; }
@@ -46,7 +46,7 @@
 .calibration-confirm input { margin-top: 4px; }
 .calibration-confirm[hidden], .calibration-controls button[hidden] { display: none; }
 @keyframes calibration-confirm { 0% { transform: scale(.88); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
-@media (max-width: 800px) { .calibration-guide { grid-template-columns: 1fr; } .calibration-visual { min-height: 460px; } .calibration-controls { padding: 24px; } .calibration-stage-header { inset: 20px 20px auto; } }
-@media (prefers-reduced-motion: reduce) { .calibration-guide *, .calibration-guide *::before { animation: none !important; transition: none !important; } }
+@media (max-width: 800px) { .exds-calibration-guide { grid-template-columns: 1fr; } .calibration-visual { min-height: 460px; } .calibration-controls { padding: 24px; } .calibration-stage-header { inset: 20px 20px auto; } }
+@media (prefers-reduced-motion: reduce) { .exds-calibration-guide *, .exds-calibration-guide *::before { animation: none !important; transition: none !important; } }
 
 .calibration-visual[data-state="degraded"] .calibration-countdown { color: var(--ex-amber-500); }

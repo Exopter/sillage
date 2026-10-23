@@ -22,7 +22,7 @@ module ExoFdrBinary
   end
 
   def recovery_fixture
-    root = Pathname.new(ENV.fetch("EXOPTER_FDR_PATH", Rails.root.join("..", "fdr").to_s))
+    root = Pathname.new(ENV.fetch("EXOPTER_FDR_PATH", Rails.root.join("..", "flight-data-recorder").to_s))
     JSON.parse(root.join("tests/fixtures/recovered_segments.json").read, symbolize_names: true)
   end
 end

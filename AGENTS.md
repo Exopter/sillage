@@ -17,6 +17,15 @@
 - Run validation locally with `bin/ci`. Do not
   add or enable hosted CI unless explicitly requested by the user.
 
+## Windows development
+
+- Follow the Compose Watch workflow in [README.md](README.md#windows-with-docker-compose-watch).
+- Keep editable sources in the Windows checkout. Use `script/dev.ps1` for Rails
+  generators, migrations, dependency updates and validation so generated files
+  return directly to that checkout. Application-container edits are disposable.
+- Keep local Docker development configuration in `compose.dev.yml` and
+  `Dockerfile.dev`; production configuration remains separate.
+
 ## Documentation maintenance
 
 - Write documentation in English. Keep Notion Engineering as the source of
