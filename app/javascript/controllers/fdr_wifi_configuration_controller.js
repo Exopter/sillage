@@ -17,6 +17,7 @@ import {
   parseFdrAuthenticationProof,
   parseFdrWifiProvisioningBundle
 } from "fdr_wifi_provisioning"
+import { getRecorderSession } from "recorder_session"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
 import { readResponse, registrationPayload } from "fdr_api"
 import { recorderLabel } from "recorder_identity"
@@ -111,6 +112,8 @@ const TypedController = /** @type {new (context: import("@hotwired/stimulus").Co
 
 export default class extends TypedController {
   connectionGeneration = 0
+  sharedConnection = false
+  adoptingConnection = false
 
   static values = {
     provisioningUrl: String,
@@ -142,7 +145,10 @@ export default class extends TypedController {
     this.initialDeviceLabel = this.bleDeviceTarget.textContent || ""
     this.resolvedRecorder = null
     this.resolvedAircraft = null
-    this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.disconnectUsb())
+    this.sharedConnection = !!getRecorderSession() || !!document.querySelector("#sillage-fdr-connectivity")
+    this.sharedConnectionChanged = () => { void this.adoptSharedConnection().catch((error) => this.showError(error.message)) }
+    window.addEventListener("recorder:connection-changed", this.sharedConnectionChanged)
+    this.unregisterUsbPageRelease = this.sharedConnection ? null : registerUsbPageRelease(() => this.disconnectUsb())
     this.handleDisconnect = this.handleDisconnect.bind(this)
     this.handleSerialDisconnect = this.handleSerialDisconnect.bind(this)
     navigator.serial?.addEventListener("disconnect", this.handleSerialDisconnect)
@@ -153,6 +159,11 @@ export default class extends TypedController {
 
   disconnect() {
     this.connectionGeneration += 1
+    if (this.sharedConnectionChanged) window.removeEventListener("recorder:connection-changed", this.sharedConnectionChanged)
+    if (this.sharedConnection) {
+      navigator.serial?.removeEventListener("disconnect", this.handleSerialDisconnect)
+      return
+    }
     this.unregisterUsbPageRelease?.()
     this.unregisterUsbPageRelease = null
     navigator.serial?.removeEventListener("disconnect", this.handleSerialDisconnect)
@@ -164,6 +175,9 @@ export default class extends TypedController {
 
   async connectUsb() {
     if (this.previewValue) return this.renderPreview("USB-C")
+    const shared = getRecorderSession()
+    if (shared) { await shared.connectUsb(); await this.adoptSharedConnection(); return }
+    if (this.sharedConnection) return this.showError("Recorder connection is starting. Try again.")
     if (this.usbClient) return this.disconnectUsb()
     if (this.wifiClient) return this.showError("Disconnect the current recorder connection first.")
     if (!navigator.serial) return this.showError("Web Serial is not available in this browser.")
@@ -181,6 +195,14 @@ export default class extends TypedController {
 
   async connectBle() {
     if (this.previewValue) return this.renderPreview()
+    const shared = getRecorderSession()
+    if (shared) {
+      if (shared.bleServer?.connected) shared.bleServer.disconnect()
+      else await shared.connectBle()
+      await this.adoptSharedConnection()
+      return
+    }
+    if (this.sharedConnection) return this.showError("Recorder connection is starting. Try again.")
     if (this.server) return this.disconnectBle()
     if (this.wifiClient) return this.showError("Disconnect the current recorder connection first.")
     if (!navigator.bluetooth) return this.showError("Web Bluetooth is not available in this browser.")
@@ -198,7 +220,39 @@ export default class extends TypedController {
     }
   }
 
+  async adoptSharedConnection() {
+    if (this.previewValue || this.adoptingConnection) return
+    const shared = getRecorderSession()
+    if (!shared) return
+    this.sharedConnection = true
+    this.unregisterUsbPageRelease?.()
+    this.unregisterUsbPageRelease = null
+    const identity = shared.usbIdentity || shared.bleIdentity
+    if (!identity) { this.resetConnectionState(); return }
+    if (identity.deviceId !== this.expectedDeviceIdValue) {
+      this.resetConnectionState()
+      this.showError("The connected recorder belongs to another FDR. Open its page in Forge or disconnect it first.")
+      return
+    }
+    if (this.deviceInfo === identity && this.wifiClient && (shared.usbAuthenticated || shared.bleAuthenticated)) return
+    const generation = this.connectionGeneration
+    this.adoptingConnection = true
+    try {
+      const session = await shared.wifiSession()
+      if (!session || generation !== this.connectionGeneration) return
+      await this.resolveRecorderIdentity(session.identity.deviceId)
+      if (generation !== this.connectionGeneration) return
+      this.deviceInfo = session.identity
+      this.wifiClient = session.client
+      this.usbClient = shared.usbClient
+      this.usbAuthenticated = session.transport === "USB-C" && session.authenticated
+      this.bleAuthenticated = session.transport === "BLE" && session.authenticated
+      this.renderConnection(session.status, session.transport)
+    } finally { this.adoptingConnection = false }
+  }
+
   async autoReconnect() {
+    if (this.sharedConnection || getRecorderSession()) { await this.adoptSharedConnection(); return }
     await this.autoReconnectUsb()
     if (!this.wifiClient) await this.autoReconnectBle()
   }
@@ -533,7 +587,7 @@ export default class extends TypedController {
 
   resetConnectionState() {
     this.connectionGeneration += 1
-    if (this.activeTransport) {
+    if (this.activeTransport && !this.sharedConnection) {
       setAircraftConnection(this.activeTransport === "USB-C" ? AircraftConnectionTransport.USB_C : AircraftConnectionTransport.BLE, false)
     }
     this.resolvedRecorder = null
@@ -592,9 +646,9 @@ export default class extends TypedController {
    * @param {string} label
    */
   setButtonLabel(button, label) {
-    const labelTarget = button.querySelector("span:last-child")
-    if (!labelTarget) throw new Error("Recorder connection button label is missing.")
-    labelTarget.textContent = label
+    const labelTarget = button.querySelector("[data-recorder-button-label]")
+    if (labelTarget) labelTarget.textContent = label
+    else button.textContent = label
   }
 
   /** @param {SerialPort} port */

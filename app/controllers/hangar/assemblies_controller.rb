@@ -18,7 +18,7 @@ module Hangar
     end
 
     def show
-      return redirect_to forge_fdr_path(@assembly.serial_number) if @assembly.controlled_fdr? && params[:view] != "components"
+      return redirect_to forge_fdr_path(@assembly.serial_number) if @assembly.controlled_fdr? && @assembly.serviceability_state != "retired" && params[:view] != "components"
 
       @available_parts = @assembly.serviceability_state == "retired" ? Part.none : Part.available.includes(:function).ordered
       excluded_ids = [ @assembly.id, *@assembly.descendant_ids ]

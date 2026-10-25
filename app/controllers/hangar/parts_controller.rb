@@ -73,7 +73,7 @@ module Hangar
     def open_integrated_fdr
       controller = @part.embedded_controller
       assembly = controller&.assembly || controller&.fdr_board_installations&.recent&.first&.assembly
-      redirect_to forge_fdr_path(assembly.serial_number) if assembly&.controlled_fdr?
+      redirect_to forge_fdr_path(assembly.serial_number) if assembly&.controlled_fdr? && assembly.serviceability_state != "retired" && @part.state != "retired"
     end
 
     def set_part

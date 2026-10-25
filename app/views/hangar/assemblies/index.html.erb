@@ -57,8 +57,8 @@
           <div><dt>Parent</dt><dd><%= @selected_assembly.parent&.display_name || "—" %></dd></div>
         </dl>
         <div class="workspace-actions">
-          <%= link_to "Open", hangar_assembly_path(@selected_assembly), class: "button-secondary is-compact" %>
-          <% if @selected_assembly.embedded_controller %><%= link_to "Open in Forge", forge_fdr_path(@selected_assembly.embedded_controller.forge_identifier), class: "button-secondary is-compact" %><% end %>
+          <%= link_to @selected_assembly.controlled_fdr? ? "Open in Hangar" : "Open", hangar_assembly_path(@selected_assembly, view: ("components" if @selected_assembly.controlled_fdr?)), class: "button-secondary is-compact" %>
+          <% if @selected_assembly.controlled_fdr? && @selected_assembly.serviceability_state != "retired" %><%= link_to "Open in Forge", forge_fdr_path(@selected_assembly.serial_number), class: "button-secondary is-compact" %><% end %>
           <% unless @selected_assembly.controlled_fdr? %><%= button_to "Delete", hangar_assembly_path(@selected_assembly), method: :delete, class: "button-danger is-compact", form: { data: { turbo_confirm: "Delete #{@selected_assembly.internal_number} permanently? This cannot be undone." } } %><% end %>
         </div>
       </div>

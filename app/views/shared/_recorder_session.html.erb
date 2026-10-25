@@ -1,0 +1,5 @@
+<% visible = controller_path == "forge/fdrs" && (action_name == "index" || (action_name == "files" && @fdr)) %>
+<div data-recorder-session-host data-recorder-session-visible="<%= visible ? "true" : "false" %>" data-recorder-page-device-id="<%= @fdr&.device_id if controller_path == "forge/fdrs" %>" <%= "hidden" unless visible %>>
+  <p data-recorder-session-mismatch hidden role="status">A different recorder is connected. Open its page in Forge to manage it.</p>
+  <%= render "forge/fdrs/connection_manager", workspace: true %>
+</div>

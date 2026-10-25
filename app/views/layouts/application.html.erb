@@ -103,8 +103,8 @@
         <main class="sillage-content">
           <div class="<%= sillage_content_shell_class %>">
             <% if controller_path == "forge/fdrs" %>
-              <%= render "forge/fdrs/workspace" do %><%= yield %><% end %>
-            <% else %><%= yield %><% end %>
+              <%= render "forge/fdrs/workspace" do %><%= render "shared/recorder_session" %><%= yield %><% end %>
+            <% else %><%= render "shared/recorder_session" if Current.user %><%= yield %><% end %>
           </div>
         </main>
       </div>

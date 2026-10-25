@@ -1,4 +1,4 @@
-<section id="sillage-fdr-connectivity"
+<section id="sillage-fdr-connectivity" data-turbo-permanent
          class="signal-fdr-connectivity <%= "exds-recorder-manager" if local_assigns[:workspace] %>"
          data-controller="fdr-connectivity"
          <% if local_assigns[:expected_device_id].present? %>data-fdr-connectivity-expected-device-id-value="<%= expected_device_id %>"<% end %>
@@ -8,7 +8,7 @@
          data-fdr-connectivity-recording-command-url-value="<%= api_v1_fdr_recording_commands_path %>"
          data-fdr-connectivity-sillage-heartbeat-url-value="<%= api_v1_fdr_sillage_heartbeats_path %>">
   <% if local_assigns[:workspace] %>
-    <%= render "shell", active_tab: :files %>
+    <%= render "forge/fdrs/shell", active_tab: :files %>
     <div class="exds-recorder-context">
       <div><%= sillage_icon "wifi", size: 24 %><span><strong data-forge-connection>Not connected</strong><small data-forge-identity><%= @assembly&.display_name || @fdr&.display_name %></small></span></div>
       <div><%= sillage_icon "pause", size: 20 %><span><strong data-forge-import-status>Waiting for recorder</strong><small data-forge-import-detail>Connect to view recordings.</small></span></div>
@@ -178,7 +178,7 @@
             <small class="signal-fdr-technical" data-fdr-connectivity-target="syncTechnical" hidden></small>
           </div>
   </div>
-  <%= render "recordings" %>
+  <%= render "forge/fdrs/recordings" %>
 
   <section class="signal-fdr-overview" aria-labelledby="recorder-information-title">
     <header class="signal-fdr-section-head signal-fdr-overview-head" <%= "hidden" if local_assigns[:workspace] %>>
@@ -190,7 +190,7 @@
       </div>
       <div class="signal-fdr-overview-actions">
         <span class="signal-fdr-source" data-fdr-connectivity-target="recorderSource" data-state="disconnected" hidden></span>
-        <% unless local_assigns[:workspace] %><%= render "recording_control" %><% end %>
+        <% unless local_assigns[:workspace] %><%= render "forge/fdrs/recording_control" %><% end %>
       </div>
     </header>
     <div class="signal-fdr-recorder-alert" data-fdr-connectivity-target="recorderAlert" role="alert" hidden>

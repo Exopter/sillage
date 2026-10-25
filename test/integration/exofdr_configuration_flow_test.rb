@@ -92,7 +92,7 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "section[aria-label='Selected assembly details'] .workspace-actions" do
       assert_select "a", count: 2
-      assert_select "a[href='#{hangar_assembly_path(assembly)}']", text: "Open"
+      assert_select "a[href='#{hangar_assembly_path(assembly, view: "components")}']", text: "Open in Hangar"
       assert_select "a[href='#{forge_fdr_path(controller.forge_identifier)}']", text: "Open in Forge"
       assert_select "button", count: 0
     end

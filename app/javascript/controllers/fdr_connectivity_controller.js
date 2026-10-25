@@ -26,7 +26,7 @@ import {
   protocolError,
   parseBleStatus
 } from "fdr_sync_protocol"
-import { registerUsbPageRelease } from "usb_page_lifecycle"
+import { setRecorderSession } from "recorder_session"
 
 const USB_PORT_STORAGE_KEY = "sillage:fdr-usb-port"
 const BLE_DEVICE_STORAGE_KEY = "sillage:fdr-ble-device"
@@ -173,8 +173,6 @@ export default class extends TypedController {
   bleServer = null
   /** @type {Partial<Record<"debug"|"status"|"diagnostics"|"recording",BluetoothRemoteGATTCharacteristic|null>>} */
   bleCharacteristics = {}
-  /** @type {(()=>void)|null} */
-  unregisterUsbPageRelease = null
   /** @type {{href:string,label:string}} */
   defaultWifiState = {href:"",label:""}
   /** @type {import("../types/recorder").Facts|null} */
@@ -221,9 +219,13 @@ export default class extends TypedController {
   ]
 
   connect() {
-    if (this.initialized) return
+    if (this.initialized) { this.updatePageContext(); return }
 
     this.initialized = true
+    setRecorderSession(this)
+    this.pageContextChanged = () => this.updatePageContext()
+    document.addEventListener("turbo:load", this.pageContextChanged)
+    this.updatePageContext()
     this.importQueue = new FdrImportQueue(/** @type {HTMLElement | null} */ (this.element.querySelector("[data-fdr-import-queue]")), () => this.usbUploadController?.abort())
     this.connectionGeneration += 1
     this.usbBusy = false
@@ -271,7 +273,6 @@ export default class extends TypedController {
       href: this.wifiLinkTarget.href,
       label: this.wifiLinkLabelTarget.textContent || ""
     }
-    this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.disconnectUsb())
     this.handleSerialConnect = this.handleSerialConnect.bind(this)
     this.handleSerialDisconnect = this.handleSerialDisconnect.bind(this)
     this.handleBleDisconnect = this.handleBleDisconnect.bind(this)
@@ -280,13 +281,32 @@ export default class extends TypedController {
     this.autoReconnectUsb()
     this.autoReconnectBle()
     this.startWifiPolling()
+    window.dispatchEvent(new Event("recorder:connection-changed"))
   }
 
   disconnect() {
-    this.importQueue?.destroy()
-    this.unregisterUsbPageRelease?.()
-    this.unregisterUsbPageRelease = null
-    void this.teardown()
+    // Turbo temporarily detaches permanent elements while replacing the page.
+    setTimeout(() => {
+      if (this.element.isConnected) return
+      this.importQueue?.destroy()
+      if (this.pageContextChanged) document.removeEventListener("turbo:load", this.pageContextChanged)
+      setRecorderSession(null)
+      void this.teardown()
+    }, 0)
+  }
+
+  updatePageContext() {
+    const host = this.element?.closest?.("[data-recorder-session-host]")
+    if (!host || !(host instanceof HTMLElement)) return
+    this.expectedDeviceIdValue = host.dataset.recorderPageDeviceId || ""
+    const connections = this.element.querySelector("[data-forge-connections]")
+    if (!this.expectedDeviceIdValue && connections instanceof HTMLDetailsElement) connections.open = true
+    const identity = this.usbIdentity || this.bleIdentity
+    const mismatch = !!(identity && this.expectedDeviceIdValue && identity.deviceId !== this.expectedDeviceIdValue)
+    host.hidden = host.dataset.recorderSessionVisible !== "true"
+    this.element.toggleAttribute("hidden", mismatch)
+    const notice = host.querySelector("[data-recorder-session-mismatch]")
+    if (notice instanceof HTMLElement) notice.hidden = !mismatch
   }
 
   async teardown() {
@@ -307,6 +327,19 @@ export default class extends TypedController {
     this.bleServer?.disconnect()
   }
 
+  async wifiSession() {
+    if (this.usbClient && this.usbIdentity) {
+      return { client: new UsbWifiClient(this.usbClient), identity: this.usbIdentity, authenticated: this.usbAuthenticated, transport: /** @type {const} */ ("USB-C"), status: await this.usbClient.status() }
+    }
+    if (this.bleServer?.connected && this.bleIdentity) {
+      const service = await this.bleServer.getPrimaryService(BleUuid.service)
+      const characteristic = await service.getCharacteristic(BleUuid.wifi)
+      const status = await service.getCharacteristic(BleUuid.status)
+      return { client: new BleWifiClient(characteristic), identity: this.bleIdentity, authenticated: this.bleAuthenticated, transport: /** @type {const} */ ("BLE"), status: parseBleStatus(await status.readValue()) }
+    }
+    return null
+  }
+
   async connectUsb() {
     if (this.usbClient) return this.disconnectUsb()
     if (!navigator.serial) return this.showUsbConnectionError("Web Serial is not available in this browser.")
@@ -321,6 +354,7 @@ export default class extends TypedController {
   }
 
   async connectBle() {
+    if (this.bleServer?.connected) { this.bleServer.disconnect(); return }
     if (!navigator.bluetooth) return this.showBleConnectionError("Web Bluetooth is not available in this browser.")
     try {
       const device = await navigator.bluetooth.requestDevice({
@@ -1901,6 +1935,8 @@ export default class extends TypedController {
   }
 
   renderRecorderInformation() {
+    this.updatePageContext()
+    window.dispatchEvent(new Event("recorder:connection-changed"))
     this.renderConnectionIdentities()
     const usb = this.usbIdentity
     const ble = this.bleIdentity

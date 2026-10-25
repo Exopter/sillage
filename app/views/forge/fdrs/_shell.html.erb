@@ -5,11 +5,11 @@
     <p><%= label %></p>
   </div>
   <% if active_tab == :files %>
-    <%= render "recording_control" %>
+    <%= render "forge/fdrs/recording_control" %>
   <% elsif active_tab == :connectivity %>
     <div class="workspace-actions">
-      <button type="button" class="button-secondary" data-fdr-wifi-configuration-target="usbButton" data-action="fdr-wifi-configuration#connectUsb">Connect USB-C</button>
-      <button type="button" class="button-secondary" data-fdr-wifi-configuration-target="bleButton" data-action="fdr-wifi-configuration#connectBle">Connect Bluetooth</button>
+      <button type="button" class="button-secondary" data-fdr-wifi-configuration-target="usbButton" data-action="fdr-wifi-configuration#connectUsb"><span data-recorder-button-label>Connect USB-C</span></button>
+      <button type="button" class="button-secondary" data-fdr-wifi-configuration-target="bleButton" data-action="fdr-wifi-configuration#connectBle"><span data-recorder-button-label>Connect Bluetooth</span></button>
       <%= link_to "Back to device", forge_fdr_path(@assembly&.serial_number || @fdr.id), class: "button-secondary" %>
     </div>
   <% elsif active_tab == :overview && @assembly %>

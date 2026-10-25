@@ -16,6 +16,25 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     )
   end
 
+  test "retired recorders are excluded from Forge and retain their Hangar record" do
+    sign_in_as users(:operator)
+    @assembly.update!(serviceability_state: "retired")
+    get forge_path(connect: 1)
+    assert_response :success
+    assert_select "nav[aria-label='Recorders'] a[href='#{files_forge_fdr_path(@assembly.serial_number)}']", count: 0
+    assert_select "#registered-recorders a[href='#{forge_fdr_path(@assembly.serial_number)}']", count: 0
+    get forge_fdr_path(@assembly.serial_number)
+    assert_response :not_found
+    get forge_fdr_path(@fdr.id)
+    assert_response :not_found
+    get hangar_assembly_path(@assembly)
+    assert_response :success
+    assert_select "a[href='#{edit_hangar_assembly_path(@assembly)}']", text: "Edit"
+    assert_select "a", text: "Open in Forge", count: 0
+    get hangar_part_path(@fdr.part)
+    assert_response :success
+  end
+
   test "operator can navigate Hangar and Forge" do
     sign_in_as users(:operator)
 
@@ -100,7 +119,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "Recordings"
     assert_select "[data-fdr-import-queue]", count: 1
-    assert_select "[data-controller='fdr-connectivity'][data-fdr-connectivity-expected-device-id-value='#{@fdr.device_id}']", count: 1
+    assert_select "[data-recorder-page-device-id='#{@fdr.device_id}'] #sillage-fdr-connectivity[data-turbo-permanent]", count: 1
     assert_select ".exds-recorder-nav a[aria-current='page']", text: "Recordings"
     assert_select ".exds-recorder-nav a", text: "Files", count: 0
     assert_select "details[data-forge-connections]:not([open])", count: 1
