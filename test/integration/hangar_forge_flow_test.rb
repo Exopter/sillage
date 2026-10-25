@@ -17,7 +17,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "retired recorders are excluded from Forge and retain their Hangar record" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     @assembly.update!(serviceability_state: "retired")
     get forge_path(connect: 1)
     assert_response :success
@@ -35,8 +35,8 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "operator can navigate Hangar and Forge" do
-    sign_in_as users(:operator)
+  test "an administrator can navigate Hangar and Forge" do
+    sign_in_as_admin users(:operator)
 
     get hangar_path
     assert_response :success
@@ -55,7 +55,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_select ".hangar-detail-foot", count: 0
     assert_select ".sillage-room-link.is-separated", text: /Signal/
     assert_select ".sillage-room-link[href='#{forge_path}']", text: /Forge/
-    assert_select ".sillage-core-link", count: 0
+    assert_select ".sillage-core-link", count: 1
 
     get hangar_parts_path
     assert_response :success
@@ -116,7 +116,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "Forge opens one recorder catalogue and remembers the selected recorder" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     get files_forge_fdr_path(@assembly.serial_number)
     assert_response :success
     assert_select "h1", "Recordings"
@@ -150,7 +150,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "function page renders an explicit empty inventory state" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     empty_function = Function.create!(name: "I2C Multiplexer")
 
     get hangar_function_path(empty_function)
@@ -190,7 +190,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
       model: "M9N",
       serial_number: "FLOW-REPLACEMENT"
     )
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     patch replace_part_hangar_assembly_path(@assembly, part_id: @part),
       params: { replacement_part_id: replacement.id }

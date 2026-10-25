@@ -20,7 +20,7 @@ class HangarAircraftIdentityDisplayTest < ActionDispatch::IntegrationTest
     aircraft = Aircraft.create!(registration: "F-ID", name: "Identity display aircraft")
     Installation.create!(aircraft:, installable: assembly, installed_at: Time.current)
 
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
   end
 
   test "aircraft configuration does not repeat an unserialized part Asset ID" do

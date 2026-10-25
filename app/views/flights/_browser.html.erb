@@ -13,8 +13,10 @@
         <label class="exds-selection-field"><span class="sr-only">Visibility</span><%= form.select :visibility, [["Visibility: All", "all"], ["Private", "private"], ["Public", "public"], ["Shared", "shared"]], { selected: @visibility }, aria: { label: "Visibility" } %></label>
         <noscript><%= form.submit "Apply", class: "button-secondary" %></noscript>
       <% end %>
+      <% if can_manage_operations? %>
       <%= link_to new_flight_import_path(**browser_context), class: "exds-browser-icon-button", title: "Import data", aria: { label: "Import data" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "upload" %><% end %>
       <%= link_to new_flight_path(**browser_context), class: "button-primary", data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "plus", size: 17 %> New flight<% end %>
+      <% end %>
     </header>
     <%= render "flights/recording_details" if @flight_import %>
     <div class="exds-browser-body">
@@ -27,14 +29,14 @@
             <% end %>
           <% end %>
         </nav>
-        <div class="exds-browser-section-label"><span>Folders</span><%= link_to new_flight_folder_path, class: "exds-browser-icon-button is-quiet", title: "New folder", aria: { label: "New folder" }, data: { turbo_frame: "folder-sharing" } do %><%= sillage_icon "folder-plus", size: 18 %><% end %></div>
+        <div class="exds-browser-section-label"><span>Folders</span><% if can_manage_operations? %><%= link_to new_flight_folder_path, class: "exds-browser-icon-button is-quiet", title: "New folder", aria: { label: "New folder" }, data: { turbo_frame: "folder-sharing" } do %><%= sillage_icon "folder-plus", size: 18 %><% end %><% end %></div>
         <nav aria-label="Folders">
           <% @folders.each do |folder| %>
             <div class="exds-browser-folder" data-folder-color-id="<%= folder.id %>" style="--exds-folder-color: <%= browser_folder_color(folder) %>">
             <%= link_to browser_path(folder: folder.id, filter: "flights", page: nil), class: "exds-browser-nav", aria: { current: ("page" if @folder == folder) }, title: "#{folder.name} · #{folder.visibility.capitalize}", data: { folder_destination: (folder.id if folder.contributable_by?(Current.user)), action: "dragenter->flight-browser#overFolder dragover->flight-browser#overFolder dragleave->flight-browser#leaveFolder drop->flight-browser#drop" } do %>
               <%= sillage_icon "folder", size: 24, class_name: "exds-browser-folder-icon" %><span><%= folder.name %><small class="exds-browser-folder-access"><%= folder.visibility.capitalize %></small></span><small><%= @folder_counts.fetch(folder.id, 0) %></small><%= sillage_icon "chevron-right", size: 16 %>
             <% end %>
-            <% if @folder == folder && folder.owned_by?(Current.user) %>
+            <% if can_manage_operations? && @folder == folder && folder.owned_by?(Current.user) %>
               <div class="exds-browser-folder-actions" role="group" aria-label="Actions for <%= folder.name %>">
                 <%= link_to edit_flight_folder_path(folder), class: "exds-browser-icon-button is-quiet", title: "Sharing and members", aria: { label: "Sharing and members" }, data: { turbo_frame: "folder-sharing" } do %><%= sillage_icon "users", size: 17 %><% end %>
                 <%= link_to edit_flight_folder_path(folder), class: "exds-browser-icon-button is-quiet", title: "Rename folder", aria: { label: "Rename folder" }, data: { turbo_frame: "_top", action: "flight-browser#renameFolder", folder_name: folder.name, folder_url: flight_folder_path(folder) } do %><%= sillage_icon "pencil", size: 17 %><% end %>
@@ -45,21 +47,21 @@
             </div>
           <% end %>
         </nav>
-        <% if @folders.empty? %><p class="exds-browser-empty">Create a folder to organize your flights.</p><% end %>
+        <% if @folders.empty? %><p class="exds-browser-empty"><%= can_manage_operations? ? "Create a folder to organize your flights." : "No accessible folders." %></p><% end %>
       </aside>
       <section class="exds-browser-collection" aria-label="Flights in selected folder">
         <header class="exds-browser-collection-header">
           <div><h2><%= @browser_title %></h2><p class="exds-browser-caption"><% if @folder %><% total = @folder_counts.fetch(@folder.id, 0) %><%= "#{@flights.length} of " if @flights.length != total %><%= pluralize(total, "flight") %><% else %><%= "#{@flights.length} entries#{' on this page' if @next_page || @page > 1}" %><% end %> · Newest first</p></div>
         </header>
         <% if @filter == "set_aside" %><p class="exds-browser-explanation">Static tests and technical recordings excluded from flights. Original files are kept here.</p><% end %>
-        <%= form_with url: bulk_action_flights_path, method: :post, class: "exds-browser-selection", data: { controller: "table-selection", action: "submit->table-selection#submit", turbo_frame: "_top", flight_browser_target: "selection" } do |form| %>
+        <%= form_with url: (can_manage_operations? ? bulk_action_flights_path : flights_path), method: (can_manage_operations? ? :post : :get), class: "exds-browser-selection", data: { controller: ("table-selection" if can_manage_operations?), action: ("submit->table-selection#submit" if can_manage_operations?), turbo_frame: "_top", flight_browser_target: "selection" } do |form| %>
           <%= render "flights/browser_filters", form: form, include_query: true %>
           <div class="exds-browser-entries">
             <% @flights.each do |entry| %>
               <% accessible = entry.is_a?(FlightImport) || entry.visible_to?(Current.user) %>
               <% selected = entry == @selected_entry %>
-              <div class="exds-browser-entry" aria-current="<%= selected %>" draggable="<%= accessible && entry.is_a?(Flight) %>" data-entry="<%= browser_key(entry) %>" data-action="dragstart->flight-browser#startDrag">
-                <% if accessible %><label><input type="checkbox" name="entries[]" value="<%= browser_key(entry) %>" data-table-selection-target="item" data-action="change->table-selection#update"><span class="sr-only">Select <%= browser_name(entry) %></span></label><% end %>
+              <div class="exds-browser-entry" aria-current="<%= selected %>" draggable="<%= can_manage_operations? && accessible && entry.is_a?(Flight) %>" data-entry="<%= browser_key(entry) %>" data-action="dragstart->flight-browser#startDrag">
+                <% if can_manage_operations? && accessible %><label><input type="checkbox" name="entries[]" value="<%= browser_key(entry) %>" data-table-selection-target="item" data-action="change->table-selection#update"><span class="sr-only">Select <%= browser_name(entry) %></span></label><% end %>
                 <%= link_to browser_preview_path(entry), class: "exds-browser-entry-link", draggable: false, data: { turbo_frame: "flight-preview", flight_browser_target: "entry", open_url: browser_open_path(entry), selected: selected, name: browser_name(entry), action: "click->flight-browser#select dblclick->flight-browser#open" }, aria: { label: "Preview #{browser_name(entry)}" } do %>
                   <span class="exds-browser-thumbnail"><% if selected && @preview_points.any? %><canvas width="124" height="96" aria-hidden="true" data-controller="route-thumbnail" data-route-thumbnail-points-value="<%= @preview_points.to_json %>"></canvas><% else %><%= sillage_icon(entry.is_a?(FlightImport) ? "file-text" : entry.logbook_view? ? "plane" : "route", size: 24) %><% end %></span>
                   <span class="exds-browser-entry-copy"><strong><%= browser_name(entry) %></strong>
@@ -74,8 +76,9 @@
                 <% end %>
               </div>
             <% end %>
-            <% if @flights.empty? %><div class="exds-browser-empty"><%= sillage_icon "folder", size: 40 %><strong><%= @query.present? ? "No matching flights" : "This folder is empty" %></strong><span><%= @folder_filter ? "No flights match this folder and the current filters." : "Create a flight or import a recording to get started." %></span></div><% end %>
+            <% if @flights.empty? %><div class="exds-browser-empty"><%= sillage_icon "folder", size: 40 %><strong><%= @query.present? ? "No matching flights" : "This folder is empty" %></strong><span><%= @folder_filter ? "No flights match this folder and the current filters." : can_manage_operations? ? "Create a flight or import a recording to get started." : "No accessible flights or recordings." %></span></div><% end %>
           </div>
+          <% if can_manage_operations? %>
           <div class="exds-selection-toolbar" data-table-selection-target="toolbar" hidden role="group" aria-label="Selection actions">
             <label><input type="checkbox" data-table-selection-target="all" data-action="change->table-selection#toggleAll"><span class="sr-only">Select all entries on this page</span></label>
             <span role="status" aria-live="polite" data-table-selection-target="count">0 selected</span>
@@ -84,6 +87,7 @@
             <button type="button" class="button-secondary" disabled data-table-selection-target="clear" data-action="table-selection#reset">Clear</button>
             <button type="submit" name="operation" value="delete" class="button-danger" disabled data-table-selection-target="delete">Delete selected</button>
           </div>
+          <% end %>
         <% end %>
         <div class="exds-browser-pagination"><%= render "shared/pagination", path: ->(page) { browser_path(page: page) } %></div>
       </section>
@@ -93,8 +97,9 @@
         <%= render "flights/browser_preview", entry: @selected_entry %>
       <% end %>
     </div>
-    <footer class="exds-browser-footer"><span><%= @browser_title %></span><span>↑ ↓ Navigate · Enter Open · Drag flights into folders</span></footer>
+    <footer class="exds-browser-footer"><span><%= @browser_title %></span><span>↑ ↓ Navigate · Enter Open<%= " · Drag flights into folders" if can_manage_operations? %></span></footer>
     <%= turbo_frame_tag "folder-sharing" %>
+    <% if can_manage_operations? %>
     <dialog class="exds-browser-dialog" data-flight-browser-target="moveDialog" aria-labelledby="move-dialog-title">
       <%= form_with url: bulk_action_flights_path, data: { turbo_frame: "_top" } do |form| %>
         <h2 id="move-dialog-title">Move flight</h2><p class="exds-browser-caption" data-flight-browser-target="moveName"></p>
@@ -113,5 +118,6 @@
         <div class="exds-browser-dialog-actions"><button type="button" class="button-secondary" data-action="flight-browser#closeDialog">Cancel</button><%= form.submit "Save folder", class: "button-primary" %></div>
       <% end %>
     </dialog>
+    <% end %>
   </section>
 <% end %>

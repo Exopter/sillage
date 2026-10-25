@@ -6,10 +6,10 @@ class FlightCollaborationFlowTest < ActionDispatch::IntegrationTest
     @collaborator = users(:operator)
     @flight = flights(:one)
     @flight.update!(visibility: "team")
-    sign_in_as @collaborator
+    sign_in_as_admin @collaborator
   end
 
-  test "a collaborator can change equipment and video synchronization" do
+  test "an administrator with flight access can change equipment and video synchronization" do
     patch flight_path(@flight), params: { flight: { description: "Team review", aircraft_id: aircraft(:exowing).id,
       video_exit_offset_seconds: 12.5, user_id: @collaborator.id } }, as: :json
     assert_response :success
@@ -35,7 +35,7 @@ class FlightCollaborationFlowTest < ActionDispatch::IntegrationTest
     assert_equal @creator, @flight.user
   end
 
-  test "a collaborator can change unfiled visibility and returns to the library after losing access" do
+  test "an administrator can change unfiled visibility and returns to the library after losing access" do
     patch flight_path(@flight), params: { flight: { visibility: "private" } }
     assert_redirected_to flights_path
     assert_equal "private", @flight.reload.visibility
@@ -43,7 +43,7 @@ class FlightCollaborationFlowTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
-  test "public folder viewers can edit its flights without receiving folder administration rights" do
+  test "administrators viewing public folders can edit flights without folder administration rights" do
     folder = @creator.flight_folders.create!(name: "Public campaign", visibility: "public")
     @flight.update!(folder: folder, visibility: "private")
     get edit_flight_path(@flight)
@@ -78,7 +78,7 @@ class FlightCollaborationFlowTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "a collaborator imports into an existing flight without changing its creator and deletion cleans both users' data" do
+  test "an administrator imports into an accessible flight without changing its creator and deletion cleans both users' data" do
     import_recording
     perform_enqueued_jobs only: FlySightImportJob
     assert @flight.reload.analysed?
@@ -114,7 +114,7 @@ class FlightCollaborationFlowTest < ActionDispatch::IntegrationTest
     assert import.reload.failed?
   end
 
-  test "flight access also grants Signal session access and revocation blocks its operator" do
+  test "administrators with flight access can acquire Signal sessions and revocation blocks the operator" do
     @flight.update!(status: "preparation")
     session = Signal::StartSession.new(user: @collaborator, flight_id: @flight.id).call
     get signal_path(session: session.uuid)
@@ -128,7 +128,7 @@ class FlightCollaborationFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal @collaborator, session.reload.user
     @flight.update!(visibility: "private")
-    sign_in_as @collaborator
+    sign_in_as_admin @collaborator
     get signal_path(session: session.uuid)
     assert_response :not_found
     assert_no_difference "SignalBatch.count" do

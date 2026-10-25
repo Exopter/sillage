@@ -7,7 +7,7 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
     @part = Part.create!(function: @function, model: "Editable part")
     @aircraft = Aircraft.create!(registration: "F-EDIT", name: "Editable aircraft")
 
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
   end
 
   test "assembly update and cancel stay in Hangar for an ExoFDR" do

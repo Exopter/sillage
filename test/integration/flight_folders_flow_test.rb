@@ -84,7 +84,7 @@ class FlightFoldersFlowTest < ActionDispatch::IntegrationTest
       assert_response :unprocessable_entity
       assert_equal "aqua", @folder.reload.color
     end
-    sign_in_as @other
+    sign_in_as_admin @other
     get flights_path(folder: @folder.id)
     assert_select ".exds-browser-sidebar [data-folder-color-id][style='--exds-folder-color: var(--ex-aqua-500)']", text: /Renamed campaign/
     assert_select "button[aria-label='Change folder color']", count: 0
@@ -150,7 +150,7 @@ class FlightFoldersFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "another owner's folders and their names never leak through shared flights" do
-    sign_in_as @other
+    sign_in_as_admin @other
     get flights_path
     assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@shared), count: 0
     assert_not_includes response.body, @folder.name

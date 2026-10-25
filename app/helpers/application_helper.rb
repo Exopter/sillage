@@ -146,7 +146,7 @@ module ApplicationHelper
       { id: "hangar", label: "Hangar", icon: "wrench", href: hangar_path, enabled: true },
       { id: "forge", label: "Forge", icon: "code", href: forge_path, enabled: true },
       { id: "signal", label: "Signal", icon: "signal", href: signal_path, enabled: true, separated: true }
-    ]
+    ].select { |item| can_manage_operations? || %w[flight signal].include?(item[:id]) }
   end
 
   def sillage_current_flight_tab
@@ -162,7 +162,7 @@ module ApplicationHelper
 
   def sillage_content_shell_class
     classes = [ "app-shell" ]
-    classes << "is-full-bleed" if sillage_current_flight_tab == "replay" || %w[signal signal_sessions].include?(controller_path)
+    classes << "is-full-bleed" if sillage_current_flight_tab == "replay" || (can_manage_operations? && %w[signal signal_sessions].include?(controller_path))
     classes << "is-full-bleed" if sillage_flight_browser?
     classes.uniq.join(" ")
   end

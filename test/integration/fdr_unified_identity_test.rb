@@ -2,7 +2,7 @@ require "test_helper"
 
 class FdrUnifiedIdentityTest < ActionDispatch::IntegrationTest
   setup do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     @assembly = create_exofdr_assembly
     @board = EmbeddedController.create!(device_id: "ECU-E072A1F81D84", device_model: "XIAO ESP32S3")
     @key = @board.ensure_fdr_auth_key!

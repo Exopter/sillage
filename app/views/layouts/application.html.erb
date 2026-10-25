@@ -18,7 +18,7 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="<%= content_for(:body_class) %> <%= "exds-recorder-page" if controller_path == "forge/fdrs" %>" data-controller="recorder-presence">
+  <body class="<%= content_for(:body_class) %> <%= "exds-recorder-page" if controller_path == "forge/fdrs" %>" <%= 'data-controller="recorder-presence"'.html_safe if can_manage_operations? %>>
     <div class="sillage-workbench">
       <aside id="sillage-room-rail" class="sillage-rail" aria-label="Sillage rooms">
         <%= link_to root_path, class: "sillage-home-link", aria: { label: "Sillage home" }, title: "Sillage home" do %>
@@ -104,11 +104,11 @@
           <div class="<%= sillage_content_shell_class %>">
             <% if controller_path == "forge/fdrs" %>
               <%= render "forge/fdrs/workspace" do %><%= render "shared/recorder_session" %><%= yield %><% end %>
-            <% else %><%= render "shared/recorder_session" if Current.user %><%= yield %><% end %>
+            <% else %><%= render "shared/recorder_session" if can_manage_operations? %><%= yield %><% end %>
           </div>
         </main>
       </div>
     </div>
-    <%= render "feedbacks/widget" if Current.user %>
+    <%= render "feedbacks/widget" if can_manage_operations? %>
   </body>
 </html>

@@ -2,7 +2,7 @@ require "test_helper"
 
 class RecorderConnectionsFlowTest < ActionDispatch::IntegrationTest
   setup do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     @recorder = create_embedded_controller(device_id: "ECU-E072A1F81D84", last_seen_firmware: "fdr_integrated/51", last_identified_at: 1.month.ago)
     @observer = SecureRandom.uuid
   end

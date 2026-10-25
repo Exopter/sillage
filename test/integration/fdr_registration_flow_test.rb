@@ -1,7 +1,7 @@
 require "test_helper"
 
 class FdrRegistrationFlowTest < ActionDispatch::IntegrationTest
-  setup { sign_in_as users(:operator) }
+  setup { sign_in_as_admin users(:operator) }
 
   test "reports an unknown physical recorder without creating Forge or Hangar data" do
     assert_no_difference [ -> { Assembly.count }, -> { EmbeddedController.count } ] do

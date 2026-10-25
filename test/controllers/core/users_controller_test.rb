@@ -8,10 +8,8 @@ class Core::UsersControllerTest < ActionDispatch::IntegrationTest
 
     get core_users_path
 
-    assert_redirected_to root_path
-    assert_equal "Admin access is required.", flash[:alert]
-
-    follow_redirect!
+    assert_response :forbidden
+    get root_path
     assert_select ".sillage-core-link", count: 0
   end
 

@@ -2,7 +2,7 @@ require "test_helper"
 
 class FdrFullIdentityTest < ActionDispatch::IntegrationTest
   setup do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     @legacy = create_embedded_controller(device_id: "ECU-A172E0")
   end
 

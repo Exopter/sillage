@@ -24,7 +24,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "operator sees the recorder connectivity workspace without a password" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     get connectivity_forge_fdr_path(@fdr)
 
@@ -45,7 +45,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "recorder overview and connectivity share one stable navigation" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     get forge_fdr_path(@fdr)
 
@@ -73,7 +73,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
       create_installed_part(assembly: replacement, function: part.function, manufacturer: part.manufacturer, model: part.model)
     end
     replacement_fdr = create_embedded_controller(assembly: replacement)
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     post forge_fdr_fdr_wifi_profiles_path(replacement_fdr), params: { wifi_credential_id: @credential.id }
 
@@ -82,7 +82,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "provisioning bundle is no-store and confirmation marks the exact device" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     post api_v1_fdr_wifi_provisioning_path(@fdr),
       params: { device_id: "ECU-ABC123" }, as: :json
@@ -106,7 +106,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
 
   test "Wi-Fi provisioning never exposes the raw FDR key" do
     @fdr.ensure_fdr_auth_key!
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     post api_v1_fdr_wifi_provisioning_path(@fdr),
       params: { device_id: "ECU-ABC123" }, as: :json
@@ -118,7 +118,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
 
   test "provisioning refuses to install an assembly key on the wrong recorder" do
     @fdr.update!(device_id: "ECU-A172E0")
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     post api_v1_fdr_wifi_provisioning_path(@fdr),
       params: { device_id: "ECU-ABC123" }, as: :json
@@ -135,7 +135,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
       create_installed_part(assembly: replacement, function: part.function, manufacturer: part.manufacturer, model: part.model)
     end
     replacement_fdr = create_embedded_controller(assembly: replacement)
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     post forge_fdr_fdr_wifi_profiles_path(replacement_fdr), params: { wifi_credential_id: shared.id }
 
@@ -144,7 +144,7 @@ class FdrWifiConfigurationFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "removing a recorder assignment keeps the reusable Forge credential" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     delete forge_fdr_fdr_wifi_profile_path(@fdr, @profile)
 

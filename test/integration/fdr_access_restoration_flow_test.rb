@@ -2,7 +2,7 @@ require "test_helper"
 
 class FdrAccessRestorationFlowTest < ActionDispatch::IntegrationTest
   setup do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     @recorder = create_embedded_controller(assembly: create_exofdr_assembly, device_id: "ECU-ABC123")
     @key = @recorder.fdr_auth_key_encoded
     @recorder.update!(fdr_auth_key_installed_at: 1.day.ago)
@@ -98,7 +98,7 @@ class FdrAccessRestorationFlowTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_path
     assert_empty @recorder.device_activities
 
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     users(:operator).update!(invitation_accepted_at: nil)
     request_restoration
     assert_response :forbidden
@@ -120,7 +120,7 @@ class FdrAccessRestorationFlowTest < ActionDispatch::IntegrationTest
   test "binds confirmation to the authenticated session" do
     request_restoration
     token = response.parsed_body.fetch("restoration_token")
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     confirm_restoration(token)
     assert_response :conflict
     assert_equal [ "access_restoration_requested" ], @recorder.device_activities.pluck(:event_type)

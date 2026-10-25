@@ -71,7 +71,7 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
   test "signed-in operator discovers only fresh Sillage heartbeats" do
     payload = heartbeat_payload.to_json
     post api_v1_fdr_sillage_heartbeat_path, params: payload, headers: heartbeat_headers(payload)
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     get api_v1_fdr_sillage_heartbeats_path, as: :json
 
@@ -94,7 +94,7 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
     post api_v1_fdr_sillage_heartbeat_path,
       params: second_payload,
       headers: heartbeat_headers(second_payload, second_key)
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     get api_v1_fdr_sillage_heartbeats_path, as: :json
 
@@ -105,7 +105,7 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
 
   test "operator sends a signed Wi-Fi recording choice and receives the recorder acknowledgement" do
     publish_recording_heartbeat
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     post api_v1_fdr_recording_commands_path,
       params: { device_id: @recorder.device_id, enabled: false },
@@ -158,7 +158,7 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
 
   test "new manual Wi-Fi choice supersedes an unacknowledged choice" do
     publish_recording_heartbeat
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     post api_v1_fdr_recording_commands_path,
       params: { device_id: @recorder.device_id, enabled: false }, as: :json
@@ -174,7 +174,7 @@ class FdrSillageHeartbeatFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "Wi-Fi recording command requires a fresh capable recorder and a boolean choice" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     post api_v1_fdr_recording_commands_path,
       params: { device_id: @recorder.device_id, enabled: false }, as: :json

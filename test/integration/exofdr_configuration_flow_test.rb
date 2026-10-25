@@ -1,7 +1,7 @@
 require "test_helper"
 
 class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
-  setup { sign_in_as users(:operator) }
+  setup { sign_in_as_admin users(:operator) }
 
   test "configuration catalogue is separate from core inventory and supports CRUD until used" do
     get hangar_fdr_functional_configurations_path

@@ -9,9 +9,9 @@ class Core::FeedbacksControllerTest < ActionDispatch::IntegrationTest
   test "non-admins cannot list or update feedback even their own" do
     sign_in_as users(:operator)
     get core_feedbacks_path
-    assert_redirected_to root_path
+    assert_response :forbidden
     patch core_feedback_path(@feedback), params: { feedback: { status: "resolved" } }
-    assert_redirected_to root_path
+    assert_response :forbidden
     assert_equal "new", @feedback.reload.status
     get root_path
     assert_select "a[href='#{core_feedbacks_path}']", count: 0
