@@ -62,16 +62,17 @@ class FdrFunctionalConfigurationTest < ActiveSupport::TestCase
     assert_equal original.fetch("functional_configuration"), assembly.snapshot.fetch("functional_configuration")
   end
 
-  test "retiring an assembly permits part reuse without changing the old composition history" do
+  test "retiring an assembly retires its parts and preserves the old composition history" do
     assembly = create_exofdr_assembly
     controller = create_embedded_controller(assembly:, device_id: "ECU-A172E0")
     installed_at = controller.part.active_part_installation.installed_at
     assembly.update!(serviceability_state: "retired")
     controller.part.remove_from_assembly!
     replacement = create_exofdr_assembly(assembly_method: "PCB")
-    controller.part.install_in!(replacement)
+    assert_equal "retired", controller.part.reload.state
+    assert_raises(ActiveRecord::RecordInvalid) { controller.part.install_in!(replacement) }
     assert_equal assembly, controller.part.assembly_at(installed_at)
-    assert_equal replacement, controller.reload.assembly
+    assert_nil controller.reload.assembly
     assert_not_equal assembly.serial_number, replacement.serial_number
     spare = Part.create!(function: controller.part.function, model: "Spare ECU")
     assert_raises(ActiveRecord::RecordInvalid) { spare.install_in!(assembly) }
