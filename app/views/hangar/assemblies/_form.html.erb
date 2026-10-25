@@ -37,7 +37,7 @@
     <label><span>Name</span><%= form.text_field :name, required: true %></label>
   <% end %>
   <div class="workspace-form-grid">
-    <label><span>Serviceability</span><%= form.select :serviceability_state, Assembly::SERVICEABILITY_STATES.map { |state| [state.humanize, state] }, {}, disabled: assembly.serviceability_state == "retired" %></label>
+    <label><span>Serviceability</span><%= form.select :serviceability_state, Assembly::SERVICEABILITY_STATES.map { |state| [state.humanize, state] } %></label>
     <label class="is-wide"><span>Parent assembly</span><%= form.collection_select :parent_id, @parent_options, :id, :selection_label, { include_blank: "No parent" } %></label>
     <label><span>Internal Asset ID</span><%= text_field_tag nil, assembly.internal_number || "Assigned automatically", disabled: true %></label>
   </div>

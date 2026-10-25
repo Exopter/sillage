@@ -74,7 +74,8 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
     assert_redirected_to hangar_assembly_path(assembly)
     assert_equal "retired", assembly.reload.serviceability_state
     patch hangar_assembly_path(assembly), params: { assembly: { serviceability_state: "in_preparation" } }
-    assert_response :unprocessable_entity
+    assert_redirected_to hangar_assembly_path(assembly)
+    assert_equal "in_preparation", assembly.reload.serviceability_state
   end
 
   test "empty catalogue has an actionable state on assembly creation" do

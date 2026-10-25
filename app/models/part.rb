@@ -21,6 +21,7 @@ class Part < ApplicationRecord
   validates :internal_number, format: { with: AssetIdentifier::PATTERN }, allow_nil: true
   validates :serial_number, uniqueness: { scope: :manufacturer }, allow_blank: true
   validates :state, inclusion: { in: STATES }
+  validate :mounted_part_matches_retired_assembly
   validate :non_serviceable_part_is_not_installed
   validate :assembly_does_not_conflict_with_aircraft_installation
   validate :embedded_controller_requires_controller_function
@@ -113,6 +114,12 @@ class Part < ApplicationRecord
       self.state = "installed" if state.in?(%w[available installed])
     elsif state == "installed"
       self.state = "available"
+    end
+  end
+
+  def mounted_part_matches_retired_assembly
+    if assembly&.serviceability_state == "retired" && state != "retired"
+      errors.add(:state, "must remain retired while its assembly is retired; reactivate the assembly first")
     end
   end
 

@@ -49,7 +49,7 @@ class FdrFunctionalConfigurationTest < ActiveSupport::TestCase
     assert_equal "EXOFDR-V42-PERF-01", create_exofdr_assembly(fdr_functional_configuration: configuration).serial_number
   end
 
-  test "assembly identity and parameters cannot be changed and retirement is terminal" do
+  test "assembly identity and parameters remain fixed after reactivation" do
     assembly = create_exofdr_assembly
     original = assembly.snapshot
     { assembly_type: nil, assembly_method: "PCB", fdr_functional_configuration: create_fdr_functional_configuration(version: 1), name: "Renamed" }.each do |attribute, value|
@@ -57,7 +57,7 @@ class FdrFunctionalConfigurationTest < ActiveSupport::TestCase
     end
     assert_not assembly.reload.destroy
     assembly.reload.update!(serviceability_state: "retired")
-    assert_not assembly.update(serviceability_state: "in_preparation")
+    assert assembly.update(serviceability_state: "in_preparation")
     assert_equal original.fetch("serial_number"), assembly.reload.serial_number
     assert_equal original.fetch("functional_configuration"), assembly.snapshot.fetch("functional_configuration")
   end
