@@ -25,7 +25,19 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "a[href='#{edit_hangar_part_path(@part)}']", text: "Edit"
-    assert_delete_form hangar_part_path(@part)
+    assert_select "form[action='#{hangar_part_path(@part)}'] input[name='_method'][value='delete']", count: 0
+
+    get hangar_part_path(@part)
+    assert_response :success
+    assert_select "header.workspace-header input[name='_method'][value='delete']", count: 0
+    assert_select "section:last-child.danger-panel" do
+      assert_select "h2", "Sensitive zone"
+      assert_select "p", text: /retirement preserves.*traceability/
+      assert_select "form[action='#{hangar_part_path(@part)}']" do
+        assert_select "input[name='_method'][value='delete']", count: 1
+        assert_select "button", "Delete part"
+      end
+    end
 
     get hangar_aircraft_index_path(aircraft_id: @aircraft.id)
 

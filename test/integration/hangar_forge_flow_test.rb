@@ -16,6 +16,38 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     )
   end
 
+  test "operator can create and edit parachute and exowing assemblies without FDR parameters" do
+    sign_in_as users(:operator)
+
+    get new_hangar_assembly_path
+    assert_response :success
+    %w[Parachute Exowing].each do |type|
+      assert_select "select[name='assembly[assembly_type]'] option[value='#{type}']", type
+    end
+    assert_select "select[name='assembly[imu_mount_profile]'] option[value='#{Imu::Mount::NATIVE}']", "None (native sensor axes)"
+
+    %w[Parachute Exowing].each do |type|
+      assert_difference -> { Assembly.count }, 1 do
+        post hangar_assemblies_path, params: { assembly: {
+          assembly_type: type, name: "Test #{type}", serviceability_state: "serviceable", imu_mount_profile: Imu::Mount::NATIVE
+        } }
+      end
+      assembly = Assembly.order(:id).last
+      assert_redirected_to hangar_assembly_path(assembly)
+      assert_equal type, assembly.assembly_type
+      assert_nil assembly.serial_number
+      assert_nil assembly.fdr_functional_configuration
+      assert_equal Imu::Mount::NATIVE, assembly.imu_mount_profile
+
+      get edit_hangar_assembly_path(assembly)
+      assert_response :success
+      assert_select "input[name='assembly[name]'][value='Test #{type}']"
+      patch hangar_assembly_path(assembly), params: { assembly: { name: "Updated #{type}" } }
+      assert_redirected_to hangar_assembly_path(assembly)
+      assert_equal "Updated #{type}", assembly.reload.name
+    end
+  end
+
   test "operator can navigate Hangar and Forge" do
     sign_in_as users(:operator)
 

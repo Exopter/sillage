@@ -27,8 +27,9 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
   test "creation requires a type and previews selectable capabilities without asking for a name" do
     configuration = create_fdr_functional_configuration(version: 42, planned_capabilities: "Recording and telemetry")
     get new_hangar_assembly_path
-    assert_select "select[name='assembly[assembly_type]'] option", count: 2
-    assert_select "input[name='assembly[name]'], input[name='assembly[serial_number]'], select[name='assembly[hardware_definition_id]']", count: 0
+    assert_select "select[name='assembly[assembly_type]'] option", count: 4
+    assert_select "fieldset[hidden][disabled] input[name='assembly[name]']", count: 1
+    assert_select "input[name='assembly[serial_number]'], select[name='assembly[hardware_definition_id]']", count: 0
     assert_select "table.workspace-choice-table", text: /V42.*Recording and telemetry/m
 
     assert_no_difference -> { Assembly.count } do

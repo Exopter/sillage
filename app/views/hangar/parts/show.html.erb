@@ -9,8 +9,6 @@
   </div>
   <div class="workspace-actions">
     <%= link_to "Edit", edit_hangar_part_path(@part), class: "button-secondary" %>
-    <%= button_to "Delete", hangar_part_path(@part), method: :delete, class: "button-danger",
-      form: { data: { turbo_confirm: "Delete #{@part.internal_number} permanently? This cannot be undone." } } %>
   </div>
 </header>
 
@@ -43,4 +41,12 @@
       <% end %>
     </div>
   <% else %><div class="workspace-empty">This part has never been installed in an assembly.</div><% end %>
+</section>
+
+<section class="workspace-panel danger-panel" aria-labelledby="part-sensitive-zone">
+  <h2 id="part-sensitive-zone">Sensitive zone</h2>
+  <p>Retiring this part is recommended instead of deleting it: retirement preserves its identity and installation history for traceability. Remove it from its assembly or aircraft first, then ask an administrator to set its state to Retired.</p>
+  <p>Deletion is permanent and cannot be undone. Parts with installation history or an embedded controller record cannot be deleted.</p>
+  <%= button_to "Delete part", hangar_part_path(@part), method: :delete, class: "button-danger",
+    form: { data: { turbo_confirm: "Delete #{@part.internal_number} permanently? This cannot be undone. Retire the part instead to preserve traceability." } } %>
 </section>

@@ -6,7 +6,7 @@ const source = (await readFile(new URL("../../app/javascript/controllers/assembl
 const {default: AssemblyForm} = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`)
 const form = new AssemblyForm()
 Object.assign(form, {
-  hasTypeTarget: true, typeTarget: {value: ""}, parametersTarget: {},
+  hasTypeTarget: true, typeTarget: {value: ""}, parametersTarget: {}, identityTarget: {},
   configurationTargets: [{checked: false, dataset: {version: "V42"}}],
   methodTarget: {value: ""}, previewTarget: {}, submitTarget: {}
 })
@@ -14,6 +14,7 @@ form.connect()
 assert.equal(form.parametersTarget.hidden, true)
 assert.equal(form.parametersTarget.disabled, true)
 assert.equal(form.submitTarget.disabled, true)
+assert.equal(form.identityTarget.disabled, true)
 form.typeTarget.value = "ExoFDR"
 form.update()
 assert.equal(form.parametersTarget.hidden, false)
@@ -30,6 +31,20 @@ assert.match(form.previewTarget.textContent, /EXOFDR-V42-PCB-…/)
 form.typeTarget.value = ""
 form.update()
 assert.equal(form.parametersTarget.disabled, true)
+assert.equal(form.submitTarget.disabled, true)
+for (const type of ["Parachute", "Exowing"]) {
+  form.typeTarget.value = type
+  form.configurationTargets = []
+  form.methodTarget.value = ""
+  form.update()
+  assert.equal(form.parametersTarget.disabled, true)
+  assert.equal(form.identityTarget.hidden, false)
+  assert.equal(form.identityTarget.disabled, false)
+  assert.equal(form.submitTarget.disabled, false)
+}
+form.typeTarget.value = "ExoFDR"
+form.update()
+assert.equal(form.identityTarget.disabled, true)
 assert.equal(form.submitTarget.disabled, true)
 form.hasTypeTarget = false
 form.update() // Editing an existing assembly has no mutable type/configuration inputs.

@@ -1,6 +1,10 @@
 require "test_helper"
 
 class ReadinessCheckTest < ActiveSupport::TestCase
+  setup do
+    FileUtils.mkdir_p(ActiveStorage::Blob.service.root)
+  end
+
   QueueProcess = Struct.new(:kind, :last_heartbeat_at, :metadata, keyword_init: true) do
     def metadata = self[:metadata] || { "queues" => "*" }
   end

@@ -2,6 +2,10 @@
   <% if assembly.errors.any? %><div class="workspace-errors"><%= assembly.errors.full_messages.to_sentence %></div><% end %>
   <% if assembly.new_record? %>
     <label><span>Assembly type</span><%= form.select :assembly_type, Assembly::ASSEMBLY_TYPES, { include_blank: "Select an assembly type" }, required: true, data: { assembly_form_target: "type", action: "assembly-form#update" } %></label>
+    <fieldset class="workspace-fieldset" data-assembly-form-target="identity" <%= "hidden disabled" if assembly.controlled_fdr? || assembly.assembly_type.blank? %>>
+      <legend>Assembly identity</legend>
+      <label><span>Name</span><%= form.text_field :name, required: true %></label>
+    </fieldset>
     <fieldset class="workspace-fieldset" data-assembly-form-target="parameters">
       <legend>ExoFDR parameters</legend>
       <p class="workspace-muted">Choose a capability baseline and an assembly method. Both are fixed after creation.</p>
@@ -39,9 +43,9 @@
   </div>
   <label><span>Notes</span><%= form.text_area :notes, rows: 4 %></label>
   <label><span>IMU mounting</span><%= form.select :imu_mount_profile, Imu::Mount::LABELS.map { |id, label| [label, id] } %></label>
-  <p class="workspace-muted">Wingsuit belly pocket: +Y forward, +X left, +Z down. Changing the mounting requires a new reference and preflight check.</p>
+  <p class="workspace-muted">None keeps native sensor axes without a mounting correction. Wingsuit belly pocket: +Y forward, +X left, +Z down. Changing the mounting requires a new reference and preflight check.</p>
   <div class="workspace-actions">
     <%= link_to "Cancel", assembly.persisted? ? hangar_assembly_path(assembly) : hangar_assemblies_path, class: "button-secondary" %>
-    <%= form.submit class: "button-primary", disabled: assembly.new_record? && @functional_configurations.empty?, data: { assembly_form_target: "submit" } %>
+    <%= form.submit class: "button-primary", disabled: assembly.new_record? && (assembly.assembly_type.blank? || (assembly.controlled_fdr? && @functional_configurations.empty?)), data: { assembly_form_target: "submit" } %>
   </div>
 <% end %>
