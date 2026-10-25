@@ -8,7 +8,7 @@
     <div><span class="section-eyebrow">Assembly</span><h2><%= @assembly.name %></h2><p>Asset ID <%= @assembly.internal_number %></p></div>
   <% end %>
   <div class="workspace-actions">
-    <% if @assembly.embedded_controller && @assembly.serviceability_state != "retired" %><%= link_to "Open in Forge", forge_fdr_path(@assembly.embedded_controller.forge_identifier), class: "button-primary" %><% end %>
+    <% if @assembly.controlled_fdr? && @assembly.serviceability_state != "retired" %><%= link_to "Open in Forge", forge_fdr_path(@assembly.serial_number), class: "button-primary" %><% end %>
     <%= link_to "Edit", edit_hangar_assembly_path(@assembly), class: "button-secondary" %>
     <% unless @assembly.controlled_fdr? %>
       <%= button_to "Delete", hangar_assembly_path(@assembly), method: :delete, class: "button-danger", form: { data: { turbo_confirm: "Delete #{@assembly.internal_number} permanently? This cannot be undone." } } %>

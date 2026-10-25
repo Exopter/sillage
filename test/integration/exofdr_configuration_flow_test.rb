@@ -49,6 +49,7 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
       assert_response :success
       assert_select ".workspace-header h2", assembly.name
       assert_select ".hangar-tabs"
+      assert_select "a[href='#{forge_fdr_path(assembly.serial_number)}']", text: "Open in Forge"
       assert_select ".workspace-header", text: /S\/N|Hardware definition/, count: 0
     end
   end
