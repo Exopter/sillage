@@ -1,6 +1,31 @@
 require "test_helper"
 
 class FeedbackTest < ActiveSupport::TestCase
+  include ActionMailer::TestHelper
+
+  test "only committed status changes notify the author" do
+    feedback = nil
+    assert_no_enqueued_emails do
+      feedback = users(:operator).feedbacks.create!(category: "idea", description: "Useful feedback")
+      feedback.update!(description: "Updated feedback")
+      feedback.update!(status: "new")
+      assert_not feedback.update(status: "unsupported")
+    end
+    feedback.reload
+
+    assert_enqueued_email_with FeedbackMailer, :status_changed, args: [ feedback, { previous_status: "new", status: "reviewing" } ] do
+      feedback.update!(status: "reviewing")
+    end
+
+    assert_no_enqueued_emails do
+      Feedback.transaction(requires_new: true) do
+        feedback.update!(status: "resolved")
+        raise ActiveRecord::Rollback
+      end
+    end
+    assert_equal "reviewing", feedback.reload.status
+  end
+
   test "requires meaningful feedback and valid categories and statuses" do
     feedback = users(:operator).feedbacks.new(category: "bug", description: "   ")
     assert_not feedback.valid?

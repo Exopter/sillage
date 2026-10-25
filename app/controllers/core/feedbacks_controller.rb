@@ -1,11 +1,15 @@
 module Core
   class FeedbacksController < BaseController
     def index
-      @page = [ params[:page].to_i, 1 ].max
-      @feedbacks = Feedback.includes(:user).with_attached_screenshot.order(created_at: :desc, id: :desc)
-        .offset((@page - 1) * 20).limit(21).to_a
-      @has_next_page = @feedbacks.length > 20
-      @feedbacks = @feedbacks.first(20)
+      @counts = Feedback.group(:status).count
+      @pages = {}
+      @feedbacks_by_status = Feedback::STATUSES.index_with do |status|
+        last_page = [ (@counts.fetch(status, 0) / 20.0).ceil, 1 ].max
+        requested_page = params[:pages].is_a?(ActionController::Parameters) ? params[:pages][status].to_i : 1
+        @pages[status] = requested_page.clamp(1, last_page)
+        Feedback.where(status:).includes(:user).with_attached_screenshot.order(updated_at: :desc, id: :desc)
+          .offset((@pages[status] - 1) * 20).limit(20).to_a
+      end
     end
 
     def update

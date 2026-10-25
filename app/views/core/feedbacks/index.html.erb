@@ -1,31 +1,41 @@
 <% content_for :title, "Feedback" %>
-<section class="core-users">
+<section class="core-users" data-controller="feedback-board" data-action="turbo:submit-end->feedback-board#submitted">
   <%= render "core/navigation" %>
   <div class="core-users-header">
-    <div><span class="section-eyebrow">Sillage Core</span><h1>Feedback</h1><p>Ideas and problems shared by the team.</p></div>
+    <div><span class="section-eyebrow">Sillage Core</span><h1>Feedback</h1><p id="feedback-move-help">Drag a card to change its status. On touch screens, tap its heading, then a column. Use Left and Right on a focused heading to move with the keyboard.</p></div>
   </div>
-  <% if @feedbacks.empty? %><section class="core-panel"><p>No feedback yet.</p></section><% end %>
-  <% @feedbacks.each do |feedback| %>
-    <article class="core-panel">
-      <strong><%= Feedback::CATEGORIES.fetch(feedback.category) %></strong>
-      <span class="status-pill"><%= feedback.status.titleize %></span>
-      <small><%= feedback.user.email_address %> · <%= feedback.created_at.utc.strftime("%d %b %Y, %H:%M UTC") %></small>
-      <%= simple_format(feedback.description) %>
-      <% if feedback.page_path.present? %><p>Related page: <%= feedback.page_path %></p><% end %>
-      <% if feedback.screenshot.attached? %>
-        <%= link_to attachment_path(feedback.screenshot.attachment), target: "_blank", rel: "noopener", aria: { label: "Open annotated screenshot" } do %>
-          <%= image_tag attachment_path(feedback.screenshot.attachment), class: "exds-feedback-evidence", alt: "Screenshot with the user's annotations", loading: "lazy" %>
+  <p class="exds-kanban-notice" role="status" data-board-announcement></p>
+  <div class="exds-kanban" aria-label="Feedback by status">
+    <% Feedback::STATUSES.each do |status| %>
+      <section class="exds-kanban-column" aria-labelledby="feedback-column-<%= status %>" data-status="<%= status %>" data-action="dragover->feedback-board#allowDrop dragleave->feedback-board#leave drop->feedback-board#drop click->feedback-board#place">
+        <header class="exds-kanban-heading">
+          <h2 id="feedback-column-<%= status %>"><%= status.titleize %></h2>
+          <span aria-label="<%= pluralize @counts.fetch(status, 0), 'feedback item' %>"><%= @counts.fetch(status, 0) %></span>
+        </header>
+        <% if @feedbacks_by_status.fetch(status).empty? %><p class="exds-kanban-empty">No feedback in <%= status.humanize.downcase %>.</p><% end %>
+        <% @feedbacks_by_status.fetch(status).each do |feedback| %>
+          <article class="exds-kanban-card" id="feedback-<%= feedback.id %>">
+            <button type="button" class="exds-kanban-handle" draggable="true" aria-label="Move feedback #<%= feedback.id %>" aria-describedby="feedback-move-help" aria-pressed="false" data-action="dragstart->feedback-board#start dragend->feedback-board#end click->feedback-board#select keydown->feedback-board#key">
+              <strong><%= Feedback::CATEGORIES.fetch(feedback.category) %></strong><small>#<%= feedback.id %></small>
+            </button>
+            <div><small><%= feedback.user.email_address %></small><small><%= feedback.created_at.utc.strftime("%d %b %Y, %H:%M UTC") %></small></div>
+            <%= simple_format(feedback.description) %>
+            <% if feedback.page_path.present? %><p>Related page: <%= feedback.page_path %></p><% end %>
+            <% if feedback.screenshot.attached? %>
+              <%= link_to attachment_path(feedback.screenshot.attachment), target: "_blank", rel: "noopener", aria: { label: "Open annotated screenshot" } do %>
+                <%= image_tag attachment_path(feedback.screenshot.attachment), class: "exds-feedback-evidence", alt: "Screenshot with the user's annotations", loading: "lazy", draggable: false %>
+              <% end %>
+            <% end %>
+            <%= form_with model: feedback, url: core_feedback_path(feedback), html: { hidden: true } do |form| %>
+              <%= form.hidden_field :status %>
+            <% end %>
+          </article>
         <% end %>
-      <% end %>
-      <%= form_with model: feedback, url: core_feedback_path(feedback), class: "core-form" do |form| %>
-        <%= form.label :status, "Status", for: "feedback-status-#{feedback.id}" %>
-        <%= form.select :status, Feedback::STATUSES.map { |status| [status.titleize, status] }, {}, id: "feedback-status-#{feedback.id}" %>
-        <%= form.submit "Update status", class: "button-secondary" %>
-      <% end %>
-    </article>
-  <% end %>
-  <nav aria-label="Feedback pages">
-    <% if @page > 1 %><%= link_to "Previous", core_feedbacks_path(page: @page - 1), class: "button-secondary" %><% end %>
-    <% if @has_next_page %><%= link_to "Next", core_feedbacks_path(page: @page + 1), class: "button-secondary" %><% end %>
-  </nav>
+        <nav class="exds-kanban-pages" aria-label="<%= status.titleize %> feedback pages">
+          <% if @pages[status] > 1 %><%= link_to "Previous", core_feedbacks_path(pages: @pages.merge(status => @pages[status] - 1)), rel: "prev" %><% end %>
+          <% if @counts.fetch(status, 0) > @pages[status] * 20 %><%= link_to "Next", core_feedbacks_path(pages: @pages.merge(status => @pages[status] + 1)), rel: "next" %><% end %>
+        </nav>
+      </section>
+    <% end %>
+  </div>
 </section>

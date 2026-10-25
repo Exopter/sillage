@@ -1,0 +1,4 @@
+<p>The status of your Sillage feedback #<%= @feedback.id %> has changed from <strong><%= @previous_status %></strong> to <strong><%= @status %></strong>.</p>
+<p>Your feedback:</p>
+<%= simple_format @feedback.description %>
+<p><%= link_to "Open Sillage", root_url %></p>

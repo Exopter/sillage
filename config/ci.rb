@@ -37,6 +37,7 @@ CI.run do
   step "Tests: Recorder identity lifecycle", "node test/javascript/recorder_identity_test.mjs"
   step "Tests: Assembly configuration form", "node test/javascript/assembly_form_test.mjs"
   step "Tests: Feedback annotations and submission", "node test/javascript/feedback_test.mjs"
+  step "Tests: Feedback board", "node test/javascript/feedback_board_test.mjs"
   step "Tests: Table selection", "node test/javascript/table_selection_test.mjs"
   step "Tests: Flight browser", "node test/javascript/flight_browser_test.mjs"
   step "Tests: Folder member search", "node test/javascript/folder_members_test.mjs"
