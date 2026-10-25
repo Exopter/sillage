@@ -6,7 +6,7 @@ const source = (await readFile(new URL("../../app/javascript/controllers/assembl
 const {default: AssemblyForm} = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`)
 const form = new AssemblyForm()
 Object.assign(form, {
-  hasTypeTarget: true, typeTarget: {value: ""}, parametersTarget: {}, mountingTarget: {},
+  hasTypeTarget: true, typeTarget: {value: ""}, parametersTarget: {}, mountingTarget: {}, identityTarget: {},
   configurationTargets: [{checked: false, dataset: {version: "V42"}}],
   methodTarget: {value: ""}, previewTarget: {}, submitTarget: {}
 })
@@ -35,6 +35,14 @@ form.typeTarget.value = ""
 form.update()
 assert.equal(form.parametersTarget.disabled, true)
 assert.equal(form.submitTarget.disabled, true)
+for (const type of ["Parachute", "Exowing"]) {
+  form.typeTarget.value = type
+  form.update()
+  assert.equal(form.mountingTarget.hidden, true)
+  assert.equal(form.mountingTarget.disabled, true)
+  assert.equal(form.identityTarget.hidden, false)
+  assert.equal(form.submitTarget.disabled, false)
+}
 form.hasTypeTarget = false
 form.update() // Editing an existing assembly has no mutable type/configuration inputs.
 console.log("Assembly form selection and preview tests passed")

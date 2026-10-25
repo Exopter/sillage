@@ -10,8 +10,13 @@ class Feedback < ApplicationRecord
   validates :description, presence: true, length: { maximum: 5000 }
   validates :page_path, length: { maximum: 500 }, format: { with: %r{\A/(?!/)[^?\#\s]*\z} }, allow_blank: true
   validate :screenshot_format
+  after_update_commit :notify_author_of_status_change, if: :saved_change_to_status?
 
   private
+
+  def notify_author_of_status_change
+    FeedbackMailer.status_changed(self, previous_status: status_before_last_save, status: status).deliver_later
+  end
 
   def screenshot_format
     return unless screenshot.attached?

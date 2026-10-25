@@ -24,6 +24,8 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
     assert_equal @assembly, @part.assembly
     assert_equal 1, @part.part_installations.active.count
     assert_equal "available", removed.reload.state
+    @part.remove_from_assembly!
+    assert_equal "retired", @part.reload.state
   end
 
   test "retired assets are hidden by default and accessible through filters" do

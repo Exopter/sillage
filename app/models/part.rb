@@ -70,7 +70,7 @@ class Part < ApplicationRecord
 
       current_installation.remove!(at:)
       reset_assembly_associations(current_installation.assembly)
-      update!(state: installations.active.exists? ? "installed" : "available")
+      update!(state: state == "retired" ? "retired" : installations.active.exists? ? "installed" : "available")
     end
   end
 

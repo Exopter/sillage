@@ -69,7 +69,7 @@ class PartAssemblyAssignmentTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "a current retired assembly remains selected until the part is explicitly moved" do
+  test "a retired assembly keeps its retired mounted part and allows metadata updates" do
     @original.update!(serviceability_state: "retired")
 
     get edit_hangar_part_path(@part)
@@ -82,7 +82,9 @@ class PartAssemblyAssignmentTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to hangar_part_path(@part)
-    assert_original_installation
+    assert_equal @installation, @part.reload.active_part_installation
+    assert_nil @installation.reload.removed_at
+    assert_equal "retired", @part.state
     assert_equal "Updated notes", @part.notes
   end
 

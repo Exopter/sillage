@@ -2,7 +2,7 @@ module Imu
   class Mount
     NATIVE = "sensor_native".freeze
     BELLY = "wingsuit_belly_pocket_v1".freeze
-    LABELS = { NATIVE => "Native sensor axes", BELLY => "Wingsuit belly pocket mount" }.freeze
+    LABELS = { NATIVE => "None (native sensor axes)", BELLY => "Wingsuit belly pocket mount" }.freeze
 
     def self.description(profile)
       profile == BELLY ? "+Y forward · +X left · +Z down" : "+X forward · +Y left · +Z up"

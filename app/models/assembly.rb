@@ -2,7 +2,7 @@ class Assembly < ApplicationRecord
   include AssetIdentifiable
 
   EXOFDR_SERIAL_PATTERN = /\AEXOFDR-V\d+-(PERF|PCB)-\d{2,}\z/
-  ASSEMBLY_TYPES = [ "ExoFDR" ].freeze
+  ASSEMBLY_TYPES = [ "ExoFDR", "Parachute", "Exowing" ].freeze
   ASSEMBLY_METHODS = { "PERF" => "Perfboard", "PCB" => "PCB" }.freeze
   SERVICEABILITY_STATES = %w[in_preparation serviceable quarantined retired].freeze
 
@@ -238,6 +238,6 @@ class Assembly < ApplicationRecord
   def serviceable_assembly_has_controlled_identity
     return unless serviceability_state == "serviceable"
 
-    errors.add(:assembly_type, "must be ExoFDR before the assembly is serviceable") unless controlled_fdr?
+    errors.add(:assembly_type, "must be selected before the assembly is serviceable") unless assembly_type.in?(ASSEMBLY_TYPES)
   end
 end
