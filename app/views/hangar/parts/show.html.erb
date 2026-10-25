@@ -8,6 +8,9 @@
     <p><%= @part.serial_number.present? ? "S/N #{@part.serial_number}" : "Serial number not recorded" %></p>
   </div>
   <div class="workspace-actions">
+    <% if @forge_assembly&.controlled_fdr? && @forge_assembly.serviceability_state != "retired" && @part.state != "retired" %>
+      <%= link_to "Open in Forge", forge_fdr_path(@forge_assembly.serial_number), class: "button-primary" %>
+    <% end %>
     <%= link_to "Edit", edit_hangar_part_path(@part), class: "button-secondary" %>
   </div>
 </header>

@@ -1,7 +1,6 @@
 module Hangar
   class PartsController < BaseController
     before_action :set_part, only: %i[show edit update destroy]
-    before_action :open_integrated_fdr, only: %i[show edit]
 
     def index
       @query = params[:q].to_s.strip
@@ -19,6 +18,7 @@ module Hangar
     end
 
     def show
+      @forge_assembly = @part.embedded_controller&.assembly
       @part_installations = @part.part_installations.includes(:assembly).recent
     end
 
@@ -69,12 +69,6 @@ module Hangar
     end
 
     private
-
-    def open_integrated_fdr
-      controller = @part.embedded_controller
-      assembly = controller&.assembly || controller&.fdr_board_installations&.recent&.first&.assembly
-      redirect_to forge_fdr_path(assembly.serial_number) if assembly&.controlled_fdr? && assembly.serviceability_state != "retired" && @part.state != "retired"
-    end
 
     def set_part
       @part = Part.find(params[:id])

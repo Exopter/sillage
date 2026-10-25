@@ -87,8 +87,10 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_select "input[name='assembly[device_id]']", count: 0
 
     get hangar_assembly_path(@assembly)
-    assert_redirected_to forge_fdr_path(@assembly.serial_number)
-    follow_redirect!
+    assert_response :success
+    assert_select ".hangar-tabs"
+    assert_select "a[href='#{edit_hangar_assembly_path(@assembly)}']", text: "Edit"
+    get forge_fdr_path(@assembly.serial_number)
     assert_select ".exds-recorder-heading p", @assembly.serial_number
     assert_select ".workspace-details", text: /Wi-Fi hostname.*#{@assembly.serial_number.downcase}/m
     assert_select ".workspace-details dt", text: "ECU ID", count: 0
@@ -132,7 +134,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     get forge_path(connect: 1)
     assert_response :success
     assert_select "[data-action='fdr-connectivity#connectUsb']", count: 1
-    get hangar_assembly_path(@assembly, view: "components")
+    get hangar_assembly_path(@assembly)
     assert_response :success
     assert_select "h2", "Composition"
     assert_select "form[action='#{remove_part_hangar_assembly_path(@assembly, part_id: @part.id)}']", count: 1

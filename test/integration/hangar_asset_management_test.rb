@@ -10,6 +10,50 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
     sign_in_as users(:operator)
   end
 
+  test "assembly update and cancel stay in Hangar for an ExoFDR" do
+    recorder = create_exofdr_assembly
+    create_embedded_controller(assembly: recorder, device_id: "ECU-A172E0")
+    get edit_hangar_assembly_path(recorder)
+    assert_response :success
+    assert_select "a[href='#{hangar_assembly_path(recorder)}']", text: "Cancel"
+    get hangar_assembly_path(recorder)
+    assert_response :success
+    assert_select ".hangar-tabs"
+
+    patch hangar_assembly_path(recorder), params: { assembly: { notes: "Updated from Hangar" } }
+    assert_redirected_to hangar_assembly_path(recorder)
+    follow_redirect!
+    assert_response :success
+    assert_equal hangar_assembly_path(recorder), path
+    assert_select ".hangar-tabs"
+    assert_select ".workspace-header h2", recorder.display_name
+    assert_equal "Updated from Hangar", recorder.reload.notes
+    assert_select "main", text: /Updated from Hangar/
+    assert_select "a[href='#{forge_fdr_path(recorder.serial_number)}']", text: "Open in Forge"
+    assert_select ".exds-recorder-workspace", count: 0
+  end
+
+  test "integrated controller parts stay in Hangar when opened edited and updated" do
+    recorder = create_exofdr_assembly
+    controller = create_embedded_controller(assembly: recorder, device_id: "ECU-A172E0")
+    part = controller.part
+    get hangar_part_path(part)
+    assert_response :success
+    assert_select "a[href='#{edit_hangar_part_path(part)}']", text: "Edit"
+    assert_select "a[href='#{forge_fdr_path(recorder.serial_number)}']", text: "Open in Forge"
+    get edit_hangar_part_path(part)
+    assert_response :success
+    assert_select "a[href='#{hangar_part_path(part)}']", text: "Cancel"
+    patch hangar_part_path(part), params: { part: { notes: "Updated controller inventory" } }
+    assert_redirected_to hangar_part_path(part)
+    follow_redirect!
+    assert_response :success
+    assert_equal hangar_part_path(part), path
+    assert_select ".hangar-tabs"
+    assert_equal "Updated controller inventory", part.reload.notes
+    assert_select "main", text: /Updated controller inventory/
+  end
+
   test "retired assemblies can be reactivated from the enabled state selector" do
     recorder = create_exofdr_assembly
     controller = create_embedded_controller(assembly: recorder, device_id: "ECU-A172E0")
