@@ -5,7 +5,10 @@ module Hangar
     ]
 
     def index
-      @assemblies = Assembly.includes(
+      @state = params[:state].presence_in([ "all", *Assembly::SERVICEABILITY_STATES ])
+      scope = Assembly.all
+      scope = @state == "all" ? scope : @state ? scope.where(serviceability_state: @state) : scope.not_retired
+      @assemblies = scope.includes(
         :parent,
         :children,
         :fdr_functional_configuration,

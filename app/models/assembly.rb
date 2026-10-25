@@ -22,6 +22,7 @@ class Assembly < ApplicationRecord
 
   before_create :assign_exofdr_serial_number
   before_save :record_imu_mount_change
+  after_save :retire_mounted_parts, if: -> { saved_change_to_serviceability_state? && serviceability_state == "retired" }
   before_destroy :retain_exofdr_identity
 
   validates :name, presence: true, unless: :controlled_fdr?
@@ -159,6 +160,10 @@ class Assembly < ApplicationRecord
   end
 
   private
+
+  def retire_mounted_parts
+    parts.each { |part| part.update!(state: "retired") }
+  end
 
   def imu_mount_change_at(time)
     return imu_mount_history.last unless time

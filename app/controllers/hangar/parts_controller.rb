@@ -5,7 +5,7 @@ module Hangar
 
     def index
       @query = params[:q].to_s.strip
-      @state = params[:state].presence_in(Part::STATES)
+      @state = params[:state].presence_in([ "all", *Part::STATES ])
       @parts = Part.left_joins(:function).includes(:function, active_part_installation: :assembly).ordered
         .where.not(id: EmbeddedController.where.not(part_id: nil).select(:part_id))
       if @query.present?
@@ -15,7 +15,7 @@ module Hangar
           parts.model LIKE :pattern OR parts.serial_number LIKE :pattern OR functions.name LIKE :pattern
         SQL
       end
-      @parts = @parts.where(state: @state) if @state
+      @parts = @state == "all" ? @parts : @state ? @parts.where(state: @state) : @parts.where.not(state: "retired")
     end
 
     def show

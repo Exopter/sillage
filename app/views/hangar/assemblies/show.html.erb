@@ -25,7 +25,9 @@
       <div><dt>ECU ID</dt><dd class="workspace-mono"><%= ecu_label(@assembly.embedded_controller&.device_id) || "Not identified" %></dd></div>
     <% end %>
     <div><dt>Serviceability</dt><dd><%= @assembly.serviceability_label %></dd></div>
+    <% if @assembly.controlled_fdr? %>
     <div><dt>IMU mounting</dt><dd><%= Imu::Mount::LABELS.fetch(@assembly.imu_mount_profile) %><br><%= Imu::Mount.description(@assembly.imu_mount_profile) %></dd></div>
+    <% end %>
     <div><dt>Internal Asset ID</dt><dd class="workspace-mono"><%= @assembly.internal_number %></dd></div>
   </dl>
   <% if @assembly.controlled_fdr? %><p class="workspace-muted workspace-preserve-lines"><%= @assembly.fdr_functional_configuration.planned_capabilities %></p><% end %>

@@ -119,6 +119,8 @@ class Part < ApplicationRecord
   def non_serviceable_part_is_not_installed
     return unless (assembly.present? || installations.active.exists?) && state.in?(%w[quarantined retired])
 
+    return if state == "retired" && assembly&.serviceability_state == "retired" && !installations.active.exists?
+
     errors.add(:state, "cannot be installed while #{state}")
   end
 

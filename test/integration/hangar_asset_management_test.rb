@@ -10,6 +10,54 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
     sign_in_as users(:operator)
   end
 
+  test "retiring an assembly retires mounted parts and preserves installation history" do
+    @part.install_in!(@assembly)
+    removed = Part.create!(function: @function, model: "Removed part")
+    removed.install_in!(@assembly)
+    removed.remove_from_assembly!
+
+    patch hangar_assembly_path(@assembly), params: { assembly: { serviceability_state: "retired" } }
+
+    assert_redirected_to hangar_assembly_path(@assembly)
+    assert_equal "retired", @assembly.reload.serviceability_state
+    assert_equal "retired", @part.reload.state
+    assert_equal @assembly, @part.assembly
+    assert_equal 1, @part.part_installations.active.count
+    assert_equal "available", removed.reload.state
+  end
+
+  test "retired assets are hidden by default and accessible through filters" do
+    @assembly.update!(serviceability_state: "retired")
+    @part.update!(state: "retired")
+
+    get hangar_assemblies_path
+    assert_select "a[href='#{hangar_assemblies_path(assembly_id: @assembly.id)}']", count: 0
+    get hangar_assemblies_path(state: "retired")
+    assert_select ".hangar-table-primary strong", text: @assembly.display_name
+    get hangar_assemblies_path(state: "all")
+    assert_select ".hangar-table-primary strong", text: @assembly.display_name
+
+    get hangar_parts_path
+    assert_select "a[href='#{hangar_part_path(@part)}']", count: 0
+    get hangar_parts_path(state: "retired")
+    assert_select "a[href='#{hangar_part_path(@part)}']", text: @part.display_name
+    get hangar_parts_path(state: "all")
+    assert_select "a[href='#{hangar_part_path(@part)}']", text: @part.display_name
+  end
+
+  test "IMU mounting is limited to ExoFDR assemblies" do
+    get new_hangar_assembly_path
+    assert_select "fieldset[data-assembly-form-target='mounting'][hidden][disabled] select[name='assembly[imu_mount_profile]']"
+    get edit_hangar_assembly_path(@assembly)
+    assert_select "select[name='assembly[imu_mount_profile]']", count: 0
+    get hangar_assembly_path(@assembly)
+    assert_select "dt", text: "IMU mounting", count: 0
+
+    recorder = Assembly.create!(assembly_type: "ExoFDR", assembly_method: "PERF", fdr_functional_configuration: create_fdr_functional_configuration)
+    get edit_hangar_assembly_path(recorder)
+    assert_select "fieldset[data-assembly-form-target='mounting']:not([hidden]):not([disabled]) select[name='assembly[imu_mount_profile]']"
+  end
+
   test "edit and delete actions are visible from Hangar asset views" do
     get hangar_assemblies_path(assembly_id: @assembly.id)
 

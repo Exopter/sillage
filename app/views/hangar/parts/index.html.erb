@@ -18,7 +18,7 @@
   </label>
   <label class="workspace-state-filter">
     <span class="sr-only">Filter by state</span>
-    <%= form.select :state, options_for_select([["All states", ""], *Part::STATES.map { |state| [state.titleize, state] }], @state), {}, data: { action: "change->auto-submit#submit" } %>
+    <%= form.select :state, options_for_select([["Current parts", ""], ["All states", "all"], *Part::STATES.map { |state| [state.titleize, state] }], @state), {}, data: { action: "change->auto-submit#submit" } %>
   </label>
   <% if @query.present? || @state.present? %><%= link_to "Clear", hangar_parts_path, class: "button-secondary" %><% end %>
   <span class="workspace-result-count"><%= pluralize @parts.size, "part" %></span>

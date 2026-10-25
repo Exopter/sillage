@@ -6,6 +6,13 @@
   <%= link_to new_hangar_assembly_path, class: "button-primary" do %><%= sillage_icon "plus", size: 17 %><span>New assembly</span><% end %>
 </header>
 
+<%= form_with url: hangar_assemblies_path, method: :get, class: "workspace-filterbar", data: { controller: "auto-submit" } do |form| %>
+  <label class="workspace-state-filter">
+    <span class="sr-only">Filter by state</span>
+    <%= form.select :state, options_for_select([["Current assemblies", ""], ["All states", "all"], *Assembly::SERVICEABILITY_STATES.map { |state| [state.humanize, state] }], @state), {}, data: { action: "change->auto-submit#submit" } %>
+  </label>
+<% end %>
+
 <% if @selected_assembly %>
   <div class="hangar-assemblies-layout">
     <section class="hangar-panel">
@@ -16,7 +23,7 @@
             <% @assemblies.each do |assembly| %>
               <% installed_aircraft = hangar_assembly_aircraft assembly %>
               <tr class="<%= "is-selected" if assembly == @selected_assembly %>">
-                <td><%= link_to hangar_assemblies_path(assembly_id: assembly.id), class: "hangar-table-primary" do %><strong><%= assembly.display_name %></strong><% unless assembly.controlled_fdr? %><small>Asset ID <%= assembly.internal_number %></small><% end %><% end %></td>
+                <td><%= link_to hangar_assemblies_path(assembly_id: assembly.id, state: @state), class: "hangar-table-primary" do %><strong><%= assembly.display_name %></strong><% unless assembly.controlled_fdr? %><small>Asset ID <%= assembly.internal_number %></small><% end %><% end %></td>
                 <td><%= installed_aircraft&.registration || "Not installed" %></td>
                 <td><%= assembly.parts.size %></td>
                 <% state_style, state_label = hangar_asset_status assembly %>
@@ -59,5 +66,5 @@
     </section>
   </div>
 <% else %>
-  <div class="workspace-empty">No assemblies registered yet.</div>
+  <div class="workspace-empty">No assemblies match the selected filter.</div>
 <% end %>

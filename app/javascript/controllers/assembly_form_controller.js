@@ -4,6 +4,7 @@ import { Controller } from "@hotwired/stimulus"
  * @typedef {Object} StimulusBindings
  * @property {boolean} hasTypeTarget
  * @property {HTMLSelectElement} typeTarget
+ * @property {HTMLFieldSetElement} mountingTarget
  * @property {HTMLFieldSetElement} parametersTarget
  * @property {HTMLInputElement[]} configurationTargets
  * @property {HTMLSelectElement} methodTarget
@@ -13,7 +14,7 @@ import { Controller } from "@hotwired/stimulus"
 const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller<HTMLElement> & StimulusBindings} */ (/** @type {unknown} */ (Controller))
 
 export default class extends TypedController {
-  static targets = ["type", "parameters", "configuration", "method", "preview", "submit"]
+  static targets = ["type", "mounting", "parameters", "configuration", "method", "preview", "submit"]
 
   connect() {
     this.update()
@@ -22,6 +23,8 @@ export default class extends TypedController {
   update() {
     if (!this.hasTypeTarget) return
     const selected = this.typeTarget.value === "ExoFDR"
+    this.mountingTarget.hidden = !selected
+    this.mountingTarget.disabled = !selected
     this.parametersTarget.hidden = !selected
     this.parametersTarget.disabled = !selected
     const version = this.configurationTargets.find(input => input.checked)?.dataset.version
