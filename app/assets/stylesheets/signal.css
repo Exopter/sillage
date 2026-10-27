@@ -1623,3 +1623,7 @@ textarea {
 
 .signal-telemetry-toggle:hover { color: var(--ex-aqua-500); }
 .signal-telemetry-toggle:focus-visible { outline: 2px solid var(--ex-aqua-500); outline-offset: -2px; }
+
+.signal-transport-control { display: flex; align-items: center; gap: var(--ex-space-2); flex-wrap: wrap; }
+.signal-transport-control select { width: auto; max-width: 14rem; }
+.signal-transport-control [hidden] { display: none; }

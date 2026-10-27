@@ -69,7 +69,15 @@ export class SignalTelemetry {
 
   /** @param {import("../types/signal").DecodedMessage} decoded @param {number} now */
   apply(decoded, now) {
-    if (decoded.name === "highres_imu") {
+    if (decoded.name === "live_instruments") {
+      if (decoded.attitude) this.apply(decoded.attitude, now)
+      else for (const key of ["roll", "pitch", "heading"]) this.set(key, null, now)
+      for (const key of ["accel", "gyro", "mag", "temperature"]) this.set(key, null, now)
+      this.set("pressure", decoded.differentialPa, now)
+      this.set("gLoad", decoded.gLoad, now)
+      this.updatePitotAirspeed(decoded.differentialPa, decoded.timeUs, now)
+    } else if (decoded.name === "highres_imu") {
+      this.set("gLoad", null, now)
       this.bodyFrame = decoded.coordinateFrame === "body_frd_ned"
       this.set("accel", decoded.acceleration, now)
       this.set("gyro", decoded.angularVelocity, now)
@@ -78,6 +86,7 @@ export class SignalTelemetry {
       this.set("temperature", decoded.temperatureC, now)
       this.updatePitotAirspeed(decoded.differentialPa, decoded.timeUs, now)
     } else if (decoded.name === "attitude") {
+      this.bodyFrame = decoded.coordinateFrame === "body_frd_ned"
       this.set("roll", decoded.rollDeg, now)
       this.set("pitch", decoded.pitchDeg, now)
       this.set("heading", decoded.yawDeg, now)
@@ -133,7 +142,7 @@ export class SignalTelemetry {
       gps: this.vector("gps", now),
       radio: this.radioReport && now - this.radioReport.at < RADIO_FRESH_MS ? this.radioReport : null,
       // Total specific-force magnitude: about 1 g at rest, independent of mounting orientation.
-      gLoad: acceleration?.length === 3 ? Math.hypot(...acceleration) / STANDARD_GRAVITY : null,
+      gLoad: this.number("gLoad", now) ?? (acceleration?.length === 3 ? Math.hypot(...acceleration) / STANDARD_GRAVITY : null),
       accel: acceleration, gyro: this.vector("gyro", now), mag: this.vector("mag", now),
       bodyFrame: this.bodyFrame,
       pressure: this.number("pressure", now), temperature: this.number("temperature", now),

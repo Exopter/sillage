@@ -48,6 +48,7 @@ CI.run do
   step "Tests: IMU installation frames", "node test/javascript/imu_mount_test.mjs"
   step "Tests: IMU reference recovery", "node test/javascript/imu_check_controller_test.mjs"
   step "Tests: IMU live tutorial orientation", "node test/javascript/imu_tutorial_test.mjs"
+  step "Tests: Signal transports", "node test/javascript/signal_transport_test.mjs"
   step "Tests: Signal telemetry", "node test/javascript/signal_telemetry_test.mjs"
   step "Tests: Signal radio history", "node test/javascript/signal_radio_history_test.mjs"
   step "Tests: Signal instruments", "node test/javascript/signal_instruments_test.mjs"
