@@ -93,10 +93,10 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
     controller = create_embedded_controller(assembly:, device_id: "ECU-A172E0")
     get hangar_assemblies_path(assembly_id: assembly.id)
     assert_response :success
-    assert_select "section[aria-label='Selected assembly details'] .workspace-actions" do
+    assert_select "aside[aria-label='Selected assembly details'] .workspace-actions" do
       assert_select "a", count: 2
-      assert_select "a[href='#{hangar_assembly_path(assembly)}']", text: "Open in Hangar"
-      assert_select "a[href='#{forge_fdr_path(controller.forge_identifier)}']", text: "Open in Forge"
+      assert_select "a[href='#{hangar_assembly_path(assembly)}']", text: "Open full record"
+      assert_select "a[href='#{forge_fdr_path(assembly.serial_number)}']", text: "Open in Forge"
       assert_select "button", count: 0
     end
     assert_select "main", text: /Open controller in Forge/, count: 0

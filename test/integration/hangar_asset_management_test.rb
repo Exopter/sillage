@@ -78,7 +78,7 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
     get forge_fdr_path(recorder.serial_number)
     assert_response :success
     get hangar_assemblies_path
-    assert_select ".hangar-table-primary strong", text: recorder.display_name
+    assert_select ".exds-hierarchy-copy strong", text: recorder.display_name
 
     %w[quarantined serviceable].each do |state|
       recorder.update!(serviceability_state: "retired")
@@ -130,11 +130,11 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
     @part.update!(state: "retired")
 
     get hangar_assemblies_path
-    assert_select "a[href='#{hangar_assemblies_path(assembly_id: @assembly.id)}']", count: 0
+    assert_select "[data-key='assembly-#{@assembly.id}']", count: 0
     get hangar_assemblies_path(state: "retired")
-    assert_select ".hangar-table-primary strong", text: @assembly.display_name
+    assert_select ".exds-hierarchy-copy strong", text: @assembly.display_name
     get hangar_assemblies_path(state: "all")
-    assert_select ".hangar-table-primary strong", text: @assembly.display_name
+    assert_select ".exds-hierarchy-copy strong", text: @assembly.display_name
 
     get hangar_parts_path
     assert_select "a[href='#{hangar_part_path(@part)}']", count: 0
@@ -162,7 +162,7 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "a[href='#{edit_hangar_assembly_path(@assembly)}']", count: 0
-    assert_select "a[href='#{hangar_assembly_path(@assembly)}']", text: "Open"
+    assert_select "a[href='#{hangar_assembly_path(@assembly)}']", text: "Open full record"
     assert_delete_form hangar_assembly_path(@assembly)
 
     get hangar_assembly_path(@assembly)

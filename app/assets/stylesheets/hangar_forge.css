@@ -443,12 +443,6 @@
   justify-self: start;
 }
 
-.hangar-assemblies-layout {
-  display: grid;
-  grid-template-columns: minmax(520px, .95fr) minmax(380px, 1.05fr);
-  gap: 14px;
-}
-
 .hangar-table-wrap {
   overflow-x: auto;
 }
@@ -501,9 +495,6 @@
   color: var(--text-muted, #5f6c6b);
   font-size: 11px;
 }
-
-.hangar-assembly-table th:first-child { width: 38%; }
-.hangar-assembly-table th:nth-child(2) { width: 22%; }
 
 .hangar-details-body {
   padding: 18px 16px 16px;
@@ -1070,8 +1061,7 @@
 }
 
 @media (max-width: 900px) {
-  .hangar-fleet-layout,
-  .hangar-assemblies-layout {
+  .hangar-fleet-layout {
     grid-template-columns: 1fr;
   }
 

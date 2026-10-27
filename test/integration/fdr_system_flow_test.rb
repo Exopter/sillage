@@ -2,7 +2,7 @@ require "test_helper"
 
 class FdrSystemFlowTest < ActionDispatch::IntegrationTest
   setup do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     @configuration = create_fdr_functional_configuration(version: 2)
   end
 
