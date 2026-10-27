@@ -18,11 +18,7 @@ export default class extends TypedController {
   connect() {
     this.element.classList.add("is-enhanced")
     this.branches = new Map(this.branchTargets.map(branch => [branch.dataset.key || "", branch]))
-    let node = this.branches.get(this.selectedValue)
-    while (node) {
-      this.expanded.add(node.dataset.key)
-      node = this.branches.get(node.dataset.parent || "")
-    }
+    this.expanded.clear()
     this.media.addEventListener("change", this.resize)
     this.render()
   }
