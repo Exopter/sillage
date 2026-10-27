@@ -1,0 +1,38 @@
+<%= turbo_frame_tag "assembly-details", data: { assembly_hierarchy_target: "frame" } do %>
+  <% if node %>
+    <% asset = node.asset; parents = @inventory.ancestors(node); location = @inventory.aircraft(node) %>
+    <header class="hangar-panel-head"><span class="section-eyebrow"><%= node.assembly? ? "Assembly details" : "Part details" %></span></header>
+    <div class="exds-hierarchy-path">
+      <% if parents.any? %>
+        <% parents.each_with_index do |parent, index| %><%= " / " if index.positive? %><%= link_to parent.label, hangar_assemblies_path(node: parent.key), data: { turbo_frame: "assembly-details", action: "assembly-hierarchy#select", key: parent.key } %><% end %>
+      <% else %><%= node.kind == "system" ? "SYSTEMS / Root assembly" : "Standalone / Root assembly" %><% end %>
+    </div>
+    <div class="hangar-details-body">
+      <span class="section-eyebrow"><%= node.kind == "system" ? "Logical system" : node.assembly? ? node.subtitle : asset.function.name %></span>
+      <h3><%= node.label %></h3>
+      <% if asset.notes.present? %><p><%= asset.notes %></p><% end %>
+      <% if node.kind == "system" %>
+        <% modules = @inventory.child_assemblies(node) %>
+        <div class="exds-hierarchy-overview"><div><strong><%= modules.size %> / 4</strong><span>Assigned module roles</span></div><div><strong><%= @inventory.part_count(node) %></strong><span>Parts across modules</span></div></div>
+        <div class="exds-hierarchy-roles"><% Assembly::FDR_MODULE_TYPES.each do |role| %><% assigned = modules.any? { |child| child.asset.fdr_component_type == role } %><span class="<%= assigned ? "is-assigned" : "is-missing" %>"><%= Assembly::FDR_COMPONENT_TYPES.fetch(role) %><%= " · Missing" unless assigned %></span><% end %></div>
+        <p class="exds-hierarchy-help">Composition only. Serviceability is tracked separately.</p>
+      <% end %>
+      <dl>
+        <div><dt>Installed in</dt><dd><%= location&.registration || "Not installed" %><%= " · via parent" if node.parent_key && location %></dd></div>
+        <div><dt><%= node.assembly? ? "Serviceability" : "State" %></dt><dd><%= node.assembly? ? asset.serviceability_label : asset.state.humanize %></dd></div>
+        <% if node.assembly? %>
+          <% if asset.controlled_fdr? %><div><dt>Functional configuration</dt><dd><%= asset.functional_configuration %></dd></div><% end %>
+          <% unless node.kind == "system" %><div><dt>Direct parts</dt><dd><%= @inventory.direct_parts(node).size %></dd></div><% end %>
+          <% if asset.controlled_fdr? && !asset.fdr_system? %><div><dt>Firmware</dt><dd><%= asset.embedded_controller&.last_seen_firmware.presence || "Not reported" %></dd></div><% end %>
+        <% else %><div><dt>Serial number</dt><dd><%= asset.serial_number.presence || "Not recorded" %></dd></div><% end %>
+        <div><dt>Internal Asset ID</dt><dd><%= asset.internal_number %></dd></div>
+      </dl>
+      <div class="workspace-actions">
+        <%= link_to "Open full record", node.assembly? ? hangar_assembly_path(asset) : hangar_part_path(asset), class: "button-secondary is-compact", data: { turbo_frame: "_top" } %>
+        <% if node.assembly? && !asset.fdr_system? && (board = asset.embedded_controller) %><%= link_to "Open in Forge", forge_fdr_path(board.forge_identifier), class: "button-secondary is-compact", data: { turbo_frame: "_top" } %><% end %>
+        <% if node.assembly? && !asset.controlled_fdr? %><%= button_to "Delete", hangar_assembly_path(asset), method: :delete, class: "button-danger is-compact", form: { data: { turbo_frame: "_top", turbo_confirm: "Delete #{asset.internal_number} permanently? This cannot be undone." } } %><% end %>
+      </div>
+    </div>
+    <footer class="hangar-detail-note"><%= node.kind == "system" ? "A logical SYSTEMS assembly groups physical modules. Each module keeps its own serial number." : "Parts and nested Assemblies can be moved while their installation history remains traceable." %></footer>
+  <% else %><p class="workspace-empty">This item is no longer in the assembly inventory.</p><% end %>
+<% end %>

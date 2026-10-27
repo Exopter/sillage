@@ -35,14 +35,9 @@ module Signal
     end
 
     def resolve_aircraft
-      assembly_ids = EmbeddedController
+      aircraft = EmbeddedController
         .where(mavlink_system_id: @system_id)
-        .includes(part: { active_part_installation: :assembly })
-        .filter_map { |controller| controller.assembly&.id }
-      aircraft = Installation.active
-        .where(installable_type: "Assembly", installable_id: assembly_ids)
-        .includes(:aircraft)
-        .map(&:aircraft)
+        .filter_map(&:aircraft)
         .uniq
 
       aircraft.one? ? aircraft.first : nil
@@ -54,13 +49,13 @@ module Signal
         .includes(:installable)
         .map(&:installable)
 
-      devices = assemblies.filter_map(&:embedded_controller)
+      modules = assemblies.flat_map { |assembly| assembly.fdr_system? ? assembly.fdr_modules_at : [ assembly ] }
+      devices = modules.filter_map(&:embedded_controller)
       configured_matches = devices.select { |device| device.mavlink_system_id == @system_id }
       candidate = if configured_matches.one?
         configured_matches.first
       elsif configured_matches.empty? && assemblies.one?
-        controller_part = assemblies.first.controller_part
-        controller_part&.embedded_controller || controller_part&.build_embedded_controller
+        unconfigured_source(assemblies.first)
       end
       return false unless candidate
 
@@ -76,6 +71,12 @@ module Signal
         details: attributes.transform_keys(&:to_s)
       )
       true
+    end
+
+    def unconfigured_source(assembly)
+      source = assembly.fdr_system? ? assembly.children.find_by(fdr_component_type: "MAIN") : assembly
+      device = source&.embedded_controller || source&.controller_part&.build_embedded_controller
+      device if device&.mavlink_system_id.nil?
     end
 
     def refresh_configuration

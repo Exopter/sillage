@@ -5,25 +5,28 @@ module Hangar
     ]
 
     def index
-      @assemblies = Assembly.includes(
-        :parent,
-        :children,
-        :fdr_functional_configuration,
-        active_part_installations: { part: [ :function, :embedded_controller ] }
-      ).ordered.to_a
-      @selected_assembly = @assemblies.find { |assembly| assembly.id == params[:assembly_id].to_i } || @assemblies.first
+      @inventory = AssemblyInventory.new
+      @selected_node = @inventory.find(params[:node]) || @inventory.find("assembly-#{params[:assembly_id]}") || @inventory.roots.first
+      render partial: "inventory_details", locals: { node: @selected_node } if turbo_frame_request?
     end
 
     def show
-      return redirect_to forge_fdr_path(@assembly.serial_number) if @assembly.controlled_fdr? && params[:view] != "components"
+      return redirect_to forge_fdr_path(@assembly.serial_number) if @assembly.controlled_fdr? && !@assembly.fdr_system? && params[:view] != "components"
 
       @available_parts = @assembly.serviceability_state == "retired" ? Part.none : Part.available.includes(:function).ordered
       excluded_ids = [ @assembly.id, *@assembly.descendant_ids ]
       @available_assemblies = @assembly.serviceability_state == "retired" ? Assembly.none : Assembly.not_retired.roots.where.not(id: excluded_ids).ordered
+      if @assembly.fdr_system?
+        @available_parts = Part.none
+        @available_assemblies = @available_assemblies.where(assembly_type: "ExoFDR", fdr_component_type: Assembly::FDR_MODULE_TYPES)
+          .where.not(fdr_component_type: @assembly.children.select(:fdr_component_type))
+      elsif @assembly.fdr_component_type.present?
+        @available_assemblies = Assembly.none
+      end
     end
 
     def new
-      @assembly = Assembly.new(params.fetch(:assembly, ActionController::Parameters.new).permit(:assembly_type, :fdr_functional_configuration_id))
+      @assembly = Assembly.new(params.fetch(:assembly, ActionController::Parameters.new).permit(:assembly_type, :fdr_functional_configuration_id, :fdr_component_type))
       load_parent_options
     end
 
@@ -121,7 +124,7 @@ module Hangar
 
     def assembly_params
       params.require(:assembly).permit(
-        :name, :parent_id, :assembly_type, :fdr_functional_configuration_id, :assembly_method, :serviceability_state, :notes, :imu_mount_profile
+        :name, :parent_id, :assembly_type, :fdr_functional_configuration_id, :fdr_component_type, :assembly_method, :serviceability_state, :notes, :imu_mount_profile
       )
     end
 

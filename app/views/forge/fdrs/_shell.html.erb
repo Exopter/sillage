@@ -3,6 +3,7 @@
   <div>
     <h1><%= { overview: "Device", files: "Recordings", connectivity: "Connections", calibration: "Calibration", activity: "History" }.fetch(active_tab, "Device") %></h1>
     <p><%= label %></p>
+    <% if (system = @assembly&.fdr_system_at) %><small>System: <%= link_to system.serial_number, hangar_assembly_path(system) %></small><% end %>
   </div>
   <% if active_tab == :files %>
     <%= render "recording_control" %>

@@ -15,6 +15,7 @@ class FdrBoardInstallation < ApplicationRecord
 
   def controlled_identity
     errors.add(:assembly, "must be an ExoFDR") unless assembly&.controlled_fdr?
+    errors.add(:assembly, "is a logical system; bind the board to its module instead") if assembly&.fdr_system?
     errors.add(:assembly, "cannot be retired") if removed_at.nil? && assembly&.serviceability_state == "retired"
     errors.add(:removed_at, "must be after installation") if removed_at && installed_at && removed_at <= installed_at
   end

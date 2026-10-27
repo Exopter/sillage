@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_25_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -56,6 +56,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_130000) do
     t.string "assembly_method"
     t.string "assembly_type"
     t.datetime "created_at", null: false
+    t.string "fdr_component_type"
     t.bigint "fdr_functional_configuration_id"
     t.jsonb "imu_mount_history", default: [], null: false
     t.string "imu_mount_profile", default: "sensor_native", null: false
@@ -71,7 +72,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_130000) do
     t.index ["fdr_functional_configuration_id"], name: "index_assemblies_on_fdr_functional_configuration_id"
     t.index ["internal_number"], name: "index_assemblies_on_internal_number", unique: true
     t.index ["parent_id"], name: "index_assemblies_on_parent_id"
-    t.check_constraint "assembly_type IS NULL OR (assembly_type::text = ANY (ARRAY['Parachute'::character varying, 'Exowing'::character varying]::text[])) OR assembly_type::text = 'ExoFDR'::text AND fdr_functional_configuration_id IS NOT NULL AND (assembly_method::text = ANY (ARRAY['PERF'::character varying, 'PCB'::character varying]::text[])) AND serial_number IS NOT NULL AND name::text = serial_number::text", name: "assemblies_exofdr_identity"
+    t.check_constraint "COALESCE((assembly_type IS NULL OR (assembly_type::text = ANY (ARRAY['Parachute'::character varying, 'Exowing'::character varying]::text[]))) AND fdr_component_type IS NULL OR assembly_type::text = 'ExoFDR'::text AND fdr_functional_configuration_id IS NOT NULL AND serial_number IS NOT NULL AND name::text = serial_number::text AND (fdr_component_type IS NULL AND (assembly_method::text = ANY (ARRAY['PERF'::character varying, 'PCB'::character varying]::text[])) OR fdr_component_type::text = 'SYSTEMS'::text AND assembly_method IS NULL OR (fdr_component_type::text = ANY (ARRAY['MAIN'::character varying, 'CENTRAL'::character varying, 'AIRSPEED'::character varying, 'DISPLAY'::character varying, 'LITE'::character varying]::text[])) AND assembly_method::text = 'PCB'::text), false)", name: "assemblies_exofdr_identity"
   end
 
   create_table "asset_identifiers", force: :cascade do |t|
@@ -174,6 +175,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_130000) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id", "recorder_key", "boot_id"], name: "index_fdr_recordings_on_user_id_and_recorder_key_and_boot_id", unique: true
+  end
+
+  create_table "fdr_system_memberships", force: :cascade do |t|
+    t.string "component_type", null: false
+    t.datetime "created_at", null: false
+    t.datetime "installed_at", null: false
+    t.bigint "module_assembly_id", null: false
+    t.datetime "removed_at"
+    t.bigint "system_assembly_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["module_assembly_id"], name: "index_fdr_system_memberships_on_module_assembly_id"
+    t.index ["module_assembly_id"], name: "one_active_system_per_fdr_module", unique: true, where: "(removed_at IS NULL)"
+    t.index ["system_assembly_id", "component_type"], name: "one_active_fdr_module_per_role", unique: true, where: "(removed_at IS NULL)"
+    t.index ["system_assembly_id"], name: "index_fdr_system_memberships_on_system_assembly_id"
+    t.check_constraint "component_type::text = ANY (ARRAY['MAIN'::character varying, 'CENTRAL'::character varying, 'AIRSPEED'::character varying, 'DISPLAY'::character varying]::text[])", name: "fdr_membership_module_type"
+    t.check_constraint "removed_at IS NULL OR removed_at >= installed_at", name: "fdr_membership_period"
+    t.check_constraint "system_assembly_id <> module_assembly_id", name: "fdr_membership_not_self"
   end
 
   create_table "fdr_wifi_profiles", force: :cascade do |t|
@@ -756,6 +774,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_130000) do
   add_foreign_key "fdr_recording_commands", "embedded_controllers"
   add_foreign_key "fdr_recording_commands", "users", column: "requested_by_id"
   add_foreign_key "fdr_recordings", "users"
+  add_foreign_key "fdr_system_memberships", "assemblies", column: "module_assembly_id"
+  add_foreign_key "fdr_system_memberships", "assemblies", column: "system_assembly_id"
   add_foreign_key "fdr_wifi_profiles", "embedded_controllers"
   add_foreign_key "fdr_wifi_profiles", "wifi_credentials"
   add_foreign_key "fdr_wifi_uploads", "embedded_controllers"

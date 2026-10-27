@@ -6,6 +6,11 @@ const assembly = {name: "EXOFDR-V0-PERF-03", identity_label: "EXOFDR-V0-PERF-03"
 const recorder = {device_id: "ECU-A172E0", assembly, initialization_confirmed: true, connectivity_url: "/hangar/controllers/1/connectivity", initialization_url: "/hangar/controllers/1/initialize"}
 assert.deepEqual(registrationPayload({registered: false}), {registered: false})
 assert.deepEqual(registrationPayload({registered: true, recorder}).recorder, recorder)
+const system = {name: "EXOFDR-V2-SYSTEMS-01", identity_label: "EXOFDR-V2-SYSTEMS-01", serial_number: "EXOFDR-V2-SYSTEMS-01"}
+const main = {...assembly, name: "EXOFDR-V2-MAIN-01", identity_label: "EXOFDR-V2-MAIN-01", serial_number: "EXOFDR-V2-MAIN-01", functional_configuration: "V2", assembly_method: "PCB", component_type: "MAIN", system}
+assert.deepEqual(registrationPayload({registered: true, recorder: {...recorder, assembly: main}}).recorder.assembly, main)
+assert.throws(() => registrationPayload({registered: true, recorder: {...recorder, assembly: {...main, system: {name: "Incomplete"}}}}))
+assert.equal(registrationPayload({registered: true, recorder: {...recorder, assembly: {...main, system: null}}}).recorder.assembly.system, null)
 assert.equal(registrationPayload({registered: true, recorder: {...recorder, assembly: null}}).recorder.assembly, null)
 assert.equal(registrationPayload({registered: true, recorder: {...recorder, assembly: undefined}}).recorder.assembly, undefined)
 assert.throws(() => registrationPayload({registered: true, recorder: {...recorder, assembly: {name: "EXOFDR-V0-PERF-03"}}}))

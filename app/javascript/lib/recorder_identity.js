@@ -4,6 +4,11 @@ export function recorderLabel(identity) {
   return identity.assembly === null ? "FDR setup required" : "Recorder not identified"
 }
 
+/** @param {Pick<import("../types/recorder").Identity, "assembly">} identity */
+export function recorderSystemLabel(identity) {
+  return identity.assembly?.system?.serial_number || ""
+}
+
 /** @param {import("../types/recorder").Identity} identity */
 export function recorderTechnicalLabel(identity) {
   const id = identity.deviceId || ""

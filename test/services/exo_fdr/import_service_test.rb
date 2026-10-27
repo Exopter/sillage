@@ -4,6 +4,41 @@ require_relative "../../support/exo_fdr_binary"
 class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
   include ExoFdrBinary
 
+  test "imports retain the capture-time system and modules after reassignment" do
+    configuration = create_fdr_functional_configuration(version: 2)
+    create = ->(role) { Assembly.create!(assembly_type: "ExoFDR", fdr_component_type: role, fdr_functional_configuration: configuration) }
+    system = create.call("SYSTEMS")
+    later_system = create.call("SYSTEMS")
+    main = create.call("MAIN")
+    central = create.call("CENTRAL")
+    later_central = create.call("CENTRAL")
+    board = EmbeddedController.create!(device_id: "ECU-ABC123")
+    travel_to Time.utc(2026, 7, 1) do
+      FdrIdentity::BindBoard.new(assembly: main, controller: board).call
+      main.update!(parent: system)
+      central.update!(parent: system)
+    end
+    travel_to Time.utc(2026, 8, 1) do
+      main.update!(parent: later_system)
+      central.update!(parent: nil)
+      later_central.update!(parent: system)
+    end
+    gps = [ 123_456, 2026, 7, 29, 10, 11, 6, 7, 80, 0, 3, 1, 0, 12,
+      57_168_000, 441_994_000, 700_000, 642_000, 1_000, 1_500,
+      20_000, 5_000, -1_000, 20_600, 3_600_000, 500, 10_000, 125 ].pack("VvC6Vl<C4l<4V2l<5V2v")
+    flight_import = fdr_import(fdr_binary([
+      { sequence: 0, timestamp_us: 1_000_000, type: 1, payload: gps },
+      { sequence: 1, timestamp_us: 2_000_000, type: 2, payload: [ 5, 3, 0, 0, 1, 0, 0 ].pack("CCve4") }
+    ]))
+    ExoFdr::ImportService.new(flight_import).call
+    detail = flight_import.reload.details.fetch("files").first
+    assert_equal main.serial_number, detail.dig("recorder_identity", "assembly", "serial_number")
+    assert_equal system.serial_number, detail.dig("recorder_identity", "assembly", "system", "serial_number")
+    assert_equal system.serial_number, detail.dig("system_configuration", "serial_number")
+    assert_equal [ central.serial_number, main.serial_number ], detail.dig("system_configuration", "assemblies").map { |mod| mod.fetch("serial_number") }
+    assert_equal later_system, main.reload.parent
+  end
+
   test "preserves I2C fault evidence and unavailable temperature through import" do
     payload = [ 1, 4, 2, 255, 84, 3, 3, 7, [ "54800200000000" ].pack("H*"), 84,
       25_123, 100, 50, 2, *(1..10), 1_234_567_890_123, 0.25, Float::NAN, 0 ].pack("C8a7CV14Q<e2l<")

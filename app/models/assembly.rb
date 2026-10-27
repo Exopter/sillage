@@ -1,9 +1,12 @@
 class Assembly < ApplicationRecord
   include AssetIdentifiable
 
-  EXOFDR_SERIAL_PATTERN = /\AEXOFDR-V\d+-(PERF|PCB)-\d{2,}\z/
+  EXOFDR_SERIAL_PATTERN = /\AEXOFDR-V(?:\d+-(?:PERF|PCB)|(?:[2-9]|[1-9]\d+)-(?:SYSTEMS|MAIN|CENTRAL|AIRSPEED|DISPLAY|LITE))-\d{2,}\z/
   ASSEMBLY_TYPES = [ "ExoFDR", "Parachute", "Exowing" ].freeze
   ASSEMBLY_METHODS = { "PERF" => "Perfboard", "PCB" => "PCB" }.freeze
+  FDR_COMPONENT_TYPES = { "SYSTEMS" => "Systems", "MAIN" => "Main", "CENTRAL" => "Central", "AIRSPEED" => "AirSpeed", "DISPLAY" => "Display", "LITE" => "Lite" }.freeze
+  FDR_MODULE_TYPES = %w[MAIN CENTRAL AIRSPEED DISPLAY].freeze
+  include FdrAssemblyHierarchy
   SERVICEABILITY_STATES = %w[in_preparation serviceable quarantined retired].freeze
 
   belongs_to :parent, class_name: "Assembly", optional: true, inverse_of: :children
@@ -28,7 +31,7 @@ class Assembly < ApplicationRecord
   # Nil identifies pre-existing generic equipment, never offered for new Hangar assemblies.
   validates :assembly_type, inclusion: { in: ASSEMBLY_TYPES }, allow_nil: true
   validates :fdr_functional_configuration, presence: true, if: :controlled_fdr?
-  validates :assembly_method, inclusion: { in: ASSEMBLY_METHODS.keys }, if: :controlled_fdr?
+  validates :assembly_method, inclusion: { in: ASSEMBLY_METHODS.keys }, if: -> { controlled_fdr? && !fdr_system? }
   validates :internal_number, uniqueness: true, allow_nil: true
   validates :internal_number, format: { with: AssetIdentifier::PATTERN }, allow_nil: true
   validates :serial_number, uniqueness: { case_sensitive: false }, allow_blank: true
@@ -76,6 +79,13 @@ class Assembly < ApplicationRecord
       # Parent assignments and mutable asset metadata have no temporal history.
       "history_limitations" => at ? [ "Subassembly membership is not recorded historically.", "Asset metadata reflects the time of capture." ] : []
     }.tap do |configuration|
+      if fdr_component_type.present?
+        configuration["component_type"] = fdr_component_type
+        configuration["history_limitations"] = at ? [ "Asset metadata reflects the time of capture." ] : []
+        configuration["assemblies"] = fdr_modules_at(at).map { |mod| mod.snapshot(at:) } if fdr_system? && at
+        board = at ? fdr_board_installations.covering(at).includes(:embedded_controller).recent.first&.embedded_controller : embedded_controller
+        configuration["board_device_id"] = board&.device_id unless fdr_system?
+      end
       # Preserve reference digests for existing assemblies with no installation profile.
       if configuration["imu_mount_changed_at"].nil? && configuration["imu_mount_profile"] == Imu::Mount::NATIVE
         configuration.except!("imu_mount_profile", "imu_mount_changed_at")
@@ -175,8 +185,12 @@ class Assembly < ApplicationRecord
 
     # Serialize issuance with catalogue edits so a used baseline cannot change concurrently.
     fdr_functional_configuration.lock!
-    prefix = "EXOFDR-#{functional_configuration}-#{assembly_method}"
+    prefix = "EXOFDR-#{functional_configuration}-#{fdr_component_type.presence || assembly_method}"
     self.serial_number = format("%s-%02d", prefix, IdentifierSequence.next_value!(prefix))
+    if serial_number.bytesize > 29
+      errors.add(:serial_number, "exceeds the device identity capacity")
+      throw(:abort)
+    end
     self.name = serial_number
   end
 
@@ -186,7 +200,7 @@ class Assembly < ApplicationRecord
   end
 
   def configuration_is_immutable
-    %w[assembly_type fdr_functional_configuration_id assembly_method].each do |attribute|
+    %w[assembly_type fdr_functional_configuration_id assembly_method fdr_component_type].each do |attribute|
       errors.add(attribute, "cannot be changed; retire this assembly and create a new one") if will_save_change_to_attribute?(attribute)
     end
     errors.add(:name, "is the generated serial number and cannot be changed") if controlled_fdr? && will_save_change_to_name?

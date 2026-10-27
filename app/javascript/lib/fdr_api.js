@@ -34,7 +34,20 @@ function recorderAssembly(value) {
     identity_label: requiredString(assembly.identity_label, "assembly identity"),
     serial_number: assembly.serial_number == null ? null : requiredString(assembly.serial_number, "assembly serial number"),
     functional_configuration: assembly.functional_configuration == null ? null : requiredString(assembly.functional_configuration, "functional configuration"),
-    assembly_method: assembly.assembly_method == null ? null : requiredString(assembly.assembly_method, "assembly method")
+    assembly_method: assembly.assembly_method == null ? null : requiredString(assembly.assembly_method, "assembly method"),
+    ...(assembly.component_type === undefined ? {} : {component_type: requiredString(assembly.component_type, "device type")}),
+    ...(assembly.system === undefined ? {} : {system: recorderSystem(assembly.system)})
+  }
+}
+
+/** @param {unknown} value @returns {import("../types/recorder").RecorderSystem|null} */
+function recorderSystem(value) {
+  if (value === null) return null
+  const system = objectPayload(value)
+  return {
+    name: requiredString(system.name, "system name"),
+    identity_label: requiredString(system.identity_label, "system identity"),
+    serial_number: requiredString(system.serial_number, "system serial number")
   }
 }
 

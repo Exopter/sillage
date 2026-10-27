@@ -36,10 +36,12 @@
     <section class="workspace-panel">
       <h2>Finish FDR setup</h2>
       <p>Choose the hardware configuration. Sillage generates its permanent FDR name.</p>
-      <%= form_with url: forge_fdr_path(@fdr.forge_identifier), method: :patch, class: "workspace-form" do |form| %>
-        <label><span>Functional configuration</span><%= form.collection_select :configuration_id, @functional_configurations, :id, :label %></label>
-        <label><span>Assembly method</span><%= form.select :assembly_method, Assembly::ASSEMBLY_METHODS.map { |code, label| [label, code] } %></label>
-        <%= form.submit "Create FDR", class: "button-primary" %>
+      <%= form_with url: forge_fdr_path(@fdr.forge_identifier), method: :patch, class: "workspace-form", data: { controller: "assembly-form" } do |form| %>
+        <label><span>Functional configuration</span><%= form.select :configuration_id, @functional_configurations.map { |configuration| [configuration.label, configuration.id, { "data-version" => configuration.label }] }, {}, data: { assembly_form_target: "configurationSelect", action: "assembly-form#update" } %></label>
+        <label><span>Assembly method</span><%= form.select :assembly_method, Assembly::ASSEMBLY_METHODS.map { |code, label| [label, code] }, {}, data: { assembly_form_target: "method", action: "assembly-form#update" } %></label>
+        <label><span>Device type</span><%= form.select :fdr_component_type, Assembly::FDR_COMPONENT_TYPES.except("SYSTEMS").map { |code, label| [label, code] }, { include_blank: "Select a device type" }, data: { assembly_form_target: "component", action: "assembly-form#update" } %></label>
+        <p class="workspace-muted" aria-live="polite" data-assembly-form-target="preview">The name and serial number are generated on creation.</p>
+        <%= form.submit "Create FDR", class: "button-primary", data: { assembly_form_target: "submit" } %>
       <% end %>
       <% if @available_fdrs.any? %>
         <h3>Use an existing FDR</h3>

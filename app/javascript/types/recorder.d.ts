@@ -1,4 +1,5 @@
-export interface RecorderAssembly {name:string; identity_label:string; serial_number:string|null; functional_configuration:string|null; assembly_method:string|null}
+export interface RecorderSystem {name:string; identity_label:string; serial_number:string}
+export interface RecorderAssembly {name:string; identity_label:string; serial_number:string|null; functional_configuration:string|null; assembly_method:string|null; component_type?:string; system?:RecorderSystem|null}
 export interface Identity {
   deviceId:string; firmware?:string; model?:string; capabilities?:number;
   mavlinkSystemId?:number; mavlinkComponentId?:number;

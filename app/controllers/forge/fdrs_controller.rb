@@ -8,7 +8,7 @@ module Forge
     before_action :load_workspace
 
     def index
-      @assemblies = Assembly.where(assembly_type: "ExoFDR").includes(:fdr_functional_configuration,
+      @assemblies = Assembly.connectable_fdrs.includes(:fdr_functional_configuration,
         active_fdr_board_installation: { embedded_controller: [ :signal_presence, :recorder_connections ] }).ordered
       @fdrs = EmbeddedController.includes(:signal_presence, :recorder_connections, active_fdr_board_installation: :assembly).ordered
       @unassigned_fdrs = @fdrs.reject { |fdr| fdr.assembly || fdr.fdr_board_installations.exists? }
@@ -34,7 +34,7 @@ module Forge
             Assembly.find(params[:assembly_id])
           else
             Assembly.create!(assembly_type: "ExoFDR", fdr_functional_configuration_id: params.require(:configuration_id),
-              assembly_method: params.require(:assembly_method))
+              assembly_method: params[:assembly_method], fdr_component_type: params[:fdr_component_type])
           end
           FdrIdentity::BindBoard.new(assembly: @assembly, controller: @fdr, actor: Current.user).call
         end
@@ -73,6 +73,7 @@ module Forge
     def set_fdr
       if Assembly::EXOFDR_SERIAL_PATTERN.match?(params[:id].to_s)
         @assembly = Assembly.find_by!(serial_number: params[:id])
+        return redirect_to hangar_assembly_path(@assembly) if @assembly.fdr_system?
         @fdr = @assembly.embedded_controller
       else
         @fdr = EmbeddedController.find(params[:id])
@@ -87,13 +88,13 @@ module Forge
     end
 
     def load_workspace
-      @workspace_recorders = Assembly.where(assembly_type: "ExoFDR").includes(:fdr_functional_configuration, active_fdr_board_installation: :embedded_controller).ordered
+      @workspace_recorders = Assembly.connectable_fdrs.includes(:fdr_functional_configuration, active_fdr_board_installation: :embedded_controller).ordered
       session[:forge_recorder] = @assembly.serial_number if @assembly
     end
 
     def load_setup_options
       @available_boards = EmbeddedController.where.not(id: FdrBoardInstallation.active.select(:embedded_controller_id)).ordered
-      @available_fdrs = Assembly.not_retired.where(assembly_type: "ExoFDR").where.not(id: FdrBoardInstallation.active.select(:assembly_id)).ordered
+      @available_fdrs = Assembly.not_retired.connectable_fdrs.where.not(id: FdrBoardInstallation.active.select(:assembly_id)).ordered
       @functional_configurations = FdrFunctionalConfiguration.ordered
     end
 

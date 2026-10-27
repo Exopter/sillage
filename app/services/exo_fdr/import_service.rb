@@ -126,11 +126,13 @@ module ExoFdr
           ).call
         end
       end
-      identity = if started_at && @flight_import.device_id.present?
-        EmbeddedController.find_by(device_id: @flight_import.device_id)&.recorder_identity(at: started_at)&.slice(:device_id, :assembly)
-      end
+      controller = EmbeddedController.find_by(device_id: @flight_import.device_id) if started_at && @flight_import.device_id.present?
+      identity = controller&.recorder_identity(at: started_at)&.slice(:device_id, :assembly)
+      system = controller&.assembly_at(started_at)&.fdr_system_at(started_at)
       { "filename" => blob.filename.to_s, "source_blob_id" => blob.id, "header" => header, "recovery" => stats,
-        "activity" => source.fetch(:activity), "recorder_identity" => identity }
+        "activity" => source.fetch(:activity), "recorder_identity" => identity }.tap do |details|
+        details["system_configuration"] = system.snapshot(at: started_at) if system
+      end
     ensure
       points&.close
       sensors&.close

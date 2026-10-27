@@ -7,8 +7,9 @@ const {default: AssemblyForm} = await import(`data:text/javascript;base64,${Buff
 const form = new AssemblyForm()
 Object.assign(form, {
   hasTypeTarget: true, typeTarget: {value: ""}, parametersTarget: {}, identityTarget: {},
-  configurationTargets: [{checked: false, dataset: {version: "V42"}}],
-  methodTarget: {value: ""}, previewTarget: {}, submitTarget: {}
+  hasParametersTarget: true, hasIdentityTarget: true, hasConfigurationSelectTarget: false,
+  configurationTargets: [{checked: false, dataset: {version: "V1"}}],
+  methodTarget: {value: "", closest: () => ({})}, componentTarget: {value: "", closest: () => ({})}, previewTarget: {}, submitTarget: {}
 })
 form.connect()
 assert.equal(form.parametersTarget.hidden, true)
@@ -24,10 +25,26 @@ form.configurationTargets[0].checked = true
 form.methodTarget.value = "PERF"
 form.update()
 assert.equal(form.submitTarget.disabled, false)
-assert.match(form.previewTarget.textContent, /EXOFDR-V42-PERF-…/)
+assert.match(form.previewTarget.textContent, /EXOFDR-V1-PERF-…/)
 form.methodTarget.value = "PCB"
 form.update()
-assert.match(form.previewTarget.textContent, /EXOFDR-V42-PCB-…/)
+assert.match(form.previewTarget.textContent, /EXOFDR-V1-PCB-…/)
+form.configurationTargets[0].dataset.version = "V2"
+form.update()
+assert.equal(form.submitTarget.disabled, true)
+assert.equal(form.methodTarget.disabled, true)
+assert.equal(form.componentTarget.required, true)
+for (const type of ["SYSTEMS", "MAIN", "CENTRAL", "AIRSPEED", "DISPLAY", "LITE"]) {
+  form.componentTarget.value = type
+  form.update()
+  assert.equal(form.submitTarget.disabled, false)
+  assert.ok(form.previewTarget.textContent.includes(`EXOFDR-V2-${type}-…`))
+}
+form.configurationTargets[0].dataset.version = "V0"
+form.update()
+assert.equal(form.methodTarget.disabled, false)
+assert.equal(form.componentTarget.disabled, true)
+assert.match(form.previewTarget.textContent, /EXOFDR-V0-PCB-…/)
 form.typeTarget.value = ""
 form.update()
 assert.equal(form.parametersTarget.disabled, true)
@@ -48,4 +65,10 @@ assert.equal(form.identityTarget.disabled, true)
 assert.equal(form.submitTarget.disabled, true)
 form.hasTypeTarget = false
 form.update() // Editing an existing assembly has no mutable type/configuration inputs.
+form.hasConfigurationSelectTarget = true
+form.configurationSelectTarget = {selectedOptions: [{dataset: {version: "V3"}}]}
+form.componentTarget.value = "LITE"
+form.update()
+assert.equal(form.submitTarget.disabled, false)
+assert.match(form.previewTarget.textContent, /EXOFDR-V3-LITE-…/)
 console.log("Assembly form selection and preview tests passed")

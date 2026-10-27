@@ -1,62 +1,48 @@
 <% content_for :title, "Fleet configuration" %>
 <%= render "hangar/tabs" %>
-
-<header class="hangar-section-head">
-  <div><h2>Assemblies</h2><p>Serialized equipment contains interchangeable Parts and may include nested Assemblies.</p></div>
+<header class="hangar-section-head exds-hierarchy-heading">
+  <div><h2>Assemblies</h2><p>Explore systems, their modules, and the parts inside.</p></div>
   <%= link_to new_hangar_assembly_path, class: "button-primary" do %><%= sillage_icon "plus", size: 17 %><span>New assembly</span><% end %>
 </header>
-
-<% if @selected_assembly %>
-  <div class="hangar-assemblies-layout">
-    <section class="hangar-panel">
-      <div class="hangar-table-wrap">
-        <table class="hangar-table hangar-assembly-table">
-          <thead><tr><th>Assembly</th><th>Installed in</th><th>Parts</th><th>State</th></tr></thead>
-          <tbody>
-            <% @assemblies.each do |assembly| %>
-              <% installed_aircraft = hangar_assembly_aircraft assembly %>
-              <tr class="<%= "is-selected" if assembly == @selected_assembly %>">
-                <td><%= link_to hangar_assemblies_path(assembly_id: assembly.id), class: "hangar-table-primary" do %><strong><%= assembly.display_name %></strong><% unless assembly.controlled_fdr? %><small>Asset ID <%= assembly.internal_number %></small><% end %><% end %></td>
-                <td><%= installed_aircraft&.registration || "Not installed" %></td>
-                <td><%= assembly.parts.size %></td>
-                <% state_style, state_label = hangar_asset_status assembly %>
-                <td><span class="status-dot is-<%= state_style %>"><span></span><%= state_label %></span></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <% selected_aircraft = hangar_assembly_aircraft @selected_assembly %>
-    <section class="hangar-panel" aria-label="Selected assembly details">
-      <header class="hangar-panel-head"><span class="section-eyebrow">Assembly details</span></header>
-      <div class="hangar-details-body">
-        <span class="section-eyebrow"><%= @selected_assembly.parent ? "Subassembly" : "Root assembly" %></span>
-        <h3><%= @selected_assembly.display_name %></h3>
-        <% if @selected_assembly.notes.present? %><p><%= @selected_assembly.notes %></p><% end %>
-        <dl>
-          <% if @selected_assembly.controlled_fdr? %>
-            <div><dt>Functional configuration</dt><dd><%= @selected_assembly.functional_configuration %></dd></div>
-            <div><dt>Assembly method</dt><dd><%= @selected_assembly.assembly_method_label %></dd></div>
-            <div><dt>Firmware</dt><dd><%= @selected_assembly.embedded_controller&.last_seen_firmware || "Not reported" %></dd></div>
-          <% else %>
-            <div><dt>Internal Asset ID</dt><dd><%= @selected_assembly.internal_number %></dd></div>
-          <% end %>
-          <div><dt>Serviceability</dt><dd><%= @selected_assembly.serviceability_label %></dd></div>
-          <div><dt>Installed in</dt><dd><%= selected_aircraft&.registration || "Not installed" %></dd></div>
-          <% if @selected_assembly.controlled_fdr? %><div><dt>Internal Asset ID</dt><dd><%= @selected_assembly.internal_number %></dd></div><% end %>
-          <div><dt>Direct parts</dt><dd><%= @selected_assembly.parts.size %></dd></div>
-          <div><dt>Parent</dt><dd><%= @selected_assembly.parent&.display_name || "—" %></dd></div>
-        </dl>
-        <div class="workspace-actions">
-          <%= link_to "Open", hangar_assembly_path(@selected_assembly), class: "button-secondary is-compact" %>
-          <% if @selected_assembly.embedded_controller %><%= link_to "Open in Forge", forge_fdr_path(@selected_assembly.embedded_controller.forge_identifier), class: "button-secondary is-compact" %><% end %>
-          <% unless @selected_assembly.controlled_fdr? %><%= button_to "Delete", hangar_assembly_path(@selected_assembly), method: :delete, class: "button-danger is-compact", form: { data: { turbo_confirm: "Delete #{@selected_assembly.internal_number} permanently? This cannot be undone." } } %><% end %>
+<% if @selected_node %>
+  <div data-controller="assembly-hierarchy" data-assembly-hierarchy-selected-value="<%= @selected_node.key %>" data-action="turbo:before-cache@document->assembly-hierarchy#beforeCache">
+    <div class="exds-hierarchy-summary">
+      <% systems = @inventory.assemblies.count(&:fdr_system?) %>
+      <span><strong><%= systems %></strong> <%= "system".pluralize(systems) %></span>
+      <span><strong><%= @inventory.assemblies.size - systems %></strong> physical <%= "assembly".pluralize(@inventory.assemblies.size - systems) %></span>
+      <span><strong><%= @inventory.nodes.values.count { |node| !node.assembly? } %></strong> parts</span>
+    </div>
+    <div class="exds-hierarchy-layout">
+      <section class="hangar-panel exds-hierarchy-panel" aria-label="Assembly hierarchy">
+        <div class="exds-hierarchy-tools">
+          <label class="exds-hierarchy-search"><%= sillage_icon "search", size: 15 %><input type="search" placeholder="Search serial, module, or part..." aria-label="Search assemblies and parts" data-assembly-hierarchy-target="search" data-action="input->assembly-hierarchy#search"></label>
+          <button type="button" class="button-secondary is-compact" data-assembly-hierarchy-target="expand" data-action="assembly-hierarchy#expandAll">Expand all</button>
         </div>
-      </div>
-      <footer class="hangar-detail-note"><%= @selected_assembly.controlled_fdr? ? "The ExoFDR serial number remains stable when components are replaced." : "Parts and nested Assemblies can be moved while their installation history remains traceable." %></footer>
-    </section>
+        <div class="exds-hierarchy-filter-row">
+          <div class="exds-hierarchy-filters" role="group" aria-label="Filter assemblies">
+            <% { "all" => "All", "systems" => "SYSTEMS", "standalone" => "Standalone" }.each do |value, label| %>
+              <button type="button" class="<%= "is-active" if value == "all" %>" aria-pressed="<%= value == "all" %>" data-filter="<%= value %>" data-assembly-hierarchy-target="filter" data-action="assembly-hierarchy#filter"><%= label %></button>
+            <% end %>
+          </div>
+          <span class="exds-hierarchy-result-count" data-assembly-hierarchy-target="count" aria-live="polite"><%= pluralize @inventory.assemblies.size, "assembly" %></span>
+        </div>
+        <div class="exds-hierarchy-columns"><span>Assembly / Part</span><span>Installed in</span></div>
+        <% @inventory.groups.each do |label, description, roots, category| %>
+          <% next if roots.empty? %>
+          <section data-assembly-hierarchy-target="group" data-category="<%= category %>" aria-label="<%= label %>">
+            <div class="exds-hierarchy-section-title"><%= label %><small><%= description %></small></div>
+            <% roots.each do |node| %><%= render "inventory_node", node:, depth: 0, category: %><% end %>
+          </section>
+        <% end %>
+        <div class="exds-hierarchy-empty" data-assembly-hierarchy-target="empty" hidden><strong>No matching assemblies or parts</strong><p>Try a serial number, a role, or a part name.</p><button type="button" class="button-secondary is-compact" data-action="assembly-hierarchy#clearSearch">Clear search</button></div>
+        <footer class="hangar-detail-note exds-hierarchy-footer">Expand an assembly to see its contents. Select a name for details.</footer>
+      </section>
+      <aside class="hangar-panel exds-hierarchy-details" data-assembly-hierarchy-target="desktop" aria-label="Selected assembly details"><%= render "inventory_details", node: @selected_node %></aside>
+    </div>
+    <dialog class="exds-hierarchy-dialog" aria-label="Assembly details" data-assembly-hierarchy-target="dialog" data-action="close->assembly-hierarchy#closeDialog">
+      <button type="button" class="button-secondary is-compact exds-hierarchy-close" data-action="assembly-hierarchy#close">Close details</button>
+      <div data-assembly-hierarchy-target="mobile"></div>
+    </dialog>
   </div>
 <% else %>
   <div class="workspace-empty">No assemblies registered yet.</div>

@@ -40,10 +40,10 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
     end
 
     2.times do |index|
-      post hangar_assemblies_path, params: { assembly: { assembly_type: "ExoFDR", fdr_functional_configuration_id: configuration.id, assembly_method: "PERF", name: "Ignored" } }
+      post hangar_assemblies_path, params: { assembly: { assembly_type: "ExoFDR", fdr_functional_configuration_id: configuration.id, fdr_component_type: "MAIN", name: "Ignored" } }
       assembly = Assembly.order(:id).last
       assert_redirected_to hangar_assembly_path(assembly)
-      assert_equal format("EXOFDR-V42-PERF-%02d", index + 1), assembly.name
+      assert_equal format("EXOFDR-V42-MAIN-%02d", index + 1), assembly.name
       assert_equal assembly.name, assembly.serial_number
       follow_redirect!
       follow_redirect!

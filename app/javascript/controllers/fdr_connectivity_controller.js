@@ -3,7 +3,7 @@ import { objectPayload, readResponse, registrationPayload, importReceipt, authen
 import { normalizeSillageHeartbeatStatus, describeWifiUpload, normalizeSillageHeartbeatDiagnostics, sillageHeartbeatIdentity, formatSeenAt } from "fdr_heartbeat"
 import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection, observeRecorderConnection } from "aircraft_connection"
-import { recorderLabel, recorderTechnicalLabel } from "recorder_identity"
+import { recorderLabel, recorderTechnicalLabel, recorderSystemLabel } from "recorder_identity"
 import { PartialFdrFile } from "fdr_partial_file"
 import {
   BleUuid,
@@ -87,6 +87,8 @@ const ConnectionStatus = Object.freeze({
  * @property {HTMLElement} recorderStatusTarget
  * @property {HTMLElement} recorderSourceTarget
  * @property {HTMLElement} recorderDeviceTarget
+ * @property {boolean} hasRecorderSystemTarget
+ * @property {HTMLElement} recorderSystemTarget
  * @property {HTMLElement} recorderEcuTarget
  * @property {HTMLElement} recorderFirmwareGroupTarget
  * @property {HTMLElement} recorderFirmwareTarget
@@ -211,7 +213,7 @@ export default class extends TypedController {
     "bleButton", "bleStatus", "bleDevice", "bleDetail",
     "bleNotice", "bleNoticeLabel", "wifiStatus", "wifiDevice", "wifiAutoLabel", "wifiDetail",
     "wifiNotice", "wifiNoticeLabel", "recorderStatus",
-    "recorderSource", "recorderDevice", "recorderEcu", "recorderFirmwareGroup", "recorderFirmware", "health", "storage",
+    "recorderSource", "recorderDevice", "recorderSystem", "recorderEcu", "recorderFirmwareGroup", "recorderFirmware", "health", "storage",
     "usbIdentityDetail", "bleIdentityDetail", "wifiIdentityDetail",
     "lastSync", "recordingControl", "recordingButton", "recordingButtonLabel", "recordingResult",
     "debugButton", "debug", "recorderToolsHint", "recorderAlert",
@@ -1906,6 +1908,13 @@ export default class extends TypedController {
     const ble = this.bleIdentity
     const identity = usb || ble || this.wifiIdentity
     const multipleWifiRecorders = this.wifiIdentities.length > 1
+    if (this.hasRecorderSystemTarget) {
+      const connected = [usb, ble, ...this.wifiIdentities].filter(value => value != null)
+      const singleDevice = new Set(connected.map(value => value.deviceId)).size === 1
+      const system = singleDevice && identity ? recorderSystemLabel(this.resolvedIdentity(identity)) : ""
+      this.recorderSystemTarget.textContent = system ? `System: ${system}` : ""
+      this.recorderSystemTarget.hidden = !system
+    }
 
     if (!identity) {
       if (multipleWifiRecorders) {

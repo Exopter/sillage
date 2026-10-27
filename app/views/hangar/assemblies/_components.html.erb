@@ -1,10 +1,11 @@
 <div class="workspace-grid is-assembly">
   <section class="workspace-panel is-wide">
-    <div class="workspace-panel-header"><h2>Composition</h2><span><%= @assembly.controlled_fdr? ? "Sensors and peripherals" : pluralize(@assembly.snapshot_part_numbers.size, "serialized part") %></span></div>
+    <div class="workspace-panel-header"><h2>Composition</h2><span><%= @assembly.fdr_system? ? "Independent modules" : @assembly.controlled_fdr? ? "Sensors and peripherals" : pluralize(@assembly.snapshot_part_numbers.size, "serialized part") %></span></div>
     <%= render "hangar/assemblies/tree", assembly: @assembly %>
   </section>
 
   <div class="workspace-stack">
+    <% unless @assembly.fdr_system? %>
     <section class="workspace-panel">
       <h2>Install part</h2>
       <% if @available_parts.any? %>
@@ -14,7 +15,9 @@
         <% end %>
       <% else %><p class="workspace-muted">No available part.</p><% end %>
     </section>
+    <% end %>
 
+    <% if @assembly.fdr_component_type.blank? || @assembly.fdr_system? %>
     <section class="workspace-panel">
       <h2>Attach subassembly</h2>
       <% if @available_assemblies.any? %>
@@ -24,9 +27,11 @@
         <% end %>
       <% else %><p class="workspace-muted">No root assembly available.</p><% end %>
     </section>
+    <% end %>
   </div>
 </div>
 
+<% unless @assembly.fdr_system? %>
 <section class="workspace-panel">
   <h2>Direct parts</h2>
   <% if @assembly.parts.any? %>
@@ -49,6 +54,7 @@
     </div>
   <% else %><div class="workspace-empty">No part installed directly in this assembly.</div><% end %>
 </section>
+<% end %>
 
 <% if @assembly.children.any? %>
   <section class="workspace-panel">

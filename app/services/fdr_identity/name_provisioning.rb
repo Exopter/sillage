@@ -8,6 +8,7 @@ module FdrIdentity
       installation = recorder.fdr_board_installations.active.includes(:assembly).first
       key = recorder.fdr_auth_key
       return unless installation && key
+      return if installation.assembly.fdr_system?
       name = installation.assembly.serial_number
       return unless name && name.bytesize <= 29 && Assembly::EXOFDR_SERIAL_PATTERN.match?(name)
 

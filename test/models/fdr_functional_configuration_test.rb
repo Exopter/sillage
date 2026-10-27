@@ -25,15 +25,15 @@ class FdrFunctionalConfigurationTest < ActiveSupport::TestCase
   end
 
   test "serial sequences are separate per version and assembly method" do
-    configuration = create_fdr_functional_configuration(version: 42)
+    configuration = create_fdr_functional_configuration(version: 0)
     first = create_exofdr_assembly(fdr_functional_configuration: configuration)
     second = create_exofdr_assembly(fdr_functional_configuration: configuration)
     pcb = create_exofdr_assembly(fdr_functional_configuration: configuration, assembly_method: "PCB")
-    next_version = create_exofdr_assembly(fdr_functional_configuration: create_fdr_functional_configuration(version: 43))
-    assert_equal "EXOFDR-V42-PERF-01", first.serial_number
-    assert_equal "EXOFDR-V42-PERF-02", second.serial_number
-    assert_equal "EXOFDR-V42-PCB-01", pcb.serial_number
-    assert_equal "EXOFDR-V43-PERF-01", next_version.serial_number
+    next_version = create_exofdr_assembly(fdr_functional_configuration: create_fdr_functional_configuration(version: 1))
+    assert_equal "EXOFDR-V0-PERF-01", first.serial_number
+    assert_equal "EXOFDR-V0-PERF-02", second.serial_number
+    assert_equal "EXOFDR-V0-PCB-01", pcb.serial_number
+    assert_equal "EXOFDR-V1-PERF-01", next_version.serial_number
     assert_equal first.serial_number, first.name
     assert_equal first.name, first.display_name
     assert_equal first.name, first.selection_label
@@ -46,7 +46,7 @@ class FdrFunctionalConfigurationTest < ActiveSupport::TestCase
       assert_not Assembly.new(assembly_type: "ExoFDR", fdr_functional_configuration: configuration, assembly_method: "WIRE").save
       assert_not Assembly.new(assembly_type: "ExoFDR", fdr_functional_configuration: configuration, assembly_method: "PERF", serviceability_state: "invalid").save
     end
-    assert_equal "EXOFDR-V42-PERF-01", create_exofdr_assembly(fdr_functional_configuration: configuration).serial_number
+    assert_equal "EXOFDR-V42-MAIN-01", create_exofdr_assembly(fdr_functional_configuration: configuration, fdr_component_type: "MAIN", assembly_method: "PCB").serial_number
   end
 
   test "assembly identity and parameters cannot be changed and retirement is terminal" do

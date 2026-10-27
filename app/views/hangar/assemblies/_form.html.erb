@@ -8,7 +8,7 @@
     </fieldset>
     <fieldset class="workspace-fieldset" data-assembly-form-target="parameters">
       <legend>ExoFDR parameters</legend>
-      <p class="workspace-muted">Choose a capability baseline and an assembly method. Both are fixed after creation.</p>
+      <p class="workspace-muted">Choose a capability baseline and device type. V0 and V1 use an assembly method instead. These choices are fixed after creation.</p>
       <% if @functional_configurations.any? %>
         <div class="hangar-table-wrap">
           <table class="hangar-table workspace-choice-table">
@@ -23,6 +23,7 @@
         <div class="workspace-empty">No functional configurations available. <%= link_to "Create a functional configuration", new_hangar_fdr_functional_configuration_path %> first.</div>
       <% end %>
       <label><span>Assembly method</span><%= form.select :assembly_method, Assembly::ASSEMBLY_METHODS.map { |code, label| ["#{label} (#{code})", code] }, { include_blank: "Select an assembly method" }, required: true, data: { assembly_form_target: "method", action: "assembly-form#update" } %></label>
+      <label><span>Device type</span><%= form.select :fdr_component_type, Assembly::FDR_COMPONENT_TYPES.map { |code, label| [label, code] }, { include_blank: "Select a device type" }, data: { assembly_form_target: "component", action: "assembly-form#update" } %></label>
       <p class="workspace-muted" aria-live="polite" data-assembly-form-target="preview">The name and serial number are generated on creation.</p>
     </fieldset>
   <% elsif assembly.controlled_fdr? %>
@@ -30,9 +31,9 @@
       <div><dt>Name / serial number</dt><dd><%= assembly.display_name %></dd></div>
       <div><dt>Assembly type</dt><dd><%= assembly.assembly_type %></dd></div>
       <div><dt>Functional configuration</dt><dd><%= assembly.functional_configuration %></dd></div>
-      <div><dt>Assembly method</dt><dd><%= assembly.assembly_method_label %></dd></div>
+      <div><dt><%= assembly.fdr_component_type.present? ? "Device type" : "Assembly method" %></dt><dd><%= assembly.fdr_component_label || assembly.assembly_method_label %></dd></div>
     </dl>
-    <p class="workspace-muted">Identity, configuration and assembly method are fixed. For a different configuration or method, retire this assembly and create a new one. Parts can be removed and reused.</p>
+    <p class="workspace-muted">Identity, configuration, device type and assembly method are fixed. For a different baseline, retire this assembly and create a new one. Parts can be removed and reused.</p>
   <% else %>
     <label><span>Name</span><%= form.text_field :name, required: true %></label>
   <% end %>
@@ -42,8 +43,10 @@
     <label><span>Internal Asset ID</span><%= text_field_tag nil, assembly.internal_number || "Assigned automatically", disabled: true %></label>
   </div>
   <label><span>Notes</span><%= form.text_area :notes, rows: 4 %></label>
-  <label><span>IMU mounting</span><%= form.select :imu_mount_profile, Imu::Mount::LABELS.map { |id, label| [label, id] } %></label>
-  <p class="workspace-muted">None keeps native sensor axes without a mounting correction. Wingsuit belly pocket: +Y forward, +X left, +Z down. Changing the mounting requires a new reference and preflight check.</p>
+  <% unless assembly.fdr_system? %>
+    <label><span>IMU mounting</span><%= form.select :imu_mount_profile, Imu::Mount::LABELS.map { |id, label| [label, id] } %></label>
+    <p class="workspace-muted">None keeps native sensor axes without a mounting correction. Wingsuit belly pocket: +Y forward, +X left, +Z down. Changing the mounting requires a new reference and preflight check.</p>
+  <% end %>
   <div class="workspace-actions">
     <%= link_to "Cancel", assembly.persisted? ? hangar_assembly_path(assembly) : hangar_assemblies_path, class: "button-secondary" %>
     <%= form.submit class: "button-primary", disabled: assembly.new_record? && (assembly.assembly_type.blank? || (assembly.controlled_fdr? && @functional_configurations.empty?)), data: { assembly_form_target: "submit" } %>

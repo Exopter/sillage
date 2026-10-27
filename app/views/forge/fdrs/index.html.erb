@@ -26,7 +26,7 @@
             <% live = snapshot[:transports].any? %>
             <tr data-recorder-fleet-target="row" data-device-id="<%= fdr&.device_id %>">
               <td><%= link_to assembly.display_name, forge_fdr_path(assembly.serial_number), class: "workspace-strong-link" %></td>
-              <td><%= assembly.functional_configuration %> · <%= assembly.assembly_method_label %></td>
+              <td><%= assembly.functional_configuration %> · <%= assembly.fdr_component_label || assembly.assembly_method_label %></td>
               <td data-recorder-firmware><%= fdr&.last_seen_firmware.presence || "Not reported" %></td>
               <td><span data-recorder-connection class="workspace-status <%= live ? "is-installed" : "is-draft" %>"><%= live ? snapshot[:transports].map { |transport| labels.fetch(transport) }.join(" · ") : "Offline" %></span><br><small data-recorder-seen class="workspace-muted"><%= snapshot[:last_seen_at] ? "Last seen #{time_ago_in_words(snapshot[:last_seen_at])} ago" : "Never seen" %></small></td>
             </tr>

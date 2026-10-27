@@ -37,6 +37,7 @@ class PartInstallation < ApplicationRecord
   end
 
   def assembly_accepts_parts
+    errors.add(:assembly, "is a logical system; install parts in its modules") if assembly&.fdr_system?
     errors.add(:assembly, "cannot be retired") if active? && assembly&.serviceability_state == "retired"
   end
 

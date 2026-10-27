@@ -1,0 +1,25 @@
+<% if @assembly.fdr_system? %>
+  <section class="workspace-panel">
+    <h2>Module connections</h2>
+    <p class="workspace-muted">Each module reports its own connection. A connected Main does not establish the state of the other modules.</p>
+    <div class="hangar-table-wrap"><table class="hangar-table">
+      <thead><tr><th>Module</th><th>Identity</th><th>Connection</th></tr></thead>
+      <tbody><% Assembly::FDR_MODULE_TYPES.each do |role| %>
+        <% mod = @assembly.children.find { |child| child.fdr_component_type == role }; transports = mod&.embedded_controller&.connection_snapshot&.fetch(:transports, []) || [] %>
+        <tr><td><%= Assembly::FDR_COMPONENT_TYPES.fetch(role) %></td><td><%= mod ? link_to(mod.serial_number, forge_fdr_path(mod.serial_number)) : "Not assigned" %></td><td><%= transports.any? ? transports.join(" / ").upcase : "No current connection reported" %></td></tr>
+      <% end %></tbody>
+    </table></div>
+  </section>
+<% end %>
+<% memberships = (@assembly.fdr_system? ? @assembly.system_memberships : @assembly.module_memberships).includes(:system_assembly, :module_assembly).recent %>
+<% if memberships.any? %>
+  <section class="workspace-panel">
+    <h2>System membership history</h2>
+    <div class="hangar-table-wrap"><table class="hangar-table">
+      <thead><tr><th>System</th><th>Module</th><th>Attached</th><th>Detached</th></tr></thead>
+      <tbody><% memberships.each do |membership| %>
+        <tr><td><%= link_to membership.system_assembly.serial_number, hangar_assembly_path(membership.system_assembly) %></td><td><%= link_to membership.module_assembly.serial_number, forge_fdr_path(membership.module_assembly.serial_number) %></td><td><%= membership.installed_at.iso8601 %></td><td><%= membership.removed_at&.iso8601 || "Current" %></td></tr>
+      <% end %></tbody>
+    </table></div>
+  </section>
+<% end %>

@@ -61,7 +61,12 @@ class EmbeddedController < ApplicationRecord
         serial_number: recorded_assembly.serial_number,
         functional_configuration: recorded_assembly.functional_configuration,
         assembly_method: recorded_assembly.assembly_method
-      }
+      }.tap do |identity|
+        if recorded_assembly.fdr_component_type.present?
+          identity[:component_type] = recorded_assembly.fdr_component_type
+          identity[:system] = recorded_assembly.fdr_system_at(at)&.fdr_identity_context
+        end
+      end
     }
   end
 
@@ -91,7 +96,9 @@ class EmbeddedController < ApplicationRecord
   end
 
   def installation_at(time)
-    assembly_at(time)&.installations&.covering(time)&.includes(:aircraft)&.recent&.first
+    recorded_assembly = assembly_at(time)
+    owner = recorded_assembly&.fdr_system_at(time) || recorded_assembly
+    owner&.installations&.covering(time)&.includes(:aircraft)&.recent&.first
   end
 
   def aircraft

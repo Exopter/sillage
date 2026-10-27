@@ -6,7 +6,7 @@
     <small>FORGE</small>
     <details class="exds-recorder-switcher">
       <summary aria-label="Choose recorder">
-        <span><strong><%= @assembly&.display_name || @fdr&.display_name || "Select a recorder" %></strong><small><%= @assembly ? "#{@assembly.functional_configuration} · #{@assembly.assembly_method_label}" : "Recorder workspace" %></small></span>
+        <span><strong><%= @assembly&.display_name || @fdr&.display_name || "Select a recorder" %></strong><small><%= @assembly ? "#{@assembly.functional_configuration} · #{@assembly.fdr_component_label || @assembly.assembly_method_label}" : "Recorder workspace" %></small></span>
         <%= sillage_icon "chevron-down", size: 16 %>
       </summary>
       <nav aria-label="Recorders">

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import {readFile} from "node:fs/promises"
-import {recorderLabel, recorderTechnicalLabel} from "../../app/javascript/lib/recorder_identity.js"
+import {recorderLabel, recorderTechnicalLabel, recorderSystemLabel} from "../../app/javascript/lib/recorder_identity.js"
 
 const root = new URL("../../app/javascript/", import.meta.url)
 const modules = new Map()
@@ -28,6 +28,11 @@ const assembly = {name: "EXOFDR-V0-PERF-03", serial_number: "EXOFDR-V0-PERF-03",
 const recorder = {device_id: "ECU-A172E0", assembly, initialization_confirmed: true, connectivity_url: "/forge/fdrs/1/connectivity", initialization_url: "/api/v1/fdrs/1/initialization"}
 const label = "EXOFDR-V0-PERF-03"
 assert.equal(recorderLabel({assembly}), label)
+const mainIdentity = {assembly: {...assembly, serial_number: "EXOFDR-V2-MAIN-01", system: {serial_number: "EXOFDR-V2-SYSTEMS-01"}}}
+assert.equal(recorderLabel(mainIdentity), "EXOFDR-V2-MAIN-01")
+assert.equal(recorderSystemLabel(mainIdentity), "EXOFDR-V2-SYSTEMS-01")
+assert.equal(recorderSystemLabel({assembly}), "")
+assert.equal(recorderSystemLabel({assembly: null}), "")
 assert.equal(recorderLabel({assembly: null}), "FDR setup required")
 assert.equal(recorderLabel({}), "Recorder not identified")
 assert.equal(recorderTechnicalLabel({deviceId: recorder.device_id, assembly}), "ECU-A172E0")
@@ -62,6 +67,20 @@ assert.equal(connected.recorderDeviceTarget.textContent, label)
 assert.equal(connected.recorderEcuTarget.textContent, recorder.device_id)
 assert.equal(aircraftConnectionLabel(currentAircraftConnections()), `${label} connected`)
 assert.match(connected.wifiLinkLabelTarget.textContent, /EXOFDR-V0-PERF-03/)
+
+connected.hasRecorderSystemTarget = true
+connected.renderSillageHeartbeat({recorder: {...recorder, assembly: mainIdentity.assembly}, seen_at: new Date().toISOString(), status: {}})
+assert.equal(connected.recorderDeviceTarget.textContent, "EXOFDR-V2-MAIN-01")
+assert.equal(connected.recorderSystemTarget.textContent, "System: EXOFDR-V2-SYSTEMS-01")
+assert.equal(connected.recorderSystemTarget.hidden, false)
+connected.renderSillageHeartbeat({recorder: {...recorder, assembly: {...mainIdentity.assembly, system: null}}, seen_at: new Date().toISOString(), status: {}})
+assert.equal(connected.recorderSystemTarget.hidden, true, "detachment clears the system context without reconnecting")
+connected.renderSillageHeartbeat({recorder: {...recorder, assembly: mainIdentity.assembly}, seen_at: new Date().toISOString(), status: {}})
+connected.bleIdentity = {deviceId: "ECU-ABC123"}
+connected.renderRecorderInformation()
+assert.equal(connected.recorderSystemTarget.hidden, true, "a transport mismatch hides the system context")
+connected.bleIdentity = {...connected.usbIdentity}
+connected.renderSillageHeartbeat({recorder, seen_at: new Date().toISOString(), status: {}})
 
 // Heartbeats refresh an assignment even while a USB registration is cached.
 connected.renderSillageHeartbeat({recorder: {...recorder, assembly: null, firmware: "fdr/26"}, seen_at: new Date().toISOString(), status: {}})
