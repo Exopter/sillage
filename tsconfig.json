@@ -89,6 +89,9 @@
       ],
       "fdr_import_queue": [
         "./app/javascript/lib/fdr_import_queue.js"
+      ],
+      "recorder_session": [
+        "./app/javascript/lib/recorder_session.js"
       ]
     },
     "strict": true,

@@ -27,6 +27,7 @@
 /node_modules/
 /vendor/bundle/
 /public/assets/
+/public/previews/
 /public/vendor/cesium/
 /public/vendor/leaflet/
 /public/vendor/three/

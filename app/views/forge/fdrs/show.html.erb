@@ -28,7 +28,7 @@
   </div>
   <% if @assembly %>
     <section id="components" class="workspace-panel">
-      <div class="workspace-panel-header"><h2>Components</h2><%= link_to "Manage in Hangar", hangar_assembly_path(@assembly, view: "components") %></div>
+      <div class="workspace-panel-header"><h2>Components</h2><%= link_to "Manage in Hangar", hangar_assembly_path(@assembly) %></div>
       <%= render "hangar/assemblies/tree", assembly: @assembly %>
     </section>
   <% end %>

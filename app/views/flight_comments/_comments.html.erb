@@ -13,7 +13,7 @@
           <div><strong><%= comment_author_name(comment.user) %></strong><% if comment.owned_by?(Current.user) %><span class="exds-comment-you">You</span><% end %>
             <div class="exds-comment-date"><time datetime="<%= comment.created_at.iso8601 %>" data-flight-comments-target="timestamp"><%= comment.created_at.utc.strftime("%d %b %Y, %H:%M UTC") %></time><% if comment.edited_at %><span> · Edited</span><% end %><% if comment.imported_from_notes? %><span title="Migrated from a note. The date is the last flight update, not the original note date."> · Migrated note (approximate date)</span><% end %></div>
           </div>
-          <% if comment.owned_by?(Current.user) && !editing_comment %>
+          <% if can_manage_operations? && comment.owned_by?(Current.user) && !editing_comment %>
             <details class="exds-comment-actions">
               <summary class="exds-browser-icon-button is-quiet" aria-label="Actions for comment by <%= comment_author_name(comment.user) %>"><%= sillage_icon "ellipsis", size: 16 %></summary>
               <div class="exds-comment-menu">
@@ -23,7 +23,7 @@
             </details>
           <% end %>
         </div>
-        <% if editing_comment&.id == comment.id %>
+        <% if can_manage_operations? && editing_comment&.id == comment.id %>
           <%= form_with model: current, url: flight_comment_path(flight, current), class: "exds-comment-edit", data: { action: "input->flight-comments#validate keydown->flight-comments#submitShortcut" } do |form| %>
             <% if current.errors.any? %><p class="workspace-errors" role="alert"><%= current.errors.full_messages.to_sentence %></p><% end %>
             <label class="exds-browser-field exds-comment-editor-field"><span>Edit comment</span><%= form.text_area :body, id: "#{dom_id(current)}_body", rows: 3, maxlength: FlightComment::MAX_LENGTH, required: true, autofocus: true %></label>
@@ -44,7 +44,7 @@
             </div>
           <% end %>
         <% end %>
-        <% if comment.owned_by?(Current.user) %>
+        <% if can_manage_operations? && comment.owned_by?(Current.user) %>
           <div class="exds-comment-confirm" hidden role="group" aria-label="Confirm comment deletion">
             <strong>Delete this comment?</strong><p>It will be removed for everyone with access to this flight.</p>
             <div class="exds-comment-edit-actions"><button type="button" class="button-secondary" data-action="flight-comments#cancelDelete">Cancel</button><%= button_to "Delete comment", flight_comment_path(flight, comment), method: :delete, class: "button-danger" %></div>
@@ -53,11 +53,13 @@
       </div>
     </article>
   <% end %>
+  <% if can_manage_operations? %>
   <%= form_with model: new_comment, url: flight_comments_path(flight), class: "exds-comments-compose", data: { action: "input->flight-comments#validate keydown->flight-comments#submitShortcut" } do |form| %>
     <% if new_comment.errors.any? %><p class="workspace-errors" role="alert"><%= new_comment.errors.full_messages.to_sentence %></p><% end %>
     <label class="exds-browser-field exds-comment-editor-field"><span>Add a comment</span><%= form.text_area :body, id: "#{dom_id(flight)}_new_comment_body", rows: 3, maxlength: FlightComment::MAX_LENGTH, required: true, placeholder: "Observations, conditions and anything to remember…" %></label>
     <%= render "flight_comments/image_fields", form: form, comment: new_comment, field_id: "#{dom_id(flight)}_new_comment" %>
     <div class="exds-comments-compose-actions"><small>Visible to people with flight access</small><%= form.submit "Post comment", class: "button-primary", disabled: new_comment.body.blank? %></div>
+  <% end %>
   <% end %>
   <p class="exds-comments-status" role="status"><%= local_assigns[:message] %></p>
 <% end %>

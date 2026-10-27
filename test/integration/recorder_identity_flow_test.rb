@@ -2,7 +2,7 @@ require "test_helper"
 
 class RecorderIdentityFlowTest < ActionDispatch::IntegrationTest
   setup do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     @assembly = Assembly.create!(name: "Physical recorder", assembly_type: "ExoFDR", assembly_method: "PERF", fdr_functional_configuration: create_fdr_functional_configuration)
     @ecu = create_embedded_controller(assembly: @assembly, device_id: "ECU-A172E0")
     @ecu.create_signal_presence!(last_seen_at: Time.current, status: {})

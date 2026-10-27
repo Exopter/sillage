@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { Turbo } from "@hotwired/turbo-rails"
 
-/** @typedef {{entryTargets: HTMLAnchorElement[], selectionTarget: HTMLFormElement, dialogTarget: HTMLDialogElement, dialogTitleTarget: HTMLElement, folderFormTarget: HTMLFormElement, folderNameTarget: HTMLInputElement, folderMethodTarget: HTMLInputElement, moveDialogTarget: HTMLDialogElement, moveEntryTarget: HTMLInputElement, moveNameTarget: HTMLElement, moveDestinationTarget: HTMLSelectElement}} Bindings */
+/** @typedef {{entryTargets: HTMLAnchorElement[], hasDialogTarget:boolean, hasMoveDialogTarget:boolean, selectionTarget: HTMLFormElement, dialogTarget: HTMLDialogElement, dialogTitleTarget: HTMLElement, folderFormTarget: HTMLFormElement, folderNameTarget: HTMLInputElement, folderMethodTarget: HTMLInputElement, moveDialogTarget: HTMLDialogElement, moveEntryTarget: HTMLInputElement, moveNameTarget: HTMLElement, moveDestinationTarget: HTMLSelectElement}} Bindings */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 
 export default class extends TypedController {
@@ -55,7 +55,7 @@ export default class extends TypedController {
     this.folderNameTarget.select()
   }
 
-  closeDialog() { this.dialogTarget.close() }
+  closeDialog() { if (this.hasDialogTarget) this.dialogTarget.close() }
 
   /** @param {MouseEvent} event */
   moveFlight(event) {
@@ -66,7 +66,7 @@ export default class extends TypedController {
     this.moveDialogTarget.showModal()
   }
 
-  closeMoveDialog() { this.moveDialogTarget.close() }
+  closeMoveDialog() { if (this.hasMoveDialogTarget) this.moveDialogTarget.close() }
 
   /** @param {KeyboardEvent} event */
   navigate(event) {

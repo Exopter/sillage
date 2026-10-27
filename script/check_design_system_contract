@@ -5,6 +5,8 @@ require "set"
 require_relative "../lib/sillage/canonical_source"
 
 ROOT = File.expand_path("..", __dir__)
+hierarchy = File.join(ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(ROOT, "..", "design-system")), "components/data/HierarchyBrowser.css")
+abort "HierarchyBrowser CSS differs from the shared component." unless Sillage::CanonicalSource.read(hierarchy) == File.binread(File.join(ROOT, "app/assets/stylesheets/hierarchy_browser.css"))
 kanban = File.join(ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(ROOT, "..", "design-system")), "components/data/Kanban.css")
 abort "Kanban CSS differs from the shared component." unless Sillage::CanonicalSource.read(kanban) == File.binread(File.join(ROOT, "app/assets/stylesheets/kanban.css"))
 comment_thread = File.join(ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(ROOT, "..", "design-system")), "components/data/CommentThread.css")

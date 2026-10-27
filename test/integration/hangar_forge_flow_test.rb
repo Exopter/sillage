@@ -17,7 +17,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "operator can create and edit parachute and exowing assemblies without FDR parameters" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     get new_hangar_assembly_path
     assert_response :success
@@ -48,8 +48,27 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "operator can navigate Hangar and Forge" do
-    sign_in_as users(:operator)
+  test "retired recorders are excluded from Forge and retain their Hangar record" do
+    sign_in_as_admin users(:operator)
+    @assembly.update!(serviceability_state: "retired")
+    get forge_path(connect: 1)
+    assert_response :success
+    assert_select "nav[aria-label='Recorders'] a[href='#{files_forge_fdr_path(@assembly.serial_number)}']", count: 0
+    assert_select "#registered-recorders a[href='#{forge_fdr_path(@assembly.serial_number)}']", count: 0
+    get forge_fdr_path(@assembly.serial_number)
+    assert_response :not_found
+    get forge_fdr_path(@fdr.id)
+    assert_response :not_found
+    get hangar_assembly_path(@assembly)
+    assert_response :success
+    assert_select "a[href='#{edit_hangar_assembly_path(@assembly)}']", text: "Edit"
+    assert_select "a", text: "Open in Forge", count: 0
+    get hangar_part_path(@fdr.part)
+    assert_response :success
+  end
+
+  test "an administrator can navigate Hangar and Forge" do
+    sign_in_as_admin users(:operator)
 
     get hangar_path
     assert_response :success
@@ -68,7 +87,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_select ".hangar-detail-foot", count: 0
     assert_select ".sillage-room-link.is-separated", text: /Signal/
     assert_select ".sillage-room-link[href='#{forge_path}']", text: /Forge/
-    assert_select ".sillage-core-link", count: 0
+    assert_select ".sillage-core-link", count: 1
 
     get hangar_parts_path
     assert_response :success
@@ -100,8 +119,10 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_select "input[name='assembly[device_id]']", count: 0
 
     get hangar_assembly_path(@assembly)
-    assert_redirected_to forge_fdr_path(@assembly.serial_number)
-    follow_redirect!
+    assert_response :success
+    assert_select ".hangar-tabs"
+    assert_select "a[href='#{edit_hangar_assembly_path(@assembly)}']", text: "Edit"
+    get forge_fdr_path(@assembly.serial_number)
     assert_select ".exds-recorder-heading p", @assembly.serial_number
     assert_select ".workspace-details", text: /Wi-Fi hostname.*#{@assembly.serial_number.downcase}/m
     assert_select ".workspace-details dt", text: "ECU ID", count: 0
@@ -127,12 +148,12 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "Forge opens one recorder catalogue and remembers the selected recorder" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     get files_forge_fdr_path(@assembly.serial_number)
     assert_response :success
     assert_select "h1", "Recordings"
     assert_select "[data-fdr-import-queue]", count: 1
-    assert_select "[data-controller='fdr-connectivity'][data-fdr-connectivity-expected-device-id-value='#{@fdr.device_id}']", count: 1
+    assert_select "[data-recorder-page-device-id='#{@fdr.device_id}'] #sillage-fdr-connectivity[data-turbo-permanent]", count: 1
     assert_select ".exds-recorder-nav a[aria-current='page']", text: "Recordings"
     assert_select ".exds-recorder-nav a", text: "Files", count: 0
     assert_select "details[data-forge-connections]:not([open])", count: 1
@@ -145,7 +166,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     get forge_path(connect: 1)
     assert_response :success
     assert_select "[data-action='fdr-connectivity#connectUsb']", count: 1
-    get hangar_assembly_path(@assembly, view: "components")
+    get hangar_assembly_path(@assembly)
     assert_response :success
     assert_select "h2", "Composition"
     assert_select "form[action='#{remove_part_hangar_assembly_path(@assembly, part_id: @part.id)}']", count: 1
@@ -161,7 +182,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "function page renders an explicit empty inventory state" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     empty_function = Function.create!(name: "I2C Multiplexer")
 
     get hangar_function_path(empty_function)
@@ -201,7 +222,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
       model: "M9N",
       serial_number: "FLOW-REPLACEMENT"
     )
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
 
     patch replace_part_hangar_assembly_path(@assembly, part_id: @part),
       params: { replacement_part_id: replacement.id }

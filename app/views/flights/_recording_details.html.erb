@@ -13,7 +13,7 @@
     <p role="status"><%= t("imports.show.processing") %></p>
   <% end %>
 
-  <% if @flight_import.import_type == "exofdr" %>
+  <% if can_manage_operations? && @flight_import.import_type == "exofdr" %>
     <h2><%= recording_activity_label(@flight_import) %></h2>
     <p><%= recording_activity_reason(@flight_import) %></p>
     <% if @flight_import.set_aside? %>
@@ -35,7 +35,7 @@
   <% end %>
 
   <div class="workspace-actions">
-    <% if @flight_import.import_type == "exofdr" && !@flight_import.source_missing? %>
+    <% if can_manage_operations? && @flight_import.import_type == "exofdr" && !@flight_import.source_missing? %>
       <% if @flight_import.imported? && !@flight_import.included_in_flights_at? && @flight_import.activity_classification != "moving" %>
         <%= button_to "Include in flights", include_in_flights_flight_import_path(@flight_import), class: "button-primary" %>
       <% elsif @flight_import.failed? && @flight_import.included_in_flights_at? && @recording_flights.empty? %>
@@ -47,7 +47,9 @@
         <%= link_to "Download #{source.filename}", attachment_path(source), class: "button-secondary" %>
       <% end %>
     <% end %>
+    <% if can_manage_operations? %>
     <%= button_to "Delete recording", flight_import_path(@flight_import), method: :delete,
       class: "button-danger", form: { data: { turbo_confirm: "Permanently delete this recording and all its flight data, measurements, captures and videos?" } } %>
+    <% end %>
   </div>
 </section>

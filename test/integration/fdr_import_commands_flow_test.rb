@@ -13,7 +13,7 @@ class FdrImportCommandsFlowTest < ActionDispatch::IntegrationTest
     publish
     post api_v1_fdr_import_commands_path, params: command_params, as: :json
     assert_response :redirect
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     @recorder.signal_presence.update!(last_seen_at: 1.minute.ago)
     assert_no_difference "FdrImportCommand.count" do
       post api_v1_fdr_import_commands_path, params: command_params, as: :json
@@ -23,7 +23,7 @@ class FdrImportCommandsFlowTest < ActionDispatch::IntegrationTest
 
   test "commands are signed for this boot and repeated until an acknowledgement arrives" do
     publish
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     post api_v1_fdr_import_commands_path, params: command_params, as: :json
     assert_response :created
     command = FdrImportCommand.find(response.parsed_body.fetch("id"))
@@ -43,7 +43,7 @@ class FdrImportCommandsFlowTest < ActionDispatch::IntegrationTest
 
   test "a reboot and expiration invalidate queued selections" do
     publish
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     post api_v1_fdr_import_commands_path, params: command_params, as: :json
     old = FdrImportCommand.last
     publish(boot_id: 422)
@@ -59,7 +59,7 @@ class FdrImportCommandsFlowTest < ActionDispatch::IntegrationTest
 
   test "recorder refusals are visible and malformed requests do not queue commands" do
     publish
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     post api_v1_fdr_import_commands_path, params: command_params, as: :json
     command = FdrImportCommand.last
     publish(command_sequence: command.id, command_result: 1)

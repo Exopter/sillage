@@ -21,6 +21,7 @@ class Part < ApplicationRecord
   validates :internal_number, format: { with: AssetIdentifier::PATTERN }, allow_nil: true
   validates :serial_number, uniqueness: { scope: :manufacturer }, allow_blank: true
   validates :state, inclusion: { in: STATES }
+  validate :mounted_part_matches_retired_assembly
   validate :non_serviceable_part_is_not_installed
   validate :assembly_does_not_conflict_with_aircraft_installation
   validate :embedded_controller_requires_controller_function
@@ -70,7 +71,7 @@ class Part < ApplicationRecord
 
       current_installation.remove!(at:)
       reset_assembly_associations(current_installation.assembly)
-      update!(state: installations.active.exists? ? "installed" : "available")
+      update!(state: state == "retired" ? "retired" : installations.active.exists? ? "installed" : "available")
     end
   end
 
@@ -116,8 +117,16 @@ class Part < ApplicationRecord
     end
   end
 
+  def mounted_part_matches_retired_assembly
+    if assembly&.serviceability_state == "retired" && state != "retired"
+      errors.add(:state, "must remain retired while its assembly is retired; reactivate the assembly first")
+    end
+  end
+
   def non_serviceable_part_is_not_installed
     return unless (assembly.present? || installations.active.exists?) && state.in?(%w[quarantined retired])
+
+    return if state == "retired" && assembly&.serviceability_state == "retired" && !installations.active.exists?
 
     errors.add(:state, "cannot be installed while #{state}")
   end

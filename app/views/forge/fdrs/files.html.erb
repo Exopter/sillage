@@ -1,7 +1,5 @@
 <% content_for :title, "Recordings" %>
-<% if @fdr %>
-  <%= render "connection_manager", expected_device_id: @fdr.device_id, workspace: true %>
-<% else %>
+<% unless @fdr %>
   <%= render "shell", active_tab: :files %>
   <div class="exds-recording-empty">Connect an integrated board to view recordings. <%= link_to "Open device setup", forge_fdr_path(@assembly.serial_number) %></div>
 <% end %>

@@ -3,6 +3,11 @@ require_relative "../config/environment"
 require "rails/test_help"
 
 module AuthenticationTestHelper
+  def sign_in_as_admin(user, **options)
+    user.update!(role: "admin") unless user.admin?
+    sign_in_as(user, **options)
+  end
+
   def sign_in_as(user, otp_verified: true)
     post session_path, params: {
       email_address: user.email_address,

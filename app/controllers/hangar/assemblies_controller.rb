@@ -5,13 +5,13 @@ module Hangar
     ]
 
     def index
-      @inventory = AssemblyInventory.new
+      @state = params[:state].presence_in([ "all", *Assembly::SERVICEABILITY_STATES ])
+      @inventory = AssemblyInventory.new(state: @state)
       @selected_node = @inventory.find(params[:node]) || @inventory.find("assembly-#{params[:assembly_id]}") || @inventory.roots.first
       render partial: "inventory_details", locals: { node: @selected_node } if turbo_frame_request?
     end
 
     def show
-      return redirect_to forge_fdr_path(@assembly.serial_number) if @assembly.controlled_fdr? && !@assembly.fdr_system? && params[:view] != "components"
 
       @available_parts = @assembly.serviceability_state == "retired" ? Part.none : Part.available.includes(:function).ordered
       excluded_ids = [ @assembly.id, *@assembly.descendant_ids ]

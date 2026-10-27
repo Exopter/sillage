@@ -7,7 +7,7 @@ class FeedbacksControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "saves feedback for the signed in user and ignores forged ownership and status" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     assert_difference "Feedback.count", 1 do
       post feedbacks_path, as: :json, params: { feedback: {
         category: "bug", description: "The flight view is blank.", page_path: "/flights",
@@ -21,7 +21,7 @@ class FeedbacksControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "invalid feedback reports validation errors without saving" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     assert_no_difference "Feedback.count" do
       post feedbacks_path, as: :json, params: { feedback: { category: "question", description: "Keep my thought" } }
     end
@@ -30,7 +30,7 @@ class FeedbacksControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "composer offers only ideas and problems" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     get new_feedback_path(page_path: "/signal")
     assert_response :success
     assert_select "input[name='feedback[page_path]'][value='/signal']"
@@ -41,7 +41,7 @@ class FeedbacksControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "saves a PNG screenshot with its feedback" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     assert_difference "Feedback.count", 1 do
       post feedbacks_path, headers: { "Accept" => "application/json" }, params: { feedback: {
         category: "idea", description: "See the highlighted area", page_path: "/flights",
@@ -55,7 +55,7 @@ class FeedbacksControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "rejects unsupported screenshot files and signed blob references" do
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     assert_no_difference "Feedback.count" do
       post feedbacks_path, headers: { "Accept" => "application/json" }, params: { feedback: {
         category: "bug", description: "Not an image", screenshot: fixture_file_upload("sample.mp4", "video/mp4")

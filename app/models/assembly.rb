@@ -25,6 +25,7 @@ class Assembly < ApplicationRecord
 
   before_create :assign_exofdr_serial_number
   before_save :record_imu_mount_change
+  after_save :synchronize_mounted_part_retirement, if: :saved_change_to_serviceability_state?
   before_destroy :retain_exofdr_identity
 
   validates :name, presence: true, unless: :controlled_fdr?
@@ -170,6 +171,14 @@ class Assembly < ApplicationRecord
 
   private
 
+  def synchronize_mounted_part_retirement
+    if serviceability_state == "retired"
+      parts.each { |part| part.update!(state: "retired") }
+    elsif serviceability_state_before_last_save == "retired"
+      parts.where(state: "retired").each { |part| part.update!(state: "installed") }
+    end
+  end
+
   def imu_mount_change_at(time)
     return imu_mount_history.last unless time
     imu_mount_history.reverse.find { |change| Time.iso8601(change.fetch("effective_at")) <= time }
@@ -204,9 +213,6 @@ class Assembly < ApplicationRecord
       errors.add(attribute, "cannot be changed; retire this assembly and create a new one") if will_save_change_to_attribute?(attribute)
     end
     errors.add(:name, "is the generated serial number and cannot be changed") if controlled_fdr? && will_save_change_to_name?
-    if serviceability_state_in_database == "retired" && will_save_change_to_serviceability_state?
-      errors.add(:serviceability_state, "cannot be changed after retirement")
-    end
   end
 
   def retain_exofdr_identity

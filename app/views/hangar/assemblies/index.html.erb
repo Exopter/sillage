@@ -4,6 +4,9 @@
   <div><h2>Assemblies</h2><p>Explore systems, their modules, and the parts inside.</p></div>
   <%= link_to new_hangar_assembly_path, class: "button-primary" do %><%= sillage_icon "plus", size: 17 %><span>New assembly</span><% end %>
 </header>
+<%= form_with url: hangar_assemblies_path, method: :get, class: "workspace-filterbar", data: { controller: "auto-submit" } do |form| %>
+  <label class="workspace-state-filter"><span class="sr-only">Filter by state</span><%= form.select :state, options_for_select([["Current assemblies", ""], ["All states", "all"], *Assembly::SERVICEABILITY_STATES.map { |state| [state.humanize, state] }], @state), {}, data: { action: "change->auto-submit#submit" } %></label>
+<% end %>
 <% if @selected_node %>
   <div data-controller="assembly-hierarchy" data-assembly-hierarchy-selected-value="<%= @selected_node.key %>" data-action="turbo:before-cache@document->assembly-hierarchy#beforeCache">
     <div class="exds-hierarchy-summary">
@@ -45,5 +48,5 @@
     </dialog>
   </div>
 <% else %>
-  <div class="workspace-empty">No assemblies registered yet.</div>
+  <div class="workspace-empty">No assemblies match the selected filter.</div>
 <% end %>

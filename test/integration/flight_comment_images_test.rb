@@ -94,7 +94,7 @@ class FlightCommentImagesTest < ActionDispatch::IntegrationTest
   test "image access follows flight access and only the author may change images" do
     comment = create_comment(images: [ image_upload ])
     image = comment.images.sole
-    sign_in_as @viewer
+    sign_in_as_admin @viewer
     get attachment_path(image)
     assert_response :success
     patch flight_comment_path(@flight, comment), params: { flight_comment: { body: "Forbidden", remove_image_ids: [ image.id ] } }
@@ -110,7 +110,7 @@ class FlightCommentImagesTest < ActionDispatch::IntegrationTest
 
     folder = @owner.flight_folders.create!(name: "Image review", visibility: "shared", members: [ @viewer ])
     @flight.update!(folder:)
-    sign_in_as @viewer
+    sign_in_as_admin @viewer
     get attachment_path(image)
     assert_response :success
     folder.memberships.destroy_all

@@ -9,7 +9,7 @@ class PartAssemblyAssignmentTest < ActionDispatch::IntegrationTest
     @part = Part.create!(function: @function, model: "Test sensor", notes: "Original notes")
     @part.install_in!(@original, at: 1.day.ago)
     @installation = @part.active_part_installation
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
   end
 
   test "edit preselects the current assembly and offers active assembly identities" do
@@ -69,7 +69,7 @@ class PartAssemblyAssignmentTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "a current retired assembly remains selected until the part is explicitly moved" do
+  test "a retired assembly keeps its retired mounted part and allows metadata updates" do
     @original.update!(serviceability_state: "retired")
 
     get edit_hangar_part_path(@part)
@@ -82,7 +82,9 @@ class PartAssemblyAssignmentTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to hangar_part_path(@part)
-    assert_original_installation
+    assert_equal @installation, @part.reload.active_part_installation
+    assert_nil @installation.reload.removed_at
+    assert_equal "retired", @part.state
     assert_equal "Updated notes", @part.notes
   end
 
@@ -148,7 +150,9 @@ class PartAssemblyAssignmentTest < ActionDispatch::IntegrationTest
     assert installation.reload.active?
   end
 
-  test "quarantined and retired parts cannot be installed by an operator" do
+  test "a read-only user cannot install or reactivate quarantined and retired parts" do
+    users(:operator).update!(role: "user")
+    sign_in_as users(:operator)
     %w[quarantined retired].each do |state|
       part = Part.create!(function: @function, model: "Unserviceable sensor", state:)
 
@@ -156,7 +160,7 @@ class PartAssemblyAssignmentTest < ActionDispatch::IntegrationTest
         patch hangar_part_path(part), params: { part: { assembly_id: @replacement.id, state: "available" } }
       end
 
-      assert_response :unprocessable_entity
+      assert_response :forbidden
       assert_nil part.reload.assembly
       assert_equal state, part.state
     end

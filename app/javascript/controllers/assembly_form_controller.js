@@ -3,11 +3,13 @@ import { Controller } from "@hotwired/stimulus"
 /**
  * @typedef {Object} StimulusBindings
  * @property {boolean} hasTypeTarget
+ * @property {boolean} hasMountingTarget
  * @property {boolean} hasConfigurationSelectTarget
  * @property {boolean} hasIdentityTarget
  * @property {boolean} hasParametersTarget
  * @property {HTMLSelectElement} configurationSelectTarget
  * @property {HTMLSelectElement} typeTarget
+ * @property {HTMLFieldSetElement} mountingTarget
  * @property {HTMLFieldSetElement} parametersTarget
  * @property {HTMLFieldSetElement} identityTarget
  * @property {HTMLInputElement[]} configurationTargets
@@ -19,7 +21,7 @@ import { Controller } from "@hotwired/stimulus"
 const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller<HTMLElement> & StimulusBindings} */ (/** @type {unknown} */ (Controller))
 
 export default class extends TypedController {
-  static targets = ["type", "parameters", "identity", "configuration", "configurationSelect", "method", "component", "preview", "submit"]
+  static targets = ["type", "mounting", "parameters", "identity", "configuration", "configurationSelect", "method", "component", "preview", "submit"]
 
   connect() {
     this.update()
@@ -49,6 +51,10 @@ export default class extends TypedController {
     this.methodTarget.required = !typed && selected
     this.componentTarget.disabled = !typed || !selected
     this.componentTarget.required = typed && selected
+    if (this.hasMountingTarget) {
+      this.mountingTarget.hidden = !selected || (typed && this.componentTarget.value === "SYSTEMS")
+      this.mountingTarget.disabled = this.mountingTarget.hidden
+    }
     const discriminator = typed ? this.componentTarget.value : this.methodTarget.value
     this.submitTarget.disabled = !(generic || (selected && version && discriminator))
     this.previewTarget.textContent = version && discriminator

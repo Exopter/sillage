@@ -40,9 +40,9 @@ class FlightCommentsFlowTest < ActionDispatch::IntegrationTest
     assert_select ".exds-comments-empty"
   end
 
-  test "viewers comment but cannot alter another author's comments including admins" do
+  test "administrators with flight access comment but cannot alter another author's comments" do
     owner_comment = @flight.comments.create!(user: @owner, body: "Owner comment")
-    sign_in_as @viewer
+    sign_in_as_admin @viewer
     post flight_comments_path(@flight), params: { flight_comment: { body: "Viewer comment" } }
     assert_response :see_other
     viewer_comment = @flight.comments.order(:id).last
@@ -65,7 +65,7 @@ class FlightCommentsFlowTest < ActionDispatch::IntegrationTest
     folder = @owner.flight_folders.create!(name: "Comments campaign", visibility: "shared", members: [ @viewer ])
     @flight.update!(folder:)
     comment = @flight.comments.create!(user: @viewer, body: "Member comment")
-    sign_in_as @viewer
+    sign_in_as_admin @viewer
     get flight_comments_path(@flight)
     assert_response :success
     folder.memberships.destroy_all

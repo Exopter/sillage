@@ -38,14 +38,16 @@
     <label><span>Name</span><%= form.text_field :name, required: true %></label>
   <% end %>
   <div class="workspace-form-grid">
-    <label><span>Serviceability</span><%= form.select :serviceability_state, Assembly::SERVICEABILITY_STATES.map { |state| [state.humanize, state] }, {}, disabled: assembly.serviceability_state == "retired" %></label>
+    <label><span>Serviceability</span><%= form.select :serviceability_state, Assembly::SERVICEABILITY_STATES.map { |state| [state.humanize, state] } %></label>
     <label class="is-wide"><span>Parent assembly</span><%= form.collection_select :parent_id, @parent_options, :id, :selection_label, { include_blank: "No parent" } %></label>
     <label><span>Internal Asset ID</span><%= text_field_tag nil, assembly.internal_number || "Assigned automatically", disabled: true %></label>
   </div>
   <label><span>Notes</span><%= form.text_area :notes, rows: 4 %></label>
-  <% unless assembly.fdr_system? %>
-    <label><span>IMU mounting</span><%= form.select :imu_mount_profile, Imu::Mount::LABELS.map { |id, label| [label, id] } %></label>
-    <p class="workspace-muted">None keeps native sensor axes without a mounting correction. Wingsuit belly pocket: +Y forward, +X left, +Z down. Changing the mounting requires a new reference and preflight check.</p>
+  <% if assembly.new_record? || (assembly.controlled_fdr? && !assembly.fdr_system?) %>
+    <fieldset class="workspace-fieldset" data-assembly-form-target="mounting" <%= "hidden disabled" unless assembly.controlled_fdr? %>>
+      <label><span>IMU mounting</span><%= form.select :imu_mount_profile, Imu::Mount::LABELS.map { |id, label| [label, id] } %></label>
+      <p class="workspace-muted">None keeps native sensor axes without a mounting correction. Wingsuit belly pocket: +Y forward, +X left, +Z down. Changing the mounting requires a new reference and preflight check.</p>
+    </fieldset>
   <% end %>
   <div class="workspace-actions">
     <%= link_to "Cancel", assembly.persisted? ? hangar_assembly_path(assembly) : hangar_assemblies_path, class: "button-secondary" %>

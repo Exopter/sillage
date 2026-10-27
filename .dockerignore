@@ -33,6 +33,8 @@
 /app/assets/builds/*
 !/app/assets/builds/.keep
 /public/assets
+/public/previews/
+/db/seeds/fdr_v2_demo.rb
 /public/vendor/cesium/
 /public/vendor/feedback/
 /public/vendor/leaflet/

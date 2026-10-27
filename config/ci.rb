@@ -34,6 +34,7 @@ CI.run do
   step "Tests: FDR Wi-Fi provisioning contract", "node test/javascript/fdr_wifi_provisioning_test.mjs"
   step "Tests: Aircraft connection identity", "node test/javascript/aircraft_connection_test.mjs"
   step "Tests: Recorder presence lifecycle", "node test/javascript/recorder_presence_test.mjs"
+  step "Tests: Persistent recorder connections", "node test/javascript/recorder_session_test.mjs"
   step "Tests: Recorder identity lifecycle", "node test/javascript/recorder_identity_test.mjs"
   step "Tests: Assembly configuration form", "node test/javascript/assembly_form_test.mjs"
   step "Tests: Feedback annotations and submission", "node test/javascript/feedback_test.mjs"

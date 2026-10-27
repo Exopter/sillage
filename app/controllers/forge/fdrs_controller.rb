@@ -8,9 +8,9 @@ module Forge
     before_action :load_workspace
 
     def index
-      @assemblies = Assembly.connectable_fdrs.includes(:fdr_functional_configuration,
+      @assemblies = Assembly.not_retired.connectable_fdrs.includes(:fdr_functional_configuration,
         active_fdr_board_installation: { embedded_controller: [ :signal_presence, :recorder_connections ] }).ordered
-      @fdrs = EmbeddedController.includes(:signal_presence, :recorder_connections, active_fdr_board_installation: :assembly).ordered
+      @fdrs = EmbeddedController.includes(:part, :signal_presence, :recorder_connections, active_fdr_board_installation: :assembly).ordered.reject { |fdr| fdr.part&.state == "retired" || fdr.assembly&.serviceability_state == "retired" }
       @unassigned_fdrs = @fdrs.reject { |fdr| fdr.assembly || fdr.fdr_board_installations.exists? }
       live_fdrs = @fdrs.select { |fdr| fdr.assembly && fdr.signal_presence&.fresh? }
       @default_wifi_configuration_fdr = live_fdrs.one? ? live_fdrs.first : (@fdrs.one? ? @fdrs.first : nil)
@@ -72,12 +72,13 @@ module Forge
 
     def set_fdr
       if Assembly::EXOFDR_SERIAL_PATTERN.match?(params[:id].to_s)
-        @assembly = Assembly.find_by!(serial_number: params[:id])
+        @assembly = Assembly.not_retired.find_by!(serial_number: params[:id])
         return redirect_to hangar_assembly_path(@assembly) if @assembly.fdr_system?
         @fdr = @assembly.embedded_controller
       else
         @fdr = EmbeddedController.find(params[:id])
         @assembly = @fdr.assembly
+        raise ActiveRecord::RecordNotFound if @assembly&.serviceability_state == "retired" || @fdr.part&.state == "retired"
         # Existing numeric links render the same FDR; new links use its serial.
       end
     end
@@ -88,7 +89,7 @@ module Forge
     end
 
     def load_workspace
-      @workspace_recorders = Assembly.connectable_fdrs.includes(:fdr_functional_configuration, active_fdr_board_installation: :embedded_controller).ordered
+      @workspace_recorders = Assembly.not_retired.connectable_fdrs.includes(:fdr_functional_configuration, active_fdr_board_installation: :embedded_controller).ordered
       session[:forge_recorder] = @assembly.serial_number if @assembly
     end
 

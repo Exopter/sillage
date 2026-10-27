@@ -7,10 +7,10 @@ class FlightFolderSharingFlowTest < ActionDispatch::IntegrationTest
     @folder = @owner.flight_folders.create!(name: "Shared campaign", visibility: "shared", members: [ @member ])
     @flight = flights(:one)
     @flight.update!(folder: @folder)
-    sign_in_as @member
+    sign_in_as_admin @member
   end
 
-  test "members manage every accessible flight while folder administration stays owner scoped" do
+  test "administrator members manage accessible flights while folder administration stays owner scoped" do
     get flights_path(folder: @folder.id, visibility: "shared")
     assert_response :success
     assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@flight)
@@ -137,7 +137,7 @@ class FlightFolderSharingFlowTest < ActionDispatch::IntegrationTest
     delete logout_path
     get member_search_flight_folders_path(q: "search-")
     assert_redirected_to new_session_path
-    sign_in_as @member
+    sign_in_as_admin @member
     @member.update!(disabled_at: Time.current)
     get member_search_flight_folders_path(q: "search-")
     assert_redirected_to new_session_path

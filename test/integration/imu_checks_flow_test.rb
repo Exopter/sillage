@@ -103,7 +103,7 @@ class ImuChecksFlowTest < ActionDispatch::IntegrationTest
     post api_v1_imu_checks_path, params: @payload, as: :json
     assert_response :created
     @flight.update!(visibility: "team")
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     get flight_imu_check_path(@flight)
     assert_response :success
     post api_v1_imu_checks_path, params: @payload.merge(uuid: SecureRandom.uuid, kind: "preflight", flight_id: @flight.id), as: :json
@@ -183,7 +183,7 @@ class ImuChecksFlowTest < ActionDispatch::IntegrationTest
     check = ImuCheck.last
     session = SignalSession.create!(user: users(:julien), flight: @flight)
     @flight.update!(visibility: "team")
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
     post events_api_v1_signal_session_path(session.uuid), params: { event_uuid: SecureRandom.uuid,
       event_type: "warning", label: "IMU: quality unavailable", metadata: { source: "imu_health", invalidate_preflight_id: check.id } }, as: :json
     assert_response :created

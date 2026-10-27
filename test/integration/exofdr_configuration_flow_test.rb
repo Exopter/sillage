@@ -1,7 +1,7 @@
 require "test_helper"
 
 class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
-  setup { sign_in_as users(:operator) }
+  setup { sign_in_as_admin users(:operator) }
 
   test "configuration catalogue is separate from core inventory and supports CRUD until used" do
     get hangar_fdr_functional_configurations_path
@@ -27,8 +27,8 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
   test "creation requires a type and previews selectable capabilities without asking for a name" do
     configuration = create_fdr_functional_configuration(version: 42, planned_capabilities: "Recording and telemetry")
     get new_hangar_assembly_path
-    assert_select "select[name='assembly[assembly_type]'] option", count: 4
-    assert_select "fieldset[hidden][disabled] input[name='assembly[name]']", count: 1
+    assert_select "select[name='assembly[assembly_type]'] option", count: Assembly::ASSEMBLY_TYPES.size + 1
+    assert_select "fieldset[data-assembly-form-target='identity'][hidden][disabled] input[name='assembly[name]']"
     assert_select "input[name='assembly[serial_number]'], select[name='assembly[hardware_definition_id]']", count: 0
     assert_select "table.workspace-choice-table", text: /V42.*Recording and telemetry/m
 
@@ -46,8 +46,10 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
       assert_equal format("EXOFDR-V42-MAIN-%02d", index + 1), assembly.name
       assert_equal assembly.name, assembly.serial_number
       follow_redirect!
-      follow_redirect!
-      assert_select ".exds-recorder-heading p", assembly.name
+      assert_response :success
+      assert_select ".workspace-header h2", assembly.name
+      assert_select ".hangar-tabs"
+      assert_select "a[href='#{forge_fdr_path(assembly.serial_number)}']", text: "Open in Forge"
       assert_select ".workspace-header", text: /S\/N|Hardware definition/, count: 0
     end
   end
@@ -74,7 +76,8 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
     assert_redirected_to hangar_assembly_path(assembly)
     assert_equal "retired", assembly.reload.serviceability_state
     patch hangar_assembly_path(assembly), params: { assembly: { serviceability_state: "in_preparation" } }
-    assert_response :unprocessable_entity
+    assert_redirected_to hangar_assembly_path(assembly)
+    assert_equal "in_preparation", assembly.reload.serviceability_state
   end
 
   test "empty catalogue has an actionable state on assembly creation" do
@@ -92,7 +95,7 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "section[aria-label='Selected assembly details'] .workspace-actions" do
       assert_select "a", count: 2
-      assert_select "a[href='#{hangar_assembly_path(assembly)}']", text: "Open"
+      assert_select "a[href='#{hangar_assembly_path(assembly)}']", text: "Open in Hangar"
       assert_select "a[href='#{forge_fdr_path(controller.forge_identifier)}']", text: "Open in Forge"
       assert_select "button", count: 0
     end
@@ -100,8 +103,9 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
     assert_select ".hangar-details-body dt", text: "Internal Asset ID", count: 1
 
     get hangar_assembly_path(assembly)
-    assert_redirected_to forge_fdr_path(assembly.serial_number)
-    follow_redirect!
+    assert_response :success
+    assert_select "a[href='#{edit_hangar_assembly_path(assembly)}']", text: "Edit"
+    get forge_fdr_path(assembly.serial_number)
     assert_select "a[href='#{edit_hangar_assembly_path(assembly)}']", text: "Edit in Hangar"
     assert_select ".workspace-details dt", text: "Internal Asset ID", count: 0
     assert_select ".workspace-details dt", text: "ECU ID", count: 0

@@ -8,8 +8,16 @@ module Hangar
 
     attr_reader :nodes, :roots, :assemblies
 
-    def initialize
-      @assemblies = Assembly.includes(:fdr_functional_configuration, parts: :function).ordered.to_a
+    def initialize(state: nil)
+      all = Assembly.includes(:fdr_functional_configuration, parts: :function).ordered.to_a
+      by_id = all.index_by(&:id)
+      included = all.select { |assembly| state == "all" || (state ? assembly.serviceability_state == state : assembly.serviceability_state != "retired") }.to_set
+      included.to_a.each do |assembly|
+        while (assembly = by_id[assembly.parent_id])
+          included.add(assembly)
+        end
+      end
+      @assemblies = all.select { |assembly| included.include?(assembly) }
       @nodes = {}
       @assemblies.each { |assembly| add_assembly(assembly) }
       @nodes.values.each { |node| @nodes[node.parent_key]&.children&.push(node) }

@@ -4,7 +4,7 @@
     <header class="hangar-panel-head"><span class="section-eyebrow"><%= node.assembly? ? "Assembly details" : "Part details" %></span></header>
     <div class="exds-hierarchy-path">
       <% if parents.any? %>
-        <% parents.each_with_index do |parent, index| %><%= " / " if index.positive? %><%= link_to parent.label, hangar_assemblies_path(node: parent.key), data: { turbo_frame: "assembly-details", action: "assembly-hierarchy#select", key: parent.key } %><% end %>
+        <% parents.each_with_index do |parent, index| %><%= " / " if index.positive? %><%= link_to parent.label, hangar_assemblies_path(node: parent.key, state: @state), data: { turbo_frame: "assembly-details", action: "assembly-hierarchy#select", key: parent.key } %><% end %>
       <% else %><%= node.kind == "system" ? "SYSTEMS / Root assembly" : "Standalone / Root assembly" %><% end %>
     </div>
     <div class="hangar-details-body">
@@ -29,7 +29,7 @@
       </dl>
       <div class="workspace-actions">
         <%= link_to "Open full record", node.assembly? ? hangar_assembly_path(asset) : hangar_part_path(asset), class: "button-secondary is-compact", data: { turbo_frame: "_top" } %>
-        <% if node.assembly? && !asset.fdr_system? && (board = asset.embedded_controller) %><%= link_to "Open in Forge", forge_fdr_path(board.forge_identifier), class: "button-secondary is-compact", data: { turbo_frame: "_top" } %><% end %>
+        <% if node.assembly? && asset.controlled_fdr? && !asset.fdr_system? && asset.serviceability_state != "retired" %><%= link_to "Open in Forge", forge_fdr_path(asset.serial_number), class: "button-secondary is-compact", data: { turbo_frame: "_top" } %><% end %>
         <% if node.assembly? && !asset.controlled_fdr? %><%= button_to "Delete", hangar_assembly_path(asset), method: :delete, class: "button-danger is-compact", form: { data: { turbo_frame: "_top", turbo_confirm: "Delete #{asset.internal_number} permanently? This cannot be undone." } } %><% end %>
       </div>
     </div>

@@ -6,7 +6,7 @@
     <div><dt>Folder</dt><dd><%= @flight.folder ? link_to(@flight.folder.name, flights_path(folder: @flight.folder_id), data: { turbo_frame: "flight-browser" }) : "Unfiled" %></dd></div>
   <% end %>
 </dl>
-<% if @flight.visible_to?(Current.user) %>
+<% if can_manage_operations? && @flight.visible_to?(Current.user) %>
   <%= link_to edit_flight_path(@flight, **browser_context), class: "button-secondary", data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %> Edit flight<% end %>
 <% end %>
 <%= render "flight_comments/comments", flight: @flight %>

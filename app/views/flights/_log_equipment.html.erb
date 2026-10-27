@@ -4,7 +4,7 @@
     <div><dt>Aircraft</dt><dd><%= flight.display_aircraft %></dd></div>
     <div><dt>FDR</dt><dd><%= flight.fdr&.display_name || (flight.flight_import ? "Recording attached" : "Not linked") %></dd></div>
   </dl>
-  <% if flight.visible_to?(Current.user) %>
+  <% if can_manage_operations? && flight.visible_to?(Current.user) %>
     <%= link_to "Edit equipment", edit_flight_path(flight, **browser_context), class: "button-secondary", data: { turbo_frame: "flight-browser" } %>
     <% if flight.recording_enabled? %>
       <section class="exds-browser-editor-section" aria-label="Flight recording">

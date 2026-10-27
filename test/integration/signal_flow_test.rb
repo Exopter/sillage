@@ -444,7 +444,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select ".workspace-table", text: /Model not reported/, count: 0
     assert_select ".sillage-topbar .aircraft-connection-pill", count: 0
     assert_select "#sillage-fdr-connectivity[data-controller='fdr-connectivity'][data-fdr-connectivity-registration-url-value='#{api_v1_fdr_registration_path}'][data-fdr-connectivity-authentication-url-value='#{api_v1_fdr_authentication_path}'][data-fdr-connectivity-sillage-heartbeat-url-value='#{api_v1_fdr_sillage_heartbeats_path}']"
-    assert_select "#sillage-fdr-connectivity[data-turbo-permanent]", count: 0
+    assert_select "#sillage-fdr-connectivity[data-turbo-permanent]", count: 1
     assert_select "#sillage-fdr-connectivity[data-fdr-connectivity-expected-device-id-value]", count: 0
     assert_select ".sillage-persistent-fdr-connectivity", count: 0
     assert_select ".signal-fdr-transport", count: 3
@@ -518,7 +518,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
       assert_select ".signal-fdr-firmware[data-fdr-connectivity-target='recorderFirmwareGroup'][hidden]", text: "(Unavailable)"
       assert_select "[data-fdr-connectivity-target='recorderFirmware']", text: "Unavailable"
     end
-    assert_select ".signal-fdr-overview-head .signal-fdr-recording-control[data-fdr-connectivity-target='recordingControl'][data-state='unavailable'][role='group']", count: 1 do
+    assert_select ".signal-fdr-recording-control[data-fdr-connectivity-target='recordingControl'][data-state='unavailable'][role='group']", count: 1 do
       assert_select "strong#recording-title", text: "Recording"
       assert_select ".signal-k", count: 0
       assert_select "[data-fdr-connectivity-target='recording']", count: 0
@@ -587,7 +587,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".sillage-topbar .aircraft-connection-pill", count: 0
     assert_select ".signal-home #sillage-fdr-connectivity", count: 0
-    assert_select "#sillage-fdr-connectivity", count: 0
+    assert_select "[data-recorder-session-host][hidden] #sillage-fdr-connectivity[data-turbo-permanent]", count: 1
     assert_select "#signal-development-status", count: 0
     assert_select ".signal-home button", minimum: 1
     assert_select ".signal-home button[disabled]", count: 0
@@ -595,11 +595,11 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select ".signal-start-direct:not([disabled])", text: /Start unassigned session/, count: 1
   end
 
-  test "does not keep the recorder connection manager outside Forge" do
+  test "keeps recorder connections hidden outside Forge" do
     get flights_path
 
     assert_response :success
     assert_select ".sillage-topbar .aircraft-connection-pill", count: 0
-    assert_select "#sillage-fdr-connectivity", count: 0
+    assert_select "[data-recorder-session-host][hidden] #sillage-fdr-connectivity[data-turbo-permanent]", count: 1
   end
 end

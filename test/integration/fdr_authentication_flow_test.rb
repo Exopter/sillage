@@ -8,7 +8,7 @@ class FdrAuthenticationFlowTest < ActionDispatch::IntegrationTest
   setup do
     @recorder = create_embedded_controller(assembly: Assembly.create!(name: "Authenticated recorder"), device_id: "ECU-A172E0")
     @key = @recorder.ensure_fdr_auth_key!
-    sign_in_as users(:operator)
+    sign_in_as_admin users(:operator)
   end
 
   test "returns a device-scoped BLE proof without exposing the authentication key" do

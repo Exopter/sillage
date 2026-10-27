@@ -6,18 +6,22 @@ const source = (await readFile(new URL("../../app/javascript/controllers/assembl
 const {default: AssemblyForm} = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`)
 const form = new AssemblyForm()
 Object.assign(form, {
-  hasTypeTarget: true, typeTarget: {value: ""}, parametersTarget: {}, identityTarget: {},
+  hasMountingTarget: true, mountingTarget: {}, hasTypeTarget: true, typeTarget: {value: ""}, parametersTarget: {}, identityTarget: {},
   hasParametersTarget: true, hasIdentityTarget: true, hasConfigurationSelectTarget: false,
   configurationTargets: [{checked: false, dataset: {version: "V1"}}],
   methodTarget: {value: "", closest: () => ({})}, componentTarget: {value: "", closest: () => ({})}, previewTarget: {}, submitTarget: {}
 })
 form.connect()
+assert.equal(form.mountingTarget.hidden, true)
+assert.equal(form.mountingTarget.disabled, true)
 assert.equal(form.parametersTarget.hidden, true)
 assert.equal(form.parametersTarget.disabled, true)
 assert.equal(form.submitTarget.disabled, true)
 assert.equal(form.identityTarget.disabled, true)
 form.typeTarget.value = "ExoFDR"
 form.update()
+assert.equal(form.mountingTarget.hidden, false)
+assert.equal(form.mountingTarget.disabled, false)
 assert.equal(form.parametersTarget.hidden, false)
 assert.equal(form.parametersTarget.disabled, false)
 assert.equal(form.submitTarget.disabled, true)

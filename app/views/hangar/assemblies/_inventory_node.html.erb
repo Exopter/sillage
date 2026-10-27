@@ -5,7 +5,7 @@
       <% if node.children.any? %>
         <button class="exds-hierarchy-disclosure" type="button" aria-label="Collapse <%= node.label %>" aria-expanded="true" aria-controls="children-<%= node.key %>" data-label="<%= node.label %>" data-key="<%= node.key %>" data-action="assembly-hierarchy#toggle"><%= sillage_icon "chevron-right", size: 14 %></button>
       <% else %><span class="exds-hierarchy-disclosure-space"></span><% end %>
-      <%= link_to hangar_assemblies_path(node: node.key), class: "exds-hierarchy-select", aria: { current: ("true" if node == @selected_node) }, data: { turbo_frame: "assembly-details", action: "assembly-hierarchy#select", key: node.key } do %>
+      <%= link_to hangar_assemblies_path(node: node.key, state: @state), class: "exds-hierarchy-select", aria: { current: ("true" if node == @selected_node) }, data: { turbo_frame: "assembly-details", action: "assembly-hierarchy#select", key: node.key } do %>
         <span class="exds-hierarchy-icon"><%= sillage_icon(node.assembly? ? "layers" : "wrench", size: 16) %></span>
         <span class="exds-hierarchy-copy"><strong><%= node.label %></strong><small><%= node.subtitle %><% if node.assembly? %> · <% if node.kind == "system" %><%= pluralize @inventory.child_assemblies(node).size, "module" %> · <% end %><%= pluralize @inventory.part_count(node), "part" %><% end %></small></span>
       <% end %>
