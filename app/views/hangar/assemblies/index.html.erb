@@ -7,8 +7,8 @@
 <%= form_with url: hangar_assemblies_path, method: :get, class: "workspace-filterbar", data: { controller: "auto-submit" } do |form| %>
   <label class="workspace-state-filter"><span class="sr-only">Filter by state</span><%= form.select :state, options_for_select([["Current assemblies", ""], ["All states", "all"], *Assembly::SERVICEABILITY_STATES.map { |state| [state.humanize, state] }], @state), {}, data: { action: "change->auto-submit#submit" } %></label>
 <% end %>
-<% if @selected_node %>
-  <div data-controller="assembly-hierarchy" data-assembly-hierarchy-selected-value="<%= @selected_node.key %>" data-action="turbo:before-cache@document->assembly-hierarchy#beforeCache">
+<% if @inventory.roots.any? %>
+  <div data-controller="assembly-hierarchy" data-assembly-hierarchy-selected-value="<%= @selected_node&.key %>" data-action="turbo:before-cache@document->assembly-hierarchy#beforeCache">
     <div class="exds-hierarchy-summary">
       <% systems = @inventory.assemblies.count(&:fdr_system?) %>
       <span><strong><%= systems %></strong> <%= "system".pluralize(systems) %></span>

@@ -7,7 +7,7 @@ module Hangar
     def index
       @state = params[:state].presence_in([ "all", *Assembly::SERVICEABILITY_STATES ])
       @inventory = AssemblyInventory.new(state: @state)
-      @selected_node = @inventory.find(params[:node]) || @inventory.find("assembly-#{params[:assembly_id]}") || @inventory.roots.first
+      @selected_node = @inventory.find(params[:node]) || @inventory.find("assembly-#{params[:assembly_id]}")
       render partial: "inventory_details", locals: { node: @selected_node } if turbo_frame_request?
     end
 

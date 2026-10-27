@@ -25,6 +25,10 @@ class AssemblyHierarchyTest < ActionDispatch::IntegrationTest
     assert_select "section[aria-label='Standalone'] [data-key='assembly-#{@lite.id}'][data-kind='assembly']", count: 1
     assert_select "section[aria-label='Standalone'] [data-key='assembly-#{@main.id}']", count: 0
     assert_select "turbo-frame#assembly-details", count: 1
+    assert_select "[data-assembly-hierarchy-selected-value='']", count: 1
+    assert_select ".exds-hierarchy-row.is-selected", count: 0
+    assert_select ".exds-hierarchy-select[aria-current]", count: 0
+    assert_select "#assembly-details .workspace-empty", "Select an assembly or part to view its details."
   end
 
   test "part detail request retains ancestry and returns only its Turbo frame" do

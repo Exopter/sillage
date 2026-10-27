@@ -34,5 +34,5 @@
       </div>
     </div>
     <footer class="hangar-detail-note"><%= node.kind == "system" ? "A logical SYSTEMS assembly groups physical modules. Each module keeps its own serial number." : "Parts and nested Assemblies can be moved while their installation history remains traceable." %></footer>
-  <% else %><p class="workspace-empty">This item is no longer in the assembly inventory.</p><% end %>
+  <% else %><p class="workspace-empty"><%= params[:node].present? || params[:assembly_id].present? ? "This item is no longer in the assembly inventory." : "Select an assembly or part to view its details." %></p><% end %>
 <% end %>
