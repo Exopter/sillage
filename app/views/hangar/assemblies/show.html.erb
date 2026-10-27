@@ -10,9 +10,6 @@
   <div class="workspace-actions">
     <% if @assembly.controlled_fdr? && !@assembly.fdr_system? && @assembly.serviceability_state != "retired" %><%= link_to "Open in Forge", forge_fdr_path(@assembly.serial_number), class: "button-primary" %><% end %>
     <%= link_to "Edit", edit_hangar_assembly_path(@assembly), class: "button-secondary" %>
-    <% unless @assembly.controlled_fdr? %>
-      <%= button_to "Delete", hangar_assembly_path(@assembly), method: :delete, class: "button-danger", form: { data: { turbo_confirm: "Delete #{@assembly.internal_number} permanently? This cannot be undone." } } %>
-    <% end %>
   </div>
 </header>
 
@@ -34,3 +31,11 @@
 
 <%= render "components" %>
 <%= render "fdr_system" if @assembly.fdr_component_type.present? %>
+
+<section class="workspace-panel danger-panel" aria-labelledby="assembly-sensitive-zone">
+  <h2 id="assembly-sensitive-zone">Sensitive zone</h2>
+  <p>Retiring this assembly is recommended instead of deleting it: retirement preserves its identity and installation history for traceability. Remove it from its aircraft and parent assembly first, then set its serviceability to Retired.</p>
+  <p>Deletion is permanent and cannot be undone. Assemblies with parts, subassemblies, a parent assembly, installation history, board installation history, system membership history or flight history cannot be deleted.</p>
+  <%= button_to "Delete assembly", hangar_assembly_path(@assembly), method: :delete, class: "button-danger",
+    form: { data: { turbo_confirm: "Delete #{@assembly.display_name} (#{@assembly.internal_number}) permanently? This cannot be undone. Retire the assembly instead to preserve traceability." } } %>
+</section>

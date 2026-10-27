@@ -55,7 +55,6 @@ class FdrFunctionalConfigurationTest < ActiveSupport::TestCase
     { assembly_type: nil, assembly_method: "PCB", fdr_functional_configuration: create_fdr_functional_configuration(version: 1), name: "Renamed" }.each do |attribute, value|
       assert_not assembly.reload.update(attribute => value)
     end
-    assert_not assembly.reload.destroy
     assembly.reload.update!(serviceability_state: "retired")
     assert assembly.update(serviceability_state: "in_preparation")
     assert_equal original.fetch("serial_number"), assembly.reload.serial_number

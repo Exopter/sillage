@@ -30,7 +30,6 @@
       <div class="workspace-actions">
         <%= link_to "Open full record", node.assembly? ? hangar_assembly_path(asset) : hangar_part_path(asset), class: "button-secondary is-compact", data: { turbo_frame: "_top" } %>
         <% if node.assembly? && asset.controlled_fdr? && !asset.fdr_system? && asset.serviceability_state != "retired" %><%= link_to "Open in Forge", forge_fdr_path(asset.serial_number), class: "button-secondary is-compact", data: { turbo_frame: "_top" } %><% end %>
-        <% if node.assembly? && !asset.controlled_fdr? %><%= button_to "Delete", hangar_assembly_path(asset), method: :delete, class: "button-danger is-compact", form: { data: { turbo_frame: "_top", turbo_confirm: "Delete #{asset.internal_number} permanently? This cannot be undone." } } %><% end %>
       </div>
     </div>
     <footer class="hangar-detail-note"><%= node.kind == "system" ? "A logical SYSTEMS assembly groups physical modules. Each module keeps its own serial number." : "Parts and nested Assemblies can be moved while their installation history remains traceable." %></footer>
