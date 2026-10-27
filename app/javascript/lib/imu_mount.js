@@ -31,6 +31,8 @@ export function bellyAttitude(quaternion) {
  * @param {import('../types/signal').DecodedMessage} decoded @param {string} profile
  * @returns {import('../types/signal').DecodedMessage} */
 export function interpretImu(decoded, profile) {
+  if (decoded.name === "live_instruments") return {...decoded, attitude: decoded.attitude
+    ? /** @type {import('../types/signal').AttitudeTelemetry} */ (interpretImu(decoded.attitude, profile)) : null}
   if (profile !== BELLY_MOUNT || !("coordinateFrame" in decoded) || decoded.coordinateFrame !== "sensor_native") return decoded
   if (decoded.name === "highres_imu") return {...decoded, coordinateFrame: "body_frd_ned",
     acceleration: mountedVector(decoded.acceleration, profile), angularVelocity: mountedVector(decoded.angularVelocity, profile), magneticField: mountedVector(decoded.magneticField, profile)}

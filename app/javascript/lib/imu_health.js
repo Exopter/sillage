@@ -14,6 +14,7 @@ const finiteVector = (/** @type {number[] | null} */ v) => v?.length === 3 && v.
 /** @typedef {{t:number, roll:number, pitch:number, accel:number[], gyro:number[], mag:number[], accuracy:number[], heading_accuracy:number, quality_age:number, firmware?:string, quaternion?:number[], frame?:string}} ReferenceSample */
 
 export class ImuHealth {
+  liveOnly = false
   /** @type {Quality|null} */ quality = null
   qualityAt = 0
   /** @type {Extract<import('../types/signal').DecodedMessage, {name:'highres_imu'}>|null} */ imu = null
@@ -26,14 +27,19 @@ export class ImuHealth {
 
   /** @param {import('../types/signal').DecodedMessage} d @param {number} now */
   apply(d, now) {
-    if (d.name === "imu_quality") {
+    if (d.name === "live_instruments") {
+      this.liveOnly = true; this.imu = null; this.jumpUntil = 0
+      if (d.attitude) this.apply(d.attitude, now)
+      else this.attitude = null
+    } else if (d.name === "imu_quality") {
       const p = this.quality
       if (p && (p.bootId !== d.bootId || p.imuEpoch !== d.imuEpoch || p.deviceId !== d.deviceId || p.firmware !== d.firmware || d.timeBootMs < p.timeBootMs)) {
-        this.generation++; this.imu = null; this.attitude = null; this.pending.clear(); this.jumpUntil = 0
+        this.generation++; this.imu = null; this.attitude = null; this.pending.clear(); this.jumpUntil = 0; this.liveOnly = false
       }
       if (p && p.deviceId === d.deviceId && p.firmware === d.firmware && p.bootId === d.bootId && p.imuEpoch === d.imuEpoch && p.timeBootMs === d.timeBootMs) return
       this.quality = d; this.qualityAt = now
     } else if (d.name === "highres_imu") {
+      this.liveOnly = false
       if (d.timeUs === this.imu?.timeUs) return
       this.imu = d; this.imuAt = now
     } else if (d.name === "attitude") {
@@ -55,6 +61,7 @@ export class ImuHealth {
 
   /** @param {number} now */
   sample(now) {
+    if (this.liveOnly) return null
     const q = this.quality, i = this.imu, a = this.attitude
     if (!q || !i || !a || now - this.qualityAt > 1500 || now - this.imuAt > 500 || now - this.attitudeAt > 500 ||
         i.coordinateFrame !== "sensor_native" || a.coordinateFrame !== "sensor_native" ||
@@ -74,7 +81,7 @@ export class ImuHealth {
     }
     const i = this.imu, a = this.attitude
     /** @type {string[]} */ const issues = []
-    const attitudeMissing = !i || !a || now - this.imuAt > 1500 || now - this.attitudeAt > 1500 || [0,1,3].some(n => q.agesMs[n] + now - this.qualityAt > 2000 || q.accuracy[n] > 3)
+    const attitudeMissing = (!this.liveOnly && (!i || now - this.imuAt > 1500)) || !a || now - this.attitudeAt > 1500 || [0,1,3].some(n => q.agesMs[n] + now - this.qualityAt > 2000 || q.accuracy[n] > 3)
     if (attitudeMissing) issues.push("attitude_unavailable")
     const lowAttitude = [0,3].some(n => q.accuracy[n] < 2)
     const warnings = Number.isInteger(q.accuracy[1]) && q.accuracy[1] >= 0 && q.accuracy[1] < 2
@@ -111,10 +118,11 @@ export class ImuHealth {
       return details
     }
     const reasons = issues.flatMap(issueDetails)
+    const liveScope = "Sensor-reported quality only; detailed consistency checks are not transmitted"
     return { attitude: attitudeMissing ? "unknown" : attitudeBad ? "degraded" : warnings.length ? "warning" : "consistent", heading: attitudeMissing ? "unknown" : headingBad ? "degraded" : "consistent",
-      reason: [...reasons, ...warnings].join(" · ") || "Live consistency checks passed",
-      attitudeReason: [...issues.filter(issue => !["heading_uncertain", "magnetic_disturbance"].includes(issue)).flatMap(issueDetails), ...warnings].join(" · ") || "Live attitude consistency checks passed",
-      headingReason: issues.filter(issue => ["attitude_unavailable", "heading_uncertain", "magnetic_disturbance"].includes(issue)).flatMap(issueDetails).join(" · ") || "Live magnetic heading checks passed",
+      reason: [...reasons, ...warnings].join(" · ") || (this.liveOnly ? liveScope : "Live consistency checks passed"),
+      attitudeReason: [...issues.filter(issue => !["heading_uncertain", "magnetic_disturbance"].includes(issue)).flatMap(issueDetails), ...warnings].join(" · ") || (this.liveOnly ? liveScope : "Live attitude consistency checks passed"),
+      headingReason: issues.filter(issue => ["attitude_unavailable", "heading_uncertain", "magnetic_disturbance"].includes(issue)).flatMap(issueDetails).join(" · ") || (this.liveOnly ? liveScope : "Live magnetic heading checks passed"),
       issues, warnings }
   }
 

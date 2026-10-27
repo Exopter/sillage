@@ -12,11 +12,30 @@
     </button>
   <% end %>
   <% content_for :connection_control do %>
-    <button type="button" class="aircraft-connection-pill" data-controller="signal-connection"
-            data-action="signal-connection#toggle sillage:ground-radio-state@window->signal-connection#update"
-            data-aircraft-connection-state="disconnected" aria-label="Preparing ground radio" disabled>
-      <%= sillage_icon "radio", size: 15 %><strong data-signal-connection-target="label">Preparing</strong>
-    </button>
+    <div class="signal-transport-control" data-controller="signal-connection"
+         data-action="sillage:ground-radio-state@window->signal-connection#update">
+      <div class="exds-selection-field">
+        <select aria-label="Telemetry connection" data-signal-connection-target="transport" data-action="change->signal-connection#select">
+          <option value="ground-radio">SiK radio</option>
+          <option value="usb-c">USB-C</option>
+          <option value="ble">Bluetooth</option>
+          <option value="wifi">Wi-Fi via Sillage</option>
+        </select>
+      </div>
+      <div class="exds-selection-field" hidden>
+        <select aria-label="Wi-Fi recorder" data-signal-connection-target="recorder" hidden>
+          <option value="">Select recorder</option>
+          <% @live_recorders.each do |recorder| %>
+            <option value="<%= recorder.device_id %>"><%= recorder.device_id %></option>
+          <% end %>
+        </select>
+      </div>
+      <button type="button" class="aircraft-connection-pill" data-signal-connection-target="button"
+              data-action="signal-connection#toggle" data-aircraft-connection-state="disconnected"
+              aria-label="Preparing telemetry" disabled>
+        <%= sillage_icon "radio", size: 15 %><strong data-signal-connection-target="label">Preparing</strong>
+      </button>
+    </div>
   <% end %>
   <% content_for :head do %>
     <meta name="turbo-cache-control" content="no-cache">
@@ -46,7 +65,7 @@
           <small data-signal-workspace-target="mountLabel">Waiting for recorder mounting</small>
         </div>
         <div class="signal-link-stack" aria-label="Signal link status">
-          <div><span>Radio</span><strong data-signal-workspace-target="radioStatus">Waiting for ground radio</strong></div>
+          <div><span>Connection</span><strong data-signal-workspace-target="radioStatus">Waiting for telemetry</strong></div>
           <div><span>Capture</span><strong data-signal-workspace-target="recorderStatus">Not recording</strong></div>
           <div><span>Cloud</span><strong data-signal-workspace-target="cloudStatus">Preparing</strong></div>
         </div>

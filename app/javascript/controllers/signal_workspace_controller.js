@@ -5,6 +5,7 @@ import { clamp, signalLayoutPreset, parseSignalLayout } from "signal_layout"
 import { ImuHealth } from "imu_health"
 import { BELLY_MOUNT, NATIVE_MOUNT, interpretImu } from "imu_mount"
 import { SignalTelemetry, groundStationHeartbeat } from "signal_telemetry"
+import { directTelemetryPort } from "signal_transport"
 import { SignalMap } from "signal_map"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
 
@@ -174,11 +175,16 @@ export default class extends TypedController {
     void this.queuePendingBatch().catch(() => {})
   }
   boundResize = () => this.reflowLayout()
-  boundRadioToggle = () => { void this.connectStation() }
+  /** @type {"ground-radio"|"usb-c"|"ble"|"wifi"} */
+  connectionKind = "ground-radio"
+  boundRadioToggle = (/** @type {Event} */ event) => {
+    const detail = /** @type {CustomEvent} */ (event).detail
+    void this.connectStation(detail?.transport || "ground-radio", detail?.deviceId || "")
+  }
   boundSerialConnect = async () => { await this.stopSerialPromise; this.autoReconnect() }
   boundSerialDisconnect = (/** @type {Event} */ event) => {
     if (event.target !== this.port) return
-    this.showWarning("The ground radio was disconnected. Acquisition will resume after USB reconnection.")
+    this.showWarning("The telemetry connection was disconnected. Acquisition will resume after USB reconnection.")
     this.stopSerial()
   }
 
@@ -343,34 +349,38 @@ export default class extends TypedController {
 
   async autoReconnect() {
     const generation = this.connectionGeneration
-    if (!navigator.serial || this.ended || this.ending || this.exitDialogTarget?.open || !generation) return
+    if (this.connectionKind !== "ground-radio" || !navigator.serial || this.ended || this.ending || this.exitDialogTarget?.open || !generation) return
     const ports = (await navigator.serial.getPorts()).filter(isGroundRadio)
     const lastPort = await readMetadata(this.database, "last-authorized-port")
     const port = ports.find((candidate) => samePort(candidate.getInfo(), lastPort)) || (ports.length === 1 ? ports[0] : null)
     if (port && generation === this.connectionGeneration) await this.acquirePort(port)
   }
 
-  async connectStation() {
+  /** @param {"ground-radio"|"usb-c"|"ble"|"wifi"} [kind] @param {string} [deviceId] */
+  async connectStation(kind = "ground-radio", deviceId = "") {
     const generation = this.connectionGeneration
     if (!generation || !this.db || this.ended || this.ending || this.openingPort || this.choosingPort || this.stopSerialPromise) return
-    if (!navigator.serial) {
+    if (this.port) { await this.stopSerial(); return }
+    if (kind === "ground-radio" && !navigator.serial) {
       this.showWarning("Web Serial is not available. Use Chrome or Edge on desktop over HTTPS.")
       return
     }
-    if (this.port) {
-      await this.stopSerial()
-      return
-    }
-
+    this.connectionKind = kind
     this.choosingPort = true
     this.renderRadioControl()
     try {
+      if (kind !== "ground-radio") {
+        const port = await directTelemetryPort(kind, {deviceId, sessionUuid: this.sessionValue})
+        if (generation === this.connectionGeneration) await this.acquirePort(port)
+        else await port.close()
+        return
+      }
       const authorized = (await navigator.serial.getPorts()).filter(isGroundRadio)
       const port = authorized.length === 1 ? authorized[0] : await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x0403 }, { usbVendorId: 0x10c4 }] })
       if (generation === this.connectionGeneration) await this.acquirePort(port)
     } catch (caught) {
       const error = caught instanceof Error ? caught : new Error(String(caught))
-      if (error.name !== "NotFoundError") this.showWarning(`Ground radio connection failed: ${error.message}`)
+      if (error.name !== "NotFoundError") this.showWarning(`Telemetry connection failed: ${error.message}`)
     } finally {
       this.choosingPort = false
       this.renderRadioControl()
@@ -383,7 +393,7 @@ export default class extends TypedController {
     if (!generation || this.port || this.openingPort || this.ending || this.ended) return
     this.openingPort = true
     this.renderRadioControl()
-    const lockName = `sillage-signal-port:${port.getInfo().usbVendorId || "serial"}:${port.getInfo().usbProductId || "port"}`
+    const lockName = `sillage-signal-${this.connectionKind}-port:${port.getInfo().usbVendorId || "serial"}:${port.getInfo().usbProductId || "port"}`
     navigator.locks.request(lockName, { ifAvailable: true }, async (lock) => {
       if (generation !== this.connectionGeneration || this.ending || this.ended) {
         this.openingPort = false
@@ -391,7 +401,7 @@ export default class extends TypedController {
       }
       if (!lock) {
         this.openingPort = false
-        this.showWarning("This ground radio is already being read by another browser tab.")
+        this.showWarning("This telemetry connection is already being read by another browser tab.")
         return
       }
       /** @type {Promise<void>} */
@@ -400,7 +410,7 @@ export default class extends TypedController {
         await this.openSerial(port)
       } catch (caught) {
         const error = caught instanceof Error ? caught : new Error(String(caught))
-        this.showWarning(`Ground radio connection failed: ${error.message}`)
+        this.showWarning(`Telemetry connection failed: ${error.message}`)
         await this.stopSerial()
       }
       await released
@@ -418,7 +428,7 @@ export default class extends TypedController {
       this.portOpening = null
     }
     if (generation !== this.connectionGeneration || this.ending || this.ended) return
-    await writeMetadata(this.database, "last-authorized-port", port.getInfo())
+    if (this.connectionKind === "ground-radio") await writeMetadata(this.database, "last-authorized-port", port.getInfo())
     if (generation !== this.connectionGeneration || this.ending || this.ended) return
     this.openingPort = false
     this.connectedAt = new Date()
@@ -429,9 +439,9 @@ export default class extends TypedController {
     this.frameTimes = []
     this.mavlinkSystemId = null
     this.mavlinkComponentId = null
-    this.worker = new Worker("/signal_serial_worker.js?v=59-radio-metrics")
+    this.worker = new Worker("/signal_serial_worker.js?v=67-direct-transports")
     this.worker.onmessage = ({ data }) => this.handleWorkerMessage(data)
-    this.worker.onerror = () => this.showWarning("Telemetry decoding stopped. Reconnect the ground radio.")
+    this.worker.onerror = () => this.showWarning("Telemetry decoding stopped. Reconnect the recorder.")
     this.worker.postMessage({ type: "init-capture", filename: `${this.flightCodeValue}-${this.sessionValue}.mavcap` })
     this.renderRadioControl()
     this.radioStatusTarget.textContent = "Connected · waiting for MAVLink"
@@ -469,7 +479,7 @@ export default class extends TypedController {
         }
       } catch (caught) {
         const error = caught instanceof Error ? caught : new Error(String(caught))
-        if (!this.ended) this.showWarning(`The ground radio was disconnected: ${error.message}`)
+        if (!this.ended) this.showWarning(`The telemetry connection was disconnected: ${error.message}`)
       } finally {
         this.reader.releaseLock()
         this.reader = null
@@ -527,7 +537,7 @@ export default class extends TypedController {
 
   /** @param {"connected"|"disconnected"} state */
   updateGroundRadioState(state) {
-    setAircraftConnection(AircraftConnectionTransport.GROUND_RADIO, state === "connected")
+    setAircraftConnection(this.connectionKind, state === "connected")
   }
 
   /** @param {import("../types/signal").CaptureMessage} message */
@@ -569,7 +579,7 @@ export default class extends TypedController {
     const now = Date.now()
     const generation = this.imuHealth.generation
     this.imuHealth.apply(decoded, now)
-    if (decoded.name === "imu_quality") observeRecorderConnection("ground-radio", decoded, now)
+    if (decoded.name === "imu_quality") observeRecorderConnection(this.connectionKind, decoded, now)
     if (this.imuHealth.generation !== generation) this.measurements = new SignalTelemetry()
     this.measurements.apply(interpretImu(decoded, this.activeMountProfile), now)
     this.telemetry = this.measurements.snapshot(now)
@@ -589,6 +599,8 @@ export default class extends TypedController {
     } else {
       // Keep GPS diagnostics without adding an invalid position to the Flight track.
       this.pendingSamples.push(this.sensorSample(recordedAt, decoded.name.toUpperCase(), decoded))
+      if (decoded.name === "live_instruments" && decoded.attitude)
+        this.pendingSamples.push(this.sensorSample(recordedAt, "ATTITUDE", decoded.attitude))
     }
   }
 
@@ -624,18 +636,18 @@ export default class extends TypedController {
     const busy = Boolean(this.choosingPort || this.openingPort || this.stopSerialPromise)
     const available = Boolean(this.db && this.connectionGeneration && !this.ended && !this.ending)
     const live = Boolean(connected && this.lastFrameAt && Date.now() - this.lastFrameAt < 1_500)
-    const label = this.ended ? "Session ended" : this.stopSerialPromise ? "Disconnecting" : busy ? "Connecting" : connected ? "Connected" : "Connect radio"
+    const label = this.ended ? "Session ended" : this.stopSerialPromise ? "Disconnecting" : busy ? "Connecting" : connected ? "Connected" : "Connect"
     const description = connected
-      ? `Disconnect ground radio. ${live ? "Receiving telemetry." : "No telemetry received."}`
-      : this.ended ? "Session ended" : "Connect ground radio"
+      ? `Disconnect ${this.connectionKind}. ${live ? "Receiving telemetry." : "No telemetry received."}`
+      : this.ended ? "Session ended" : "Connect telemetry"
     window.dispatchEvent(new CustomEvent("sillage:ground-radio-state", {detail: {connected, busy, available, label, description}}))
   }
 
   /** @param {boolean} live @param {number} now */
   renderRadioMetrics(live, now) {
     // SiK can repeat RF statistics after Air telemetry is lost.
-    const report = live && this.port && !this.ended ? this.telemetry.radio : null
-    const state = this.ended ? "Ended" : !this.port ? "Offline" : !live ? "No telemetry" : "Unavailable"
+    const report = this.connectionKind === "ground-radio" && live && this.port && !this.ended ? this.telemetry.radio : null
+    const state = this.ended ? "Ended" : !this.port ? "Offline" : this.connectionKind !== "ground-radio" ? "No SiK radio" : !live ? "No telemetry" : "Unavailable"
     window.dispatchEvent(new CustomEvent("sillage:radio-quality", {detail: {report, state, now}}))
   }
 

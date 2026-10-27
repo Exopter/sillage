@@ -131,6 +131,7 @@ export default class extends Base {
     if (deviceId && deviceId !== this.deviceValue) return `Wrong recorder: ${deviceId}. Expected ${this.deviceValue}.`
     if (!this.source || this.health.quality?.deviceId !== this.deviceValue) return `Waiting for recorder identity: ${label}.`
     if (this.health.generation !== this.generation) return "Recorder or IMU restarted. Begin a new check."
+    if (this.health.liveOnly) return "This radio stream carries live instruments only. Detailed IMU checks require a diagnostic stream."
     if (!this.health.sample(now)) return `Waiting for fresh IMU measurements from ${label}.`
     return null
   }

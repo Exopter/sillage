@@ -37,6 +37,12 @@ module Api
         return head :unauthorized unless valid_signature?(recorder, raw_body)
         return head :unprocessable_entity unless valid_timestamp?(payload["sent_at"])
         return head :unprocessable_entity unless payload["version"] == 1
+        response.headers["X-FDR-Live"] = FdrLiveTelemetry.wanted?(recorder) ? "1" : "0"
+        if payload.key?("live_telemetry")
+          return head :unprocessable_entity unless FdrLiveTelemetry.publish(recorder, payload["live_telemetry"])
+
+          return head :accepted
+        end
         return head :unprocessable_entity unless valid_recording_control?(payload["recording_control"])
 
         return head :unprocessable_entity unless valid_import_queue?(payload["import_queue"])

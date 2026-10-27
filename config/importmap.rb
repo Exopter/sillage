@@ -37,3 +37,4 @@ pin "imu_tutorial", to: "lib/imu_tutorial.js", preload: false
 pin "fdr_import_queue", to: "lib/fdr_import_queue.js"
 
 pin "recorder_session", to: "lib/recorder_session.js"
+pin "signal_transport", to: "lib/signal_transport.js"

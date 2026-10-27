@@ -3,6 +3,26 @@ import {readFile} from "node:fs/promises"
 import {SignalTelemetry, sikDbm} from "../../app/javascript/lib/signal_telemetry.js"
 
 for (const invalid of [255, -1, 256, null, undefined, NaN, 1.5]) assert.equal(sikDbm(invalid), null)
+
+const liveOnly = new SignalTelemetry()
+const liveReport = {name: 'live_instruments', timeUs: '1000000', differentialPa: 61.25, gLoad: 1.5,
+  attitude: {name: 'attitude', coordinateFrame: 'body_frd_ned', rollDeg: 10, pitchDeg: 20, yawDeg: 30}}
+liveOnly.apply(liveReport, 1000)
+assert.equal(liveOnly.snapshot(1000).airspeed, 36)
+assert.equal(liveOnly.snapshot(1000).gLoad, 1.5)
+assert.equal(liveOnly.snapshot(1000).pitch, 20)
+assert.equal(liveOnly.snapshot(1000).bodyFrame, true)
+for (const key of ['accel', 'gyro', 'mag', 'temperature']) assert.equal(liveOnly.snapshot(1000)[key], null)
+liveOnly.apply({...liveReport, timeUs: '1100000', attitude: null, gLoad: 0}, 1100)
+assert.equal(liveOnly.snapshot(1100).roll, null)
+assert.equal(liveOnly.snapshot(1100).airspeed, 36)
+assert.equal(liveOnly.snapshot(1100).gLoad, 0)
+liveOnly.apply({...liveReport, timeUs: '1200000', attitude: null, differentialPa: null, gLoad: null}, 1200)
+assert.equal(liveOnly.snapshot(1200).airspeed, null)
+assert.equal(liveOnly.snapshot(1200).gLoad, null)
+liveOnly.apply(liveReport, 2000)
+liveOnly.apply({name: 'heartbeat'}, 3500)
+for (const key of ['roll', 'airspeed', 'gLoad']) assert.equal(liveOnly.snapshot(3500)[key], null)
 assert.equal(sikDbm(0), -127, "zero is a valid SiK RSSI, not the unknown sentinel")
 const radioStream = new SignalTelemetry()
 const rawRadio = Object.freeze({name: "radio", rssi: 133, remoteRssi: 114, noise: 38, remoteNoise: 76, txBufferPercent: 90, rxErrors: 10, fixed: 20})
