@@ -1,4 +1,4 @@
-<% location = @inventory.aircraft(node) %>
+<% location = @inventory.aircraft(node) if node.parent_key.nil? %>
 <div data-assembly-hierarchy-target="branch" data-key="<%= node.key %>" data-parent="<%= node.parent_key %>" data-kind="<%= node.kind %>" data-category="<%= category %>" data-search="<%= node.search %>">
   <div class="exds-hierarchy-row <%= "is-system" if node.kind == "system" %> <%= "is-part" unless node.assembly? %> <%= "is-selected" if node == @selected_node %>" style="--exds-hierarchy-depth:<%= depth %>" data-node-row>
     <div class="exds-hierarchy-primary <%= "is-nested" if depth.positive? %>">
@@ -10,7 +10,7 @@
         <span class="exds-hierarchy-copy"><strong><%= node.label %></strong><small><%= node.subtitle %><% if node.assembly? %> · <% if node.kind == "system" %><%= pluralize @inventory.child_assemblies(node).size, "module" %> · <% end %><%= pluralize @inventory.part_count(node), "part" %><% end %></small></span>
       <% end %>
     </div>
-    <span class="exds-hierarchy-location"><%= location&.registration || "Not installed" %><% if node.parent_key && location %><small>Via parent</small><% end %></span>
+    <% if node.parent_key.nil? %><span class="exds-hierarchy-location"><%= location&.registration || "No aircraft assigned" %></span><% end %>
   </div>
   <% if node.children.any? %>
     <div id="children-<%= node.key %>" data-node-children>

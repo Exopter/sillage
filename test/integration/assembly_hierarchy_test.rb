@@ -13,13 +13,14 @@ class AssemblyHierarchyTest < ActionDispatch::IntegrationTest
     Installation.create!(installable: @system, aircraft: aircraft(:pilatus), installed_at: Time.current)
   end
 
-  test "renders each assembly once under its actual parent with nested parts and inherited aircraft" do
+  test "renders each assembly once under its actual parent with aircraft only at the root" do
     get hangar_assemblies_path
     assert_response :success
     assert_select "[data-key='assembly-#{@system.id}'][data-kind='system']", count: 1 do
+      assert_select ".exds-hierarchy-location", text: aircraft(:pilatus).registration, count: 1
       assert_select "[data-key='assembly-#{@main.id}'][data-kind='assembly']", count: 1 do
         assert_select "[data-key='part-#{@part.id}'][data-kind='part']", count: 1
-        assert_select ".exds-hierarchy-location", text: /#{aircraft(:pilatus).registration}/, count: 2
+        assert_select ".exds-hierarchy-location", count: 0
       end
     end
     assert_select "section[aria-label='Standalone'] [data-key='assembly-#{@lite.id}'][data-kind='assembly']", count: 1
@@ -38,7 +39,8 @@ class AssemblyHierarchyTest < ActionDispatch::IntegrationTest
     assert_select "[data-controller='assembly-hierarchy']", count: 0
     assert_select ".exds-hierarchy-path a", count: 2
     assert_select "h3", @part.display_name
-    assert_select "dd", text: /#{aircraft(:pilatus).registration}/
+    assert_select "dt", text: "Aircraft", count: 0
+    assert_select "dd", text: @main.display_name
     assert_select "a[href='#{hangar_part_path(@part)}'][data-turbo-frame='_top']", text: "Open full record"
   end
 
@@ -47,6 +49,8 @@ class AssemblyHierarchyTest < ActionDispatch::IntegrationTest
     assert_select ".exds-hierarchy-overview strong", text: "1 / 4"
     assert_select ".exds-hierarchy-overview strong", text: "1"
     assert_select ".exds-hierarchy-roles .is-missing", count: 3
+    assert_select "dt", text: "Aircraft"
+    assert_select "dd", text: aircraft(:pilatus).registration
     assert_select "dd", text: "In preparation"
     assert_select "#assembly-details a", text: "Open in Forge", count: 0
   end
