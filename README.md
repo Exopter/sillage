@@ -273,3 +273,9 @@ readings as `frame_id` and `coordinate_frame`: `0` is `sensor_native`, `1` is
 `body_frd_ned`; unknown IDs remain unknown. Import preserves stored values
 without another rotation. Historical files and previously imported samples
 are not rewritten. See the FDR firmware README for the binary field contract.
+
+## Security maintenance
+
+Use Ruby 4.0.9 and the committed dependency lockfile. Rack must remain at least
+3.2.8 on the 3.2 release line. Rebuild the production image after OS or gem
+security updates; host package upgrades do not update existing image layers.

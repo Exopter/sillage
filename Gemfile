@@ -54,3 +54,6 @@ group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
 end
+
+# Keep the multipart parser on the patched release line.
+gem "rack", ">= 3.2.8", "< 3.3"
