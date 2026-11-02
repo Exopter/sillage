@@ -57,3 +57,7 @@ end
 
 # Keep the multipart parser on the patched release line.
 gem "rack", ">= 3.2.8", "< 3.3"
+
+# Security floors for the HTML advisories published on 2026-11-02.
+gem "nokogiri", ">= 1.19.6", "< 2.0"
+gem "rails-html-sanitizer", ">= 1.7.2", "< 2.0"

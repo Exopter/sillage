@@ -281,3 +281,5 @@ Use Ruby 4.0.9 and the committed dependency lockfile. Rack must remain at least
 security updates; host package upgrades do not update existing image layers.
 
 The 2026-11-02 infrastructure security image tags retain the existing database/cache major versions and update operating-system packages. Native database backups and stopped rollback containers are retained on the production host. Existing storage mounts were verified unchanged.
+
+The final 2026-11-02 dependency refresh includes Nokogiri 1.19.6 and rails-html-sanitizer 1.7.2, addressing the serializer, concurrent scrubber and regular-expression security advisories published during the maintenance.
