@@ -4,6 +4,17 @@ const q = {name:'imu_quality',deviceId:'ECU-A172E0',bootId:42,imuEpoch:1,firmwar
 const imu = {name:'highres_imu',coordinateFrame:'sensor_native',timeUs:'1000000',acceleration:[0,0,9.80665],angularVelocity:[0,0,0],magneticField:[20,0,25]}
 const attitude = {name:'attitude',coordinateFrame:'sensor_native',timeBootMs:1000,quaternion:[1,0,0,0],rollDeg:0,pitchDeg:0,rollSpeed:0,pitchSpeed:0,yawSpeed:0}
 const health = new ImuHealth()
+const liveHealth = new ImuHealth()
+liveHealth.apply(q, 1000)
+liveHealth.apply({name: 'live_instruments', attitude: {...attitude, rollSpeed: NaN, pitchSpeed: NaN, yawSpeed: NaN}}, 1000)
+assert.equal(liveHealth.status(1000).attitude, 'consistent')
+assert.match(liveHealth.status(1000).reason, /Sensor-reported quality only/)
+assert.equal(liveHealth.sample(1000), null, 'live-only instruments cannot fabricate detailed calibration evidence')
+assert.equal(liveHealth.status(2600).attitude, 'unknown', 'fresh identity cannot keep a stale attitude live')
+liveHealth.apply({name: 'live_instruments', attitude: null}, 1100)
+assert.equal(liveHealth.status(1100).attitude, 'unknown')
+liveHealth.apply(imu, 1200)
+assert.equal(liveHealth.liveOnly, false, 'legacy detailed telemetry remains supported')
 assert.equal(health.status(1000).attitude,'unknown')
 function feed(time, change={}) {
   health.apply({...q,timeBootMs:time,...change},time)

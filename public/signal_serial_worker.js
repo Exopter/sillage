@@ -1,7 +1,7 @@
 const MAGIC_V2 = 0xfd
 const MAGIC_V1 = 0xfe
-const CRC_EXTRAS = new Map([[0, 50], [1, 124], [4, 237], [24, 24], [31, 246], [74, 20], [105, 93], [109, 185], [137, 195], [253, 83], [42000, 212]])
-const BASE_LENGTHS = new Map([[0, 9], [1, 31], [4, 14], [24, 30], [31, 32], [74, 20], [105, 62], [109, 9], [137, 14], [253, 51], [42000, 48]])
+const CRC_EXTRAS = new Map([[0, 50], [1, 124], [4, 237], [24, 24], [31, 246], [74, 20], [105, 93], [109, 185], [137, 195], [253, 83], [42000, 212], [42001, 201]])
+const BASE_LENGTHS = new Map([[0, 9], [1, 31], [4, 14], [24, 30], [31, 32], [74, 20], [105, 62], [109, 9], [137, 14], [253, 51], [42000, 48], [42001, 32]])
 // Firmware /55 explicitly preserves native BNO085 axes in its radio payloads.
 const FDR_SENSOR_NATIVE_MODE = 0x46445200
 /** @type {Map<string, "sensor_native" | "body_frd_ned">} */
@@ -180,6 +180,23 @@ function appendCapture(receivedAtUs, raw) {
   }
 }
 
+/** @param {number} timeBootMs @param {number[]} quaternion @param {number[]} rates
+ * @param {"sensor_native" | "body_frd_ned"} coordinateFrame
+ * @returns {import("../app/javascript/types/signal").AttitudeTelemetry|null} */
+function decodeAttitude(timeBootMs, quaternion, rates, coordinateFrame) {
+  const norm = Math.hypot(...quaternion)
+  if (!Number.isFinite(norm) || norm < 0.5 || norm > 1.5) return null
+  for (let index = 0; index < quaternion.length; index += 1) quaternion[index] /= norm
+  const [w, x, y, z] = quaternion
+  const rollDeg = radiansToDegrees(Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y)))
+  const pitch = radiansToDegrees(Math.asin(clamp(2 * (w * y - z * x), -1, 1)))
+  const yaw = radiansToDegrees(Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)))
+  const native = coordinateFrame === "sensor_native"
+  return {name: "attitude", timeBootMs, coordinateFrame, quaternion, rollDeg,
+    pitchDeg: native ? -pitch : pitch, yawDeg: normalizeDegrees(native ? 90 - yaw : yaw),
+    rollSpeed: rates[0], pitchSpeed: rates[1], yawSpeed: rates[2]}
+}
+
 /** @param {number} messageId @param {Uint8Array} payload @param {"sensor_native" | "body_frd_ned" | null} coordinateFrame @returns {import("../app/javascript/types/signal").DecodedMessage} */
 function decode(messageId, payload, coordinateFrame) {
   const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength)
@@ -188,6 +205,13 @@ function decode(messageId, payload, coordinateFrame) {
   const i16 = (/** @type {number} */ offset) => view.getInt16(offset, true)
   const u32 = (/** @type {number} */ offset) => view.getUint32(offset, true)
   const i32 = (/** @type {number} */ offset) => view.getInt32(offset, true)
+  if (messageId === 42001 && payload.length >= 32) {
+    const differentialPa = f32(24), gLoad = f32(28)
+    return {name: "live_instruments", timeUs: String(u32(0) * 1000),
+      attitude: decodeAttitude(u32(4), [f32(8), f32(12), f32(16), f32(20)], [NaN, NaN, NaN], "sensor_native"),
+      differentialPa: Number.isFinite(differentialPa) ? differentialPa : null,
+      gLoad: Number.isFinite(gLoad) && gLoad >= 0 ? gLoad : null}
+  }
 
   if (messageId === 42000 && payload.length >= 48) {
     const deviceId = new TextDecoder().decode(payload.slice(32, 48)).split("\0")[0]
@@ -213,18 +237,7 @@ function decode(messageId, payload, coordinateFrame) {
   if (messageId === 31 && payload.length >= 32) {
     // Wait for this recorder's heartbeat before choosing its attitude convention.
     if (coordinateFrame == null) return { name: "unknown" }
-    const quaternion = [f32(4), f32(8), f32(12), f32(16)]
-    const norm = Math.hypot(...quaternion)
-    if (!Number.isFinite(norm) || norm < 0.5 || norm > 1.5) return { name: "unknown" }
-    for (let index = 0; index < quaternion.length; index += 1) quaternion[index] /= norm
-    const [w, x, y, z] = quaternion
-    const rollDeg = radiansToDegrees(Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y)))
-    const pitch = radiansToDegrees(Math.asin(clamp(2 * (w * y - z * x), -1, 1)))
-    const yaw = radiansToDegrees(Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)))
-    // Instruments use sensor +X forward, +Y left, +Z up for native ENU data.
-    // Preserve the received quaternion and angular rates for storage/export.
-    const native = coordinateFrame === "sensor_native"
-    return { name: "attitude", timeBootMs: u32(0), coordinateFrame, quaternion, rollDeg, pitchDeg: native ? -pitch : pitch, yawDeg: normalizeDegrees(native ? 90 - yaw : yaw), rollSpeed: f32(20), pitchSpeed: f32(24), yawSpeed: f32(28) }
+    return decodeAttitude(u32(0), [f32(4), f32(8), f32(12), f32(16)], [f32(20), f32(24), f32(28)], coordinateFrame) || {name: "unknown"}
   }
   if (messageId === 74 && payload.length >= 20) {
     return { name: "vfr_hud", airspeedMps: f32(0), groundspeedMps: f32(4), altitudeM: f32(8), climbMps: f32(12), headingDeg: i16(16), throttlePercent: u16(18) }

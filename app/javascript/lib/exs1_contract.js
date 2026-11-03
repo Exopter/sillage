@@ -46,6 +46,8 @@ export const UsbMessage = Object.freeze({
   IMPORT_NEXT_DATA: 39,
   IMPORT_CONTROL: 40,
   IMPORT_CONTROL_DATA: 41,
+  LIVE_TELEMETRY: 42,
+  LIVE_TELEMETRY_DATA: 43,
   ERROR: 255
 })
 export const UsbCapability = Object.freeze({
@@ -63,7 +65,8 @@ export const UsbCapability = Object.freeze({
   RECORDING_CONTROL: 2048,
   FILE_CURSOR: 4096,
   IMPORT_QUEUE: 8192,
-  CANONICAL_NAME: 16384
+  CANONICAL_NAME: 16384,
+  LIVE_TELEMETRY: 32768
 })
 export const EraseRecordingsResult = Object.freeze({
   OK: 0,
