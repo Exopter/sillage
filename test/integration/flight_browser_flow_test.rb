@@ -93,7 +93,7 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_select "input[name='flight[description]'][value='Campaign draft']"
     assert_select ".exds-browser-sidebar a[aria-current=page]", text: /Campaign/
     assert_difference -> { Flight.count }, 1 do
-      post flights_path, params: context.merge(flight: { name: "Campaign draft", flown_on: "2026-10-18", location: "Bouloc", fdr_id: create_exofdr_assembly.id, aircraft_id: aircraft(:pilatus).id, folder_id: @folder.id })
+      post flights_path, params: context.merge(flight: { name: "Campaign draft", flown_on: "2026-10-18", location: "Bouloc", aircraft_id: aircraft(:pilatus).id, folder_id: @folder.id })
     end
     created = @owner.flights.find_by!(name: "Campaign draft")
     assert_redirected_to flight_path(created, folder: @folder.id, q: "Campaign")

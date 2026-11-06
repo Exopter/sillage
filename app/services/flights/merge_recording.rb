@@ -37,7 +37,9 @@ module Flights
         target.sensor_samples.delete_all
         source.track_points.update_all(flight_id: target.id)
         source.sensor_samples.update_all(flight_id: target.id)
-        target.update!(source.attributes.slice(*RECORDING_ATTRIBUTES).merge(flight_import: @import))
+        attributes = source.attributes.slice(*RECORDING_ATTRIBUTES).merge(flight_import: @import)
+        attributes[:fdr_id] = source.fdr_id if source.fdr_id
+        target.update!(attributes)
         @import.update!(target_flight: target, details:)
         source.destroy!
         target

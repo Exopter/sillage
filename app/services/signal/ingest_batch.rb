@@ -57,6 +57,7 @@ module Signal
       insert_track_points
       insert_sensor_samples
       mark_flight_live if update_counts
+      identify_recorder
     end
 
     private
@@ -130,6 +131,24 @@ module Signal
         system_id: @payload["mavlink_system_id"],
         component_id: @payload["mavlink_component_id"]
       ).call
+    end
+
+    def identify_recorder
+      flight = @signal_session.flight
+      return unless flight && flight.fdr_id.nil?
+
+      observations = samples.filter_map do |sample|
+        next unless sample["kind"] == "sensor" && sample["sensor_type"] == "IMU_QUALITY"
+
+        device_id = FdrIdentity::DeviceId.normalize(sample["readings"].to_h["deviceId"])
+        [ device_id, sample["recorded_at"] ] if FdrIdentity::DeviceId.valid?(device_id)
+      end
+      return unless observations.map(&:first).uniq.one?
+
+      device_id, observed_at = observations.first
+      recorder = EmbeddedController.find_by(device_id:)
+      assembly = recorder&.assembly_at(observed_at || @signal_session.started_at)
+      flight.update!(fdr: assembly) if assembly&.controlled_fdr?
     end
 
     def broadcast(batch)

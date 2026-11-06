@@ -106,6 +106,8 @@ module ExoFdr
     def import_file(source, recording, index, set_aside:)
       blob, header, records, clock, stats = source.values_at(:blob, :header, :records, :clock, :stats)
       started_at = clock.started_at
+      controller = EmbeddedController.find_by(device_id: @flight_import.device_id) if started_at && @flight_import.device_id.present?
+      assembly = controller&.assembly_at(started_at)
       if @flight_import.details.to_h["sync"]
         resolution = FdrIdentity::Resolve.new(@flight_import.device_id, at: started_at).call
         @flight_import.update!(aircraft: resolution.aircraft)
@@ -125,14 +127,14 @@ module ExoFdr
           FlightImports::FlightWriter.new(
             flight_import: @flight_import,
             name: [ "ExoFDR", started_at&.in_time_zone&.strftime("%Y-%m-%d %H:%M") || "session #{index}" ].join(" "),
-            started_at:, track_points: points, sensor_samples: sensors, replace_target: @replace_target
+            started_at:, track_points: points, sensor_samples: sensors, replace_target: @replace_target,
+            fdr: (assembly if assembly&.controlled_fdr?)
           ).call
           @replace_target = false
         end
       end
-      controller = EmbeddedController.find_by(device_id: @flight_import.device_id) if started_at && @flight_import.device_id.present?
       identity = controller&.recorder_identity(at: started_at)&.slice(:device_id, :assembly)
-      system = controller&.assembly_at(started_at)&.fdr_system_at(started_at)
+      system = assembly&.fdr_system_at(started_at)
       { "filename" => blob.filename.to_s, "source_blob_id" => blob.id, "header" => header, "recovery" => stats,
         "activity" => source.fetch(:activity), "recorder_identity" => identity }.tap do |details|
         details["system_configuration"] = system.snapshot(at: started_at) if system

@@ -138,11 +138,19 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
 
   test "an explicitly targeted flight remains included even for stationary data" do
     target = users(:julien).flights.create!(name: "Prepared flight", status: "preparation", visibility: "team")
-    import = stationary_import(target_flight: target)
+    assembly = create_exofdr_assembly
+    part = Part.create!(function: Function.find_or_create_by!(code: "CONTROLLER") { |function| function.name = "Controller" }, model: "Recorder ECU")
+    part.install_in!(assembly, at: Time.utc(2026, 9, 1))
+    recorder = create_embedded_controller(part:, device_id: "ECU-A12345")
+    import = stationary_import(target_flight: target, device_id: recorder.device_id)
     ExoFdr::ImportService.new(import).call
     assert_not import.reload.set_aside?
     assert_equal target.id, import.flights.sole.id
     assert_equal "team", target.reload.visibility
+    assert_equal assembly, target.fdr
+    get flight_path(target)
+    assert_select "dd", text: assembly.display_name
+    assert_select "[name='flight[fdr_id]']", count: 0
   end
 
   test "an ExoFDR recording without samples leaves a manual flight available for retry" do

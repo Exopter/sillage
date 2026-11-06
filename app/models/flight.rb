@@ -5,6 +5,7 @@ class Flight < ApplicationRecord
   LOCATION_SOURCES = %w[manual openstreetmap].freeze
   VISIBILITIES = %w[private team].freeze
   EFFECTIVE_VISIBILITIES = %w[private public shared].freeze
+  SIGNAL_STARTABLE_STATUSES = %w[logged preparation live].freeze
 
   belongs_to :user
   belongs_to :flight_import, optional: true, inverse_of: :flights
@@ -93,6 +94,10 @@ class Flight < ApplicationRecord
 
   def accepts_recording_import?
     logbook_view? || recording_enabled?
+  end
+
+  def signal_startable?
+    status.in?(SIGNAL_STARTABLE_STATUSES)
   end
 
   def display_flown_on

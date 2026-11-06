@@ -9,13 +9,14 @@ module FlightImports
     SENSOR_ATTRIBUTES = %i[sensor_type recorded_at elapsed_seconds readings fdr_recording_id fdr_sequence fdr_timestamp_us source_blob_id].freeze
     INSERT_BATCH_SIZE = 1_000
 
-    def initialize(flight_import:, name:, started_at:, track_points:, sensor_samples:, replace_target: false)
+    def initialize(flight_import:, name:, started_at:, track_points:, sensor_samples:, replace_target: false, fdr: nil)
       @flight_import = flight_import
       @name = name
       @started_at = started_at
       @track_points = track_points
       @sensor_samples = sensor_samples
       @replace_target = replace_target
+      @fdr = fdr
     end
 
     def call
@@ -69,6 +70,7 @@ module FlightImports
         status: "analysed",
         started_at: @started_at
       }.merge(summary, bounds, started_at: @started_at)
+      attributes[:fdr] = @fdr if @fdr
 
       if @replace_target && @flight_import.target_flight
         @flight_import.target_flight.tap do |target|

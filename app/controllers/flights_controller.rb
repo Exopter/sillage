@@ -172,7 +172,6 @@ class FlightsController < ApplicationController
       :description,
       :flown_on,
       :flown_at,
-      :fdr_id,
       :visibility,
       :folder_id,
       :location,
@@ -195,9 +194,6 @@ class FlightsController < ApplicationController
     available_aircraft = Aircraft.active
     available_aircraft = available_aircraft.or(Aircraft.where(id: @flight.aircraft_id)) if @flight&.aircraft_id
     @aircraft = available_aircraft.ordered
-    available_fdrs = Assembly.where(assembly_type: "ExoFDR").not_retired
-    available_fdrs = available_fdrs.or(Assembly.where(id: @flight.fdr_id)) if @flight&.fdr_id
-    @fdrs = available_fdrs.order(:serial_number)
   end
 
   def prepare_manual_location(attributes, current_location: nil)

@@ -14,7 +14,7 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     assert_select "input[name='flight[location]'][required]"
     assert_select "input[name='flight[name]']", count: 0
     assert_select "select[name='flight[aircraft_id]'][required]", count: 0
-    assert_select "select[name='flight[fdr_id]'][required]", count: 0
+    assert_select "[name='flight[fdr_id]']", count: 0
     assert_difference "Flight.count" do
       post flights_path, params: { flight: { flown_on: "2025-06-15", location: "Bouloc" } }
     end
@@ -30,7 +30,8 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     assert_select "#flight-panel-title", flight.code
     assert_select "textarea[name='flight_comment[body]']"
     assert_select "a[href=?]", new_flight_import_path(flight_id: flight.id), text: /Import data/
-    assert_select "a", text: /Start Signal|Run preflight/, count: 0
+    assert_select "a[href=?]", signal_path(flight_id: flight.id), text: /Start Signal/
+    assert_select "a", text: /Run preflight/, count: 0
     assert_select ".exds-browser-map", count: 0
     assert_not_includes response.body, "Preparation"
     assert_not_includes response.body, "No recorded route"
@@ -46,29 +47,28 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "an FDR enables acquisition independently of an aircraft and can be linked later" do
+  test "Signal identifies a recorder from telemetry on a manual flight without aircraft" do
     flight = log_entry
     fdr = create_exofdr_assembly
-    patch flight_path(flight), params: { flight: { fdr_id: fdr.id } }
+    recorder = create_embedded_controller(assembly: fdr, device_id: "ECU-A12345")
+    session = Signal::StartSession.new(user: @owner, flight_id: flight.id).call
+    assert_nil session.flight.fdr
+    post batches_api_v1_signal_session_path(session.uuid), params: { sequence: 0, samples: [
+      { kind: "sensor", sensor_type: "IMU_QUALITY", recorded_at: Time.current.iso8601(6), readings: { deviceId: recorder.device_id } }
+    ] }, as: :json
+    assert_response :success
     assert_equal fdr, flight.reload.fdr
     assert_nil flight.aircraft
-    get flight_path(flight)
-    assert_select "a[href=?]", new_flight_import_path(flight_id: flight.id)
-    assert_select "a[href=?]", signal_path(flight_id: flight.id)
-    session = Signal::StartSession.new(user: @owner, flight_id: flight.id).call
-    assert_equal flight, session.flight
-    assert_equal Date.new(2026, 10, 18), flight.reload.flown_on
+    assert_equal Date.new(2026, 10, 18), flight.flown_on
   end
 
-  test "aircraft alone allows imports without enabling live acquisition" do
+  test "a flight with an aircraft offers import and live acquisition without selecting a recorder" do
     flight = log_entry(aircraft: aircraft(:pilatus))
     get flight_path(flight)
     assert_select "dd", text: aircraft(:pilatus).display_name
     assert_select "a[href=?]", new_flight_import_path(flight_id: flight.id), text: /Import data/
-    assert_select "a", text: /Start Signal|Run preflight/, count: 0
-    assert_raises Signal::StartSession::InvalidFlight do
-      Signal::StartSession.new(user: @owner, flight_id: flight.id).call
-    end
+    assert_select "a[href=?]", signal_path(flight_id: flight.id), text: /Start Signal/
+    assert_select "a", text: /Run preflight/, count: 0
   end
 
   test "a recording preserves log metadata and optional aircraft" do
@@ -103,15 +103,14 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     assert_operator results.index(newer), :<, results.index(older)
   end
 
-  test "generic assemblies cannot be linked as an FDR and descriptions can be cleared" do
+  test "flight editing does not accept a manually selected recorder" do
     flight = log_entry(description: "Old name")
-    generic = Assembly.create!(name: "Generic equipment")
-    patch flight_path(flight), params: { flight: { fdr_id: generic.id } }, as: :json
-    assert_response :unprocessable_entity
-    assert_nil flight.reload.fdr
-    patch flight_path(flight), params: { flight: { description: "" } }
+    get edit_flight_path(flight)
+    assert_select "[name='flight[fdr_id]']", count: 0
+    patch flight_path(flight), params: { flight: { fdr_id: create_exofdr_assembly.id, description: "" } }
     assert_response :redirect
     assert_equal "", flight.reload.description
+    assert_nil flight.fdr
   end
 
   private

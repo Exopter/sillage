@@ -40,12 +40,7 @@
         <span>Aircraft</span>
         <%= form.collection_select :aircraft_id, @aircraft, :id, :display_name, { include_blank: "None" } %>
       </label>
-      <label class="exds-browser-field">
-        <span>FDR</span>
-        <%= form.collection_select :fdr_id, @fdrs, :id, :display_name, { include_blank: "None" }, aria: { describedby: "flight-fdr-help" } %>
-      </label>
     </div>
-    <p class="operations-help" id="flight-fdr-help">Link an FDR for live telemetry. You can import recorded data after saving this flight.</p>
   </fieldset>
 
   <details class="exds-browser-fieldset">
