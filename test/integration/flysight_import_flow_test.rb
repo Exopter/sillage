@@ -223,6 +223,54 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_equal "manual", flight.location_source
   end
 
+  test "imports data into a manual flight without linked equipment" do
+    post flights_path, params: { flight: {
+      description: "Manual flight", flown_on: "2026-10-18", location: "Tournon", initial_comment: "First observation"
+    } }
+    flight = Flight.order(:created_at).last
+    code = flight.code
+    import_path = new_flight_import_path(flight_id: flight.id)
+    follow_redirect!
+    assert_select "a[href=?]", import_path, text: /Import data/
+    get flights_path(selected: "flight:#{flight.id}")
+    assert_select "a[href=?]", import_path, text: /Import data/
+    get import_path
+    assert_select "input[name='flight_import[target_flight_id]'][value=?]", flight.id.to_s
+
+    upload = -> {
+      post flight_imports_path, params: { flight_import: {
+        import_type: "flysight", target_flight_id: flight.id,
+        source_files: [
+          fixture_file_upload("flysight_v2/TRACK.CSV", "text/csv"),
+          fixture_file_upload("flysight_v2/SENSOR.CSV", "text/csv")
+        ]
+      } }, headers: { "Accept" => "application/json" }
+    }
+    recording_path = nil
+    assert_enqueued_jobs 1, only: FlySightImportJob do
+      upload.call
+      assert_response :created
+      recording_path = response.parsed_body.fetch("redirect_url")
+      assert_no_difference -> { FlightImport.count } do
+        upload.call
+        assert_response :unprocessable_entity
+      end
+    end
+    assert_no_difference -> { Flight.count } do
+      perform_enqueued_jobs only: FlySightImportJob
+    end
+
+    assert_equal [ code, "Manual flight", Date.new(2026, 10, 18), "Tournon", "private" ],
+      flight.reload.attributes.values_at("code", "name", "flown_on", "location", "visibility")
+    assert_equal "First observation", flight.comments.sole.body
+    assert_predicate flight, :analysed?
+    assert_operator flight.track_points.count, :>, 0
+    get recording_path
+    assert_redirected_to flight_path(flight)
+    follow_redirect!
+    assert_select ".flight-replay-page"
+  end
+
   test "selects another aircraft from the flight details" do
     flight = flights(:one)
     previous_aircraft = flight.aircraft

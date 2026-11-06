@@ -45,7 +45,7 @@
         <%= form.collection_select :fdr_id, @fdrs, :id, :display_name, { include_blank: "None" }, aria: { describedby: "flight-fdr-help" } %>
       </label>
     </div>
-    <p class="operations-help" id="flight-fdr-help">Link an FDR to enable recording imports and telemetry. You can add one later.</p>
+    <p class="operations-help" id="flight-fdr-help">Link an FDR for live telemetry. You can import recorded data after saving this flight.</p>
   </fieldset>
 
   <details class="exds-browser-fieldset">

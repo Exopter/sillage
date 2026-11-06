@@ -91,6 +91,10 @@ class Flight < ApplicationRecord
     fdr_id.present? || flight_import_id.present? || signal_sessions.exists? || imu_checks.exists?
   end
 
+  def accepts_recording_import?
+    logbook_view? || recording_enabled?
+  end
+
   def display_flown_on
     flown_on || display_started_at&.to_date
   end

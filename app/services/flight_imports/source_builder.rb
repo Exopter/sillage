@@ -5,15 +5,26 @@ module FlightImports
         files = Array(uploaded_files).compact_blank
         raise error_class, empty_message if files.empty?
         raise error_class, "Sign in before importing a flight recording." unless user
-        raise error_class, "The target flight is not accessible." if target_flight && !target_flight.visible_to?(user)
-
-        flight_import = user.flight_imports.create!(
+        attributes = {
           source_filename: files.map { |file| filename_for(file) }.join(", "),
           status: "pending",
           import_type:,
           aircraft: aircraft || target_flight&.aircraft,
           target_flight:
-        )
+        }
+        flight_import = if target_flight
+          target_flight.with_lock do
+            raise error_class, "The target flight is not accessible." unless target_flight.visible_to?(user)
+            raise error_class, "This flight cannot accept a recording." unless target_flight.accepts_recording_import?
+            if FlightImport.exists?(target_flight:, status: %w[pending processing])
+              raise error_class, "A recording is already being imported for this flight."
+            end
+
+            user.flight_imports.create!(attributes)
+          end
+        else
+          user.flight_imports.create!(attributes)
+        end
         attach_files(flight_import, files, content_type:)
         flight_import
       rescue StandardError => error

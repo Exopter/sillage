@@ -5,8 +5,8 @@ class FlightImportsController < ApplicationController
     no_store
     @aircraft = Aircraft.active.ordered
     @target_flight = Flight.visible_to(Current.user).find(params[:flight_id]) if params[:flight_id].present?
-    if @target_flight && !@target_flight.recording_enabled?
-      redirect_to edit_flight_path(@target_flight), alert: "Link an FDR to this flight before importing a recording."
+    if @target_flight && !@target_flight.accepts_recording_import?
+      redirect_to flight_path(@target_flight), alert: "This flight cannot accept a recording."
       return
     end
     load_browser(panel: "import", focus: @target_flight)
@@ -14,10 +14,7 @@ class FlightImportsController < ApplicationController
 
   def create
     target_flight = Flight.visible_to(Current.user).find(import_params[:target_flight_id]) if import_params[:target_flight_id].present?
-    if target_flight && !target_flight.recording_enabled?
-      raise FlySight::Error, "Link an FDR to this flight before importing a recording."
-    end
-    aircraft = target_flight&.aircraft || Aircraft.find_by(id: import_params[:aircraft_id])
+    aircraft = target_flight ? target_flight.aircraft : Aircraft.find_by(id: import_params[:aircraft_id])
 
     service = import_params[:import_type] == "exofdr" ? ExoFdr::ImportService : FlySight::ImportService
     flight_import = service.create!(
@@ -26,11 +23,15 @@ class FlightImportsController < ApplicationController
       aircraft:,
       target_flight:
     )
-    target_flight&.update!(status: "processing")
-    (flight_import.import_type == "exofdr" ? ExoFdrImportJob : FlySightImportJob).perform_later(flight_import)
+    flight_import.with_lock do
+      target_flight&.update!(status: "processing")
+      job = flight_import.import_type == "exofdr" ? ExoFdrImportJob : FlySightImportJob
+      raise ActiveJob::EnqueueError, "The recording could not be queued. Please try again." unless job.perform_later(flight_import)
+    end
 
     respond_to_upload_success(flights_path(recording: flight_import.id), t(".queued"))
-  rescue FlySight::Error, ExoFdr::Error, Zip::Error, ActiveRecord::RecordInvalid, ActiveStorage::Error => error
+  rescue FlySight::Error, ExoFdr::Error, Zip::Error, ActiveRecord::RecordInvalid, ActiveStorage::Error, ActiveJob::EnqueueError => error
+    flight_import&.update!(status: "failed", error_message: error.message)
     respond_to_upload_failure(error.message)
   end
 

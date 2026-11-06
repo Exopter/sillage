@@ -57,10 +57,13 @@ module ExoFdr
       @flight_import.update!(activity_classification: activity.fetch("classification"), activity_summary: activity)
       set_aside = @flight_import.automatically_set_aside?
       @flight_import.flights.where.not(id: @flight_import.target_flight_id).destroy_all unless set_aside
+      @replace_target = @flight_import.target_flight_id.present?
       sources.each.with_index(1) do |source, index|
         header = source.fetch(:header)
         files << import_file(source, recordings.fetch(header.fetch("boot_id")), index, set_aside:)
       end
+      raise Error, "No usable ExoFDR samples were found for the target flight." if @replace_target
+
       @flight_import.update!(
         status: "imported",
         firmware_version: headers.first["firmware"],
@@ -122,8 +125,9 @@ module ExoFdr
           FlightImports::FlightWriter.new(
             flight_import: @flight_import,
             name: [ "ExoFDR", started_at&.in_time_zone&.strftime("%Y-%m-%d %H:%M") || "session #{index}" ].join(" "),
-            started_at:, track_points: points, sensor_samples: sensors, replace_target: index == 1
+            started_at:, track_points: points, sensor_samples: sensors, replace_target: @replace_target
           ).call
+          @replace_target = false
         end
       end
       controller = EmbeddedController.find_by(device_id: @flight_import.device_id) if started_at && @flight_import.device_id.present?

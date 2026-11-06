@@ -29,7 +29,8 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_select "#flight-panel-title", flight.code
     assert_select "textarea[name='flight_comment[body]']"
-    assert_select "a", text: /Start Signal|Import data|Run preflight/, count: 0
+    assert_select "a[href=?]", new_flight_import_path(flight_id: flight.id), text: /Import data/
+    assert_select "a", text: /Start Signal|Run preflight/, count: 0
     assert_select ".exds-browser-map", count: 0
     assert_not_includes response.body, "Preparation"
     assert_not_includes response.body, "No recorded route"
@@ -59,17 +60,14 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     assert_equal Date.new(2026, 10, 18), flight.reload.flown_on
   end
 
-  test "aircraft alone does not enable recording controls" do
+  test "aircraft alone allows imports without enabling live acquisition" do
     flight = log_entry(aircraft: aircraft(:pilatus))
     get flight_path(flight)
     assert_select "dd", text: aircraft(:pilatus).display_name
-    assert_select "a", text: /Start Signal|Import data|Run preflight/, count: 0
+    assert_select "a[href=?]", new_flight_import_path(flight_id: flight.id), text: /Import data/
+    assert_select "a", text: /Start Signal|Run preflight/, count: 0
     assert_raises Signal::StartSession::InvalidFlight do
       Signal::StartSession.new(user: @owner, flight_id: flight.id).call
-    end
-    assert_no_difference "FlightImport.count" do
-      post flight_imports_path, params: { flight_import: { target_flight_id: flight.id, import_type: "flysight",
-        source_files: [ fixture_file_upload("flysight_v2/TRACK.CSV", "text/csv") ] } }, as: :html
     end
   end
 

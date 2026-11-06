@@ -145,6 +145,22 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
     assert_equal "team", target.reload.visibility
   end
 
+  test "an ExoFDR recording without samples leaves a manual flight available for retry" do
+    target = users(:julien).flights.create!(name: "Manual flight", status: "logged", flown_on: Date.current, location: "Tournon")
+    import = fdr_import(fdr_binary([]), target_flight: target)
+    assert_raises(ExoFdr::Error) { ExoFdr::ImportService.new(import).call }
+    assert_predicate import.reload, :failed?
+    assert_nil target.reload.flight_import
+    assert_predicate target, :logbook_view?
+    get flight_path(target)
+    assert_select "a[href=?]", new_flight_import_path(flight_id: target.id), text: /Import data/
+
+    retry_import = stationary_import(target_flight: target)
+    ExoFdr::ImportService.new(retry_import).call
+    assert_equal target.id, retry_import.flights.sole.id
+    assert_predicate target.reload, :analysed?
+  end
+
   test "pagination and search retain the selected filter without duplicating rows" do
     32.times do |index|
       users(:julien).flight_imports.create!(import_type: "exofdr", status: "imported", source_filename: "Archived #{index}",
