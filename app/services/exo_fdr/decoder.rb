@@ -144,15 +144,16 @@ module ExoFdr
       raw = @io.read(FILE_HEADER_SIZE)
       raise Error, "File is too short for an ExoFDR header." unless raw&.bytesize == FILE_HEADER_SIZE
 
-      magic, version, header_size, boot_id, boot_us, firmware, _reserved, stored_crc =
+      magic, version, header_size, boot_id, boot_us, firmware, mac, stored_crc =
         raw.unpack("a8vvVQ<a24a12V")
       raise Error, "Unexpected ExoFDR file signature." unless magic == MAGIC
       raise Error, "Unsupported ExoFDR format version #{version}." unless version == FORMAT_VERSION
       raise Error, "Unsupported ExoFDR header size #{header_size}." unless header_size == FILE_HEADER_SIZE
       raise Error, "ExoFDR file header CRC mismatch." unless Zlib.crc32(raw.byteslice(0, FILE_HEADER_SIZE - 4)) == stored_crc
 
+      device_id = "ECU-#{mac}" if mac.match?(/\A[0-9A-F]{12}\z/) && mac != "000000000000"
       { "format_version" => version, "boot_id" => boot_id,
-        "boot_monotonic_us" => boot_us, "firmware" => decode_string(firmware) }
+        "boot_monotonic_us" => boot_us, "firmware" => decode_string(firmware), "device_id" => device_id }
     end
 
     def decode_payload(type, payload)

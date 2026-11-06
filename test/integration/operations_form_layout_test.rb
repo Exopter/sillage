@@ -22,7 +22,7 @@ class OperationsFormLayoutTest < ActionDispatch::IntegrationTest
     assert_select "turbo-frame#flight-browser .exds-browser-sidebar"
     assert_select "turbo-frame#flight-preview .exds-browser-editor > form.operations-form", count: 1
     assert_select ".operations-page", count: 0
-    assert_select ".import-source-picker", count: 1
+    assert_select "[name='flight_import[import_type]']", count: 0
     assert_select ".operations-form-actions.upload-actions", count: 1
   end
 

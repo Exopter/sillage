@@ -9,7 +9,6 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_enqueued_jobs 1, only: FlySightImportJob do
       post flight_imports_path, params: {
         flight_import: {
-          import_type: "flysight",
           aircraft_id: aircraft(:pilatus).id,
           source_files: [
             fixture_file_upload("flysight_v2/TRACK.CSV", "text/csv"),
@@ -307,11 +306,10 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_select ".workspace-errors", text: /Location/
   end
 
-  test "rejects an ExoFDR import without a source file" do
+  test "rejects an import without a source file" do
     assert_no_difference -> { FlightImport.count } do
       post flight_imports_path, params: {
         flight_import: {
-          import_type: "exofdr",
           aircraft_id: aircraft(:pilatus).id
         }
       }
@@ -320,7 +318,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
     follow_redirect!
     assert_select ".flash.alert[role='alert'][data-controller='flash'][data-flash-timeout-value='0']",
-      text: "Select an ExoFDR binary file."
+      text: "Select an ExoFDR or FlySight recording."
   end
 
   test "dashboard renders the Sillage logbook" do

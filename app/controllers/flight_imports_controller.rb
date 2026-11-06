@@ -16,9 +16,10 @@ class FlightImportsController < ApplicationController
     target_flight = Flight.visible_to(Current.user).find(import_params[:target_flight_id]) if import_params[:target_flight_id].present?
     aircraft = target_flight ? target_flight.aircraft : Aircraft.find_by(id: import_params[:aircraft_id])
 
-    service = import_params[:import_type] == "exofdr" ? ExoFdr::ImportService : FlySight::ImportService
+    files = source_files
+    service = import_service(files)
     flight_import = service.create!(
-      source_files,
+      files,
       user: Current.user,
       aircraft:,
       target_flight:
@@ -67,11 +68,37 @@ class FlightImportsController < ApplicationController
   private
 
   def source_files
-    params.dig(:flight_import, :source_files) || []
+    Array(params.dig(:flight_import, :source_files)).compact_blank
+  end
+
+  def import_service(files)
+    raise FlySight::Error, "Select an ExoFDR or FlySight recording." if files.empty?
+
+    types = files.map do |file|
+      raise FlySight::Error, "Select a recording file to upload." unless file.is_a?(ActionDispatch::Http::UploadedFile)
+
+      signature = file.read(ExoFdr::Decoder::MAGIC.bytesize)
+      file.rewind
+      extension = File.extname(file.original_filename).downcase
+      if signature == ExoFdr::Decoder::MAGIC
+        ExoFdr::ImportService
+      elsif signature&.start_with?("PK\x03\x04".b)
+        FlySight::ImportService
+      elsif extension.in?(%w[.bin .fdr])
+        ExoFdr::ImportService
+      elsif extension.in?(%w[.csv .zip])
+        FlySight::ImportService
+      else
+        raise FlySight::Error, "Use ExoFDR BIN/FDR files or FlySight CSV/ZIP files."
+      end
+    end.uniq
+    raise FlySight::Error, "Import ExoFDR and FlySight recordings separately." unless types.one?
+
+    types.first
   end
 
   def import_params
-    params.fetch(:flight_import, {}).permit(:import_type, :aircraft_id, :target_flight_id)
+    params.fetch(:flight_import, {}).permit(:aircraft_id, :target_flight_id)
   end
 
   def respond_to_upload_success(redirect_url, notice)

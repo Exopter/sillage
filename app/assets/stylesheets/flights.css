@@ -207,13 +207,11 @@
 
 @media (max-width: 640px) {
   .operations-form-grid,
-  .import-source-picker,
   .preparation-grid {
     grid-template-columns: 1fr;
   }
 
-  .operations-form-grid label.is-wide,
-  .import-source-picker legend {
+  .operations-form-grid label.is-wide {
     grid-column: 1;
   }
 

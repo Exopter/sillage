@@ -1,8 +1,8 @@
 require "zlib"
 
 module ExoFdrBinary
-  def fdr_binary(records, boot_id: 1_234)
-    header = [ "EXOFDR1\0", 3, 64, boot_id, 777_000, "fdr-test", "" ].pack("a8vvVQ<a24a12")
+  def fdr_binary(records, boot_id: 1_234, mac: "")
+    header = [ "EXOFDR1\0", 3, 64, boot_id, 777_000, "fdr-test", mac ].pack("a8vvVQ<a24a12")
     header + [ Zlib.crc32(header) ].pack("V") + records.map do |record|
       payload = record.fetch(:payload) { [ record.fetch(:sequence), 255, 190, 0 ].pack("VCCv") }
       body = [ 0xA55A, 2, record.fetch(:type, 5), 28, payload.bytesize, 1, 0,

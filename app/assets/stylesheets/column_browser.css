@@ -86,12 +86,10 @@
 .exds-browser-editor-section { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--ex-line-200); }
 .exds-browser-editor-section h3 { margin: 0; font-size: 17px; }
 .exds-browser-editor-section .workspace-actions { flex-wrap: wrap; margin-top: 16px; }
-.exds-browser-editor .import-source-picker { gap: 12px; }
-.exds-browser-editor .import-source-card { min-width: 0; }
 .exds-browser-editor .upload-drop { min-width: 0; padding: 24px 16px; }
 .exds-browser-editor .upload-drop input { max-width: 100%; }
 @container (max-width: 380px) {
-  .exds-browser-form-grid, .exds-browser-editor .import-source-picker { grid-template-columns: minmax(0, 1fr); }
+  .exds-browser-form-grid { grid-template-columns: minmax(0, 1fr); }
 }
 .exds-browser-preview-heading { display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
 .exds-browser-preview-heading .exds-browser-caption { font-family: var(--ex-font-mono); letter-spacing: .04em; }

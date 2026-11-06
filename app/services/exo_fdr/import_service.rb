@@ -44,6 +44,7 @@ module ExoFdr
       @next_sequence_by_boot = {}
       # Lock all recorder boots in a stable order, without retaining decoded records.
       headers = blobs.map { |blob| Decoder.new(StringIO.new(blob.download_chunk(0...Decoder::FILE_HEADER_SIZE))).header }
+      identify_recorder!(headers)
       recordings = headers.to_h do |header|
         boot_id = header.fetch("boot_id")
         [ boot_id, FdrRecording.create_or_find_by!(user: @flight_import.user, recorder_key:, boot_id:) ]
@@ -76,6 +77,20 @@ module ExoFdr
     ensure
       sources&.each { |source| source.fetch(:records).close }
       @seen_sequences&.each_value(&:close)
+    end
+
+    def identify_recorder!(headers)
+      device_ids = headers.map { |header| header["device_id"] }.uniq
+      return if device_ids == [ nil ]
+      raise Error, "Import recordings from each ExoFDR separately." unless device_ids.one?
+
+      device_id = device_ids.first
+      existing_id = @flight_import.device_id
+      if existing_id.present? && existing_id != device_id
+        raise Error, "The file recorder ID does not match the synchronization source."
+      end
+
+      @flight_import.update!(device_id:) if existing_id.blank?
     end
 
     def decode_source(blob, header)

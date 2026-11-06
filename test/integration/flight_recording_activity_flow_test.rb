@@ -5,6 +5,7 @@ require_relative "../support/method_replacement"
 class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
   include ExoFdrBinary
   include MethodReplacement
+  include ActiveJob::TestHelper
 
   setup { sign_in_as users(:julien) }
 
@@ -141,9 +142,16 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
     assembly = create_exofdr_assembly
     part = Part.create!(function: Function.find_or_create_by!(code: "CONTROLLER") { |function| function.name = "Controller" }, model: "Recorder ECU")
     part.install_in!(assembly, at: Time.utc(2026, 9, 1))
-    recorder = create_embedded_controller(part:, device_id: "ECU-A12345")
-    import = stationary_import(target_flight: target, device_id: recorder.device_id)
-    ExoFdr::ImportService.new(import).call
+    recorder = create_embedded_controller(part:, device_id: "ECU-A1B2C3D4E5F6")
+    binary = stationary_binary(mac: "A1B2C3D4E5F6")
+    upload = Rack::Test::UploadedFile.new(StringIO.new(binary), "application/octet-stream", original_filename: "recording.dat")
+    assert_enqueued_jobs 1, only: ExoFdrImportJob do
+      post flight_imports_path, params: { flight_import: { target_flight_id: target.id, source_files: [ upload ] } }
+    end
+    import = FlightImport.find_by!(target_flight: target)
+    assert_redirected_to flights_path(recording: import.id)
+    perform_enqueued_jobs only: ExoFdrImportJob
+    assert_equal recorder.device_id, import.reload.device_id
     assert_not import.reload.set_aside?
     assert_equal target.id, import.flights.sole.id
     assert_equal "team", target.reload.visibility
@@ -186,12 +194,16 @@ class FlightRecordingActivityFlowTest < ActionDispatch::IntegrationTest
   private
 
   def stationary_import(**attributes)
+    fdr_import(stationary_binary, **attributes)
+  end
+
+  def stationary_binary(**header)
     records = (0..30).map do |time|
       payload = [ time * 1_000, 2026, 9, 7, 10, 0, time, 7, 80, 0, 3, 1, 0, 12,
         100_000_000, 440_000_000, 100_000, 100_000, 1_000, 2_000,
         30, 0, 0, 30, 0, 50, 10_000, 125 ].pack("VvC6Vl<C4l<4V2l<5V2v")
       { sequence: time, timestamp_us: time * 1_000_000, type: 1, payload: }
     end
-    fdr_import(fdr_binary(records), **attributes)
+    fdr_binary(records, **header)
   end
 end
