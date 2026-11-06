@@ -932,6 +932,8 @@ export default class extends TypedController {
       timeline: false,
       creditContainer: this.creditsTarget,
       creditViewport: this.sceneTarget,
+      // Render at the display's pixel density so the canvas is not upscaled on HiDPI screens.
+      useBrowserRecommendedResolution: false,
       requestRenderMode: true,
       maximumRenderTimeChange: Number.POSITIVE_INFINITY,
       scene3DOnly: true,
