@@ -55,10 +55,34 @@ FROM base
 RUN groupadd --system --gid 1000 rails && \
     useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash
 
-USER 1000:1000
-
 COPY --chown=rails:rails --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --chown=rails:rails --from=build /rails /rails
+
+# Reuse the locked JSON gem for standalone Ruby and remove the base image's
+# vulnerable copy from the standard library and default gem registry.
+RUN <<'SH'
+set -eu
+json_gem=$(bundle show json)
+json_name=${json_gem##*/}
+bundle_home=${json_gem%/gems/*}
+extension=$(find "$bundle_home/extensions" -type d -name "$json_name" -print -quit)
+test -n "$extension"
+gem_extension="$GEM_HOME/${extension#"$bundle_home/"}"
+mkdir -p "$GEM_HOME/gems" "$GEM_HOME/specifications" "${gem_extension%/*}"
+ln -s "$json_gem" "$GEM_HOME/gems/$json_name"
+ln -s "$bundle_home/specifications/$json_name.gemspec" "$GEM_HOME/specifications/$json_name.gemspec"
+ln -s "$extension" "$gem_extension"
+ruby -rfileutils -e '
+  if spec = Gem::Specification.find_all_by_name("json").find(&:default_gem?)
+    lib, arch = RbConfig::CONFIG.values_at("rubylibdir", "archdir")
+    FileUtils.rm_f(spec.loaded_from)
+    FileUtils.rm_rf([spec.full_gem_path, File.join(lib, "json.rb"), File.join(lib, "json"), File.join(arch, "json")])
+  end
+'
+ruby -rjson -e 'abort "Unexpected standalone JSON version" unless "json-#{JSON::VERSION}" == ARGV.fetch(0)' "$json_name"
+SH
+
+USER 1000:1000
 
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]
 

@@ -1,6 +1,8 @@
 source "https://rubygems.org"
 
 gem "rails", "~> 8.1.4", ">= 8.1.4.1"
+# The production image also exposes this patched version to standalone Ruby.
+gem "json", ">= 2.21.2", "< 3.0"
 gem "propshaft"
 # Use PostgreSQL as the single database for application and Solid adapters.
 gem "pg", "~> 1.6"

@@ -369,6 +369,7 @@ DEPENDENCIES
   csv
   debug
   importmap-rails
+  json (>= 2.21.2, < 3.0)
   kamal
   nokogiri (>= 1.19.6, < 2.0)
   pg (~> 1.6)
