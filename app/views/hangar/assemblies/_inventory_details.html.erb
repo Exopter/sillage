@@ -18,7 +18,8 @@
         <p class="exds-hierarchy-help">Composition only. Serviceability is tracked separately.</p>
       <% end %>
       <dl>
-        <div><dt>Installed in</dt><dd><%= location&.registration || "Not installed" %><%= " · via parent" if node.parent_key && location %></dd></div>
+        <% if parents.any? %><div><dt><%= node.assembly? ? "Parent assembly" : "Assembly" %></dt><dd><%= parents.last.label %></dd></div><% end %>
+        <% if node.parent_key.nil? %><div><dt>Aircraft</dt><dd><%= location&.registration || "No aircraft assigned" %></dd></div><% end %>
         <div><dt><%= node.assembly? ? "Serviceability" : "State" %></dt><dd><%= node.assembly? ? asset.serviceability_label : asset.state.humanize %></dd></div>
         <% if node.assembly? %>
           <% if asset.controlled_fdr? %><div><dt>Functional configuration</dt><dd><%= asset.functional_configuration %></dd></div><% end %>

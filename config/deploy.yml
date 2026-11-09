@@ -117,7 +117,7 @@ volumes:
 # Keep the project-local PostgreSQL server on the same private Kamal network.
 accessories:
   postgres:
-    image: 127.0.0.1:5555/sillage-postgres:17.10-pgbackrest-2.59.1
+    image: 127.0.0.1:5555/sillage-postgres:security-20261102
     host: <%= deploy_host %>
     port: "127.0.0.1:5432:5432"
     cmd: >-

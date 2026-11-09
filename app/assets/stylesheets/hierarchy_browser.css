@@ -6,11 +6,11 @@
 .exds-hierarchy-search { display:flex; align-items:center; gap:8px; padding:0 11px; border:1px solid var(--ex-line-200); border-radius:var(--ex-radius-instrument); flex:1; min-width:0; color:var(--ex-graphite-600); }
 .exds-hierarchy-search input { width:100%; border:0; background:transparent; box-shadow:none; font:12px var(--ex-font-sans); padding:10px 0; color:var(--ex-carbon-900); min-width:0; outline:none; }
 .exds-hierarchy-search:focus-within { outline:2px solid var(--ex-state-live-text); outline-offset:2px; }
-.exds-hierarchy-filter-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 14px 14px; }
+.exds-hierarchy-filter-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding:0 14px 14px; }
 .exds-hierarchy-filters { display:flex; gap:4px; background:var(--ex-vapor-100); padding:3px; border-radius:6px; }
 .exds-hierarchy-filters button { border:0; border-radius:4px; background:transparent; color:var(--ex-graphite-600); font:600 10px var(--ex-font-mono); padding:7px 11px; cursor:pointer; }
 .exds-hierarchy-filters button.is-active { background:var(--ex-white); color:var(--ex-carbon-900); box-shadow:0 1px 3px #10181a14; }
-.exds-hierarchy-result-count { font:10px var(--ex-font-mono); color:var(--ex-graphite-600); white-space:nowrap; }
+.exds-hierarchy-result-count { margin-left:auto; font:10px var(--ex-font-mono); color:var(--ex-graphite-600); white-space:nowrap; }
 .exds-hierarchy-columns { display:grid; grid-template-columns:1fr 130px; padding:11px 16px; border-block:1px solid var(--ex-line-200); font:600 9px var(--ex-font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--ex-graphite-600); }
 .exds-hierarchy-section-title { display:flex; gap:8px; align-items:center; padding:15px 16px 8px; color:var(--ex-graphite-600); font:600 10px var(--ex-font-mono); letter-spacing:.06em; text-transform:uppercase; }
 .exds-hierarchy-section-title small { font:400 10px var(--ex-font-sans); text-transform:none; letter-spacing:0; }

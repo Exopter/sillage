@@ -273,3 +273,13 @@ readings as `frame_id` and `coordinate_frame`: `0` is `sensor_native`, `1` is
 `body_frd_ned`; unknown IDs remain unknown. Import preserves stored values
 without another rotation. Historical files and previously imported samples
 are not rewritten. See the FDR firmware README for the binary field contract.
+
+## Security maintenance
+
+Use Ruby 4.0.9 and the committed dependency lockfile. Rack must remain at least
+3.2.8 on the 3.2 release line. Rebuild the production image after OS or gem
+security updates; host package upgrades do not update existing image layers.
+
+The 2026-11-02 infrastructure security image tags retain the existing database/cache major versions and update operating-system packages. Native database backups and stopped rollback containers are retained on the production host. Existing storage mounts were verified unchanged.
+
+The final 2026-11-02 dependency refresh includes Nokogiri 1.19.6 and rails-html-sanitizer 1.7.2, addressing the serializer, concurrent scrubber and regular-expression security advisories published during the maintenance.
