@@ -92,6 +92,9 @@
       ],
       "recorder_session": [
         "./app/javascript/lib/recorder_session.js"
+      ],
+      "signal_transport": [
+        "./app/javascript/lib/signal_transport.js"
       ]
     },
     "strict": true,
