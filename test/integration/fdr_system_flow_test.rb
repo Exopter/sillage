@@ -10,6 +10,17 @@ class FdrSystemFlowTest < ActionDispatch::IntegrationTest
     Assembly.create!(assembly_type: "ExoFDR", fdr_component_type: role, fdr_functional_configuration: @configuration)
   end
 
+  test "former module serial links resolve to the same board without rewriting history" do
+    seat = create_typed("SEAT")
+    board = EmbeddedController.create!(device_id: "ECU-441BF685BEC8")
+    FdrIdentity::BindBoard.new(assembly: seat, controller: board).call
+    seat.update_columns(legacy_identity: { "previous_serial_number" => "EXOFDR-V2-MAIN-01" })
+    get forge_fdr_path("EXOFDR-V2-MAIN-01")
+    assert_response :success
+    assert_select ".exds-recorder-heading p", seat.serial_number
+    assert_equal board, seat.reload.embedded_controller
+  end
+
   test "Hangar creates a logical system and exposes missing modules without connection claims" do
     post hangar_assemblies_path, params: { assembly: { assembly_type: "ExoFDR", fdr_functional_configuration_id: @configuration.id, fdr_component_type: "SYSTEMS" } }
     system = Assembly.order(:id).last
@@ -27,7 +38,7 @@ class FdrSystemFlowTest < ActionDispatch::IntegrationTest
 
   test "module connection keeps its identity while system membership is shown and preserved" do
     system = create_typed("SYSTEMS")
-    main = create_typed("MAIN")
+    main = create_typed("SEAT")
     board = EmbeddedController.create!(device_id: "ECU-E072A1F81D84")
     FdrIdentity::BindBoard.new(assembly: main, controller: board).call
     post attach_assembly_hangar_assembly_path(system), params: { child_id: main.id }
@@ -69,7 +80,7 @@ class FdrSystemFlowTest < ActionDispatch::IntegrationTest
 
   test "Signal resolves an aircraft through the installed system" do
     system = create_typed("SYSTEMS")
-    main = create_typed("MAIN")
+    main = create_typed("SEAT")
     main.update!(parent: system)
     board = EmbeddedController.create!(device_id: "ECU-E072A1F81D84", mavlink_system_id: 42, mavlink_component_id: 191)
     FdrIdentity::BindBoard.new(assembly: main, controller: board).call
@@ -82,9 +93,9 @@ class FdrSystemFlowTest < ActionDispatch::IntegrationTest
     assert_equal main.serial_number, snapshot.dig("asset", "assemblies", 0, "serial_number")
   end
 
-  test "Signal learns only Main for a prepared system and does not overwrite another radio identity" do
+  test "Signal learns only Seat for a prepared system and does not overwrite another radio identity" do
     system = create_typed("SYSTEMS")
-    main = create_typed("MAIN")
+    main = create_typed("SEAT")
     central = create_typed("CENTRAL")
     main.update!(parent: system)
     central.update!(parent: system)

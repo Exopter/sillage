@@ -263,7 +263,7 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
   test "detached FDR modules and systems retain their membership history" do
     configuration = create_fdr_functional_configuration(version: 2)
     system = create_exofdr_assembly(fdr_functional_configuration: configuration, fdr_component_type: "SYSTEMS", assembly_method: nil)
-    mod = create_exofdr_assembly(fdr_functional_configuration: configuration, fdr_component_type: "MAIN", assembly_method: "PCB", parent: system)
+    mod = create_exofdr_assembly(fdr_functional_configuration: configuration, fdr_component_type: "SEAT", assembly_method: "PCB", parent: system)
     mod.update!(parent: nil)
 
     [ mod, system ].each do |assembly|

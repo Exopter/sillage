@@ -38,7 +38,7 @@ form.update()
 assert.equal(form.submitTarget.disabled, true)
 assert.equal(form.methodTarget.disabled, true)
 assert.equal(form.componentTarget.required, true)
-for (const type of ["SYSTEMS", "MAIN", "CENTRAL", "AIRSPEED", "DISPLAY", "LITE"]) {
+for (const type of ["SYSTEMS", "SEAT", "CENTRAL", "AIRSPEED", "DISPLAY", "LITE"]) {
   form.componentTarget.value = type
   form.update()
   assert.equal(form.submitTarget.disabled, false)
