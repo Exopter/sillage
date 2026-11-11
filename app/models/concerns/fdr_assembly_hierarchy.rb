@@ -68,7 +68,7 @@ module FdrAssemblyHierarchy
   def validate_fdr_parent
     return unless parent
     if parent.fdr_system?
-      errors.add(:parent, "only accepts Main, Central, AirSpeed and Display modules") unless fdr_module?
+      errors.add(:parent, "only accepts Seat, Central, AirSpeed and Display modules") unless fdr_module?
       if fdr_module? && parent.children.where(fdr_component_type:).where.not(id: id).exists?
         errors.add(:parent, "already contains this module type")
       end

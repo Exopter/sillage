@@ -71,8 +71,10 @@ module Forge
     private
 
     def set_fdr
-      if Assembly::EXOFDR_SERIAL_PATTERN.match?(params[:id].to_s)
-        @assembly = Assembly.not_retired.find_by!(serial_number: params[:id])
+      if params[:id].to_s.start_with?("EXOFDR-")
+        @assembly = Assembly.not_retired.find_by(serial_number: params[:id]) ||
+          Assembly.not_retired.find_by("legacy_identity ->> 'previous_serial_number' = ?", params[:id])
+        raise ActiveRecord::RecordNotFound unless @assembly
         return redirect_to hangar_assembly_path(@assembly) if @assembly.fdr_system?
         @fdr = @assembly.embedded_controller
       else

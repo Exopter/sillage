@@ -7,7 +7,7 @@ const recorder = {device_id: "ECU-A172E0", assembly, initialization_confirmed: t
 assert.deepEqual(registrationPayload({registered: false}), {registered: false})
 assert.deepEqual(registrationPayload({registered: true, recorder}).recorder, recorder)
 const system = {name: "EXOFDR-V2-SYSTEMS-01", identity_label: "EXOFDR-V2-SYSTEMS-01", serial_number: "EXOFDR-V2-SYSTEMS-01"}
-const main = {...assembly, name: "EXOFDR-V2-MAIN-01", identity_label: "EXOFDR-V2-MAIN-01", serial_number: "EXOFDR-V2-MAIN-01", functional_configuration: "V2", assembly_method: "PCB", component_type: "MAIN", system}
+const main = {...assembly, name: "EXOFDR-V2-SEAT-01", identity_label: "EXOFDR-V2-SEAT-01", serial_number: "EXOFDR-V2-SEAT-01", functional_configuration: "V2", assembly_method: "PCB", component_type: "SEAT", system}
 assert.deepEqual(registrationPayload({registered: true, recorder: {...recorder, assembly: main}}).recorder.assembly, main)
 assert.throws(() => registrationPayload({registered: true, recorder: {...recorder, assembly: {...main, system: {name: "Incomplete"}}}}))
 assert.equal(registrationPayload({registered: true, recorder: {...recorder, assembly: {...main, system: null}}}).recorder.assembly.system, null)

@@ -8,7 +8,7 @@ class FdrSystemMembership < ApplicationRecord
   scope :recent, -> { order(installed_at: :desc, id: :desc) }
 
   validates :installed_at, presence: true
-  validates :component_type, inclusion: { in: %w[MAIN CENTRAL AIRSPEED DISPLAY] }
+  validates :component_type, inclusion: { in: %w[SEAT CENTRAL AIRSPEED DISPLAY] }
   validate :valid_membership
 
   private

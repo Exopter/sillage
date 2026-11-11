@@ -5,7 +5,7 @@ class AssemblyHierarchyTest < ActionDispatch::IntegrationTest
     sign_in_as_admin users(:operator)
     configuration = create_fdr_functional_configuration(version: 2)
     @system = Assembly.create!(assembly_type: "ExoFDR", fdr_functional_configuration: configuration, fdr_component_type: "SYSTEMS")
-    @main = Assembly.create!(assembly_type: "ExoFDR", fdr_functional_configuration: configuration, fdr_component_type: "MAIN", parent: @system)
+    @main = Assembly.create!(assembly_type: "ExoFDR", fdr_functional_configuration: configuration, fdr_component_type: "SEAT", parent: @system)
     @lite = Assembly.create!(assembly_type: "ExoFDR", fdr_functional_configuration: configuration, fdr_component_type: "LITE")
     function = Function.create!(code: "TREE_SENSOR", name: "Tree sensor")
     @part = Part.create!(function:, manufacturer: "Inventory", model: "Nested sensor", serial_number: "TREE-001")

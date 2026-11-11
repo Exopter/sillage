@@ -74,7 +74,7 @@ module Signal
     end
 
     def unconfigured_source(assembly)
-      source = assembly.fdr_system? ? assembly.children.find_by(fdr_component_type: "MAIN") : assembly
+      source = assembly.fdr_system? ? assembly.children.find_by(fdr_component_type: "SEAT") : assembly
       device = source&.embedded_controller || source&.controller_part&.build_embedded_controller
       device if device&.mavlink_system_id.nil?
     end

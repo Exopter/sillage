@@ -8,20 +8,20 @@ class FdrSystemTest < ActiveSupport::TestCase
 
   test "typed names have independent permanent sequences and systems are logical" do
     system = typed("SYSTEMS")
-    main = typed("MAIN")
+    main = typed("SEAT")
     assert_equal "EXOFDR-V2-SYSTEMS-01", system.serial_number
     assert_nil system.assembly_method
-    assert_equal "EXOFDR-V2-MAIN-01", main.serial_number
+    assert_equal "EXOFDR-V2-SEAT-01", main.serial_number
     assert_equal "PCB", main.assembly_method
-    assert_equal "EXOFDR-V2-MAIN-02", typed("MAIN").serial_number
-    assert_equal "EXOFDR-V3-MAIN-01", typed("MAIN", version: 3).serial_number
+    assert_equal "EXOFDR-V2-SEAT-02", typed("SEAT").serial_number
+    assert_equal "EXOFDR-V3-SEAT-01", typed("SEAT", version: 3).serial_number
     assert_equal "EXOFDR-V2-LITE-01", typed("LITE").serial_number
     assert_not main.update(fdr_component_type: "CENTRAL")
-    assert_not main.reload.update(serial_number: "EXOFDR-V2-MAIN-99")
+    assert_not main.reload.update(serial_number: "EXOFDR-V2-SEAT-99")
   end
 
   test "invalid type method and version do not issue a serial" do
-    [ [ "SYSTEM", 2, nil ], [ "MAIN", 1, "PCB" ], [ "LITE", 2, "PERF" ], [ nil, 2, "PCB" ], [ "SYSTEMS", 2, "PCB" ] ].each do |role, version, method|
+    [ [ "SYSTEM", 2, nil ], [ "SEAT", 1, "PCB" ], [ "LITE", 2, "PERF" ], [ nil, 2, "PCB" ], [ "SYSTEMS", 2, "PCB" ] ].each do |role, version, method|
       configuration = create_fdr_functional_configuration(version:)
       assert_no_difference -> { IdentifierSequence.count } do
         assembly = Assembly.new(assembly_type: "ExoFDR", fdr_component_type: role,
@@ -34,7 +34,7 @@ class FdrSystemTest < ActiveSupport::TestCase
   test "module moves preserve identity and historical membership and aircraft" do
     first = typed("SYSTEMS")
     second = typed("SYSTEMS")
-    main = typed("MAIN")
+    main = typed("SEAT")
     board = EmbeddedController.create!(device_id: "ECU-A172E0")
     origin = Time.current.change(usec: 0)
     travel_to(origin) do
@@ -43,7 +43,7 @@ class FdrSystemTest < ActiveSupport::TestCase
       Installation.create!(installable: first, aircraft: aircraft(:pilatus), installed_at: Time.current)
     end
     travel_to(origin + 1.hour) { main.update!(parent: second) }
-    assert_equal "EXOFDR-V2-MAIN-01", main.serial_number
+    assert_equal "EXOFDR-V2-SEAT-01", main.serial_number
     assert_equal first, main.fdr_system_at(origin + 30.minutes)
     assert_equal second, main.fdr_system_at(origin + 1.hour)
     assert_equal aircraft(:pilatus), board.installation_at(origin + 30.minutes).aircraft
@@ -61,7 +61,7 @@ class FdrSystemTest < ActiveSupport::TestCase
   end
 
   test "database rejects missing physical construction metadata" do
-    main = typed("MAIN")
+    main = typed("SEAT")
     assert_raises(ActiveRecord::StatementInvalid) do
       Assembly.transaction(requires_new: true) { main.update_columns(assembly_method: nil) }
     end
@@ -70,8 +70,8 @@ class FdrSystemTest < ActiveSupport::TestCase
 
   test "systems reject duplicate roles nested systems lite and direct parts or boards" do
     system = typed("SYSTEMS")
-    main = typed("MAIN", parent: system)
-    assert_not typed("MAIN").update(parent: system)
+    main = typed("SEAT", parent: system)
+    assert_not typed("SEAT").update(parent: system)
     assert_not typed("LITE").update(parent: system)
     assert_not typed("SYSTEMS").update(parent: system)
     assert_not typed("CENTRAL").update(parent: main)
@@ -85,7 +85,7 @@ class FdrSystemTest < ActiveSupport::TestCase
   end
 
   test "bench modules and lite need no system and signed names identify the device" do
-    %w[MAIN CENTRAL AIRSPEED DISPLAY LITE].each_with_index do |role, index|
+    %w[SEAT CENTRAL AIRSPEED DISPLAY LITE].each_with_index do |role, index|
       mod = typed(role)
       board = EmbeddedController.create!(device_id: format("ECU-%012X", index + 1))
       FdrIdentity::BindBoard.new(assembly: mod, controller: board).call
@@ -103,6 +103,6 @@ class FdrSystemTest < ActiveSupport::TestCase
     legacy.update!(notes: "Existing unit")
     assert_equal serial, legacy.reload.serial_number
     assert_nil legacy.fdr_component_type
-    assert_not legacy.update(fdr_component_type: "MAIN")
+    assert_not legacy.update(fdr_component_type: "SEAT")
   end
 end

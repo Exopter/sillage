@@ -1,11 +1,11 @@
 class Assembly < ApplicationRecord
   include AssetIdentifiable
 
-  EXOFDR_SERIAL_PATTERN = /\AEXOFDR-V(?:\d+-(?:PERF|PCB)|(?:[2-9]|[1-9]\d+)-(?:SYSTEMS|MAIN|CENTRAL|AIRSPEED|DISPLAY|LITE))-\d{2,}\z/
+  EXOFDR_SERIAL_PATTERN = /\AEXOFDR-V(?:\d+-(?:PERF|PCB)|(?:[2-9]|[1-9]\d+)-(?:SYSTEMS|SEAT|CENTRAL|AIRSPEED|DISPLAY|LITE))-\d{2,}\z/
   ASSEMBLY_TYPES = [ "ExoFDR", "Parachute", "Exowing" ].freeze
   ASSEMBLY_METHODS = { "PERF" => "Perfboard", "PCB" => "PCB" }.freeze
-  FDR_COMPONENT_TYPES = { "SYSTEMS" => "Systems", "MAIN" => "Main", "CENTRAL" => "Central", "AIRSPEED" => "AirSpeed", "DISPLAY" => "Display", "LITE" => "Lite" }.freeze
-  FDR_MODULE_TYPES = %w[MAIN CENTRAL AIRSPEED DISPLAY].freeze
+  FDR_COMPONENT_TYPES = { "SYSTEMS" => "Systems", "SEAT" => "Seat", "CENTRAL" => "Central", "AIRSPEED" => "AirSpeed", "DISPLAY" => "Display", "LITE" => "Lite" }.freeze
+  FDR_MODULE_TYPES = %w[SEAT CENTRAL AIRSPEED DISPLAY].freeze
   include FdrAssemblyHierarchy
   SERVICEABILITY_STATES = %w[in_preparation serviceable quarantined retired].freeze
 
