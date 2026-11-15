@@ -40,7 +40,6 @@
   --club-text: var(--club-ink);
   --club-secondary: var(--club-muted);
   --club-rule: var(--club-line);
-  --membership-card-surface: var(--club-surface);
 
   position: relative;
   display: grid;

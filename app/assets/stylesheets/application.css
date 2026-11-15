@@ -547,7 +547,6 @@ body {
 }
 
 .sillage-profile-card {
-  --membership-card-surface: var(--surface-panel);
   position: relative;
   display: grid;
   color: var(--text-body);

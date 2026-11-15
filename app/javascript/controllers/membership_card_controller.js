@@ -51,7 +51,6 @@ export default class extends TypedController {
       memberNumber: this.numberValue,
       tier: /** @type {import("membership_card").RankKey} */ (this.tierValue),
       since: this.sinceValue,
-      surface: getComputedStyle(this.element).getPropertyValue("--membership-card-surface").trim(),
       assets: { wordmark: this.wordmarkValue, monogram: this.monogramValue, wing: this.wingValue },
       onFace: (flipped) => this.showFace(flipped)
     }).then((card) => {
