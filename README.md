@@ -236,6 +236,12 @@ a last name and a tier; the permanent member number comes from the
 `flight_club_member` identifier sequence. Accounts without a tier keep the
 standard invitation and never see Flight Club.
 
+Flight Club members with the `user` role can read Flights and manage their
+profile and membership card. Signal navigation, direct pages, live subscriptions,
+radio history and raw Signal captures are unavailable. Administrators retain
+operational access regardless of membership tier; non-member read-only accounts
+retain their existing Signal access.
+
 1. `UserMailer#invitation` sends the member invitation (HTML and text) with the
    rank card render, the member identity and the expiry date of the 14 day token.
 2. `invitations#edit` presents the invitation on the dark Flight Club layout and

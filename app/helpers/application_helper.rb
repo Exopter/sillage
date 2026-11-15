@@ -147,7 +147,7 @@ module ApplicationHelper
       { id: "hangar", label: "Hangar", icon: "wrench", href: hangar_path, enabled: true },
       { id: "forge", label: "Forge", icon: "code", href: forge_path, enabled: true },
       { id: "signal", label: "Signal", icon: "signal", href: signal_path, enabled: true, separated: true }
-    ].select { |item| can_manage_operations? || %w[flight signal].include?(item[:id]) }
+    ].select { |item| can_manage_operations? || item[:id] == "flight" || (item[:id] == "signal" && can_access_signal?) }
   end
 
   def sillage_current_flight_tab

@@ -60,6 +60,57 @@ class ReadOnlyAccessTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "every Flight Club rank keeps Flights and profile access without Signal" do
+    member = users(:member)
+    member.complete_membership_welcome!
+    sign_in_as member
+
+    User::MEMBERSHIP_TIERS.each do |tier|
+      member.update!(membership_tier: tier)
+      get flights_path
+      assert_response :success
+      assert_equal [ "Flights" ], css_select(".sillage-room-nav a").map { |link| link.text.strip }
+      get profile_path
+      assert_response :success
+      get signal_path
+      assert_response :forbidden
+      head signal_path
+      assert_response :forbidden
+      get signal_path(session: @signal_session.uuid), as: :json
+      assert_response :forbidden
+      get signal_session_radio_history_path(@signal_session.uuid, format: :csv)
+      assert_response :forbidden
+    end
+  end
+
+  test "Flight Club members cannot join live sessions or fetch Signal captures through a shared flight" do
+    member = users(:member)
+    member.complete_membership_welcome!
+    sign_in_as member
+    @flight.update!(status: "live")
+    @signal_session.raw_capture.attach(io: StringIO.new("radio capture"), filename: "capture.bin")
+    get preview_flights_path(id: @flight.id)
+    assert_response :success
+    assert_select "a[href^='/signal']", count: 0
+    get flight_path(@flight)
+    assert_response :success
+    assert_select "section[aria-label='Signal radio history']", count: 0
+    get attachment_path(@signal_session.raw_capture.attachment)
+    assert_response :not_found
+    post api_v1_signal_sessions_path, params: { flight_id: @flight.id }, as: :json
+    assert_response :forbidden
+  end
+
+  test "administrators retain Signal access when they also hold a Flight Club membership" do
+    admin = users(:julien)
+    admin.update!(first_name: "Julien", last_name: "Blancher", membership_tier: "core_team", membership_welcomed_at: Time.current)
+    sign_in_as admin
+    get signal_path(view: "home")
+    assert_response :success
+    assert_select ".sillage-room-nav a[href='#{signal_path}']"
+    assert_select "button", text: "Create draft flight"
+  end
+
   test "direct URLs cannot open admin rooms or write forms" do
     [ hangar_path, hangar_parts_path, hangar_part_path(@recorder.part), edit_hangar_assembly_path(@assembly),
       forge_path, forge_fdr_path(@assembly.serial_number), core_users_path, core_feedbacks_path,
