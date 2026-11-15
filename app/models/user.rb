@@ -110,7 +110,7 @@ class User < ApplicationRecord
 
   # Member numbers are permanent: a number is never reassigned or renumbered.
   def member_code
-    format("FC %04d", member_number) if member_number
+    format("Member %04d", member_number) if member_number
   end
 
   def awaiting_membership_welcome?

@@ -36,7 +36,7 @@ class FlightClub::OnboardingTest < ActionDispatch::IntegrationTest
     get edit_invitation_path(token)
     assert_response :success
     assert_select "h1", "Ada, your place is ready."
-    assert_select ".flight-club-micro", text: /FC 0007/
+    assert_select ".flight-club-micro", text: /Member 0007/
 
     patch invitation_path(token), params: { password: "password123456", password_confirmation: "password123456" }
     assert_redirected_to flight_club_welcome_path

@@ -1,7 +1,7 @@
 <%# The live card, with a static stand-in for browsers without WebGL. %>
 <div class="flight-club-stage">
   <div class="flight-club-scene" data-membership-card-target="scene" role="img"
-    aria-label="<%= member.membership_rank %> membership card engraved for <%= member.full_name %>, member <%= member.member_code %>. Move the pointer to catch the light; drag or click to see the reverse."></div>
+    aria-label="<%= member.membership_rank %> membership card engraved for <%= member.full_name %>, <%= member.member_code %>. Move the pointer to catch the light; drag or click to see the reverse."></div>
   <div class="flight-club-fallback" data-membership-card-target="fallback" hidden>
     <span class="flight-club-micro">Exopter</span>
     <strong>Flight Club</strong>
