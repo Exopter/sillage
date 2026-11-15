@@ -259,7 +259,7 @@
 
 .flight-club-scene {
   position: absolute;
-  inset: 0;
+  inset: 15%;
   cursor: grab;
   touch-action: pan-y;
   user-select: none;
@@ -288,7 +288,7 @@
   border-radius: 16px;
   background: #0b0b0c;
   color: #f0f0f0;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(0.7);
 }
 
 .flight-club-fallback[hidden],
