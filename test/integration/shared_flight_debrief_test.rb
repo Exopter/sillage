@@ -50,6 +50,20 @@ class SharedFlightDebriefTest < ActionDispatch::IntegrationTest
     assert_not_equal session.uuid, response.parsed_body.fetch("uuid")
   end
 
+  test "legacy unassigned sessions can be joined and explicitly closed" do
+    session = users(:julien).signal_sessions.create!
+    get signal_path(session: session.uuid, join: 1)
+    assert_response :success
+    assert_select "[data-shared-flight-target=flightLink][hidden]"
+    get shared_state_api_v1_signal_session_path(session.uuid), as: :json
+    assert_response :success
+    assert_nil response.parsed_body["flight_url"]
+    post close_disconnected_api_v1_signal_session_path(session.uuid), as: :json
+    assert_response :success
+    assert session.reload.flight
+    assert response.parsed_body["flight_url"].present?
+  end
+
   test "publishes a debrief once and retains the original audio" do
     flight = flights(:one)
     post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
