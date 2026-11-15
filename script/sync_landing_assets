@@ -10,6 +10,7 @@ mode = ARGV.fetch(0, "--check")
 abort "Usage: ruby script/sync_landing_assets [--check|--write]" unless %w[--check --write].include?(mode)
 
 files = {
+  "ui_kits/flightclub/membership-card.js" => "app/javascript/lib/membership_card.js",
   "assets/logo-wordmark.svg" => "app/assets/images/logo-wordmark.svg",
   "assets/logo-mark.svg" => "app/assets/images/logo-mark.svg",
   "assets/logo-shell.svg" => "app/assets/images/logo-shell.svg",
