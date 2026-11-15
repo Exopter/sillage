@@ -47,7 +47,7 @@
             </div>
           <% end %>
         </nav>
-        <% if @folders.empty? %><p class="exds-browser-empty"><%= can_manage_operations? ? "Create a folder to organize your flights." : "No accessible folders." %></p><% end %>
+        <% if @folders.empty? %><p class="exds-browser-empty"><% if can_manage_operations? %>Group flights by project or campaign.<%= link_to "New folder", new_flight_folder_path, class: "button-secondary exds-btn exds-btn--secondary exds-btn--sm", data: { turbo_frame: "_top" } %><% else %>No accessible folders.<% end %></p><% end %>
       </aside>
       <section class="exds-browser-collection" aria-label="Flights in selected folder">
         <header class="exds-browser-collection-header">

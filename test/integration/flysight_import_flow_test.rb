@@ -83,6 +83,10 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_select ".video-sync"
     assert_select ".flight-support-grid .flight-instrument-panel", count: 2
     assert_select ".flight-support-grid", text: /Acquisition/, count: 0
+    assert_select "nav[aria-label='Flight sections'] a.exds-tab", count: 3
+    assert_select "#analysis.flight-record-panel:not([hidden]) .trajectory-scene"
+    assert_select "#pilot-log.flight-record-panel[hidden]"
+    assert_select "#details.flight-record-panel[hidden] .flight-support-grid"
 
     viewer = css_select("[data-controller='flight-viewer']").first
     points = JSON.parse(viewer["data-flight-viewer-points-value"])

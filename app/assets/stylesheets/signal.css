@@ -473,7 +473,7 @@
 }
 
 .signal-telemetry-health strong {
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .signal-telemetry-strip.signal-sensor-strip {
@@ -485,7 +485,7 @@
 
 .signal-sensor-strip strong {
   grid-column: 1 / -1;
-  font-size: 12px;
+  font-size: var(--fs-caption);
   font-variant-numeric: tabular-nums;
 }
 
@@ -539,21 +539,21 @@
 .signal-fdr-head h2 {
   margin: 0 0 4px;
   color: var(--text-strong);
-  font-size: 22px;
+  font-size: var(--fs-section);
 }
 
 .signal-fdr-head p {
   max-width: 850px;
   margin: 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
 }
 
 .signal-fdr-transport small {
   margin: 0;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1.45;
 }
 
@@ -904,7 +904,7 @@
 .signal-fdr-section-head h3 {
   margin: 0;
   color: var(--text-strong);
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 
 .signal-fdr-overview-title {
@@ -1211,7 +1211,7 @@
   display: block;
   margin-top: 0;
   color: var(--text-strong);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 .signal-fdr-tools-summary > small {
@@ -1251,7 +1251,7 @@
 .signal-fdr-diagnostics h3 {
   margin: 0;
   color: var(--text-strong);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 .signal-fdr-diagnostics .signal-fdr-section-head small {
@@ -1317,7 +1317,7 @@
 .signal-launch-body p {
   margin: 0;
   color: var(--ex-graphite-400);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.55;
 }
 
@@ -1400,7 +1400,7 @@
 .signal-launch-body h2 {
   margin: 6px 0;
   color: var(--ex-vapor-50);
-  font-size: 20px;
+  font-size: var(--fs-section);
 }
 
 .signal-prep-row {
@@ -1430,7 +1430,7 @@
 .signal-prep-empty {
   margin-top: 3px;
   color: var(--ex-graphite-400);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .signal-prep-empty {
@@ -1468,7 +1468,7 @@
   display: block;
   margin-bottom: 2px;
   color: var(--ex-vapor-50);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 @media (max-width: 1280px) {

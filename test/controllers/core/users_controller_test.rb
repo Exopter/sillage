@@ -22,6 +22,19 @@ class Core::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", "Users"
     assert_select ".core-user-row", minimum: 3
     assert_select ".sillage-core-link[href='#{core_path}']", text: "Core", count: 1
+    assert_select ".exds-page-header a[href='#{new_core_user_path}']", text: "Invite user"
+    assert_select "form[action='#{core_users_path}'] input[name='user[email_address]']", count: 0
+  end
+
+  test "shows the invitation form on its own page" do
+    sign_in_as users(:julien)
+
+    get new_core_user_path
+
+    assert_response :success
+    assert_select "h1", "Invite user"
+    assert_select "form[action='#{core_users_path}'] input[name='user[email_address]']"
+    assert_select ".exds-form-actions a[href='#{core_users_path}']", text: "Cancel"
   end
 
   test "invites users from Core" do

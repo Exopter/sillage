@@ -4,16 +4,16 @@
 .exds-kanban-heading h2 { margin:0; font:600 14px var(--ex-font-sans); }
 .exds-kanban-heading span { color:var(--text-muted); font:12px var(--ex-font-mono); }
 .exds-kanban-card { display:grid; gap:var(--ex-space-3); margin-bottom:var(--ex-space-3); padding:var(--ex-space-4); border:1px solid var(--border-rule); border-radius:var(--ex-radius-surface); background:var(--surface-card); overflow-wrap:anywhere; }
-.exds-kanban-handle { display:flex; align-items:center; justify-content:space-between; gap:var(--ex-space-2); width:100%; padding:var(--ex-space-2) 0; border:0; background:transparent; color:inherit; font:inherit; font-size:13px; text-align:left; }
-.exds-kanban-card small { display:block; color:var(--text-muted); font-size:12px; line-height:1.6; }
-.exds-kanban-card p { margin:0; font-size:13px; line-height:1.6; }
+.exds-kanban-handle { display:flex; align-items:center; justify-content:space-between; gap:var(--ex-space-2); width:100%; padding:var(--ex-space-2) 0; border:0; background:transparent; color:inherit; font:inherit; font-size: var(--fs-sm); text-align:left; }
+.exds-kanban-card small { display:block; color:var(--text-muted); font-size: var(--fs-caption); line-height:1.6; }
+.exds-kanban-card p { margin:0; font-size: var(--fs-sm); line-height:1.6; }
 .exds-kanban-card [hidden] { display:none; }
 .exds-kanban-card[data-picked] { outline:2px solid var(--focus-ring); }
 .exds-kanban-card [draggable] { cursor:grab; }
 .exds-kanban-card [draggable]:active { cursor:grabbing; }
 .exds-kanban-card img { display:block; width:100%; max-height:180px; object-fit:contain; }
 .exds-kanban-column[data-drop-active] { outline:2px solid var(--focus-ring); outline-offset:-2px; }
-.exds-kanban-empty { margin:0; padding:var(--ex-space-6) var(--ex-space-2); color:var(--text-muted); font-size:13px; text-align:center; }
-.exds-kanban-pages { display:flex; justify-content:space-between; gap:var(--ex-space-2); font-size:12px; }
-.exds-kanban-notice { min-height:1.5em; margin:0; color:var(--text-muted); font-size:13px; }
+.exds-kanban-empty { margin:0; padding:var(--ex-space-6) var(--ex-space-2); color:var(--text-muted); font-size: var(--fs-sm); text-align:center; }
+.exds-kanban-pages { display:flex; justify-content:space-between; gap:var(--ex-space-2); font-size: var(--fs-caption); }
+.exds-kanban-notice { min-height:1.5em; margin:0; color:var(--text-muted); font-size: var(--fs-sm); }
 .exds-kanban :is(a,button):focus-visible { outline:2px solid var(--focus-ring); outline-offset:3px; }

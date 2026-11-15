@@ -37,34 +37,34 @@
 }
 .exds-feedback-panel::backdrop { background: transparent; }
 .exds-feedback-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ex-space-3); margin-bottom: var(--ex-space-4); }
-.exds-feedback-head h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.02em; }
+.exds-feedback-head h2 { margin: 0; font-size: var(--fs-card); font-weight: 650; letter-spacing: -.02em; }
 .exds-feedback-close { display: grid; place-items: center; padding: var(--ex-space-1); border: 0; background: transparent; color: var(--ex-graphite-600); cursor: pointer; }
 .exds-feedback-form { display: grid; gap: var(--ex-space-3); }
 .exds-feedback-kinds { display: flex; gap: var(--ex-space-1); margin: 0; padding: 0; border: 0; }
 .exds-feedback-kinds legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .exds-feedback-kind { position: relative; flex: 1; cursor: pointer; }
 .exds-feedback-kind input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.exds-feedback-kind span { display: block; padding: var(--ex-space-2); text-align: center; border: 1px solid transparent; border-radius: var(--ex-radius-instrument); color: var(--ex-graphite-600); font-size: 12px; }
+.exds-feedback-kind span { display: block; padding: var(--ex-space-2); text-align: center; border: 1px solid transparent; border-radius: var(--ex-radius-instrument); color: var(--ex-graphite-600); font-size: var(--fs-caption); }
 .exds-feedback-kind input:checked + span { background: var(--surface-selected); color: var(--link); border-color: var(--focus-ring); }
 .exds-feedback-kind input:focus-visible + span { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-.exds-feedback-form textarea { box-sizing: border-box; width: 100%; min-height: 112px; max-height: 240px; resize: vertical; padding: var(--ex-space-3); border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-instrument); background: var(--ex-white); color: var(--ex-carbon-950); font: inherit; font-size: 13px; line-height: 1.6; }
+.exds-feedback-form textarea { box-sizing: border-box; width: 100%; min-height: 112px; max-height: 240px; resize: vertical; padding: var(--ex-space-3); border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-instrument); background: var(--ex-white); color: var(--ex-carbon-950); font: inherit; font-size: var(--fs-sm); line-height: 1.6; }
 .exds-feedback-form textarea:focus { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-.exds-feedback-form label[for] { font-size: 12px; color: var(--ex-graphite-600); }
+.exds-feedback-form label[for] { font-size: var(--fs-caption); color: var(--ex-graphite-600); }
 .exds-feedback-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--ex-space-3); }
-.exds-feedback-foot small { color: var(--ex-graphite-600); font-size: 11px; line-height: 1.4; }
-.exds-feedback-send { padding: var(--ex-space-2) var(--ex-space-4); border: 0; border-radius: var(--ex-radius-instrument); background: var(--control-primary); color: var(--control-primary-text); font: inherit; font-size: 12px; cursor: pointer; }
+.exds-feedback-foot small { color: var(--ex-graphite-600); font-size: var(--fs-xs); line-height: 1.4; }
+.exds-feedback-send { padding: var(--ex-space-2) var(--ex-space-4); border: 0; border-radius: var(--ex-radius-instrument); background: var(--control-primary); color: var(--control-primary-text); font: inherit; font-size: var(--fs-caption); cursor: pointer; }
 .exds-feedback-send:disabled { opacity: .5; cursor: wait; }
-.exds-feedback-error { margin: 0; color: var(--ex-state-fault-text); font-size: 12px; line-height: 1.5; }
+.exds-feedback-error { margin: 0; color: var(--ex-state-fault-text); font-size: var(--fs-caption); line-height: 1.5; }
 .exds-feedback-receipt { display: grid; justify-items: start; gap: var(--ex-space-3); padding-block: var(--ex-space-3); }
-.exds-feedback-receipt p { margin: 0; color: var(--ex-graphite-600); font-size: 13px; line-height: 1.6; }
-.exds-feedback-receipt a { color: var(--link); font-size: 12px; }
+.exds-feedback-receipt p { margin: 0; color: var(--ex-graphite-600); font-size: var(--fs-sm); line-height: 1.6; }
+.exds-feedback-receipt a { color: var(--link); font-size: var(--fs-caption); }
 .exds-feedback-editor { display: grid; gap: var(--ex-space-3); }
 .exds-feedback-editor[hidden], .exds-feedback-receipt[hidden], .exds-feedback-preview[hidden] { display: none; }
-.exds-feedback-secondary { border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-instrument); padding: var(--ex-space-2) var(--ex-space-3); background: var(--ex-white); color: var(--ex-graphite-600); font: inherit; font-size: 12px; cursor: pointer; }
+.exds-feedback-secondary { border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-instrument); padding: var(--ex-space-2) var(--ex-space-3); background: var(--ex-white); color: var(--ex-graphite-600); font: inherit; font-size: var(--fs-caption); cursor: pointer; }
 .exds-feedback-secondary:disabled { opacity: .5; cursor: wait; }
 .exds-feedback-preview { margin: 0; display: grid; gap: var(--ex-space-2); }
 .exds-feedback-preview img { display: block; width: 100%; max-height: 160px; object-fit: contain; border: 1px solid var(--ex-line-200); border-radius: var(--ex-radius-instrument); }
-.exds-feedback-preview figcaption { font-size: 11px; line-height: 1.4; color: var(--ex-graphite-600); }
+.exds-feedback-preview figcaption { font-size: var(--fs-xs); line-height: 1.4; color: var(--ex-graphite-600); }
 .exds-feedback-annotation { position: fixed; inset: 0; width: 100%; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; overflow: hidden; overscroll-behavior: contain; }
 .exds-feedback-annotation::backdrop { background: transparent; }
 .exds-feedback-annotation canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }

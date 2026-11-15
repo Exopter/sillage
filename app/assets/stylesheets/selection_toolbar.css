@@ -8,7 +8,7 @@
   border-bottom: 1px solid var(--border-rule);
   color: var(--text-muted);
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: var(--fs-caption);
 }
 
 .exds-selection-toolbar > [role="status"] {

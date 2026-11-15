@@ -4,6 +4,9 @@ module Core
 
     def index
       @users = User.order(:email_address)
+    end
+
+    def new
       @user = User.new(role: "user")
     end
 
@@ -11,10 +14,9 @@ module Core
       @user = User.invite!(email_address: requested_email_address, role: requested_role, **requested_profile)
       redirect_to core_users_path, notice: "Invitation sent to #{@user.email_address}."
     rescue ActiveRecord::RecordInvalid => error
-      @users = User.order(:email_address)
       @user = error.record
       flash.now[:alert] = @user.errors.full_messages.to_sentence
-      render :index, status: :unprocessable_entity
+      render :new, status: :unprocessable_entity
     end
 
     def edit

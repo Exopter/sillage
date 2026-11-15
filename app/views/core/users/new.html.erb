@@ -1,0 +1,40 @@
+<% content_for :title, "Invite user" %>
+
+<section class="core-users is-form">
+  <%= link_to "Users", core_users_path, class: "exds-back-link" %>
+  <header class="exds-page-header">
+    <div>
+      <h1>Invite user</h1>
+      <p>The invitation e-mail lets them choose a password. It stays valid for two weeks.</p>
+    </div>
+  </header>
+
+  <section class="core-panel">
+    <%= form_with model: @user, url: core_users_path, class: "core-form" do |form| %>
+      <label>
+        <span>Email</span>
+        <%= form.email_field :email_address, required: true, autofocus: true %>
+      </label>
+      <label>
+        <span>Role</span>
+        <%= form.select :role, User::ROLES.map { |role| [role.titleize, role] } %>
+      </label>
+      <label>
+        <span>First name</span>
+        <%= form.text_field :first_name, autocomplete: "off" %>
+      </label>
+      <label>
+        <span>Last name</span>
+        <%= form.text_field :last_name, autocomplete: "off" %>
+      </label>
+      <label>
+        <span>Flight Club membership</span>
+        <%= form.select :membership_tier, User::MEMBERSHIP_TIERS.map { |tier| [tier.titleize, tier] }, include_blank: "None" %>
+      </label>
+      <div class="exds-form-actions">
+        <%= link_to "Cancel", core_users_path, class: "button-secondary exds-btn exds-btn--secondary" %>
+        <%= form.submit "Send invitation", class: "button-primary exds-btn exds-btn--primary" %>
+      </div>
+    <% end %>
+  </section>
+</section>

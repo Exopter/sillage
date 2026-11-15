@@ -86,7 +86,7 @@ Rails.application.routes.draw do
 
   namespace :core do
     resources :feedbacks, only: %i[index update]
-    resources :users, only: %i[index create edit update] do
+    resources :users, only: %i[index new create edit update] do
       member do
         post :resend_invitation
         patch :disable

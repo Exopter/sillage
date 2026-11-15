@@ -1,79 +1,48 @@
 <% content_for :title, "Users" %>
 
 <section class="core-users">
-  <%= render "core/navigation", title: "Users", lede: "People, roles and access to Sillage." %>
+  <%= render "core/navigation", title: "Users", lede: "People, roles and access to Sillage.", action: link_to("Invite user", new_core_user_path, class: "button-primary exds-btn exds-btn--primary") %>
 
-  <div class="core-users-grid">
-    <section class="core-panel">
-      <h2>Invite user</h2>
-      <%= form_with model: @user, url: core_users_path, class: "core-form" do |form| %>
-        <label>
-          <span>Email</span>
-          <%= form.email_field :email_address, required: true %>
-        </label>
-        <label>
-          <span>Role</span>
-          <%= form.select :role, User::ROLES.map { |role| [role.titleize, role] } %>
-        </label>
-        <label>
-          <span>First name</span>
-          <%= form.text_field :first_name, autocomplete: "off" %>
-        </label>
-        <label>
-          <span>Last name</span>
-          <%= form.text_field :last_name, autocomplete: "off" %>
-        </label>
-        <label>
-          <span>Flight Club membership</span>
-          <%= form.select :membership_tier, User::MEMBERSHIP_TIERS.map { |tier| [tier.titleize, tier] }, include_blank: "None" %>
-        </label>
-        <div class="exds-form-actions">
-          <%= form.submit "Send invitation", class: "button-primary exds-btn exds-btn--primary" %>
-        </div>
+  <section class="core-panel">
+    <h2>Directory</h2>
+    <div class="core-user-list">
+      <% @users.each do |user| %>
+        <article class="core-user-row">
+          <div>
+            <strong><%= user.full_name || user.email_address %></strong>
+            <span><%= [ (user.email_address if user.full_name), user.role.titleize ].compact.join(" / ") %></span>
+          </div>
+          <div class="core-user-status">
+            <% if user.disabled? %>
+              <span class="status-pill is-disabled">Disabled</span>
+            <% elsif user.invitation_pending? %>
+              <span class="status-pill is-pending">Invited</span>
+            <% else %>
+              <span class="status-pill is-active">Active</span>
+            <% end %>
+            <% if user.member? %>
+              <span class="status-pill"><%= user.membership_rank %> <%= user.member_code %></span>
+            <% end %>
+            <% if user.admin? %>
+              <span class="status-pill"><%= user.totp_configured? ? "2FA ready" : "2FA required" %></span>
+            <% end %>
+          </div>
+          <div class="core-user-actions">
+            <%= link_to "Edit", edit_core_user_path(user), class: "button-secondary exds-btn exds-btn--secondary core-user-action-edit" %>
+            <% if user.invitation_pending? %>
+              <%= button_to "Resend", resend_invitation_core_user_path(user), method: :post, class: "button-secondary exds-btn exds-btn--secondary core-user-action-resend" %>
+            <% end %>
+            <% if user.disabled? %>
+              <%= button_to "Enable", enable_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary core-user-action-access" %>
+            <% else %>
+              <%= button_to "Disable", disable_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary core-user-action-access" %>
+            <% end %>
+            <% if user.totp_configured? %>
+              <%= button_to "Reset 2FA", reset_two_factor_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary core-user-action-security" %>
+            <% end %>
+          </div>
+        </article>
       <% end %>
-    </section>
-
-    <section class="core-panel is-wide">
-      <h2>Directory</h2>
-      <div class="core-user-list">
-        <% @users.each do |user| %>
-          <article class="core-user-row">
-            <div>
-              <strong><%= user.full_name || user.email_address %></strong>
-              <span><%= [ (user.email_address if user.full_name), user.role.titleize ].compact.join(" / ") %></span>
-            </div>
-            <div class="core-user-status">
-              <% if user.disabled? %>
-                <span class="status-pill is-disabled">Disabled</span>
-              <% elsif user.invitation_pending? %>
-                <span class="status-pill is-pending">Invited</span>
-              <% else %>
-                <span class="status-pill is-active">Active</span>
-              <% end %>
-              <% if user.member? %>
-                <span class="status-pill"><%= user.membership_rank %> <%= user.member_code %></span>
-              <% end %>
-              <% if user.admin? %>
-                <span class="status-pill"><%= user.totp_configured? ? "2FA ready" : "2FA required" %></span>
-              <% end %>
-            </div>
-            <div class="core-user-actions">
-              <%= link_to "Edit", edit_core_user_path(user), class: "button-secondary exds-btn exds-btn--secondary core-user-action-edit" %>
-              <% if user.invitation_pending? %>
-                <%= button_to "Resend", resend_invitation_core_user_path(user), method: :post, class: "button-secondary exds-btn exds-btn--secondary core-user-action-resend" %>
-              <% end %>
-              <% if user.disabled? %>
-                <%= button_to "Enable", enable_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary core-user-action-access" %>
-              <% else %>
-                <%= button_to "Disable", disable_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary core-user-action-access" %>
-              <% end %>
-              <% if user.totp_configured? %>
-                <%= button_to "Reset 2FA", reset_two_factor_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary core-user-action-security" %>
-              <% end %>
-            </div>
-          </article>
-        <% end %>
-      </div>
-    </section>
-  </div>
+    </div>
+  </section>
 </section>

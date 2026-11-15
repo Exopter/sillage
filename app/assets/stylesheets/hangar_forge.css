@@ -72,7 +72,7 @@
   border-radius: var(--ex-radius-surface);
   color: var(--text-muted, #5f6c6b);
   font-family: var(--ex-font-mono, ui-monospace, monospace);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: .05em;
   line-height: 1;
@@ -97,7 +97,7 @@
 
 .recorder-fleet-header p {
   max-width: 720px;
-  font-size: 14px;
+  font-size: var(--fs-text);
   line-height: 1.5;
 }
 
@@ -115,7 +115,7 @@
 .hangar-section-head h2 {
   margin: 0;
   color: var(--text-strong, #10181a);
-  font-size: 20px;
+  font-size: var(--fs-section);
   line-height: 1.15;
 }
 
@@ -123,7 +123,7 @@
 .hangar-asset-head p {
   margin: 4px 0 0;
   color: var(--text-muted, #5f6c6b);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 .hangar-section-head .button-secondary {
@@ -244,7 +244,7 @@
   display: block;
   margin-top: 6px;
   color: var(--text-muted, #5f6c6b);
-  font-size: 12px;
+  font-size: var(--fs-caption);
 }
 
 .hangar-fleet-meta small {
@@ -295,7 +295,7 @@
   margin: 4px 0 3px;
   overflow: hidden;
   color: var(--text-strong, #10181a);
-  font-size: 20px;
+  font-size: var(--fs-section);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -421,7 +421,7 @@
 .hangar-tree-copy small {
   margin-top: 2px;
   color: var(--text-muted, #5f6c6b);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .hangar-tree-row > .status-dot {
@@ -451,7 +451,7 @@
   padding: 11px 13px;
   border-top: 1px solid var(--border-rule, #d4dfdc);
   color: var(--text-body, #10181a);
-  font-size: 12px;
+  font-size: var(--fs-caption);
   vertical-align: middle;
 }
 
@@ -478,7 +478,7 @@
 .hangar-table-primary small {
   margin-top: 3px;
   color: var(--text-muted, #5f6c6b);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .hangar-details-body {
@@ -488,14 +488,14 @@
 .hangar-details-body h3 {
   margin: 8px 0 7px;
   color: var(--text-strong, #10181a);
-  font-size: 20px;
+  font-size: var(--fs-section);
 }
 
 .hangar-details-body > p {
   min-height: 22px;
   margin: 0 0 19px;
   color: var(--text-muted, #5f6c6b);
-  font-size: 12px;
+  font-size: var(--fs-caption);
   line-height: 1.5;
 }
 
@@ -523,7 +523,7 @@
   border-top: 1px solid var(--border-rule, #d4dfdc);
   background: var(--surface-panel, #eef3f1);
   color: var(--text-muted, #5f6c6b);
-  font-size: 12px;
+  font-size: var(--fs-caption);
   line-height: 1.5;
 }
 
@@ -563,13 +563,13 @@
 .hangar-function-card h3 {
   margin: 5px 0;
   color: var(--text-strong, #10181a);
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 
 .hangar-function-card p {
   margin: 0;
   color: var(--text-muted, #5f6c6b);
-  font-size: 12px;
+  font-size: var(--fs-caption);
   line-height: 1.45;
 }
 
@@ -622,7 +622,7 @@
   padding: 12px 15px;
   border-right: 1px solid var(--border-rule, #d4dfdc);
   color: var(--text-muted, #5f6c6b);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .fdr-connection-strip > div svg {
@@ -682,13 +682,13 @@
 .fdr-wifi-section-head h3 {
   margin: 0;
   color: var(--text-strong, #10181a);
-  font-size: 19px;
+  font-size: var(--fs-section);
 }
 
 .fdr-wifi-section-head p {
   margin: 4px 0 0;
   color: var(--text-muted, #5f6c6b);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .fdr-wifi-section-head > span {
@@ -846,7 +846,7 @@
   border: 0;
   background: transparent;
   color: var(--link);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   cursor: pointer;
 }
@@ -859,7 +859,7 @@
   border: 1px solid var(--border-rule, #d4dfdc);
   border-radius: var(--ex-radius-surface);
   color: var(--text-muted, #5f6c6b);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
 }
 
@@ -899,7 +899,7 @@
 .fdr-wifi-empty {
   padding: 25px 14px;
   color: var(--text-muted, #5f6c6b);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
   text-align: center;
 }
@@ -916,7 +916,7 @@
 
 .fdr-wifi-apply-bar > span {
   color: var(--text-muted, #5f6c6b);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .fdr-wifi-apply-bar > span[data-state="success"] {
@@ -960,7 +960,7 @@
 
 .workspace-dialog-head h3 {
   margin: 4px 0 0;
-  font-size: 22px;
+  font-size: var(--fs-section);
 }
 
 .workspace-dialog-section {
@@ -979,7 +979,7 @@
 
 .workspace-dialog-section h4 {
   margin: 0 0 13px;
-  font-size: 14px;
+  font-size: var(--fs-text);
 }
 
 @media (max-width: 1180px) {
@@ -1076,12 +1076,12 @@
 }
 
 .workspace-form-page .workspace-header h2 {
-  font-size: 20px;
+  font-size: var(--fs-section);
 }
 
 .workspace-form-page .workspace-header p {
   margin-top: 4px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.45;
 }
 
@@ -1094,7 +1094,7 @@
 .workspace-header h2 {
   margin: 0 0 5px;
   color: var(--text-strong, #10181a);
-  font-size: 22px;
+  font-size: var(--fs-section);
 }
 
 .workspace-header p,
@@ -1130,7 +1130,7 @@
 .workspace-panel h2,
 .workspace-panel h3 {
   margin: 0 0 16px;
-  font-size: 18px;
+  font-size: var(--fs-card);
 }
 
 .workspace-panel-header {
@@ -1227,7 +1227,7 @@
 
 .workspace-table th {
   color: var(--ds-muted, #5f6c6b);
-  font-size: 12px;
+  font-size: var(--fs-caption);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1296,7 +1296,7 @@
   display: inline-flex;
   align-items: center;
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: var(--fs-caption);
   font-weight: 700;
   white-space: nowrap;
   background: var(--ex-state-pending-bg, #e5ece9);
@@ -1480,7 +1480,7 @@
 
 .workspace-mono {
   font-family: var(--ex-font-mono, ui-monospace, monospace);
-  font-size: 12px;
+  font-size: var(--fs-caption);
 }
 
 .workspace-notes {
@@ -1528,7 +1528,7 @@
 
 .assembly-function {
   color: var(--ex-state-live-text, #00615b);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -1551,7 +1551,7 @@
 
 .device-activity-note {
   margin-top: 16px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 @media (max-width: 800px) {
