@@ -171,7 +171,7 @@
           </div>
           <% @preparation_flights.each do |flight| %>
             <div class="signal-prep-row">
-              <div><strong><%= flight.code %></strong><span><%= flight.name %> · <%= flight.display_aircraft %></span><%= link_to "Edit draft", edit_flight_path(flight), class: "workspace-strong-link" %></div>
+              <div><strong><%= flight.code %></strong><span><%= flight.name %> · <%= flight.display_aircraft %></span><span>Created <time datetime="<%= flight.created_at.iso8601 %>"><%= flight.created_at.utc.strftime("%d %b %Y · %H:%M UTC") %></time></span><%= link_to "Edit draft", edit_flight_path(flight), class: "workspace-strong-link" %></div>
               <%= button_to "Open session", signal_sessions_path(flight_id: flight.id), class: "signal-tool-button is-primary", form: { data: { turbo: false } } %>
             </div>
           <% end %>
@@ -185,24 +185,6 @@
           </div>
         </section>
       </div>
-      <% if @completed_sessions.any? %>
-        <section class="signal-launch-card" aria-label="Completed sessions">
-          <div class="signal-launch-body"><span class="signal-k">History</span><h2>Completed sessions</h2><p>Review received signal strength across the complete acquisition.</p></div>
-          <% @completed_sessions.each do |session| %>
-            <div class="signal-prep-row">
-              <div><strong><%= session.flight.code %></strong><span><%= l session.started_at, format: :long %></span>
-                <% if session.materialization_status != "complete" %>
-                  <span><%= session.materialization_status == "failed" ? "Flight processing failed. Your recording is saved." : "Preparing flight. Your recording is saved." %></span>
-                <% end %>
-              </div>
-              <% if session.materialization_status != "complete" %>
-                <%= button_to "Retry processing", retry_processing_signal_session_path(session.uuid), class: "signal-tool-button", form: { data: { turbo: false } } %>
-              <% end %>
-              <%= link_to "Radio history", signal_session_radio_history_path(session.uuid), class: "signal-tool-button" %>
-            </div>
-          <% end %>
-        </section>
-      <% end %>
     </div>
   </div>
 <% end %>

@@ -76,6 +76,13 @@
   --ex-space-10: 40px;
   --ex-space-12: 48px;
 
+  /* Compact application density; touch controls retain larger targets. */
+  --ex-control-height: 34px; /* @kind spacing */
+  --ex-panel-padding: 16px; /* @kind spacing */
+  --ex-section-gap: 16px; /* @kind spacing */
+  --ex-list-row-height: 76px; /* @kind spacing */
+  --ex-shell-header-height: 48px; /* @kind spacing */
+
   --ex-radius-instrument: 4px;
   --ex-radius-surface: 8px;
   --ex-shadow-raised: 0 18px 42px rgba(16, 24, 26, 0.12);

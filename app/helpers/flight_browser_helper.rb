@@ -29,6 +29,25 @@ module FlightBrowserHelper
     entry.is_a?(FlightImport) ? entry.activity_summary["duration_seconds"] || entry.details.to_h["duration_seconds"] : entry.duration_seconds
   end
 
+  def browser_date(entry)
+    return logbook_date(entry) if entry.is_a?(Flight) && entry.flown_on
+
+    timestamp = entry.is_a?(FlightImport) ? entry.log_started_at : entry.display_started_at
+    return "Date not recorded" unless timestamp
+
+    prefix = entry.is_a?(Flight) && entry.started_at.nil? ? "Created " : ""
+    "#{prefix}#{timestamp.strftime('%d %b %Y · %H:%M')}"
+  end
+
+  def browser_duration_label(entry)
+    value = browser_duration(entry)
+    return if value.blank?
+
+    minutes, seconds = value.to_i.divmod(60)
+    hours, minutes = minutes.divmod(60)
+    [ ("#{hours}h" if hours.positive?), ("#{minutes}m" if minutes.positive? || hours.positive?), "#{seconds}s" ].compact.join(" ")
+  end
+
   def browser_visibility(entry)
     entry.is_a?(FlightImport) ? "private" : entry.effective_visibility
   end

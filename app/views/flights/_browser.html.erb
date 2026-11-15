@@ -63,13 +63,25 @@
               <div class="exds-browser-entry" aria-current="<%= selected %>" draggable="<%= can_manage_operations? && accessible && entry.is_a?(Flight) %>" data-entry="<%= browser_key(entry) %>" data-action="dragstart->flight-browser#startDrag">
                 <% if can_manage_operations? && accessible %><label><input type="checkbox" name="entries[]" value="<%= browser_key(entry) %>" data-table-selection-target="item" data-action="change->table-selection#update"><span class="sr-only">Select <%= browser_name(entry) %></span></label><% end %>
                 <%= link_to browser_preview_path(entry), class: "exds-browser-entry-link", draggable: false, data: { turbo_frame: "flight-preview", flight_browser_target: "entry", open_url: browser_open_path(entry), selected: selected, name: browser_name(entry), action: "click->flight-browser#select dblclick->flight-browser#open" }, aria: { label: "Preview #{browser_name(entry)}" } do %>
-                  <span class="exds-browser-thumbnail"><% if selected && @preview_points.any? %><canvas width="124" height="96" aria-hidden="true" data-controller="route-thumbnail" data-route-thumbnail-points-value="<%= @preview_points.to_json %>"></canvas><% else %><%= sillage_icon(entry.is_a?(FlightImport) ? "file-text" : entry.logbook_view? ? "plane" : "route", size: 24) %><% end %></span>
-                  <span class="exds-browser-entry-copy"><strong><%= browser_name(entry) %></strong>
-                    <% if entry.is_a?(Flight) && entry.description.present? %><small><%= entry.description %></small><% end %>
-                    <small><%= logbook_date(entry) %><% if entry.is_a?(Flight) && entry.location.present? %> · <%= entry.location %><% end %><% if browser_duration(entry).present? %> · <%= logbook_duration(browser_duration(entry)) %><% end %></small>
-                    <% entry_state, entry_status = entry.is_a?(Flight) ? logbook_status(entry) : recording_logbook_status(entry) %>
-                    <% unless entry_status.in?(%w[Analysed Logged]) %><small><span class="status-dot is-<%= entry_state %>"><span></span><%= entry_status %></span></small><% end %>
-                    <% if entry.is_a?(FlightImport) && entry.failed? %><small><%= entry.error_message %></small><% end %>
+                  <% entry_state, entry_status = entry.is_a?(Flight) ? logbook_status(entry) : recording_logbook_status(entry) %>
+                  <span class="exds-browser-entry-copy">
+                    <span class="exds-browser-entry-heading">
+                      <strong><%= browser_name(entry) %></strong>
+                      <% unless entry_status == "Analysed" %>
+                        <span class="status-dot is-<%= entry_state %>" title="<%= entry_status %>"><span></span><%= entry_status %></span>
+                      <% end %>
+                    </span>
+                    <small class="exds-browser-entry-location" title="<%= entry.location if entry.is_a?(Flight) %>"><%= entry.location if entry.is_a?(Flight) %></small>
+                    <small class="exds-browser-entry-date" title="<%= entry.is_a?(Flight) && entry.started_at.nil? && !entry.flown_on ? "Creation date and time (UTC)" : "Flight date and time" %>"><%= browser_date(entry).delete_prefix("Created ") %></small>
+                    <% description = entry.is_a?(Flight) ? entry.description : (entry.failed? ? entry.error_message : entry.import_type.upcase) %>
+                    <% description = nil if entry.is_a?(Flight) && description.in?(["Draft flight", "Prepared flight"]) %>
+                    <% description = "FlySight recording" if description&.match?(/\AFlySight \d{4}-\d{2}-\d{2} \d{2}:\d{2}\z/) %>
+                    <small class="exds-browser-entry-description" title="<%= description %>"><%= description %></small>
+                    <% if (duration_label = browser_duration_label(entry)) %>
+                      <small class="exds-browser-entry-duration" aria-label="Duration: <%= duration_label %>" title="Recorded duration"><%= sillage_icon "clock", size: 12 %><%= duration_label %></small>
+                    <% elsif entry.is_a?(Flight) && entry.started_at.nil? && !entry.flown_on %>
+                      <small class="exds-browser-entry-duration">Created · UTC</small>
+                    <% end %>
                   </span>
                   <span title="<%= browser_visibility(entry).capitalize %>"><%= sillage_icon(browser_visibility(entry) == "private" ? "lock-keyhole" : "users", size: 17) %><span class="sr-only"><%= browser_visibility(entry).capitalize %></span></span>
                   <%= sillage_icon "chevron-right", size: 15 %>

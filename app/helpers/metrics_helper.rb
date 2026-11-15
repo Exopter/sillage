@@ -24,7 +24,8 @@ module MetricsHelper
   end
 
   def logbook_status(flight)
-    return [ "unknown", "Logged" ] if flight.logged? || flight.preparation?
+    return [ "unknown", "Preparation" ] if flight.preparation?
+    return [ "unknown", "Logged" ] if flight.logged?
     return [ "live", "Live" ] if flight.live?
     return [ "caution", "Waiting for recording" ] if flight.waiting_for_recording?
     return [ "live", "Processing" ] if flight.processing?

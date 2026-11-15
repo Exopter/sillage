@@ -50,7 +50,7 @@
 .workspace-tabs {
   display: flex;
   gap: 6px;
-  margin-bottom: 22px;
+  margin-bottom: 16px;
   border-bottom: 1px solid var(--border-rule);
 }
 
@@ -1087,11 +1087,11 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
+  gap: var(--ex-section-gap);
 }
 
 .workspace-header {
-  margin-bottom: 22px;
+  margin-bottom: 16px;
 }
 
 .workspace-form-page {
@@ -1115,7 +1115,7 @@
 
 .workspace-header h1 {
   margin: 4px 0 5px;
-  font-size: clamp(28px, 3vw, 42px);
+  font-size: clamp(24px, 2vw, 30px);
   line-height: 1;
 }
 
@@ -1133,8 +1133,8 @@
 }
 
 .workspace-panel {
-  padding: 22px;
-  margin-bottom: 20px;
+  padding: var(--ex-panel-padding);
+  margin-bottom: var(--ex-section-gap);
   background: var(--ds-panel, #fff);
   border: 1px solid var(--border-rule);
   border-radius: 10px;
@@ -1174,7 +1174,7 @@
 .workspace-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
+  gap: var(--ex-section-gap);
   margin-bottom: 20px;
 }
 
@@ -1189,7 +1189,7 @@
 .workspace-stack {
   display: grid;
   align-content: start;
-  gap: 20px;
+  gap: var(--ex-section-gap);
 }
 
 .workspace-stack .workspace-panel {
@@ -1248,7 +1248,7 @@
 
 .workspace-table th,
 .workspace-table td {
-  padding: 12px 10px;
+  padding: 8px 10px;
   text-align: left;
   border-bottom: 1px solid var(--border-rule);
 }

@@ -14,7 +14,6 @@ class SignalController < ApplicationController
       return
     end
     @retained_sessions = SignalSession.accessible_to(Current.user).where(flight_id: nil).where.not(status: "discarded").recent
-    @completed_sessions = SignalSession.accessible_to(Current.user).where(status: "completed").where.not(flight_id: nil).includes(:flight).recent.limit(20)
     @selected_flight = Flight.visible_to(Current.user).find_by(id: params[:flight_id])
     unless can_manage_operations?
       @read_only_sessions = SignalSession.accessible_to(Current.user).where.not(status: "discarded").includes(:flight).recent.limit(50)

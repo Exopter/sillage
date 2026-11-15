@@ -12,7 +12,7 @@ class SignalSessionsController < ApplicationController
     end
 
     Signal::CompleteSession.new(signal_session: session, disposition: "save").call
-    redirect_to signal_path(view: "home"), notice: "Flight processing resumed. Your recording is saved."
+    redirect_to flight_path(session.flight), notice: "Flight processing resumed. Your recording is saved."
   end
 
   def create

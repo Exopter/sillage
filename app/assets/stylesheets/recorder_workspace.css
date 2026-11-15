@@ -110,5 +110,5 @@
 .exds-recording-state::before { content: ""; width: 12px; height: 12px; border: 1px solid currentColor; border-radius: 50%; flex-shrink: 0; }
 .exds-recording-state[data-state="imported"]::before { content: "✓"; width: 16px; height: 16px; display: grid; place-items: center; background: var(--ex-state-live-text); color: var(--ex-white); font-size: 11px; }
 @media (min-width: 761px) {
-  .exds-recorder-sidebar { position: sticky; top: 57px; height: calc(100vh - 57px); box-sizing: border-box; align-self: start; overflow-y: auto; }
+  .exds-recorder-sidebar { position: sticky; top: var(--ex-shell-header-height); height: calc(100vh - var(--ex-shell-header-height)); box-sizing: border-box; align-self: start; overflow-y: auto; }
 }

@@ -13,14 +13,14 @@
 }
 
 .signal-root {
-  min-height: calc(100vh - 57px);
+  min-height: calc(100vh - var(--ex-shell-header-height));
   background: var(--ex-carbon-950);
   color: var(--ex-vapor-50);
 }
 
 .signal-live-shell {
   display: flex;
-  height: calc(100vh - 57px);
+  height: calc(100vh - var(--ex-shell-header-height));
   min-height: 620px;
   flex-direction: column;
   overflow: hidden;
@@ -517,8 +517,8 @@
 }
 
 .signal-home {
-  min-height: calc(100vh - 57px);
-  padding: 28px;
+  min-height: calc(100vh - var(--ex-shell-header-height));
+  padding: 18px;
   background: var(--ex-carbon-950);
   color: var(--ex-vapor-50);
 }
@@ -1350,7 +1350,7 @@
 .signal-home-head h1 {
   margin: 4px 0 5px;
   color: var(--ex-vapor-50);
-  font-size: 27px;
+  font-size: 23px;
 }
 
 .signal-home-head p,
@@ -1442,7 +1442,7 @@
 }
 
 .signal-launch-body {
-  padding: 18px;
+  padding: 14px;
 }
 
 .signal-launch-body h2 {
@@ -1455,7 +1455,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 9px 12px;
   border-top: 1px solid var(--ex-carbon-700);
 }
 
@@ -1500,7 +1500,7 @@
 .signal-launch-rules > div {
   display: flex;
   gap: 9px;
-  padding: 10px 0;
+  padding: 7px 0;
   border-top: 1px solid var(--ex-carbon-700);
   color: var(--ex-aqua-500);
 }

@@ -1,0 +1,9 @@
+<% flight.signal_sessions.where(status: "completed").where.not(materialization_status: "complete").recent.each do |session| %>
+  <section class="workspace-panel" aria-label="Signal processing">
+    <p><%= session.materialization_status == "failed" ? "Flight processing failed. Your recording is saved." : "Preparing flight. Your recording is saved." %></p>
+    <% if can_manage_operations? %>
+      <%= button_to "Retry processing", retry_processing_signal_session_path(session.uuid), class: "button-secondary", form: { data: { turbo: false } } %>
+    <% end %>
+    <%= link_to "Radio history", signal_session_radio_history_path(session.uuid), class: "button-secondary" %>
+  </section>
+<% end %>
