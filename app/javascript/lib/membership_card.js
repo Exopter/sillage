@@ -8,7 +8,7 @@ import * as THREE from 'three';
 
 /** @typedef {'pioneer' | 'explorer' | 'pathfinder' | 'trailblazer' | 'core_team'} RankKey */
 /** @typedef {{ rim: [number, number], field: [number, number], label: [number, number], glow: string, haze: string }} Film */
-/** @typedef {{ light: string, deep: string, seam: string, body: string, edge: string, print: string, glow: string, gemGlow: string, gemLight: string, gemDeep: string, alt?: string, relief: number, fieldFilm: number, shine: number, fire: number, gloss: number, sparkle?: number }} Glass */
+/** @typedef {{ light: string, deep: string, seam: string, body: string, edge: string, print: string, glow: string, gemGlow: string, gemLight: string, gemDeep: string, alt?: string, fieldFilm: number, shine: number, fire: number, gloss: number, sparkle?: number }} Glass */
 /** @typedef {{ label: string, finish: string, color: string, metal: string, device: string, field: string, shell: string, crystal?: boolean, ink?: string, inkTint?: string, rim?: string, status?: string, glass?: Glass, film?: Film }} Rank */
 /**
  * @typedef {Object} MembershipCardOptions
@@ -21,7 +21,7 @@ import * as THREE from 'three';
  * @property {string} [edition] Edition line on the reverse.
  * @property {string} [footnote] Small note on the reverse, for example a preview disclaimer.
  * @property {boolean} [personal] `false` leaves the member block off the front, for generic renders.
- * @property {string} [surface] Color of the page behind the canvas, seen through the crystal finish. Defaults to Exopter paper.
+ * @property {string} [transmissionBacking] Studio backing seen through the crystal, independent of the surrounding page. Defaults to Exopter paper.
  * @property {boolean} [dragToTurn] `false` keeps hover, click and programmatic turns only.
  * @property {(flipped: boolean) => void} [onFace] Called when the presented face changes.
  */
@@ -46,7 +46,7 @@ export const PRESENTED = IMPACT + .55 + TURN;
 // Core Team uses saturated violet cut crystal. Each facet scintillates
 // in turn as the card moves (`sparkle`).
 /** @type {Glass} */
-const ORCHID = { light: '#8846f6', deep: '#3000a8', seam: '#d6c0ff', body: '#5f18e6', edge: '#7024f5', print: '#e8deff', glow: '#6a1ad8', gemGlow: '#b48cff', gemLight: '#f3ebff', gemDeep: '#5a1fe0', relief: 6, fieldFilm: .04, shine: .6, fire: .08, gloss: .2, sparkle: .42 };
+const ORCHID = { light: '#8846f6', deep: '#3000a8', seam: '#d6c0ff', body: '#5f18e6', edge: '#7024f5', print: '#e8deff', glow: '#6a1ad8', gemGlow: '#b48cff', gemLight: '#f3ebff', gemDeep: '#5a1fe0', fieldFilm: .04, shine: .6, fire: .08, gloss: .2, sparkle: .42 };
 // `metal` values stay mid-toned so reflections keep their shape instead of clipping to white.
 /** @type {Record<RankKey, Rank>} */
 export const RANKS = {
@@ -79,13 +79,15 @@ const FILM_OFF = .001;
 /**
  * @param {number} [width]
  * @param {number} [height]
+ * @param {number} [resolution]
  * @returns {[HTMLCanvasElement, CanvasRenderingContext2D]}
  */
-function makeCanvas(width = TEX_W, height = TEX_H) {
+function makeCanvas(width = TEX_W, height = TEX_H, resolution = 1) {
   const canvas = document.createElement('canvas');
-  canvas.width = width;canvas.height = height;
+  canvas.width = width * resolution;canvas.height = height * resolution;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('2D canvas is unavailable.');
+  ctx.scale(resolution, resolution);
   return [canvas, ctx];
 }
 
@@ -284,12 +286,40 @@ function whiteInk(image, width, height) {
 }
 
 /**
+ * Paint one integer facet ID without interpolated edge values.
+ * @param {Uint32Array} pixels
+ * @param {number} width
+ * @param {number} height
+ * @param {[number, number][]} corners
+ * @param {number} level
+ */
+export function paintFacetIdentity(pixels, width, height, corners, level) {
+  const packed = (0xff000000 | level << 16 | level << 8 | level) >>> 0;
+  const firstY = Math.max(0, Math.ceil(Math.min(...corners.map((point) => point[1])) - .5));
+  const lastY = Math.min(height, Math.ceil(Math.max(...corners.map((point) => point[1])) - .5));
+  for (let y = firstY; y < lastY; y++) {
+    const intersections = [];
+    for (let edge = 0; edge < 3; edge++) {
+      const [a, b] = [corners[edge], corners[(edge + 1) % 3]];
+      if ((a[1] <= y + .5 && b[1] > y + .5) || (b[1] <= y + .5 && a[1] > y + .5)) intersections.push(a[0] + (y + .5 - a[1]) * (b[0] - a[0]) / (b[1] - a[1]));
+    }
+    if (intersections.length === 2) {
+      const left = Math.max(0, Math.ceil(Math.min(...intersections) - .5));
+      const right = Math.min(width, Math.ceil(Math.max(...intersections) - .5));
+      if (right > left) pixels.fill(packed, y * width + left, y * width + right);
+    }
+  }
+}
+
+/**
  * @param {HTMLElement} host Positioned element that receives the canvas and pointer gestures.
  * @param {MembershipCardOptions} options
  * @returns {Promise<MembershipCard>}
  */
 export async function createMembershipCard(host, options) {
   const { name, memberNumber, since, assets, footnote = '', personal = true, dragToTurn = true, onFace } = options;
+  // Large Retina presentations need more texels; compact profile cards stay light.
+  const textureResolution = host.getBoundingClientRect().width * Math.min(devicePixelRatio, 2) > TEX_W ? 2 : 1;
   const memberName = name.toUpperCase();
   const number = String(memberNumber).padStart(4, '0');
   /** @type {RankKey} */
@@ -317,7 +347,7 @@ export async function createMembershipCard(host, options) {
   const canvasTexture = (canvas, color = true) => {
     const texture = new THREE.CanvasTexture(canvas);
     if (color) texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = 8;
+    texture.anisotropy = 16;
     disposable.push(texture);
     return texture;
   };
@@ -420,7 +450,7 @@ export async function createMembershipCard(host, options) {
    * @param {boolean} reverse
    */
   const makeFace = (rank, reverse) => {
-    const [canvas, ctx] = makeCanvas();
+    const [canvas, ctx] = makeCanvas(TEX_W, TEX_H, textureResolution);
     if (rank.crystal) {
       // On crystal the map only tints what passes through: clear body, sapphire print.
       const glass = rank.glass ?? ORCHID;
@@ -495,20 +525,24 @@ export async function createMembershipCard(host, options) {
       return [cx + Math.cos(angle) * radius * TEX_W / 2, cy + Math.sin(angle) * radius * TEX_H / 2 * 1.3];
     };
     ctx.fillStyle = tint ? mix(.08) : '#9a9a9a';ctx.fillRect(0, 0, TEX_W, TEX_H);
-    ctx.strokeStyle = tint?.seam ?? '#ffffff';ctx.lineWidth = 2;ctx.lineJoin = 'round';
+    // Identifier masks contain integer IDs, never antialiased blends between IDs.
+    const identityPixels = flat ? ctx.createImageData(TEX_W, TEX_H) : null;
+    const identityValues = identityPixels ? new Uint32Array(identityPixels.data.buffer) : null;
     let facet = 0;
     /** @param {[number, number][]} corners */
     const cut = (corners) => {
+      if (identityValues) {
+        paintFacetIdentity(identityValues, TEX_W, TEX_H, corners, (facet * 73) % 256);
+        facet += 1;
+        return;
+      }
       const mx = (corners[0][0] + corners[1][0] + corners[2][0]) / 3;
       const my = (corners[0][1] + corners[1][1] + corners[2][1]) / 3;
       const reach = Math.max(...corners.map(([x, y]) => Math.hypot(x - mx, y - my)));
       const slope = Math.atan2(my - cy, mx - cx) + (facet % 2 ? .9 : -.9);
       const depth = .55 + .45 * ((facet * 37) % 10) / 10;
       const tilt = ctx.createLinearGradient(mx - Math.cos(slope) * reach, my - Math.sin(slope) * reach, mx + Math.cos(slope) * reach, my + Math.sin(slope) * reach);
-      if (flat) {
-        const level = (facet * 73) % 256;
-        tilt.addColorStop(0, `rgb(${level},${level},${level})`);tilt.addColorStop(1, `rgb(${level},${level},${level})`);
-      } else if (tint) {
+      if (tint) {
         // Each facet holds a little more or less color, and fades across its own plane.
         const hold = .12 + .62 * depth * (facet % 3 === 0 ? 1 : .5);
         tilt.addColorStop(0, mix(hold * .4, facet % 2 === 1));tilt.addColorStop(1, mix(hold, facet % 2 === 1));
@@ -518,7 +552,7 @@ export async function createMembershipCard(host, options) {
       }
       ctx.beginPath();ctx.moveTo(...corners[0]);ctx.lineTo(...corners[1]);ctx.lineTo(...corners[2]);ctx.closePath();
       ctx.fillStyle = tilt;ctx.fill();
-      if (tint) { ctx.globalAlpha = .7;ctx.stroke();ctx.globalAlpha = 1; }
+
       facet += 1;
     };
     for (let level = 0; level < rings.length - 1; level++) {
@@ -529,13 +563,18 @@ export async function createMembershipCard(host, options) {
         else { cut([vertex(inner, i), vertex(outer, j), vertex(outer, j + 1)]);j += 1; }
       }
     }
+    if (identityPixels) ctx.putImageData(identityPixels, 0, 0);
   };
 
-  /** @param {boolean} [flat] */
-  const makeFacets = (flat = false) => {
+  const makeFacetIdentities = () => {
     const [canvas, ctx] = makeCanvas();
-    cutFacets(ctx, null, flat);
-    return canvasTexture(canvas, false);
+    cutFacets(ctx, null, true);
+    const identities = canvasTexture(canvas, false);
+    // IDs are discrete: interpolating neighboring values invents bright seams.
+    identities.magFilter = THREE.NearestFilter;
+    identities.minFilter = THREE.NearestFilter;
+    identities.generateMipmaps = false;
+    return identities;
   };
 
   // Engraving on crystal is frosted: the grooves scatter light, the body stays clear.
@@ -553,12 +592,12 @@ export async function createMembershipCard(host, options) {
    * @returns {Foil}
    */
   const makeFoil = (draw) => {
-    const [canvas, ctx] = makeCanvas();
+    const [canvas, ctx] = makeCanvas(TEX_W, TEX_H, textureResolution);
     draw(ctx);
-    const [relief, reliefCtx] = makeCanvas();
+    const [relief, reliefCtx] = makeCanvas(TEX_W, TEX_H, textureResolution);
     reliefCtx.fillStyle = '#000000';reliefCtx.fillRect(0, 0, TEX_W, TEX_H);
     reliefCtx.filter = 'blur(2.5px)';
-    reliefCtx.drawImage(canvas, 0, 0);
+    reliefCtx.drawImage(canvas, 0, 0, TEX_W, TEX_H);
     // Printed tonal bands support the real environment reflections at the resting angle.
     ctx.globalCompositeOperation = 'source-in';
     const bands = ctx.createLinearGradient(0, 180, 1200, 920);
@@ -581,7 +620,7 @@ export async function createMembershipCard(host, options) {
    * @param {number} floor
    */
   const foilMaterial = (foil, color, tint, floor) => {
-    const material = new THREE.MeshPhysicalMaterial({ map: foil.map, bumpMap: foil.bump, bumpScale: 2.2, color, metalness: 1, roughness: .26, anisotropy: .7, anisotropyRotation: .3, clearcoat: .5, clearcoatRoughness: .25, envMapIntensity: 1.4, transparent: true, alphaTest: .08, depthWrite: false });
+    const material = new THREE.MeshPhysicalMaterial({ map: foil.map, bumpMap: foil.bump, bumpScale: .12, color, metalness: 1, roughness: .26, anisotropy: .7, anisotropyRotation: .3, clearcoat: .5, clearcoatRoughness: .25, envMapIntensity: 1.4, transparent: true, alphaTest: .01, alphaToCoverage: true, depthWrite: false });
     // A legibility floor plus one narrow band that travels with the card's
     // orientation: the lettering never drops to black against the carbon.
     material.onBeforeCompile = (shader) => {
@@ -647,10 +686,9 @@ export async function createMembershipCard(host, options) {
   const shell = new THREE.Mesh(new THREE.ExtrudeGeometry(roundedShape(CARD_W, CARD_H, .28), { depth: .065, bevelEnabled: true, bevelThickness: .025, bevelSize: .025, bevelSegments: 4, curveSegments: 24, steps: 1 }), shellMaterial);
   shell.position.z = -.033;
   card.add(shell);
-  // The crystal finish refracts the page behind the canvas. A canvas has no
-  // page to sample, so a backdrop in the page color exists only in the
-  // transmission pass and never paints the canvas itself.
-  const backdropMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color(options.surface ?? '#f5f4f0').multiplyScalar(2.4), depthWrite: false, toneMapped: false });
+  // A neutral studio backing preserves the crystal finish on every page.
+  // It exists only in the transmission pass and never paints the canvas.
+  const backdropMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color(options.transmissionBacking ?? '#f5f4f0').multiplyScalar(2.4), depthWrite: false, toneMapped: false });
   const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(90, 60), backdropMaterial);
   backdrop.position.z = -5;backdrop.visible = false;
   backdrop.onBeforeRender = (target) => { backdropMaterial.colorWrite = target.getRenderTarget() !== null; };
@@ -687,7 +725,7 @@ export async function createMembershipCard(host, options) {
    */
   const faceMaterial = (reverse, map) => {
     const surface = makeSurface(reverse);
-    return new THREE.MeshPhysicalMaterial({ map, metalness: 0, roughness: .7, roughnessMap: surface, bumpMap: surface, bumpScale: .55, specularIntensity: .6, envMapIntensity: .45 });
+    return new THREE.MeshPhysicalMaterial({ map, metalness: 0, roughness: .7, roughnessMap: surface, bumpMap: surface, bumpScale: .08, specularIntensity: .6, envMapIntensity: .45 });
   };
   const frontMaterial = faceMaterial(false, first.front);
   const front = new THREE.Mesh(faceGeometry(), frontMaterial);
@@ -697,15 +735,12 @@ export async function createMembershipCard(host, options) {
   /** @typedef {{ front: THREE.MeshPhysicalMaterial, back: THREE.MeshPhysicalMaterial, shell: THREE.MeshPhysicalMaterial }} Substrate */
   /** @type {Map<Glass, Substrate>} */
   const crystals = new Map();
-  /** @type {THREE.CanvasTexture | null} */
-  let facets = null;
   /** @param {Glass} glass */
   const crystalMaterials = (glass) => {
     const cut = crystals.get(glass);
     if (cut) return cut;
-    facets ??= makeFacets();
     /** @param {boolean} reverse */
-    const face = (reverse) => new THREE.MeshPhysicalMaterial({ metalness: 0, roughness: .55, roughnessMap: makeFrost(reverse), bumpMap: facets, bumpScale: glass.relief, transmission: 1, thickness: .5, ior: 2.1, attenuationColor: glass.body, attenuationDistance: .8, dispersion: 6, iridescence: glass.fire, iridescenceIOR: 1.6, clearcoat: glass.gloss, clearcoatRoughness: .03, specularIntensity: glass.gloss, envMapIntensity: glass.shine });
+    const face = (reverse) => new THREE.MeshPhysicalMaterial({ metalness: 0, roughness: .55, roughnessMap: makeFrost(reverse), transmission: 1, thickness: .5, ior: 2.1, attenuationColor: glass.body, attenuationDistance: .8, dispersion: 6, iridescence: glass.fire, iridescenceIOR: 1.6, clearcoat: glass.gloss, clearcoatRoughness: .03, specularIntensity: glass.gloss, envMapIntensity: glass.shine });
     const shellCrystal = new THREE.MeshPhysicalMaterial({ metalness: 0, roughness: .02, transmission: 1, thickness: .8, ior: 2.2, attenuationColor: glass.edge, attenuationDistance: .22, dispersion: 9, iridescence: .7, iridescenceIOR: 1.7, clearcoat: 1, envMapIntensity: 2.2 });
     /** @type {Substrate} */
     const crystal = { front: face(false), back: face(true), shell: shellCrystal };
@@ -713,7 +748,7 @@ export async function createMembershipCard(host, options) {
     if (glass.sparkle) {
       // Scintillation: every facet has its own angle at which it flares pale
       // violet, so light runs from facet to facet as the card moves.
-      const identities = { value: makeFacets(true) };
+      const identities = { value: makeFacetIdentities() };
       const strength = glass.sparkle.toFixed(2);
       for (const material of [crystal.front, crystal.back]) {
         material.onBeforeCompile = (shader) => {
@@ -744,8 +779,14 @@ export async function createMembershipCard(host, options) {
     if (reverse) mesh.rotation.y = Math.PI;
     card.add(mesh);
   };
+  // The hairline is a clean antialiased inlay, without a bump map that can
+  // turn its subpixel edge into alternating bright and dark fragments.
+  const [hairlineCanvas, hairlineCtx] = makeCanvas(TEX_W, TEX_H, textureResolution);
+  drawHairline(hairlineCtx);
+  const hairline = new THREE.MeshBasicMaterial({ map: canvasTexture(hairlineCanvas), color: '#e6e2f5', transparent: true, opacity: .75, depthWrite: false });
+  inlay(hairline, .071, 3);
+  inlay(hairline, -.075, 3, true);
   const frontInk = foilMaterial(makeFoil((ctx) => {
-    drawHairline(ctx);
     ctx.drawImage(wordmark, 128, 116, 420, 42);
     ctx.drawImage(monogram, 1690, 98, 230, 80);
     text(ctx, 'FLIGHT', 116, 490, 192, { family: 'Aptos Display', tracking: -7 });
@@ -763,7 +804,6 @@ export async function createMembershipCard(host, options) {
   const back = new THREE.Mesh(faceGeometry(), backMaterial);
   back.rotation.y = Math.PI;back.position.z = -.066;card.add(back);
   const backInk = foilMaterial(makeFoil((ctx) => {
-    drawHairline(ctx);
     ctx.drawImage(wordmark, 128, 116, 340, 34);
     text(ctx, 'THE STORY IS', 122, 372, 96, { family: 'Aptos Display', tracking: -2 });
     text(ctx, 'OURS TO WRITE.', 122, 478, 96, { family: 'Aptos Display', tracking: -2 });
@@ -783,10 +823,10 @@ export async function createMembershipCard(host, options) {
     const glass = rank.glass ?? ORCHID;
     /** @param {number} strength */
     const film = (strength) => ({ iridescence: isPioneer || isCrystal ? strength : FILM_OFF, iridescenceIOR: 1.38, iridescenceThicknessMap: interferenceMap });
-    const rimMaterial = new THREE.MeshPhysicalMaterial({ color: rank.rim ?? rank.metal, metalness: 1, roughness: .3, bumpMap: foilGrain, bumpScale: .5, anisotropy: .5, clearcoat: .3, clearcoatRoughness: .3, ...film(1) });
+    const rimMaterial = new THREE.MeshPhysicalMaterial({ color: rank.rim ?? rank.metal, metalness: 1, roughness: .3, bumpMap: foilGrain, bumpScale: .035, anisotropy: .5, clearcoat: .3, clearcoatRoughness: .3, ...film(1) });
     // The recessed field is a guilloche sunburst under a satin film: it stays
     // dark at rest and opens up when the card tilts.
-    const fieldMaterial = new THREE.MeshPhysicalMaterial({ color: rank.field, metalness: 1, roughness: .62, roughnessMap: guillocheMap, bumpMap: guillocheMap, bumpScale: 1.2, envMapIntensity: isPioneer || isCrystal ? 1.5 : 1.1, emissive: rank.film?.glow ?? (isCrystal ? glass.glow : '#000000'), emissiveIntensity: .35, ...film(isCrystal ? glass.fieldFilm : .5), iridescenceIOR: 1.5 });
+    const fieldMaterial = new THREE.MeshPhysicalMaterial({ color: rank.field, metalness: 1, roughness: .62, roughnessMap: guillocheMap, bumpMap: guillocheMap, bumpScale: .08, envMapIntensity: isPioneer || isCrystal ? 1.5 : 1.1, emissive: rank.film?.glow ?? (isCrystal ? glass.glow : '#000000'), emissiveIntensity: .35, ...film(isCrystal ? glass.fieldFilm : .5), iridescenceIOR: 1.5 });
     const deviceMaterial = new THREE.MeshPhysicalMaterial({ color: rank.device, metalness: 1, roughness: isCrystal ? .05 : .24, envMapIntensity: isCrystal ? 2.6 : 1.5, emissive: isCrystal ? glass.gemGlow : '#000000', emissiveIntensity: .16, vertexColors: true, clearcoat: .2, clearcoatRoughness: .2, ...film(isCrystal ? .9 : .45) });
     filmThickness(rimMaterial, rimFilm[0], rimFilm[1]);filmThickness(fieldMaterial, fieldFilm[0], fieldFilm[1]);filmThickness(deviceMaterial, rimFilm[0], rimFilm[1]);
     const shieldPoints = [[0, 1.38], [1.05, .94], [.91, -.65], [0, -1.32], [-.91, -.65], [-1.05, .94]];
