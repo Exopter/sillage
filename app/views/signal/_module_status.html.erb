@@ -1,0 +1,20 @@
+<div class="signal-modules" role="group" aria-label="FDR module status" data-controller="signal-module-status"
+     data-action="sillage:module-status@window->signal-module-status#update" data-tooltip-boundary>
+  <% [["Main", "database"], ["Central", "activity"], ["AirSpeed", "gauge"], ["Display", "layout-grid"]].each_with_index do |(name, icon), index| %>
+    <div class="signal-module" data-signal-module-status-target="module" data-module-role="<%= index + 1 %>" data-state="unknown"
+         data-controller="tooltip" data-action="mouseleave->tooltip#leave focusin->tooltip#show focusout->tooltip#blur keydown.esc@window->tooltip#hide resize@window->tooltip#position scroll@window->tooltip#position">
+      <button type="button" class="exds-iconbtn exds-iconbtn--sm exds-iconbtn--ghost signal-module-indicator"
+              aria-label="<%= name %>: Unknown" aria-describedby="signal-module-<%= index + 1 %>-detail"
+              data-module-trigger data-tooltip-target="trigger" data-action="mouseenter->tooltip#show click->tooltip#show">
+        <%= sillage_icon icon, size: 18 %>
+      </button>
+      <div id="signal-module-<%= index + 1 %>-detail" class="workspace-help-tooltip signal-module-tooltip" role="tooltip" popover="manual" data-tooltip-target="tip">
+        <b><%= name %> · <span data-module-state>Unknown</span></b>
+        <span data-module-identity>No module identified</span>
+        <span data-module-sensors>Sensor status unavailable</span>
+        <span data-module-storage>Storage status unavailable</span>
+        <span data-module-age>Waiting for module status</span>
+      </div>
+    </div>
+  <% end %>
+</div>

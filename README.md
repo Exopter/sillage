@@ -147,7 +147,7 @@ accelerometer magnitude divided by 9.80665 m/s²: about 1 g at rest and 0 g in f
 fall, regardless of mounting orientation. This unsigned total load is derived
 only for display; stale or invalid acceleration shows no value.
 
-Signal's module strip displays Main (the tunnel prototype's Seat), Central,
+Signal's top-bar module icons display Main (the tunnel prototype's Seat), Central,
 AirSpeed and Display independently: source identity, sensor readiness, storage,
 recording and status age. `FDR_MODULE_STATUS` (MAVLink 42002) is emitted at 1 Hz
 per role by the distributed target. Status expires after three seconds, including
