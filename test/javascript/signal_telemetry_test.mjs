@@ -206,3 +206,7 @@ assert.match(modules.snapshot(16000).modules[0].storage, /past write errors/)
 modules.apply({...status, role: 4, timeBootMs: 7000, flags: 0, ageMs: null, deviceId: ""}, 17000)
 assert.equal(modules.snapshot(17000).modules[3].state, "unknown")
 console.log("Signal independent module status, faults, unknowns and freshness tests passed")
+
+modules.apply({...status, role: 3, timeBootMs: 8000, validity: 4, flags: 23}, 18000)
+assert.equal(modules.snapshot(18000).modules[2].state, "degraded", "a mounted card does not mean a full leaf cache can record")
+assert.equal(modules.snapshot(18000).modules[2].storage, "Cache full · live only")

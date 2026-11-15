@@ -150,10 +150,10 @@ export class SignalTelemetry {
         : index === 2 ? (validity & 4 ? "Pitot ready" : "Pitot unavailable") : "Sensor status unavailable"
       const sensorReady = index <= 1 ? (validity & 123) === 123 : index === 2 ? Boolean(validity & 4) : false
       const storageReady = Boolean(report && (report.flags & 2))
-      const state = !known ? "unknown" : !fresh ? "stale" : storageReady && sensorReady ? "ready" : "degraded"
+      const state = !known ? "unknown" : !fresh ? "stale" : storageReady && sensorReady && !(report && (report.flags & 16)) ? "ready" : "degraded"
       return {role: index + 1, name, state, ageMs, deviceId: report?.deviceId || "",
         sensors: fresh ? sensors : "Sensor status unavailable",
-        storage: fresh ? (storageReady ? (report && (report.flags & 4) ? "Recording" : "Storage ready") : "Storage unavailable") +
+        storage: fresh ? (report && (report.flags & 16) ? "Cache full · live only" : storageReady ? (report && (report.flags & 4) ? "Recording" : "Storage ready") : "Storage unavailable") +
           (report && (report.flags & 8) ? " · past write errors" : "") : "Storage status unavailable"}
     })
   }

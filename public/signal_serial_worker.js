@@ -208,7 +208,7 @@ function decode(messageId, payload, coordinateFrame) {
   if (messageId === 42002 && payload.length >= 32) {
     const deviceId = new TextDecoder().decode(payload.slice(16, 32)).split("\0")[0]
     const role = payload[14], flags = payload[15]
-    if (role < 1 || role > 4 || (flags & ~15) ||
+    if (role < 1 || role > 4 || (flags & ~31) ||
         (deviceId && !/^ECU-[A-F0-9]{12}$/.test(deviceId)) || ((flags & 1) && !deviceId)) return {name: "unknown"}
     return {name: "module_status", timeBootMs: u32(0), bootId: u32(4), ageMs: u32(8) === 0xffffffff ? null : u32(8),
       validity: u16(12), role, flags, deviceId}
