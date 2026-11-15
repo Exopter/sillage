@@ -3,7 +3,8 @@ require "digest"
 
 class User < ApplicationRecord
   ROLES = %w[admin user].freeze
-  MEMBERSHIP_TIERS = %w[pioneer explorer pathfinder trailblazer].freeze
+  # `core_team` is the Exopter team edition; the other tiers are client memberships.
+  MEMBERSHIP_TIERS = %w[pioneer explorer pathfinder trailblazer core_team].freeze
   MEMBER_NUMBER_SEQUENCE = "flight_club_member"
   INVITATION_VALIDITY = 14.days
   DEFAULT_ADMIN_EMAIL = "julien@exopter.com"
@@ -82,9 +83,16 @@ class User < ApplicationRecord
     membership_tier&.titleize
   end
 
-  # "a Pioneer", "an Explorer".
+  # "a Pioneer", "an Explorer", "part of the Core Team".
   def membership_rank_phrase
-    "#{membership_rank.match?(/\A[AEIOU]/) ? "an" : "a"} #{membership_rank}" if member?
+    return unless member?
+    return "part of the Core Team" if membership_tier == "core_team"
+
+    "#{membership_rank.match?(/\A[AEIOU]/) ? "an" : "a"} #{membership_rank}"
+  end
+
+  def membership_status
+    { "pioneer" => "Founding member", "core_team" => "Team member" }.fetch(membership_tier, "Member") if member?
   end
 
   # Member numbers are permanent: a number is never reassigned or renumbered.

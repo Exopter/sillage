@@ -20,7 +20,7 @@
     <div class="flight-club-identity">
       <span class="flight-club-micro">Your place in the club</span>
       <h2><%= @member.full_name %> <span class="flight-club-rank"><%= @member.membership_rank %></span></h2>
-      <p><%= founding ? "Founding member" : "Member" %> <%= @member.member_code %>. An open sky ahead.</p>
+      <p><%= @member.membership_status %> <%= @member.member_code %>. An open sky ahead.</p>
     </div>
     <ul class="flight-club-benefits">
       <li><strong>Flight + Signal</strong><span>Your entire flight world, in one place.</span></li>

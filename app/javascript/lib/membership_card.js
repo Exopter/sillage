@@ -6,8 +6,8 @@ import * as THREE from 'three';
  * sequence. The module owns its canvas only; pages provide copy and controls.
  */
 
-/** @typedef {'pioneer' | 'explorer' | 'pathfinder' | 'trailblazer'} RankKey */
-/** @typedef {{ label: string, finish: string, color: string, metal: string, device: string, field: string, shell: string, stripes: number }} Rank */
+/** @typedef {'pioneer' | 'explorer' | 'pathfinder' | 'trailblazer' | 'core_team'} RankKey */
+/** @typedef {{ label: string, finish: string, color: string, metal: string, device: string, field: string, shell: string, stripes: number, crystal?: boolean, ink?: string, inkTint?: string, rim?: string, status?: string }} Rank */
 /**
  * @typedef {Object} MembershipCardOptions
  * @property {string} name Member name as engraved on both faces.
@@ -19,6 +19,7 @@ import * as THREE from 'three';
  * @property {string} [edition] Edition line on the reverse.
  * @property {string} [footnote] Small note on the reverse, for example a preview disclaimer.
  * @property {boolean} [personal] `false` leaves the member block off the front, for generic renders.
+ * @property {string} [surface] Color of the page behind the canvas, seen through the crystal finish. Defaults to Exopter paper.
  * @property {boolean} [dragToTurn] `false` keeps hover, click and programmatic turns only.
  * @property {(flipped: boolean) => void} [onFace] Called when the presented face changes.
  */
@@ -45,6 +46,9 @@ export const RANKS = {
   explorer: { label: 'Explorer', finish: 'Brushed copper', color: '#d6a48a', metal: '#b9754f', device: '#c98862', field: '#0b0c0e', shell: '#a6a9ad', stripes: 2 },
   pathfinder: { label: 'Pathfinder', finish: 'Brushed silver', color: '#cbd1d8', metal: '#aab2bd', device: '#c3cad3', field: '#0b0c0e', shell: '#a6a9ad', stripes: 3 },
   trailblazer: { label: 'Trailblazer', finish: 'Champagne gold', color: '#d4c396', metal: '#b99a57', device: '#cdb06c', field: '#0b0c0e', shell: '#a6a9ad', stripes: 4 },
+  // The team card is cut crystal: a transparent, faintly blue substrate with
+  // sapphire lettering and a brilliant-cut diamond instead of stripes.
+  core_team: { label: 'Core Team', finish: 'Cut diamond', color: '#9ccaff', metal: '#1f5fae', device: '#f2f8ff', field: '#07224a', shell: '#ffffff', stripes: 0, crystal: true, ink: '#10233f', inkTint: '#5f9de0', rim: '#dfe8f2', status: 'EXOPTER TEAM' },
 };
 
 const TEX_W = 2048;
@@ -82,14 +86,14 @@ function makeCanvas(width = TEX_W, height = TEX_H) {
  * @param {number} x
  * @param {number} y
  * @param {number} size
- * @param {{ color?: string, family?: string, tracking?: number, align?: 'left' | 'right', maxWidth?: number }} [style]
+ * @param {{ color?: string, family?: string, tracking?: number, align?: 'left' | 'right', maxWidth?: number, weight?: number }} [style]
  */
-function text(ctx, content, x, y, size, { color = '#ffffff', family = 'Aptos', tracking = 0, align = 'left', maxWidth = Infinity } = {}) {
+function text(ctx, content, x, y, size, { color = '#ffffff', family = 'Aptos', tracking = 0, align = 'left', maxWidth = Infinity, weight = 400 } = {}) {
   ctx.letterSpacing = `${tracking}px`;
-  ctx.font = `400 ${size}px "${family}"`;
+  ctx.font = `${weight} ${size}px "${family}"`;
   // Long names shrink to their column instead of running under the next block.
   const width = ctx.measureText(content).width;
-  if (width > maxWidth) ctx.font = `400 ${Math.floor(size * maxWidth / width)}px "${family}"`;
+  if (width > maxWidth) ctx.font = `${weight} ${Math.floor(size * maxWidth / width)}px "${family}"`;
   ctx.fillStyle = color;
   ctx.textAlign = align;
   // Canvas tracking trails the last glyph; pull right-aligned runs back onto the margin.
@@ -152,26 +156,32 @@ function mapToBounds(geometry) {
 /**
  * Flat-shaded facets: every polygon keeps its own normal, like a cut surface.
  * @param {Point[][]} facets
+ * @param {string[]} [tones] One color per facet, for stones whose facets must stay distinct in any light.
  */
-function facetGeometry(facets) {
+function facetGeometry(facets, tones) {
   /** @type {number[]} */
   const positions = [];
   /** @type {number[]} */
   const uvs = [];
+  /** @type {number[]} */
+  const colors = [];
+  const tone = new THREE.Color();
   const a = new THREE.Vector3();
   const b = new THREE.Vector3();
-  for (const facet of facets) {
+  for (const [facetIndex, facet] of facets.entries()) {
+    if (tones) tone.set(tones[facetIndex]);
     for (let index = 1; index < facet.length - 1; index++) {
       const triangle = [facet[0], facet[index], facet[index + 1]];
       a.set(...triangle[1]).sub(b.set(...triangle[0]));
       b.set(...triangle[2]).sub(new THREE.Vector3(...triangle[0]));
       if (a.cross(b).z < 0) triangle.reverse();
-      for (const point of triangle) { positions.push(...point);uvs.push(point[0] * .5 + .5, point[1] * .5 + .5); }
+      for (const point of triangle) { positions.push(...point);uvs.push(point[0] * .5 + .5, point[1] * .5 + .5);if (tones) colors.push(tone.r, tone.g, tone.b); }
     }
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  if (tones) geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geometry.computeVertexNormals();
   return geometry;
 }
@@ -218,6 +228,26 @@ function starFacets(y, outerRadius, innerRadius, height) {
   });
   return rim.map((point, index) => [[0, y, height], point, rim[(index + 1) % 8]]);
 }
+
+/**
+ * A cut diamond seen in profile: table, crown, girdle and a pavilion closing
+ * on the culet, every facet on its own plane.
+ * @param {number} y
+ * @param {number} size
+ * @returns {Point[][]}
+ */
+function gemFacets(y, size) {
+  /** @type {(x: number, height: number, z: number) => Point} */
+  const at = (x, height, z) => [x * size, y + height * size, z * size];
+  const [a, b, c, d] = [at(-.36, .46, 0), at(-.12, .46, .12), at(.12, .46, .12), at(.36, .46, 0)];
+  const [e, f, g, h, i] = [at(-.62, .2, 0), at(-.3, .2, .18), at(0, .2, .24), at(.3, .2, .18), at(.62, .2, 0)];
+  const k = at(0, -.58, .03);
+  return [[a, b, f], [a, f, e], [b, g, f], [b, c, g], [c, h, g], [c, d, h], [d, i, h], [e, f, k], [f, g, k], [g, h, k], [h, i, k]];
+}
+
+// One ice tone per gem facet, in `gemFacets` order: a bright table and crown, a
+// deeper pavilion, lit from the upper left.
+const GEM_TONES = ['#f4f9ff', '#a9c9ee', '#d3e5fa', '#ffffff', '#bcd6f3', '#e2eefc', '#8fb5e3', '#6f9bd2', '#cfe2f8', '#9dbfe8', '#5a88c2'];
 
 /** @param {THREE.Object3D} root */
 function disposeTree(root) {
@@ -282,7 +312,7 @@ export async function createMembershipCard(host, options) {
   const lifetime = new AbortController();
   const { signal } = lifetime;
 
-  await Promise.all([document.fonts.load('400 32px Aptos'), document.fonts.load('400 32px "Aptos Display"'), document.fonts.load('400 32px "Aptos Mono"')]);
+  await Promise.all([document.fonts.load('400 32px Aptos'), document.fonts.load('400 32px "Aptos Display"'), document.fonts.load('400 32px "Aptos Mono"'), document.fonts.load('700 32px "Aptos Mono"')]);
   /** @type {(color: string) => (source: string) => string} */
   const wingInk = (color) => (source) => source.replaceAll('#10181a', 'none').replaceAll('#2fd6c6', color).replaceAll('stroke-width="1.6"', 'stroke-width="2.5"');
   const [wordmark, monogram, wing, wingShadow] = await Promise.all([
@@ -405,6 +435,16 @@ export async function createMembershipCard(host, options) {
    */
   const makeFace = (rank, reverse) => {
     const [canvas, ctx] = makeCanvas();
+    const [left, right] = [128, 1920];
+    if (rank.crystal) {
+      // On crystal the map only tints what passes through: clear body, sapphire print.
+      cutFacets(ctx, true);
+      drawEngraving(ctx, reverse, true, .16, reverse ? .5 : .28);
+      // Print on a clear body needs more weight than print on carbon.
+      const print = { color: '#0c1d38', family: 'Aptos Mono', tracking: 3, weight: 700 };
+      printFace(ctx, rank, reverse, print, print, '#0c1d3866');
+      return canvasTexture(canvas);
+    }
     const base = ctx.createRadialGradient(TEX_W * .45, TEX_H * .4, 0, TEX_W * .45, TEX_H * .4, TEX_W * .75);
     base.addColorStop(0, '#0b0b0c');base.addColorStop(1, '#030303');
     ctx.fillStyle = base;ctx.fillRect(0, 0, TEX_W, TEX_H);
@@ -417,20 +457,98 @@ export async function createMembershipCard(host, options) {
       ctx.fillStyle = haze;ctx.fillRect(0, 0, TEX_W, TEX_H);
     }
     drawEngraving(ctx, reverse, false, .12, reverse ? .55 : .3);
-    const [left, right] = [128, 1920];
     const mono = { color: '#a9a9a9', family: 'Aptos Mono', tracking: 3 };
+    printFace(ctx, rank, reverse, mono, { ...mono, color: '#e6e6e6' }, '#ffffff30');
+    return canvasTexture(canvas);
+  };
+
+  // Printed secondary text: the member block on the front, identity and edition on the reverse.
+  /**
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Rank} rank
+   * @param {boolean} reverse
+   * @param {{ color: string, family: string, tracking: number, weight?: number }} mono
+   * @param {{ color: string, family: string, tracking: number, weight?: number }} strong
+   * @param {string} rule
+   */
+  const printFace = (ctx, rank, reverse, mono, strong, rule) => {
+    const [left, right] = [128, 1920];
     if (reverse) {
-      text(ctx, memberName, left, 1084, 34, { ...mono, color: '#e6e6e6', tracking: 4, maxWidth: 900 });
+      text(ctx, memberName, left, 1084, 34, { ...strong, tracking: 4, maxWidth: 900 });
       text(ctx, `FC ${number} / ${rank.label.toUpperCase()} / ${since.toUpperCase()}`, left, 1146, 30, mono);
       const edition = options.edition ?? (rank === RANKS.pioneer ? 'THE FIRST CHAPTER / 001' : '');
       text(ctx, footnote ? edition : '', right, 1084, 30, { ...mono, align: 'right' });
       text(ctx, footnote || edition, right, 1146, 30, { ...mono, align: 'right' });
     } else if (personal) {
-      ctx.fillStyle = '#ffffff30';ctx.fillRect(left, 968, right - left, 2);
-      text(ctx, options.status ?? (rank === RANKS.pioneer ? 'FOUNDING MEMBER' : 'MEMBER'), left, 1142, 30, { ...mono, tracking: 4 });
+      ctx.fillStyle = rule;ctx.fillRect(left, 968, right - left, 2);
+      text(ctx, options.status ?? rank.status ?? (rank === RANKS.pioneer ? 'FOUNDING MEMBER' : 'MEMBER'), left, 1142, 30, { ...mono, tracking: 4 });
       text(ctx, 'MEMBER NO.', right, 1142, 30, { ...mono, tracking: 4, align: 'right' });
     }
-    return canvasTexture(canvas);
+  };
+
+  // Brilliant-cut relief for the crystal finish: a flat table, then rings of
+  // facets that each slope their own way, so every facet catches a different light.
+  /**
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {boolean} tint `true` paints each facet its own shade of ice blue; `false` paints its slope.
+   */
+  const cutFacets = (ctx, tint) => {
+    const [cx, cy] = [TEX_W / 2, TEX_H / 2];
+    /** @type {[number, number, number][]} */
+    const rings = [[.2, 8, 0], [.5, 8, .5], [.84, 16, 0], [1.25, 16, .5], [1.9, 32, 0]];
+    /** @type {(ring: [number, number, number], index: number) => [number, number]} */
+    const vertex = ([radius, count, phase], index) => {
+      const angle = (index + phase) / count * Math.PI * 2;
+      return [cx + Math.cos(angle) * radius * TEX_W / 2, cy + Math.sin(angle) * radius * TEX_H / 2 * 1.3];
+    };
+    ctx.fillStyle = tint ? '#eef6ff' : '#9a9a9a';ctx.fillRect(0, 0, TEX_W, TEX_H);
+    ctx.strokeStyle = '#ffffff';ctx.lineWidth = 2;ctx.lineJoin = 'round';
+    let facet = 0;
+    /** @param {[number, number][]} corners */
+    const cut = (corners) => {
+      const mx = (corners[0][0] + corners[1][0] + corners[2][0]) / 3;
+      const my = (corners[0][1] + corners[1][1] + corners[2][1]) / 3;
+      const reach = Math.max(...corners.map(([x, y]) => Math.hypot(x - mx, y - my)));
+      const slope = Math.atan2(my - cy, mx - cx) + (facet % 2 ? .9 : -.9);
+      const depth = .55 + .45 * ((facet * 37) % 10) / 10;
+      const tilt = ctx.createLinearGradient(mx - Math.cos(slope) * reach, my - Math.sin(slope) * reach, mx + Math.cos(slope) * reach, my + Math.sin(slope) * reach);
+      if (tint) {
+        // Each facet holds a little more or less blue, and fades across its own plane.
+        const blue = .12 + .62 * depth * (facet % 3 === 0 ? 1 : .5);
+        tilt.addColorStop(0, `rgb(${Math.round(255 - 60 * blue)},${Math.round(255 - 22 * blue)},255)`);
+        tilt.addColorStop(1, `rgb(${Math.round(255 - 150 * blue)},${Math.round(255 - 70 * blue)},255)`);
+      } else {
+        const [high, low] = [Math.round(154 + 90 * depth), Math.round(154 - 110 * depth)];
+        tilt.addColorStop(0, `rgb(${high},${high},${high})`);tilt.addColorStop(1, `rgb(${low},${low},${low})`);
+      }
+      ctx.beginPath();ctx.moveTo(...corners[0]);ctx.lineTo(...corners[1]);ctx.lineTo(...corners[2]);ctx.closePath();
+      ctx.fillStyle = tilt;ctx.fill();
+      if (tint) { ctx.globalAlpha = .7;ctx.stroke();ctx.globalAlpha = 1; }
+      facet += 1;
+    };
+    for (let level = 0; level < rings.length - 1; level++) {
+      const [inner, outer] = [rings[level], rings[level + 1]];
+      for (let i = 0, j = 0; i < inner[1] || j < outer[1];) {
+        const stepInner = i < inner[1] && (j >= outer[1] || (i + 1 + inner[2]) / inner[1] <= (j + 1 + outer[2]) / outer[1]);
+        if (stepInner) { cut([vertex(inner, i), vertex(inner, i + 1), vertex(outer, j)]);i += 1; }
+        else { cut([vertex(inner, i), vertex(outer, j), vertex(outer, j + 1)]);j += 1; }
+      }
+    }
+  };
+
+  const makeFacets = () => {
+    const [canvas, ctx] = makeCanvas();
+    cutFacets(ctx, false);
+    return canvasTexture(canvas, false);
+  };
+
+  // Engraving on crystal is frosted: the grooves scatter light, the body stays clear.
+  /** @param {boolean} reverse */
+  const makeFrost = (reverse) => {
+    const [canvas, ctx] = makeCanvas();
+    ctx.fillStyle = '#141414';ctx.fillRect(0, 0, TEX_W, TEX_H);
+    drawEngraving(ctx, reverse, false, .9, 1);
+    return canvasTexture(canvas, false);
   };
 
   // A metal inlay: the painted mask becomes both the foil and its beveled relief.
@@ -533,6 +651,14 @@ export async function createMembershipCard(host, options) {
   const shell = new THREE.Mesh(new THREE.ExtrudeGeometry(roundedShape(CARD_W, CARD_H, .28), { depth: .065, bevelEnabled: true, bevelThickness: .025, bevelSize: .025, bevelSegments: 4, curveSegments: 24, steps: 1 }), shellMaterial);
   shell.position.z = -.033;
   card.add(shell);
+  // The crystal finish refracts the page behind the canvas. A canvas has no
+  // page to sample, so a backdrop in the page color exists only in the
+  // transmission pass and never paints the canvas itself.
+  const backdropMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color(options.surface ?? '#f5f4f0').multiplyScalar(2.4), depthWrite: false, toneMapped: false });
+  const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(90, 60), backdropMaterial);
+  backdrop.position.z = -5;backdrop.visible = false;
+  backdrop.onBeforeRender = (target) => { backdropMaterial.colorWrite = target.getRenderTarget() !== null; };
+  scene.add(backdrop);
 
   // Rank textures are painted on first use so the member's own card appears sooner.
   /** @type {Map<RankKey, THREE.CanvasTexture>} */
@@ -570,6 +696,20 @@ export async function createMembershipCard(host, options) {
   const frontMaterial = faceMaterial(false, first.front);
   const front = new THREE.Mesh(faceGeometry(), frontMaterial);
   front.position.z = .06;card.add(front);
+  // Crystal substrate, built on first use: clear faces cut in facets with
+  // frosted engraving, and a thicker, more dispersive edge.
+  /** @type {{ front: THREE.MeshPhysicalMaterial, back: THREE.MeshPhysicalMaterial, shell: THREE.MeshPhysicalMaterial } | null} */
+  let crystal = null;
+  const crystalMaterials = () => {
+    if (crystal) return crystal;
+    const facets = makeFacets();
+    /** @param {boolean} reverse */
+    const face = (reverse) => new THREE.MeshPhysicalMaterial({ metalness: 0, roughness: .55, roughnessMap: makeFrost(reverse), bumpMap: facets, bumpScale: 9, transmission: 1, thickness: .5, ior: 2.1, attenuationColor: '#69adff', attenuationDistance: .8, dispersion: 6, iridescence: .55, iridescenceIOR: 1.6, clearcoat: 1, clearcoatRoughness: .03, envMapIntensity: 2.4 });
+    const shellCrystal = new THREE.MeshPhysicalMaterial({ metalness: 0, roughness: .02, transmission: 1, thickness: .8, ior: 2.2, attenuationColor: '#3f8cff', attenuationDistance: .22, dispersion: 9, iridescence: .7, iridescenceIOR: 1.7, clearcoat: 1, envMapIntensity: 2.2 });
+    crystal = { front: face(false), back: face(true), shell: shellCrystal };
+    for (const material of Object.values(crystal)) filmThickness(material, 280, 760);
+    return crystal;
+  };
   const silver = { value: new THREE.Color('#e7edf6') };
   /**
    * @param {THREE.Material} material
@@ -583,7 +723,7 @@ export async function createMembershipCard(host, options) {
     if (reverse) mesh.rotation.y = Math.PI;
     card.add(mesh);
   };
-  inlay(foilMaterial(makeFoil((ctx) => {
+  const frontInk = foilMaterial(makeFoil((ctx) => {
     drawHairline(ctx);
     ctx.drawImage(wordmark, 128, 116, 420, 42);
     ctx.drawImage(monogram, 1690, 98, 230, 80);
@@ -592,7 +732,8 @@ export async function createMembershipCard(host, options) {
     if (!personal) return;
     text(ctx, memberName, 128, 1072, 50, { tracking: 2, maxWidth: 1250 });
     text(ctx, number, 1920, 1072, 50, { family: 'Aptos Mono', tracking: 3, align: 'right' });
-  }), '#d6dbe2', silver, .5), .067, 1);
+  }), '#d6dbe2', silver, .5);
+  inlay(frontInk, .067, 1);
   const rankTint = { value: new THREE.Color(RANKS[activeRank].color) };
   const rankMaterial = foilMaterial(first.foil, RANKS[activeRank].metal, rankTint, .8);
   rankMaterial.iridescenceThicknessMap = interferenceMap;
@@ -601,12 +742,13 @@ export async function createMembershipCard(host, options) {
   const backMaterial = faceMaterial(true, first.back);
   const back = new THREE.Mesh(faceGeometry(), backMaterial);
   back.rotation.y = Math.PI;back.position.z = -.066;card.add(back);
-  inlay(foilMaterial(makeFoil((ctx) => {
+  const backInk = foilMaterial(makeFoil((ctx) => {
     drawHairline(ctx);
     ctx.drawImage(wordmark, 128, 116, 340, 34);
     text(ctx, 'THE STORY IS', 122, 372, 96, { family: 'Aptos Display', tracking: -2 });
     text(ctx, 'OURS TO WRITE.', 122, 478, 96, { family: 'Aptos Display', tracking: -2 });
-  }), '#d6dbe2', silver, .5), -.073, 1, true);
+  }), '#d6dbe2', silver, .5);
+  inlay(backInk, -.073, 1, true);
 
   let insignia = new THREE.Group();
   /** @param {Rank} rank */
@@ -616,13 +758,14 @@ export async function createMembershipCard(host, options) {
     insignia = new THREE.Group();
     insignia.position.set(INSIGNIA_AT.x, INSIGNIA_AT.y, INSIGNIA_Z);
     const isPioneer = rank === RANKS.pioneer;
+    const isCrystal = rank.crystal === true;
     /** @param {number} strength */
-    const film = (strength) => ({ iridescence: isPioneer ? strength : FILM_OFF, iridescenceIOR: 1.38, iridescenceThicknessMap: interferenceMap });
-    const rimMaterial = new THREE.MeshPhysicalMaterial({ color: rank.metal, metalness: 1, roughness: .3, bumpMap: foilGrain, bumpScale: .5, anisotropy: .5, clearcoat: .3, clearcoatRoughness: .3, ...film(1) });
+    const film = (strength) => ({ iridescence: isPioneer || isCrystal ? strength : FILM_OFF, iridescenceIOR: 1.38, iridescenceThicknessMap: interferenceMap });
+    const rimMaterial = new THREE.MeshPhysicalMaterial({ color: rank.rim ?? rank.metal, metalness: 1, roughness: .3, bumpMap: foilGrain, bumpScale: .5, anisotropy: .5, clearcoat: .3, clearcoatRoughness: .3, ...film(1) });
     // The recessed field is a guilloche sunburst under a satin film: it stays
     // dark at rest and opens up when the card tilts.
-    const fieldMaterial = new THREE.MeshPhysicalMaterial({ color: rank.field, metalness: 1, roughness: .62, roughnessMap: guillocheMap, bumpMap: guillocheMap, bumpScale: 1.2, envMapIntensity: isPioneer ? 1.5 : 1.1, emissive: isPioneer ? '#3a0a78' : '#000000', emissiveIntensity: .35, ...film(.5), iridescenceIOR: 1.5 });
-    const deviceMaterial = new THREE.MeshPhysicalMaterial({ color: rank.device, metalness: 1, roughness: .24, envMapIntensity: 1.5, clearcoat: .2, clearcoatRoughness: .2, ...film(.45) });
+    const fieldMaterial = new THREE.MeshPhysicalMaterial({ color: rank.field, metalness: 1, roughness: .62, roughnessMap: guillocheMap, bumpMap: guillocheMap, bumpScale: 1.2, envMapIntensity: isPioneer || isCrystal ? 1.5 : 1.1, emissive: isPioneer ? '#3a0a78' : isCrystal ? '#0a3f9a' : '#000000', emissiveIntensity: .35, ...film(.5), iridescenceIOR: 1.5 });
+    const deviceMaterial = new THREE.MeshPhysicalMaterial({ color: rank.device, metalness: 1, roughness: isCrystal ? .05 : .24, envMapIntensity: isCrystal ? 2.6 : 1.5, emissive: isCrystal ? '#8cc4ff' : '#000000', emissiveIntensity: .16, vertexColors: isCrystal, clearcoat: .2, clearcoatRoughness: .2, ...film(isCrystal ? .9 : .45) });
     filmThickness(rimMaterial, 240, 480);filmThickness(fieldMaterial, 330, 470);filmThickness(deviceMaterial, 240, 480);
     const shieldPoints = [[0, 1.38], [1.05, .94], [.91, -.65], [0, -1.32], [-.91, -.65], [-1.05, .94]];
     const frame = polygon(shieldPoints);
@@ -637,9 +780,9 @@ export async function createMembershipCard(host, options) {
     const [halfWidth, rise, thickness, pitchStep, starRadius, gap] = [.6, .34, .15, .22, .2, .1];
     const stackHeight = starRadius * 2 + gap + rise + thickness + (stripes - 1) * pitchStep;
     const top = .06 + .03 * (stripes - 1) + stackHeight / 2;
-    const facets = starFacets(top - starRadius, starRadius, .068, .06);
+    const facets = isCrystal ? gemFacets(.06, 1.2) : starFacets(top - starRadius, starRadius, .068, .06);
     for (let index = 0; index < stripes; index++) facets.push(...chevronFacets(top - starRadius * 2 - gap - index * pitchStep, halfWidth, rise, thickness, .065));
-    const device = new THREE.Mesh(facetGeometry(facets), deviceMaterial);
+    const device = new THREE.Mesh(facetGeometry(facets, isCrystal ? GEM_TONES : undefined), deviceMaterial);
     device.position.z = .022;
     insignia.add(device);
     card.add(insignia);
@@ -649,10 +792,16 @@ export async function createMembershipCard(host, options) {
   const applyRank = (rankKey) => {
     const rank = RANKS[rankKey];
     const textures = rankTextures(rankKey);
-    frontMaterial.map = textures.front;
-    backMaterial.map = textures.back;
+    const substrate = rank.crystal ? crystalMaterials() : { front: frontMaterial, back: backMaterial, shell: shellMaterial };
+    front.material = substrate.front;back.material = substrate.back;shell.material = substrate.shell;
+    backdrop.visible = rank.crystal === true;
+    substrate.front.map = textures.front;
+    substrate.back.map = textures.back;
     shellMaterial.color.set(rank.shell);
     shellMaterial.iridescence = rankKey === 'pioneer' ? .6 : FILM_OFF;
+    // Lettering turns to sapphire on crystal, where silver would vanish.
+    frontInk.color.set(rank.ink ?? '#d6dbe2');backInk.color.set(rank.ink ?? '#d6dbe2');
+    silver.value.set(rank.inkTint ?? '#e7edf6');
     rankMaterial.map = textures.foil.map;
     rankMaterial.bumpMap = textures.foil.bump;
     rankMaterial.color.set(rank.metal);
@@ -754,6 +903,8 @@ export async function createMembershipCard(host, options) {
     // The insignia forms above the card, then accelerates into its seat.
     insignia.position.z = INSIGNIA_Z + 1.5 * aloft;
     insignia.scale.setScalar(Math.max(.0001, formed * (2 - formed)) * (1 + .28 * aloft));
+    // Crystal is see-through: from behind, the insignia would sit under the motto.
+    insignia.visible = !backdrop.visible || faceNormal.z > -.05;
     key.position.set(-5 + hover.x * 7, 7 - hover.y * 6, 5);
     const float = still ? 0 : .08 + Math.sin(time * .7) * .065;
     card.position.y = float - rising * 1.1;
@@ -907,6 +1058,7 @@ export async function createMembershipCard(host, options) {
       disposed = true;
       cancelAnimationFrame(frameId);lifetime.abort();observer.disconnect();viewport.disconnect();
       disposeTree(scene);
+      for (const material of [frontMaterial, backMaterial, shellMaterial, ...Object.values(crystal ?? {})]) material.dispose();
       for (const texture of disposable) texture.dispose();
       environment.dispose();renderer.dispose();context.remove();
     },

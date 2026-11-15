@@ -22,6 +22,13 @@ class UserMembershipTest < ActiveSupport::TestCase
     assert user.errors.of_kind?(:membership_tier, :inclusion)
   end
 
+  test "the Core Team edition reads as a team membership" do
+    member = User.invite!(email_address: "team@example.com", role: "admin", first_name: "Tea", last_name: "Member", membership_tier: "core_team")
+
+    assert_equal [ "Core Team", "part of the Core Team", "Team member" ], [ member.membership_rank, member.membership_rank_phrase, member.membership_status ]
+    assert_includes UserMailer.invitation(member).html_part.body.decoded, "flight_club/card-core_team-"
+  end
+
   test "accounts without a membership take no member number" do
     user = User.invite!(email_address: "staff@example.com", role: "user", membership_tier: "")
 
