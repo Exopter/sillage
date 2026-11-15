@@ -1,46 +1,43 @@
 <% content_for :title, "My profile" %>
-<% content_for :body_class, "ex-dark" %>
 
 <div class="sillage-profile">
-  <section class="sillage-profile-panel" aria-labelledby="profile-heading">
-    <div class="sillage-profile-heading">
-      <%= render "shared/user_avatar", user: @user, large: true %>
-      <div>
-        <p class="sillage-profile-eyebrow">Your account</p>
-        <h1 id="profile-heading"><%= @user.full_name || "My profile" %></h1>
-        <p><%= @user.email_address %></p>
-        <% if @user.member? %><p><%= @user.membership_rank %> · <%= @user.member_code %></p><% end %>
-      </div>
+  <header class="sillage-profile-heading">
+    <%= render "shared/user_avatar", user: @user, large: true %>
+    <div>
+      <h1 id="profile-heading"><%= @user.full_name || "My profile" %></h1>
+      <p><%= @user.email_address %><% if @user.member? %> · <%= @user.membership_rank %> · <%= @user.member_code %><% end %></p>
     </div>
+  </header>
 
-    <div class="sillage-profile-details">
-      <%= form_with model: @user, url: profile_path, method: :patch, class: "sillage-profile-form" do |form| %>
-        <% if @user.errors.any? %>
-          <p class="workspace-errors" role="alert"><%= @user.errors.full_messages.to_sentence %> Please select your photo again before saving.</p>
-        <% end %>
-        <div class="sillage-profile-names">
-          <label><span>First name</span><span class="exds-input-wrap"><%= form.text_field :first_name, autocomplete: "given-name", required: @user.member?, class: "exds-input" %></span></label>
-          <label><span>Last name</span><span class="exds-input-wrap"><%= form.text_field :last_name, autocomplete: "family-name", required: @user.member?, class: "exds-input" %></span></label>
+  <% if @user.member? %>
+    <section id="membership" class="sillage-profile-membership ex-dark" aria-label="Membership card">
+      <%= tag.div class: "sillage-profile-card", data: flight_club_card_data(@user).merge(stage: "presented") do %>
+        <%= render "shared/flight_club_card", member: @user %>
+        <div class="sillage-profile-card-caption">
+          <% if @user.membership_started_at %><p>Member since <%= @user.membership_started_at.strftime("%B %Y") %></p><% end %>
+          <button type="button" class="flight-club-link" data-action="membership-card#turn" data-membership-card-target="turnLabel">Turn card</button>
         </div>
-        <label><span>Profile photo</span><%= form.file_field :avatar, class: "exds-file-input", accept: User::AVATAR_TYPES.join(","), aria: { describedby: "avatar-help" } %></label>
-        <p id="avatar-help">JPEG, PNG or WebP. Up to 5 MB. Your photo appears beside your name. Initials are shown until you add one.</p>
-        <% if @user.avatar.attached? && @user.avatar.attachment.persisted? %>
-          <label class="sillage-profile-remove"><%= form.check_box :remove_avatar, checked: false %><span>Remove current photo</span></label>
-        <% end %>
-        <div><%= form.submit "Save profile", class: "exds-btn exds-btn--primary" %></div>
+        <p class="flight-club-live" aria-live="polite" data-membership-card-target="announcement"></p>
       <% end %>
-      <% if @user.member? %>
-        <section id="membership" class="sillage-profile-membership" aria-label="Membership card">
-          <%= tag.div class: "sillage-profile-card", data: flight_club_card_data(@user).merge(stage: "presented") do %>
-            <%= render "shared/flight_club_card", member: @user %>
-            <div class="sillage-profile-card-caption">
-              <% if @user.membership_started_at %><p>Member since <%= @user.membership_started_at.strftime("%B %Y") %></p><% end %>
-              <button type="button" class="flight-club-link" data-action="membership-card#turn" data-membership-card-target="turnLabel">Turn card</button>
-            </div>
-            <p class="flight-club-live" aria-live="polite" data-membership-card-target="announcement"></p>
-          <% end %>
-        </section>
+    </section>
+  <% end %>
+
+  <section class="sillage-profile-panel" aria-labelledby="profile-identity">
+    <h2 id="profile-identity">Identity</h2>
+    <%= form_with model: @user, url: profile_path, method: :patch, class: "sillage-profile-form" do |form| %>
+      <% if @user.errors.any? %>
+        <p class="workspace-errors" role="alert"><%= @user.errors.full_messages.to_sentence %> Please select your photo again before saving.</p>
       <% end %>
-    </div>
+      <div class="sillage-profile-names">
+        <label><span>First name</span><span class="exds-input-wrap"><%= form.text_field :first_name, autocomplete: "given-name", required: @user.member?, class: "exds-input" %></span></label>
+        <label><span>Last name</span><span class="exds-input-wrap"><%= form.text_field :last_name, autocomplete: "family-name", required: @user.member?, class: "exds-input" %></span></label>
+      </div>
+      <label><span>Profile photo</span><%= form.file_field :avatar, class: "exds-file-input", accept: User::AVATAR_TYPES.join(","), aria: { describedby: "avatar-help" } %></label>
+      <p id="avatar-help">JPEG, PNG or WebP. Up to 5 MB. Your photo appears beside your name. Initials are shown until you add one.</p>
+      <% if @user.avatar.attached? && @user.avatar.attachment.persisted? %>
+        <label class="sillage-profile-remove"><%= form.check_box :remove_avatar, checked: false %><span>Remove current photo</span></label>
+      <% end %>
+      <div class="exds-form-actions"><%= form.submit "Save profile", class: "exds-btn exds-btn--primary" %></div>
+    <% end %>
   </section>
 </div>

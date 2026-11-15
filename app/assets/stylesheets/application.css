@@ -527,23 +527,19 @@ body {
 }
 
 .sillage-profile {
-  color: var(--text-body);
   display: grid;
   align-items: start;
-  gap: 28px;
-  width: min(100%, 1120px);
+  gap: var(--sp-6);
+  width: min(100%, 704px);
   margin: 0 auto;
-}
-
-.sillage-profile-details {
-  display: grid;
-  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.2fr);
-  align-items: start;
-  gap: 32px 48px;
+  color: var(--text-body);
 }
 
 .sillage-profile-membership {
   min-width: 0;
+  padding: var(--sp-5);
+  border: 1px solid var(--border-rule);
+  border-radius: var(--ex-radius-surface);
 }
 
 .sillage-profile-card {
@@ -564,7 +560,7 @@ body {
   flex-wrap: wrap;
   gap: 8px 24px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--fs-text);
 }
 
 .sillage-profile-card-caption p {
@@ -572,39 +568,36 @@ body {
 }
 
 .sillage-profile-panel {
-  padding: clamp(20px, 4vw, 40px);
+  padding: var(--ex-panel-padding);
   border: 1px solid var(--border-rule);
-  border-radius: var(--ds-radius);
-  background: var(--surface-panel);
+  border-radius: var(--ex-radius-surface);
+  background: var(--surface-card);
+}
+
+.sillage-profile-panel h2 {
+  margin: 0 0 var(--sp-5);
+  color: var(--text-strong);
+  font: 600 var(--fs-card)/1.25 var(--font-ui);
 }
 
 .sillage-profile-heading {
   display: flex;
   align-items: center;
-  gap: 28px;
-  margin-bottom: 32px;
+  gap: var(--sp-5);
 }
 
 .sillage-profile-heading h1 {
-  margin: 4px 0 8px;
-  font-weight: 500;
-  letter-spacing: -0.035em;
+  margin: 0;
+  color: var(--text-strong);
+  font: 600 var(--fs-page)/1.17 var(--font-ui);
+  letter-spacing: var(--ls-tight);
 }
 
 .sillage-profile-heading p {
-  margin: 5px 0;
+  margin: var(--sp-1) 0 0;
   overflow-wrap: anywhere;
   color: var(--text-muted);
-  font-size: 13px;
-}
-
-.sillage-profile-eyebrow {
-  margin: 0;
-  color: var(--text-muted);
-  font-family: var(--ex-font-mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: var(--fs-text);
 }
 
 .sillage-profile-form {
@@ -615,7 +608,8 @@ body {
 
 .sillage-profile-names {
   display: grid;
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--sp-4);
 }
 
 .sillage-profile-form label {
@@ -644,18 +638,6 @@ body {
   align-items: center;
 }
 
-@media (max-width: 800px) {
-  .sillage-profile-details {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 600px) {
-  .sillage-profile-heading {
-    align-items: flex-start;
-    gap: 20px;
-  }
-}
 
 .sillage-account-menu {
   position: fixed;
@@ -981,14 +963,10 @@ body {
 
 .primary-button:disabled {
   cursor: not-allowed;
-
-  opacity: 0.58;
-
 }
 
 .secondary-button:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
 }
 
 .danger-button {
@@ -1177,7 +1155,6 @@ body {
 .button-secondary:disabled,
 .button-danger:disabled {
   cursor: not-allowed;
-  opacity: .45;
 }
 
 .authentication-page {
@@ -2885,13 +2862,13 @@ body.flight-analysis-theme,
     border-left: 0;
   }
 
-  .flight-overview-strip > div:nth-last-child(-n + 2) {
-    border-bottom: 0;
+  .flight-analysis-workspace .flight-overview-strip > div {
+    border-bottom-color: var(--ex-line-200);
   }
 
   .flight-overview-strip > div:last-child {
     grid-column: 1 / -1;
-    border-top: 0;
+    border-bottom: 0;
   }
 
   .flight-metric-controls {
@@ -2910,6 +2887,11 @@ body.flight-analysis-theme,
 }
 
 @media (max-width: 620px) {
+  /* The avatar carries the pilot name as its label; a clipped name adds nothing. */
+  .flight-replay-header .flight-pilot-name {
+    display: none;
+  }
+
   .flight-replay-header .mode-badge {
     display: none;
   }
@@ -3068,6 +3050,7 @@ button.aircraft-connection-pill:disabled { cursor: default; opacity: .55; }
   gap: var(--sp-6);
   margin-bottom: var(--sp-6);
   overflow-x: auto;
+  overflow-y: hidden;
   border-bottom: 1px solid var(--border-rule);
 }
 
@@ -3079,7 +3062,6 @@ button.aircraft-connection-pill:disabled { cursor: default; opacity: .55; }
 
 .exds-tab {
   flex: 0 0 auto;
-  margin-bottom: -1px;
   padding: 10px 0;
   border-bottom: 2px solid transparent;
   color: var(--text-muted);
@@ -3130,4 +3112,42 @@ button.aircraft-connection-pill:disabled { cursor: default; opacity: .55; }
 
 .exds-back-link:hover {
   color: var(--text-strong);
+}
+
+/* Disclosure: one row style with a chevron for every native details element. */
+.exds-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  color: var(--text-strong);
+  font: 600 var(--fs-text)/1.43 var(--font-ui);
+  cursor: pointer;
+  list-style: none;
+}
+
+.exds-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.exds-disclosure > summary::after {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  margin-right: 3px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
+  transform: rotate(-45deg);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.exds-disclosure[open] > summary::after {
+  transform: rotate(45deg);
+}
+
+.exds-disclosure > summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }

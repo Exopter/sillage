@@ -26,7 +26,7 @@
     <div><dt>Internal Asset ID</dt><dd class="workspace-mono"><%= @assembly.internal_number %></dd></div>
   </dl>
   <% if @assembly.controlled_fdr? %><p class="workspace-muted workspace-preserve-lines"><%= @assembly.fdr_functional_configuration.planned_capabilities %></p><% end %>
-  <% if @assembly.notes.present? %><p class="workspace-notes"><%= simple_format @assembly.notes %></p><% end %>
+  <% if @assembly.notes.present? %><%= simple_format @assembly.notes, class: "workspace-notes" %><% end %>
 </section>
 
 <%= render "components" %>

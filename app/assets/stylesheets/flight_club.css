@@ -438,6 +438,19 @@
     padding-left: 14px;
   }
 
+  /* The brand never wraps: the member line moves under it. */
+  .flight-club-masthead {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: var(--sp-2);
+    padding-block: var(--sp-4);
+  }
+
+  .flight-club-brand {
+    white-space: nowrap;
+  }
+
   .flight-club-wordmark {
     width: 92px;
   }

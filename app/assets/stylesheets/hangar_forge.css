@@ -1607,3 +1607,54 @@
     gap: 2px;
   }
 }
+
+/* Phone: a stacked table keeps the identity, state and action of each row on screen. */
+@media (max-width: 620px) {
+  .workspace-table.is-stacked {
+    min-width: 0;
+  }
+
+  .workspace-table.is-stacked thead {
+    display: none;
+  }
+
+  .workspace-table.is-stacked tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--sp-1) var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    border-bottom: 1px solid var(--border-rule);
+  }
+
+  .workspace-table.is-stacked tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .workspace-panel.is-flush .workspace-table.is-stacked td {
+    display: block;
+    grid-column: 1;
+    padding: 0;
+    border: 0;
+  }
+
+  .workspace-table.is-stacked td[data-label] {
+    color: var(--text-muted);
+    font-size: var(--fs-caption);
+  }
+
+  .workspace-table.is-stacked td[data-label]::before {
+    content: attr(data-label) ": ";
+  }
+
+  .workspace-panel.is-flush .workspace-table.is-stacked td:nth-child(5) {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .workspace-panel.is-flush .workspace-table.is-stacked td.workspace-table-actions {
+    grid-column: 2;
+    grid-row: 2 / span 3;
+    align-self: end;
+  }
+}
