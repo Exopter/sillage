@@ -97,7 +97,7 @@ class FlightFoldersFlowTest < ActionDispatch::IntegrationTest
     get flights_path(folder: @folder.id)
     assert_select "a.exds-browser-entry-link", count: 2
     assert_select "a.exds-browser-nav[aria-current=page][href*=?]", "folder=#{@folder.id}"
-    assert_select "a[href=?]", new_flight_path(folder: @folder.id)
+    assert_select "a[href=?]", new_flight_path(folder: @folder.id, intent: "prepare")
     assert_select "input[name=folder][value=?]", @folder.id.to_s
     get flights_path(folder: @folder.id, visibility: "private")
     assert_select "a.exds-browser-entry-link", count: 2

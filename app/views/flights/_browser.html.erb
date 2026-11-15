@@ -15,7 +15,7 @@
       <% end %>
       <% if can_manage_operations? %>
       <%= link_to new_flight_import_path(**browser_context), class: "exds-iconbtn exds-iconbtn--outline", title: "Import data", aria: { label: "Import data" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "upload" %><% end %>
-      <%= link_to new_flight_path(**browser_context), class: "exds-btn exds-btn--primary", data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "plus", size: 17 %> New flight<% end %>
+      <%= render "flights/new_flight_menu" %>
       <% end %>
     </header>
     <%= render "flights/recording_details" if @flight_import %>

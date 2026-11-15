@@ -1,6 +1,6 @@
 <% title, description = {
-  "new" => ["New flight", "Only date and location are required."],
-  "edit" => ["Edit flight", @flight&.code],
+  "new" => @flight&.preparation? ? ["Prepare a flight", "Plan a flight. All details are optional."] : ["Log a flight", "Only date and location are required."],
+  "edit" => [@logging_preparation ? "Log a flight" : "Edit flight", @flight&.code],
   "preparation" => [@flight&.code, @flight&.description],
   "import" => ["Import flight data", "Add FlySight or ExoFDR files from removable media."]
 }.fetch(@browser_panel) %>

@@ -4,6 +4,12 @@
 .exds-browser-header { display: flex; align-items: center; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--border-rule); }
 .exds-browser-header h1 { margin: 0 auto 0 0; font-size: 23px; letter-spacing: -.025em; }
 .exds-browser-search { width: min(40%, 560px); }
+.exds-browser-create { position: relative; flex-shrink: 0; }
+.exds-browser-create > summary { list-style: none; cursor: pointer; }
+.exds-browser-create > summary::-webkit-details-marker { display: none; }
+.exds-browser-create-options { position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; display: grid; min-width: 200px; padding: 6px; border: 1px solid var(--border-rule); border-radius: var(--ex-radius-instrument); background: var(--surface-card); }
+.exds-browser-create-options a { display: block; padding: 10px 12px; border-radius: var(--ex-radius-instrument); color: var(--text-body); text-decoration: none; white-space: nowrap; }
+.exds-browser-create-options a:hover, .exds-browser-create-options a:focus-visible { background: var(--surface-selected); }
 .exds-browser-search .exds-input-wrap { min-width: 0; width: 100%; }
 .exds-browser-icon-button { display: inline-flex; align-items: center; justify-content: center; min-width: var(--ex-control-height); min-height: var(--ex-control-height); padding: 6px; border: 1px solid var(--border-rule); border-radius: var(--ex-radius-instrument); background: var(--surface-card); color: var(--text-muted); cursor: pointer; }
 .exds-browser-icon-button[aria-current="page"] { background: var(--surface-selected); color: var(--selection-marker); border-color: var(--selection-marker); }
