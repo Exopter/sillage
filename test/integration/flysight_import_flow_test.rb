@@ -283,7 +283,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "link[rel='icon'][href='/icon.svg?v=exopter-20261115'][type='image/svg+xml']"
     assert_select "h1", "Flight log"
-    assert_sillage_header crumb: "Operations", title: "Flights"
+    assert_sillage_header title: "Flights"
     assert_select ".sillage-mode-switcher", count: 0
     assert_select ".sillage-live-badge", count: 0
     assert_select ".sillage-account-menu"
@@ -305,7 +305,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h1", "FDRs"
-    assert_sillage_header crumb: "Forge", title: "FDRs"
+    assert_sillage_header title: "FDRs"
     assert_select ".workspace-panel"
   end
 
@@ -314,11 +314,11 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
 
     get new_flight_import_path
     assert_response :success
-    assert_sillage_header crumb: "Operations", title: "Flights"
+    assert_sillage_header title: "Flights"
 
     get flight_path(flight)
     assert_response :success
-    assert_sillage_header crumb: "Replay & analysis", title: flight.code
+    assert_sillage_header title: flight.code
   end
 
   test "logout clears the local session" do
@@ -403,11 +403,9 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
 
   private
 
-  def assert_sillage_header(crumb:, title:)
-    assert_select ".sillage-breadcrumb[aria-label='Breadcrumb']"
-    assert_select ".sillage-breadcrumb ol li", 2
-    assert_select ".sillage-breadcrumb ol li:nth-child(1) a[href='#{root_path}']", text: "Sillage"
-    assert_select ".sillage-breadcrumb ol li:nth-child(2) [aria-current='page']", text: crumb
+  def assert_sillage_header(title:)
+    assert_select "nav[aria-label='Breadcrumb']", count: 0
+    assert_select ".sillage-workbench > .sillage-account-menu", count: 1
     assert_select ".sillage-title-block > strong", text: title
   end
 end

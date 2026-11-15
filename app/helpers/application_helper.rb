@@ -104,43 +104,6 @@ module ApplicationHelper
     content_for(:title).presence || t("app.name")
   end
 
-  def sillage_current_tab_label
-    if sillage_current_room == "flight"
-      "Flights"
-    elsif controller_path.start_with?("core/")
-      controller_name == "feedbacks" ? "Feedback" : "Users"
-    elsif controller_path.start_with?("hangar/")
-      controller_name.titleize
-    elsif controller_path.start_with?("forge/")
-      controller_name == "fdrs" ? "Embedded controllers" : controller_name.titleize
-    else
-      "Overview"
-    end
-  end
-
-  def sillage_breadcrumb_items
-    [
-      { label: t("app.name"), href: root_path },
-      { label: sillage_shell_crumb, current: true }
-    ]
-  end
-
-  def sillage_shell_crumb
-    return "My profile" if controller_path == "profiles"
-    return "Feedback" if sillage_current_room == "feedback"
-    return "Hangar" if sillage_current_room == "hangar"
-    return "Signal" if sillage_current_room == "signal"
-    return "Forge" if sillage_current_room == "forge"
-    return sillage_current_tab_label if sillage_current_room == "core"
-    return "Operations" if sillage_flight_browser?
-
-    case sillage_current_flight_tab
-    when "prep" then "Pre-flight"
-    when "replay" then "Replay & analysis"
-    else "Operations"
-    end
-  end
-
   def sillage_room_items
     [
       { id: "flight", label: "Flights", icon: "plane", href: flights_path, enabled: true },
