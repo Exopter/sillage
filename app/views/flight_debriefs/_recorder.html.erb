@@ -1,0 +1,12 @@
+<section class="exds-browser-editor-section" data-controller="flight-debrief" data-flight-debrief-url-value="<%= flight_debriefs_path(flight) %>" data-flight-debrief-key-value="<%= Current.user.id %>:<%= flight.id %>">
+  <h3>Pilot Log · Audio debrief</h3>
+  <p data-flight-debrief-target="status" role="status">Record on this device. Keep this page open while speaking.</p>
+  <button type="button" class="exds-btn exds-btn--primary" data-action="flight-debrief#start">Record debrief</button>
+  <button type="button" class="exds-btn exds-btn--secondary" data-action="flight-debrief#pause">Pause / resume</button>
+  <button type="button" class="exds-btn exds-btn--secondary" data-action="flight-debrief#stop">Finish recording</button>
+  <button type="button" class="exds-btn exds-btn--secondary" data-action="flight-debrief#recover">Recover / retry saved audio</button>
+  <button type="button" class="exds-btn exds-btn--secondary" data-action="flight-debrief#discard">Discard unpublished debrief</button>
+  <p data-flight-debrief-target="transcript" aria-live="polite"></p>
+  <label class="exds-browser-field">Summary<textarea rows="5" maxlength="4000" data-flight-debrief-target="summary"></textarea></label>
+  <button type="button" class="exds-btn exds-btn--primary" data-action="flight-debrief#publish">Publish to Pilot Log</button>
+</section>

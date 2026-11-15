@@ -9,7 +9,7 @@ class Signal::StartSessionTest < ActiveSupport::TestCase
     assert_equal users(:operator), session.user
     assert_equal users(:julien), flight.reload.user
     flight.update!(visibility: "private")
-    assert_raises(ActiveRecord::RecordNotFound) do
+    assert_raises(Signal::StartSession::InvalidFlight) do
       Signal::StartSession.new(user: users(:operator), flight_id: flight.id).call
     end
   end
@@ -34,17 +34,17 @@ class Signal::StartSessionTest < ActiveSupport::TestCase
     assert_equal flight.aircraft.configuration_snapshot, flight.configuration_snapshot
   end
 
-  test "creates an unassigned session and is idempotent for a supplied uuid" do
+  test "creates a live flight and is idempotent for a supplied uuid" do
     uuid = SecureRandom.uuid
     service = -> {
       Signal::StartSession.new(user: users(:julien), uuid:, started_at: Time.current).call
     }
 
-    assert_no_difference "Flight.count" do
+    assert_difference "Flight.count", 1 do
       assert_difference "SignalSession.count", 1 do
         first = service.call
         assert_equal first, service.call
-        assert_nil first.flight
+        assert_equal "live", first.flight.status
       end
     end
   end

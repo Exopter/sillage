@@ -2,7 +2,7 @@ module Api
   module V1
     class SignalSessionsController < ApplicationController
       protect_from_forgery with: :exception
-      before_action :set_signal_session, only: %i[batches events complete]
+      before_action :set_signal_session, only: %i[batches events complete shared_state gateway request_stop]
 
       def create
         signal_session = Signal::StartSession.new(
@@ -20,6 +20,7 @@ module Api
       end
 
       def batches
+        return unless verify_gateway
         batch = Signal::IngestBatch.new(
           signal_session: @signal_session,
           sequence: params.require(:sequence),
@@ -62,6 +63,7 @@ module Api
       end
 
       def complete
+        return unless verify_gateway
         Signal::CompleteSession.new(signal_session: @signal_session,
           disposition: params[:disposition],
           name: params[:flight_name], ended_at: parse_time(params[:ended_at]) || Time.current).call
@@ -71,7 +73,44 @@ module Api
         render json: { error: error.message }, status: :unprocessable_entity
       end
 
+      def shared_state
+        render json: session_payload(@signal_session).merge(
+          gateway_connected: @signal_session.gateway_seen_at && @signal_session.gateway_seen_at > 15.seconds.ago,
+          stop_requested: @signal_session.stop_requested_at.present?,
+          flight_url: flight_path(@signal_session.flight),
+          latest_samples: @signal_session.signal_batches.order(sequence: :desc).first&.payload&.fetch("samples", [])&.last(20) || [])
+      end
+
+      def gateway
+        token = params.require(:token).to_s
+        return head :unprocessable_entity unless token.match?(/\A[0-9a-f-]{36}\z/)
+        @signal_session.with_lock do
+          digest = Digest::SHA256.hexdigest(token)
+          if @signal_session.gateway_token_digest.present? && @signal_session.gateway_token_digest != digest
+            return render json: { error: "Another device owns the radio gateway. Reconnect that device." }, status: :conflict
+          end
+          @signal_session.update!(gateway_token_digest: digest, gateway_seen_at: Time.current)
+        end
+        shared_state
+      end
+
+      def request_stop
+        @signal_session.with_lock do
+          @signal_session.update!(stop_requested_at: Time.current) unless @signal_session.stop_requested_at || @signal_session.status == "completed"
+        end
+        shared_state
+      end
+
       private
+
+      def verify_gateway
+        digest = @signal_session.gateway_token_digest
+        return true if digest.blank? # Existing device clients retain their current ingestion contract.
+        return true if ActiveSupport::SecurityUtils.secure_compare(digest, Digest::SHA256.hexdigest(request.headers["X-Signal-Gateway"].to_s))
+
+        render json: { error: "Only the acquisition device can complete or upload this session." }, status: :conflict
+        false
+      end
 
       def set_signal_session
         @signal_session = SignalSession.accessible_to(Current.user).find_by!(uuid: params[:uuid])

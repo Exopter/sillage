@@ -86,8 +86,9 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_equal "waiting_for_recording", flight.reload.status
   end
 
-  test "direct acquisition stays unassigned until saved and materializes exactly once" do
+  test "legacy unassigned acquisition is recoverable and materializes exactly once" do
     uuid = SecureRandom.uuid
+    users(:julien).signal_sessions.create!(uuid:)
     assert_no_difference "Flight.count" do
       post api_v1_signal_sessions_path, params: { uuid: }, as: :json
       assert_response :created
@@ -349,8 +350,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "a first live batch identifies an unassigned aircraft" do
-    post api_v1_signal_sessions_path, params: { uuid: SecureRandom.uuid }, as: :json
-    session = SignalSession.order(:created_at).last
+    session = users(:julien).signal_sessions.create!
     assert_nil session.flight
 
     post batches_api_v1_signal_session_path(session.uuid), params: {
@@ -601,7 +601,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select ".signal-home button", minimum: 1
     assert_select ".signal-home button[disabled]", count: 0
     assert_select ".signal-prep-row button:not([disabled])", text: "Open session", count: 1
-    assert_select ".signal-start-direct:not([disabled])", text: /Start unassigned session/, count: 1
+    assert_select ".signal-start-direct:not([disabled])", text: /Start live flight/, count: 1
   end
 
   test "keeps recorder connections hidden outside Forge" do

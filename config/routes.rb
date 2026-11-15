@@ -124,6 +124,9 @@ Rails.application.routes.draw do
           post :batches
           post :events
           patch :complete
+          get :shared_state
+          post :gateway
+          post :request_stop
         end
       end
     end
@@ -137,6 +140,14 @@ Rails.application.routes.draw do
     member { patch :color, action: :update_color }
   end
   resources :flights do
+    resources :debriefs, controller: "flight_debriefs", only: %i[create show update destroy] do
+      member do
+        post :upload
+        post :process_audio
+        post :publish
+        post :realtime
+      end
+    end
     resources :comments, controller: "flight_comments", only: [ :index, :create, :edit, :update, :destroy ]
     collection do
       get :preview

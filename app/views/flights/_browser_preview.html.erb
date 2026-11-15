@@ -21,6 +21,9 @@
       <% unless label == "Logged" %><div><dt>Status</dt><dd><span class="status-dot is-<%= state %>"><span></span><%= label %></span></dd></div><% end %>
     </dl>
     <% if flight %>
+      <% if entry.live? && (live_session = entry.signal_sessions.where(status: %w[live syncing]).first) %>
+        <%= link_to "Join live session", signal_path(session: live_session.uuid, join: 1), class: "exds-btn exds-btn--primary", data: { turbo_frame: "_top" } %>
+      <% end %>
       <%= render "flight_comments/comments", flight: entry %>
       <%= render "flights/log_equipment", flight: entry %>
     <% end %>

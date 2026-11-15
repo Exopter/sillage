@@ -24,6 +24,7 @@ CI.run do
   step "Tests: Pressure altitude", "node test/javascript/pressure_altitude_test.mjs"
   step "Tests: Flight geometry", "node test/javascript/flight_geometry_test.mjs"
   step "Tests: GPS quality and replay gaps", "node test/javascript/flight_track_quality_test.mjs"
+  step "Tests: Audio debrief recovery", "node test/javascript/flight_debrief_test.mjs"
   step "Tests: Signal workspace controls", "node test/javascript/signal_controls_test.mjs"
   step "Tests: Signal layout", "node test/javascript/signal_layout_test.mjs"
   step "Tests: FDR synchronization protocol", "node test/javascript/fdr_sync_protocol_test.mjs"

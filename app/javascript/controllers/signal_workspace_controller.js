@@ -419,6 +419,20 @@ export default class extends TypedController {
 
   /** @param {SerialPort} port */
   async openSerial(port) {
+    const tokenKey = `signal-gateway:${this.sessionValue}`
+    let token = localStorage.getItem(tokenKey)
+    if (!token) { token = crypto.randomUUID(); localStorage.setItem(tokenKey, token) }
+    const gatewayUrl = `/api/v1/signal_sessions/${this.sessionValue}/gateway`
+    const heartbeat = async () => {
+      const response = await fetch(gatewayUrl, { method: "POST", headers: { "X-Signal-Gateway": localStorage.getItem(`signal-gateway:${this.sessionValue}`) || "", "Content-Type": "application/json", "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "" }, body: JSON.stringify({ token }) })
+      if (!response.ok) throw new Error("Another device owns this session, or access was revoked.")
+      const state = await response.json()
+      if (state.stop_requested && !this.ending && !this.ended) await this.finishSession("save")
+    }
+    await heartbeat()
+    if (this.ended || this.ending) return
+    const timer = window.setInterval(() => { if (this.port && !this.ended) void heartbeat().catch(() => this.showWarning("Gateway connection interrupted. Remote commands are unavailable.")); else window.clearInterval(timer) }, 3000)
+
     const generation = this.connectionGeneration
     this.port = port
     this.portOpening = port.open({ baudRate: 57_600, bufferSize: 65_536 })
@@ -973,7 +987,7 @@ export default class extends TypedController {
       this.returnHomeAfterSync = false
       this.completionDisposition = null
       if (this.exitForm) this.exitForm.form.requestSubmit(this.exitForm.submitter || undefined)
-      else window.location.assign(this.exitDestination || this.homeUrlValue)
+      else window.location.assign(this.exitDestination || (this.flightIdValue ? `/flights/${this.flightIdValue}` : this.homeUrlValue))
     } catch (error) {
       this.leaving = false
       this.showWarning(`Session finalized; local cleanup failed: ${error instanceof Error ? error.message : String(error)}. Keep this page open to retry.`)
@@ -993,7 +1007,7 @@ export default class extends TypedController {
       for (const record of records) {
         const response = await fetch(record.url, {
           method: record.method,
-          headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "" },
+          headers: { "X-Signal-Gateway": localStorage.getItem(`signal-gateway:${this.sessionValue}`) || "", "Content-Type": "application/json", "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "" },
           body: JSON.stringify(record.body)
         })
         if (!response.ok) {

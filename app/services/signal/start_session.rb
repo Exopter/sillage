@@ -18,6 +18,13 @@ module Signal
       return existing if existing
 
       SignalSession.transaction do
+        # Serialize starts across all application processes for this Sillage instance.
+        SignalSession.connection.execute("SELECT pg_advisory_xact_lock(741253901)")
+        active = SignalSession.where(status: %w[live syncing]).first
+        if active
+          raise InvalidFlight, "A flight is already live." unless SignalSession.accessible_to(@user).exists?(active.id)
+          return active
+        end
         flight = prepare_flight
         session = @user.signal_sessions.create!(
           uuid: @uuid,
@@ -37,7 +44,9 @@ module Signal
     private
 
     def prepare_flight
-      return if @flight_id.blank?
+      if @flight_id.blank?
+        return @user.flights.create!(name: "Signal flight", status: "live", started_at: @started_at)
+      end
 
       flight = Flight.visible_to(@user).find(@flight_id)
       unless flight.preparation? || flight.live? || (flight.logged? && flight.fdr_id.present?)
