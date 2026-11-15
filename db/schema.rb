@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_15_170000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_15_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -773,9 +773,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_15_170000) do
     t.datetime "updated_at", null: false
     t.index ["disabled_at"], name: "index_users_on_disabled_at"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
-    t.index ["member_number"], name: "index_users_on_member_number", unique: true
+    t.index ["member_number"], name: "index_users_on_member_number", unique: true, where: "(member_number <> 0)"
     t.index ["membership_tier"], name: "index_users_on_membership_tier"
     t.index ["role"], name: "index_users_on_role"
+    t.check_constraint "member_number IS NULL OR member_number >= 0 AND (member_number <> 0 OR membership_tier IS NOT NULL AND membership_tier::text = 'core_team'::text)", name: "users_member_number_range_and_zero_tier"
   end
 
   create_table "wifi_credentials", force: :cascade do |t|

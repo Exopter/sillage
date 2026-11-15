@@ -1,6 +1,32 @@
 require "test_helper"
 
 class UserMembershipTest < ActiveSupport::TestCase
+  test "Core Team can share zero while positive member numbers remain unique" do
+    first = User.create!(email_address: "zero-one@example.com", role: "user", first_name: "First", last_name: "Member", membership_tier: "core_team", member_number: 0)
+    second = User.create!(email_address: "zero-two@example.com", role: "user", first_name: "Second", last_name: "Member", membership_tier: "core_team", member_number: 0)
+    assert_equal "FC 0000", first.member_code
+    assert_equal first.member_number, second.member_number
+    second.membership_tier = "pioneer"
+    assert_not second.valid?
+    assert_includes second.errors[:member_number], "is reserved for Core Team"
+    first.update!(member_number: 1)
+    second.assign_attributes(membership_tier: "core_team", member_number: 1)
+    assert_not second.valid?
+    assert second.errors.of_kind?(:member_number, :taken)
+  end
+
+  test "database rejects zero for other tiers and duplicate positive numbers" do
+    member = User.create!(email_address: "database-zero@example.com", role: "user", first_name: "Data", last_name: "Member", membership_tier: "core_team", member_number: 0)
+    assert_raises(ActiveRecord::StatementInvalid) do
+      User.transaction(requires_new: true) { member.update_columns(membership_tier: nil) }
+    end
+    member.reload.update!(member_number: 1)
+    other = User.create!(email_address: "database-positive@example.com", role: "user", first_name: "Other", last_name: "Member", membership_tier: "core_team", member_number: 2)
+    assert_raises(ActiveRecord::RecordNotUnique) do
+      User.transaction(requires_new: true) { other.update_columns(member_number: 1) }
+    end
+  end
+
   test "members receive permanent sequential numbers" do
     IdentifierSequence.reserve_through!(User::MEMBER_NUMBER_SEQUENCE, 8)
     first = User.invite!(email_address: "one@example.com", role: "user", first_name: "Una", last_name: "Member", membership_tier: "pathfinder")

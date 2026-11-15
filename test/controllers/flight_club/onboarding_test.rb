@@ -3,6 +3,32 @@ require "test_helper"
 class FlightClub::OnboardingTest < ActionDispatch::IntegrationTest
   include ActiveJob::TestHelper
 
+  test "an existing administrator receives the complete Core Team onboarding" do
+    member = users(:julien)
+    member.update!(first_name: "Julien", last_name: "Blancher", membership_tier: "core_team", member_number: 2, membership_welcomed_at: nil)
+    original_digest = member.password_digest
+    member.send_invitation!
+    assert_equal original_digest, member.reload.password_digest
+    assert member.active_for_authentication?
+
+    get edit_invitation_path(member.invitation_token)
+    assert_response :success
+    assert_select "h1", "Julien, your place is ready."
+    patch invitation_path(member.invitation_token), params: { password: "new-password-123456", password_confirmation: "new-password-123456" }
+    assert_redirected_to new_two_factor_setup_path
+
+    sign_in_as member
+    get root_path
+    assert_redirected_to flight_club_welcome_path
+    get flight_club_welcome_path
+    assert_response :success
+    assert_select "[data-membership-card-number-value='2'][data-membership-card-tier-value='core_team']"
+    assert_enqueued_emails 1 do
+      patch flight_club_welcome_path
+    end
+    assert member.reload.membership_welcomed_at
+  end
+
   test "a member accepts the invitation, meets the card once, then enters Sillage" do
     member = users(:invited_member)
     token = member.invitation_token
