@@ -43,6 +43,7 @@ class FlightDebriefsController < ApplicationController
         @debrief.audio.attach(file)
         @debrief.update!(status: "uploaded")
       end
+      @debrief.publish_entry!(Current.user)
     end
     render json: payload
   end
@@ -62,6 +63,9 @@ class FlightDebriefsController < ApplicationController
         @debrief.update!(status: "uploaded", transcript: params[:transcript].to_s.first(200_000).presence || @debrief.transcript)
         FlightDebriefJob.perform_later(@debrief.id)
       end
+      # Drafts recorded before automatic publication reach the Pilot log here.
+      @debrief.publish_entry!(Current.user)
+      @debrief.update!(status: "published") if @debrief.status == "ready"
     end
     render json: payload
   end
@@ -97,6 +101,7 @@ class FlightDebriefsController < ApplicationController
   end
 
   def payload
-    @debrief.as_json(only: %i[id uuid status transcript summary error_message]).merge(url: flight_debrief_path(@flight, @debrief))
+    @debrief.as_json(only: %i[id uuid status transcript summary error_message]).merge(
+      url: flight_debrief_path(@flight, @debrief), published: @debrief.flight_comment_id.present?)
   end
 end

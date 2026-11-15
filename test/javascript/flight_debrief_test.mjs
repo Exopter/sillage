@@ -12,7 +12,6 @@ function recorder(key) {
   value.element = { dataset: {}, querySelectorAll: () => [], querySelector: () => null }
   value.keyValue = key
   value.statusTarget = { textContent: "" }
-  value.summaryTarget = { value: "" }
   value.transcriptTarget = { textContent: "" }
   return value
 }
@@ -27,18 +26,26 @@ assert.match(reopened.statusTarget.textContent, /saved debrief/)
 const other = recorder("different-owner:flight")
 await other.connect()
 assert.equal(other.saved, undefined)
-// Failed publication must preserve the original, including after a fresh controller opens.
+// A failed upload must preserve the original, including after a fresh controller opens.
 reopened.api = async () => { throw new Error("network unavailable") }
-reopened.summaryTarget.value = "Edited pilot summary"
-await reopened.publish()
-assert.equal(reopened.element.dataset.state, "ready")
-assert.equal(reopened.summaryTarget.value, "Edited pilot summary")
+await reopened.recover()
+assert.equal(reopened.element.dataset.state, "recovery")
 assert.equal(await (await reopened.store("get")).parts[0].text(), "original audio bytes")
 assert.equal(reopened.statusTarget.textContent, "network unavailable")
+// Once the audio is stored and processing is requested, the device copy is released and the Pilot log refreshes.
+const calls = []
+let refreshed = 0
+reopened.api = async (url) => { calls.push(url); return { url: "/debrief", status: "uploaded" } }
+reopened.refreshLog = () => { refreshed += 1 }
+await reopened.recover()
+assert.deepEqual(calls.slice(-1), [ "/debrief/process_audio" ])
+assert.equal(reopened.element.dataset.state, "published")
+assert.equal(await reopened.store("get"), undefined)
+assert.equal(refreshed, 1)
 first.database.close(); reopened.database.close(); other.database.close()
-console.log("Audio recovery, account isolation and failed publication preservation passed")
+console.log("Audio recovery, account isolation, failed upload preservation and automatic publication passed")
 
-const controls = ["idle", "recording paused", "recovery", "ready"].map(states => ({ dataset: { debriefStates: states }, hidden: false }))
+const controls = ["idle", "recording paused", "recovery", "busy"].map(states => ({ dataset: { debriefStates: states }, hidden: false }))
 const pauseButton = { textContent: "" }
 const ui = recorder("ui")
 ui.element.querySelectorAll = () => controls

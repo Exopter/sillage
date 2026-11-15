@@ -4,17 +4,17 @@ import { Controller } from "@hotwired/stimulus"
  * @typedef {Object} Bindings
  * @property {string} urlValue
  * @property {string} keyValue
+ * @property {string} commentsUrlValue
  * @property {HTMLElement} statusTarget
  * @property {HTMLElement} durationTarget
  * @property {HTMLMeterElement} levelTarget
  * @property {HTMLElement} transcriptTarget
- * @property {HTMLTextAreaElement} summaryTarget
  */
 /** @typedef {{uuid: string, parts: Blob[], type: string, url: string | null}} SavedRecording */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 export default class extends TypedController {
-  static values = { url: String, key: String }
-  static targets = ["status", "transcript", "summary", "duration", "level"]
+  static values = { url: String, key: String, commentsUrl: String }
+  static targets = ["status", "transcript", "duration", "level"]
   /** @type {MediaRecorder | null} */
   recorder = null
   /** @type {MediaStream | null} */
@@ -35,7 +35,6 @@ export default class extends TypedController {
   /** @type {SavedRecording | null} */
   saved = null
   writeQueue = Promise.resolve()
-  pollTimer = 0
   commitTimer = 0
   meterTimer = 0
   /** @type {AudioContext | null} */
@@ -71,7 +70,6 @@ export default class extends TypedController {
     if (this.recorder?.state !== "inactive") this.recorder?.stop()
     this.stream?.getTracks().forEach(track => track.stop())
     this.peer?.close()
-    clearInterval(this.pollTimer)
     clearInterval(this.meterTimer)
     void this.audioContext?.close()
     void this.wakeLock?.release()
@@ -218,26 +216,19 @@ export default class extends TypedController {
         await this.api(`${debrief.url}/upload`, form)
       }
       await this.api(`${debrief.url}/process_audio`, { transcript: this.liveComplete ? [...this.committed].map(id => this.turns.get(id)).join("\n") : undefined })
-      this.statusTarget.textContent = "Audio saved. Preparing transcript and summary…"
-      clearInterval(this.pollTimer)
-      this.pollTimer = window.setInterval(() => this.poll(), 3000)
-      await this.poll()
+      // The entry is in the Pilot log from here on; the summary is written in the background.
+      await this.store("delete")
+      this.saved = null
+      this.showState("published")
+      this.statusTarget.textContent = "Saved to the Pilot Log. The summary is being written."
+      this.refreshLog()
     } catch (error) { this.showState(this.saved ? "recovery" : "idle"); this.statusTarget.textContent = error instanceof Error ? error.message : String(error) }
   }
 
-  async poll() {
-    try {
-      if (!this.saved?.url) return
-      const debrief = await this.api(this.saved.url, {}, "GET")
-      if (["ready", "published", "failed"].includes(debrief.status)) {
-        this.showState(debrief.status === "ready" ? "ready" : debrief.status === "failed" ? "recovery" : "published")
-        clearInterval(this.pollTimer)
-        this.statusTarget.textContent = debrief.error_message || (debrief.status === "published" ? "Published to Pilot Log." : "Ready to review and publish.")
-        // Summaries are plain text; drafts written before that still carry Markdown bullets and emphasis.
-        this.summaryTarget.value = (debrief.summary || "").replace(/^[-*\u2022]\s+/gm, "").replace(/\*\*(.+?)\*\*/g, "$1")
-        this.transcriptTarget.textContent = debrief.transcript || ""
-      }
-    } catch { this.showState("recovery"); this.statusTarget.textContent = "Connection interrupted. Audio is saved; retry when connected." }
+  refreshLog() {
+    const frame = /** @type {any} */ (this.element.closest("turbo-frame"))
+    if (frame && this.commentsUrlValue) frame.src = this.commentsUrlValue
+    else window.location.reload()
   }
 
   async discard() {
@@ -248,19 +239,8 @@ export default class extends TypedController {
       await this.store("delete")
       this.saved = null
       this.showState("idle")
-      this.summaryTarget.value = ""
       this.transcriptTarget.textContent = ""
       this.statusTarget.textContent = "Debrief discarded. You can record again."
     } catch (error) { this.showState(this.saved ? "recovery" : "idle"); this.statusTarget.textContent = error instanceof Error ? error.message : String(error) }
-  }
-
-  async publish() {
-    try {
-      if (!this.saved?.url) return
-      await this.api(`${this.saved.url}/publish`, { summary: this.summaryTarget.value })
-      await this.store("delete")
-      this.saved = null
-      window.location.reload()
-    } catch (error) { this.showState("ready"); this.statusTarget.textContent = error instanceof Error ? error.message : String(error) }
   }
 }

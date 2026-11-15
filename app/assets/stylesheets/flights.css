@@ -245,7 +245,7 @@
 .flight-pilot-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .flight-replay-header > .flight-pilot { margin-left: auto; max-width: 40%; }
 
-/* Audio debrief: progressive recording and review controls. */
+/* Audio debrief. */
 /* Debrief recorder: phone first. One large target per state, a live level display and a three-step path. */
 .flight-debrief { --debrief-level: 0; --debrief-wave: 1; scroll-margin-top: calc(var(--ex-shell-header-height) + var(--sp-6)); display: grid; gap: var(--sp-5); margin: var(--sp-6) 0; padding: var(--sp-6); border: 1px solid var(--border-rule); border-radius: var(--ex-radius-surface); background: var(--surface-card); }
 .flight-debrief [hidden] { display: none !important; }
@@ -257,10 +257,10 @@
 .flight-debrief-steps li { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font: 700 var(--fs-xs)/1 var(--font-mono); letter-spacing: var(--ls-label); text-transform: uppercase; counter-increment: debrief-step; }
 .flight-debrief-steps li::before { display: grid; width: 20px; height: 20px; place-items: center; border: 1px solid var(--border-strong); border-radius: 50%; content: counter(debrief-step); }
 .flight-debrief:is([data-state="idle"], [data-state="recording"], [data-state="paused"], [data-state="recovery"]) .flight-debrief-steps li:nth-child(1),
-.flight-debrief:is([data-state="busy"], [data-state="ready"]) .flight-debrief-steps li:nth-child(2),
+.flight-debrief[data-state="busy"] .flight-debrief-steps li:nth-child(2),
 .flight-debrief[data-state="published"] .flight-debrief-steps li:nth-child(3) { color: var(--text-strong); }
 .flight-debrief:is([data-state="idle"], [data-state="recording"], [data-state="paused"], [data-state="recovery"]) .flight-debrief-steps li:nth-child(1)::before,
-.flight-debrief:is([data-state="busy"], [data-state="ready"]) .flight-debrief-steps li:nth-child(2)::before,
+.flight-debrief[data-state="busy"] .flight-debrief-steps li:nth-child(2)::before,
 .flight-debrief[data-state="published"] .flight-debrief-steps li:nth-child(3)::before { border-color: var(--control-primary); background: var(--control-primary); color: var(--control-primary-text); }
 .flight-debrief-stage { display: grid; justify-items: center; gap: var(--sp-4); padding: var(--sp-8) var(--sp-4); border-radius: var(--ex-radius-surface); background: var(--surface-app); text-align: center; }
 .flight-debrief-record { display: grid; width: 96px; height: 96px; place-items: center; border: 0; border-radius: 50%; background: var(--control-primary); color: var(--control-primary-text); box-shadow: 0 0 0 8px var(--surface-panel); cursor: pointer; transition: background var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
@@ -286,8 +286,6 @@
 .flight-debrief-actions:not(:has(> :not([hidden]))) { display: none; }
 .flight-debrief-actions .exds-btn--lg { flex: 1 1 180px; }
 .flight-debrief-transcript p { margin: var(--sp-2) 0 0; color: var(--text-muted); font-size: var(--fs-text); line-height: 1.6; white-space: pre-wrap; }
-.flight-debrief-review { display: grid; gap: var(--sp-4); }
-.flight-debrief-review textarea { min-height: 200px; margin-top: var(--sp-2); font-size: var(--fs-card); line-height: 1.6; }
 .flight-debrief-note { display: flex; align-items: flex-start; gap: var(--sp-2); color: var(--text-muted); font-size: var(--fs-caption); line-height: 1.5; }
 .flight-debrief-note svg { flex: 0 0 auto; margin-top: 2px; }
 /* Published debrief inside the Pilot log. */
@@ -296,6 +294,8 @@
 .flight-debrief-summary { display: grid; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
 .flight-debrief-summary li { padding: var(--sp-3) var(--sp-4); border-left: 2px solid var(--border-strong); border-radius: 0 var(--ex-radius-surface) var(--ex-radius-surface) 0; background: var(--surface-app); color: var(--text-body); font-size: var(--fs-text); line-height: 1.5; overflow-wrap: anywhere; }
 .flight-debrief-summary strong { display: block; margin-bottom: 2px; color: var(--text-muted); font: 700 var(--fs-xs)/1.45 var(--font-mono); letter-spacing: var(--ls-label); text-transform: uppercase; }
+.flight-debrief-pending { display: flex; align-items: center; gap: var(--sp-3); margin: 0; padding: var(--sp-3) var(--sp-4); border-radius: var(--ex-radius-surface); background: var(--surface-app); color: var(--text-muted); font-size: var(--fs-text); line-height: 1.5; }
+.flight-debrief-pending .flight-debrief-spinner { width: 18px; height: 18px; flex: 0 0 auto; border-width: 2px; }
 .flight-debrief-audio { width: 100%; height: 44px; }
 .flight-debrief-download { display: inline-flex; align-items: center; justify-self: start; gap: 6px; min-height: 32px; color: var(--link); font: 600 var(--fs-sm)/1.4 var(--font-ui); text-decoration: none; }
 .flight-debrief-download:hover { text-decoration: underline; text-underline-offset: 3px; }
@@ -304,7 +304,7 @@
   .flight-debrief-stage { padding: var(--sp-6) var(--sp-3); }
   .flight-debrief-record { width: 112px; height: 112px; }
   .flight-debrief-prompts { grid-template-columns: 1fr; }
-  .flight-debrief-actions .exds-btn--lg, .flight-debrief-review > .exds-btn { min-height: 56px; flex-basis: 100%; width: 100%; font-size: var(--fs-card); }
+  .flight-debrief-actions .exds-btn--lg { min-height: 56px; flex-basis: 100%; width: 100%; font-size: var(--fs-card); }
 }
 @media (prefers-reduced-motion: reduce) {
   .flight-debrief-spinner { animation-duration: 3s; }
