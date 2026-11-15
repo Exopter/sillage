@@ -7,7 +7,9 @@ import * as THREE from 'three';
  */
 
 /** @typedef {'pioneer' | 'explorer' | 'pathfinder' | 'trailblazer' | 'core_team'} RankKey */
-/** @typedef {{ label: string, finish: string, color: string, metal: string, device: string, field: string, shell: string, stripes: number, crystal?: boolean, ink?: string, inkTint?: string, rim?: string, status?: string }} Rank */
+/** @typedef {{ rim: [number, number], field: [number, number], label: [number, number], glow: string, haze: string }} Film */
+/** @typedef {{ light: string, deep: string, seam: string, body: string, edge: string, print: string, glow: string, gemGlow: string, gemLight: string, gemDeep: string, alt?: string, relief: number, fieldFilm: number, shine: number, fire: number, gloss: number, sparkle?: number }} Glass */
+/** @typedef {{ label: string, finish: string, color: string, metal: string, device: string, field: string, shell: string, crystal?: boolean, ink?: string, inkTint?: string, rim?: string, status?: string, glass?: Glass, film?: Film }} Rank */
 /**
  * @typedef {Object} MembershipCardOptions
  * @property {string} name Member name as engraved on both faces.
@@ -39,16 +41,23 @@ export const IMPACT = 1.5;
 const TURN = 3.2;
 export const PRESENTED = IMPACT + .55 + TURN;
 
+// Crystal palettes: facet tints from `light` to `deep`, the seam between facets,
+// the color the body and the edge absorb toward, print, and the stone in the shield.
+// Core Team uses saturated violet cut crystal. Each facet scintillates
+// in turn as the card moves (`sparkle`).
+/** @type {Glass} */
+const ORCHID = { light: '#8846f6', deep: '#3000a8', seam: '#d6c0ff', body: '#5f18e6', edge: '#7024f5', print: '#e8deff', glow: '#6a1ad8', gemGlow: '#b48cff', gemLight: '#f3ebff', gemDeep: '#5a1fe0', relief: 6, fieldFilm: .04, shine: .6, fire: .08, gloss: .2, sparkle: .42 };
 // `metal` values stay mid-toned so reflections keep their shape instead of clipping to white.
 /** @type {Record<RankKey, Rank>} */
 export const RANKS = {
-  pioneer: { label: 'Pioneer', finish: 'Iridescent titanium', color: '#c798ff', metal: '#a98fe0', device: '#d9d2f2', field: '#2b0f55', shell: '#9876bc', stripes: 1 },
-  explorer: { label: 'Explorer', finish: 'Brushed copper', color: '#d6a48a', metal: '#b9754f', device: '#c98862', field: '#0b0c0e', shell: '#a6a9ad', stripes: 2 },
-  pathfinder: { label: 'Pathfinder', finish: 'Brushed silver', color: '#cbd1d8', metal: '#aab2bd', device: '#c3cad3', field: '#0b0c0e', shell: '#a6a9ad', stripes: 3 },
-  trailblazer: { label: 'Trailblazer', finish: 'Champagne gold', color: '#d4c396', metal: '#b99a57', device: '#cdb06c', field: '#0b0c0e', shell: '#a6a9ad', stripes: 4 },
-  // The team card is cut crystal: a transparent, faintly blue substrate with
-  // sapphire lettering and a brilliant-cut diamond instead of stripes.
-  core_team: { label: 'Core Team', finish: 'Cut diamond', color: '#9ccaff', metal: '#1f5fae', device: '#f2f8ff', field: '#07224a', shell: '#ffffff', stripes: 0, crystal: true, ink: '#10233f', inkTint: '#5f9de0', rim: '#dfe8f2', status: 'EXOPTER TEAM' },
+  // Pioneer is blue-green anodized titanium: the interference film is tuned
+  // to travel between teal, aqua and deep blue.
+  pioneer: { label: 'Pioneer', finish: 'Iridescent titanium', color: '#86e6ec', metal: '#5cc0cc', device: '#d3eff1', field: '#05303f', shell: '#52aebc', film: { rim: [325, 415], field: [335, 410], label: [325, 415], glow: '#07564f', haze: '#18b8a8' } },
+  explorer: { label: 'Explorer', finish: 'Brushed copper', color: '#d6a48a', metal: '#b9754f', device: '#c98862', field: '#0b0c0e', shell: '#a6a9ad' },
+  pathfinder: { label: 'Pathfinder', finish: 'Brushed silver', color: '#cbd1d8', metal: '#aab2bd', device: '#c3cad3', field: '#0b0c0e', shell: '#a6a9ad' },
+  trailblazer: { label: 'Trailblazer', finish: 'Champagne gold', color: '#d4c396', metal: '#b99a57', device: '#cdb06c', field: '#0b0c0e', shell: '#a6a9ad' },
+  // Core Team uses saturated violet cut crystal.
+  core_team: { label: 'Core Team', finish: 'Electric amethyst', color: '#eadfff', metal: '#f1e9ff', device: '#ffffff', field: '#34107a', shell: '#ffffff', crystal: true, ink: '#f4eeff', inkTint: '#ffffff', rim: '#e6e2f5', status: 'EXOPTER TEAM', glass: ORCHID },
 };
 
 const TEX_W = 2048;
@@ -156,7 +165,7 @@ function mapToBounds(geometry) {
 /**
  * Flat-shaded facets: every polygon keeps its own normal, like a cut surface.
  * @param {Point[][]} facets
- * @param {string[]} [tones] One color per facet, for stones whose facets must stay distinct in any light.
+ * @param {string[]} tones One color per facet, so facets stay distinct in any light.
  */
 function facetGeometry(facets, tones) {
   /** @type {number[]} */
@@ -169,85 +178,62 @@ function facetGeometry(facets, tones) {
   const a = new THREE.Vector3();
   const b = new THREE.Vector3();
   for (const [facetIndex, facet] of facets.entries()) {
-    if (tones) tone.set(tones[facetIndex]);
+    tone.set(tones[facetIndex]);
     for (let index = 1; index < facet.length - 1; index++) {
       const triangle = [facet[0], facet[index], facet[index + 1]];
       a.set(...triangle[1]).sub(b.set(...triangle[0]));
       b.set(...triangle[2]).sub(new THREE.Vector3(...triangle[0]));
       if (a.cross(b).z < 0) triangle.reverse();
-      for (const point of triangle) { positions.push(...point);uvs.push(point[0] * .5 + .5, point[1] * .5 + .5);if (tones) colors.push(tone.r, tone.g, tone.b); }
+      for (const point of triangle) { positions.push(...point);uvs.push(point[0] * .5 + .5, point[1] * .5 + .5);colors.push(tone.r, tone.g, tone.b); }
     }
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  if (tones) geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geometry.computeVertexNormals();
   return geometry;
 }
 
-/**
- * A chevron with a raised ridge and hipped ends: two tones at any angle.
- * @param {number} apex
- * @param {number} halfWidth
- * @param {number} rise
- * @param {number} thickness
- * @param {number} height
- * @returns {Point[][]}
- */
-function chevronFacets(apex, halfWidth, rise, thickness, height) {
-  const hip = .08;
-  /** @type {(sign: number) => Point[][]} */
-  const side = (sign) => {
-    /** @type {Point} */
-    const outer = [sign * halfWidth, apex - rise, 0];
-    /** @type {Point} */
-    const lower = [sign * halfWidth, apex - rise - thickness, 0];
-    /** @type {Point} */
-    const ridgeEnd = [sign * (halfWidth - hip), apex - rise - thickness / 2 + hip * rise / halfWidth, height];
-    /** @type {Point} */
-    const ridgeTop = [0, apex - thickness / 2, height];
-    return [[outer, ridgeEnd, ridgeTop, [0, apex, 0]], [ridgeEnd, lower, [0, apex - thickness, 0], ridgeTop], [outer, lower, ridgeEnd]];
-  };
-  return [...side(-1), ...side(1)];
-}
+// The Exowing planform: leading edge, crest and trailing edge sampled from
+// assets/blueprints/exowing-scene.glb at a few spanwise stations, seen from
+// above with the nose up, plus one small roof per fin, as x, y, z
+// triples in thousandths of an insignia unit. Regenerate with scripts/export-flightclub-wing-facets.py.
+export const WING_FACETS = [0,148,11,91,154,6,91,121,117,0,148,11,91,121,117,0,96,116,0,96,116,91,121,117,91,-95,48,0,96,116,91,-95,48,0,-95,49,91,154,6,179,235,63,179,141,139,91,154,6,179,141,139,91,121,117,91,121,117,179,141,139,179,-248,86,91,121,117,179,-248,86,91,-95,48,179,235,63,333,203,68,333,105,141,179,235,63,333,105,141,179,141,139,179,141,139,333,105,141,333,-194,85,179,141,139,333,-194,85,179,-248,86,333,203,68,493,228,74,493,191,118,333,203,68,493,191,118,333,105,141,333,105,141,493,191,118,493,-101,78,333,105,141,493,-101,78,333,-194,85,493,228,74,653,273,44,653,215,100,493,228,74,653,215,100,493,191,118,493,191,118,653,215,100,653,-22,65,493,191,118,653,-22,65,493,-101,78,653,273,44,792,301,38,792,237,82,653,273,44,792,237,82,653,215,100,653,215,100,792,237,82,792,48,59,653,215,100,792,48,59,653,-22,65,388,0,113,388,-301,113,400,-301,169,388,0,113,400,-301,169,400,0,169,412,0,113,412,-301,113,400,-301,169,412,0,113,400,-301,169,400,0,169,0,148,11,-91,154,6,-91,121,117,0,148,11,-91,121,117,0,96,116,0,96,116,-91,121,117,-91,-95,48,0,96,116,-91,-95,48,0,-95,49,-91,154,6,-179,235,63,-179,141,139,-91,154,6,-179,141,139,-91,121,117,-91,121,117,-179,141,139,-179,-248,86,-91,121,117,-179,-248,86,-91,-95,48,-179,235,63,-333,203,68,-333,105,141,-179,235,63,-333,105,141,-179,141,139,-179,141,139,-333,105,141,-333,-194,85,-179,141,139,-333,-194,85,-179,-248,86,-333,203,68,-493,228,74,-493,191,118,-333,203,68,-493,191,118,-333,105,141,-333,105,141,-493,191,118,-493,-101,78,-333,105,141,-493,-101,78,-333,-194,85,-493,228,74,-653,273,44,-653,215,100,-493,228,74,-653,215,100,-493,191,118,-493,191,118,-653,215,100,-653,-22,65,-493,191,118,-653,-22,65,-493,-101,78,-653,273,44,-792,301,38,-792,237,82,-653,273,44,-792,237,82,-653,215,100,-653,215,100,-792,237,82,-792,48,59,-653,215,100,-792,48,59,-653,-22,65,-388,0,113,-388,-301,113,-400,-301,169,-388,0,113,-400,-301,169,-400,0,169,-412,0,113,-412,-301,113,-400,-301,169,-412,0,113,-400,-301,169,-400,0,169];
 
 /**
- * @param {number} y
- * @param {number} outerRadius
- * @param {number} innerRadius
- * @param {number} height
- * @returns {Point[][]}
- */
-function starFacets(y, outerRadius, innerRadius, height) {
-  /** @type {Point[]} */
-  const rim = Array.from({ length: 8 }, (_, index) => {
-    const angle = index * Math.PI / 4 + Math.PI / 2;
-    const radius = index % 2 === 0 ? outerRadius : innerRadius;
-    return [Math.cos(angle) * radius, Math.sin(angle) * radius + y, 0];
-  });
-  return rim.map((point, index) => [[0, y, height], point, rim[(index + 1) % 8]]);
-}
-
-/**
- * A cut diamond seen in profile: table, crown, girdle and a pavilion closing
- * on the culet, every facet on its own plane.
+ * The real wing in plan view.
  * @param {number} y
  * @param {number} size
  * @returns {Point[][]}
  */
-function gemFacets(y, size) {
-  /** @type {(x: number, height: number, z: number) => Point} */
-  const at = (x, height, z) => [x * size, y + height * size, z * size];
-  const [a, b, c, d] = [at(-.36, .46, 0), at(-.12, .46, .12), at(.12, .46, .12), at(.36, .46, 0)];
-  const [e, f, g, h, i] = [at(-.62, .2, 0), at(-.3, .2, .18), at(0, .2, .24), at(.3, .2, .18), at(.62, .2, 0)];
-  const k = at(0, -.58, .03);
-  return [[a, b, f], [a, f, e], [b, g, f], [b, c, g], [c, h, g], [c, d, h], [d, i, h], [e, f, k], [f, g, k], [g, h, k], [h, i, k]];
+function wingFacets(y, size) {
+  /** @type {Point[][]} */
+  const facets = [];
+  for (let index = 0; index < WING_FACETS.length; index += 9) {
+    /** @type {(offset: number) => Point} */
+    const corner = (offset) => [WING_FACETS[index + offset] * size / 1000, y + WING_FACETS[index + offset + 1] * size / 1000, WING_FACETS[index + offset + 2] * size / 1000];
+    facets.push([corner(0), corner(3), corner(6)]);
+  }
+  return facets;
 }
 
-// One ice tone per gem facet, in `gemFacets` order: a bright table and crown, a
-// deeper pavilion, lit from the upper left.
-const GEM_TONES = ['#f4f9ff', '#a9c9ee', '#d3e5fa', '#ffffff', '#bcd6f3', '#e2eefc', '#8fb5e3', '#6f9bd2', '#cfe2f8', '#9dbfe8', '#5a88c2'];
+/**
+ * One tone per facet, by the way it faces a light from the upper left, with
+ * neighbours kept slightly apart so every facet stays distinct.
+ * @param {Point[][]} facets
+ * @param {string} light
+ * @param {string} deep
+ */
+function facetTones(facets, light, deep) {
+  const [from, to, tone] = [new THREE.Color(light), new THREE.Color(deep), new THREE.Color()];
+  const [normal, edge, sun] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(-.5, .62, .6).normalize()];
+  return facets.map((facet, index) => {
+    normal.set(...facet[1]).sub(edge.set(...facet[0])).cross(edge.set(...facet[2]).sub(new THREE.Vector3(...facet[0]))).normalize();
+    const facing = Math.abs(normal.dot(sun));
+    return `#${tone.copy(from).lerp(to, THREE.MathUtils.clamp((1 - facing) * 2 + (index % 2 ? .08 : -.08), 0, 1)).getHexString()}`;
+  });
+}
 
 /** @param {THREE.Object3D} root */
 function disposeTree(root) {
@@ -435,14 +421,14 @@ export async function createMembershipCard(host, options) {
    */
   const makeFace = (rank, reverse) => {
     const [canvas, ctx] = makeCanvas();
-    const [left, right] = [128, 1920];
     if (rank.crystal) {
       // On crystal the map only tints what passes through: clear body, sapphire print.
-      cutFacets(ctx, true);
+      const glass = rank.glass ?? ORCHID;
+      cutFacets(ctx, glass);
       drawEngraving(ctx, reverse, true, .16, reverse ? .5 : .28);
       // Print on a clear body needs more weight than print on carbon.
-      const print = { color: '#0c1d38', family: 'Aptos Mono', tracking: 3, weight: 700 };
-      printFace(ctx, rank, reverse, print, print, '#0c1d3866');
+      const print = { color: glass.print, family: 'Aptos Mono', tracking: 3, weight: 700 };
+      printFace(ctx, rank, reverse, print, print, `${glass.print}66`);
       return canvasTexture(canvas);
     }
     const base = ctx.createRadialGradient(TEX_W * .45, TEX_H * .4, 0, TEX_W * .45, TEX_H * .4, TEX_W * .75);
@@ -450,10 +436,10 @@ export async function createMembershipCard(host, options) {
     ctx.fillStyle = base;ctx.fillRect(0, 0, TEX_W, TEX_H);
     // The weave is barely printed; the relief map does the real work.
     ctx.save();ctx.globalAlpha = .035;ctx.globalCompositeOperation = 'lighter';ctx.drawImage(weave, 0, 0);ctx.restore();
-    if (rank === RANKS.pioneer && !reverse) {
+    if (rank.film && !reverse) {
       const [cx, cy] = insigniaTexel();
       const haze = ctx.createRadialGradient(cx, cy, 0, cx, cy, 900);
-      haze.addColorStop(0, '#8838ed1c');haze.addColorStop(1, '#8838ed00');
+      haze.addColorStop(0, `${rank.film.haze}1c`);haze.addColorStop(1, `${rank.film.haze}00`);
       ctx.fillStyle = haze;ctx.fillRect(0, 0, TEX_W, TEX_H);
     }
     drawEngraving(ctx, reverse, false, .12, reverse ? .55 : .3);
@@ -490,9 +476,16 @@ export async function createMembershipCard(host, options) {
   // facets that each slope their own way, so every facet catches a different light.
   /**
    * @param {CanvasRenderingContext2D} ctx
-   * @param {boolean} tint `true` paints each facet its own shade of ice blue; `false` paints its slope.
+   * @param {Glass | null} tint A palette paints each facet its own shade; `null` paints its slope.
+   * @param {boolean} [flat] Paints each facet one flat, arbitrary level instead: an identity for per-facet effects.
    */
-  const cutFacets = (ctx, tint) => {
+  const cutFacets = (ctx, tint, flat = false) => {
+    const [light, deep, other, shade] = [new THREE.Color(tint?.light), new THREE.Color(tint?.deep), new THREE.Color(tint?.alt ?? tint?.deep), new THREE.Color()];
+    /**
+     * @param {number} amount
+     * @param {boolean} [alternate]
+     */
+    const mix = (amount, alternate = false) => `#${shade.copy(light).lerp(alternate ? other : deep, amount).getHexString()}`;
     const [cx, cy] = [TEX_W / 2, TEX_H / 2];
     /** @type {[number, number, number][]} */
     const rings = [[.2, 8, 0], [.5, 8, .5], [.84, 16, 0], [1.25, 16, .5], [1.9, 32, 0]];
@@ -501,8 +494,8 @@ export async function createMembershipCard(host, options) {
       const angle = (index + phase) / count * Math.PI * 2;
       return [cx + Math.cos(angle) * radius * TEX_W / 2, cy + Math.sin(angle) * radius * TEX_H / 2 * 1.3];
     };
-    ctx.fillStyle = tint ? '#eef6ff' : '#9a9a9a';ctx.fillRect(0, 0, TEX_W, TEX_H);
-    ctx.strokeStyle = '#ffffff';ctx.lineWidth = 2;ctx.lineJoin = 'round';
+    ctx.fillStyle = tint ? mix(.08) : '#9a9a9a';ctx.fillRect(0, 0, TEX_W, TEX_H);
+    ctx.strokeStyle = tint?.seam ?? '#ffffff';ctx.lineWidth = 2;ctx.lineJoin = 'round';
     let facet = 0;
     /** @param {[number, number][]} corners */
     const cut = (corners) => {
@@ -512,11 +505,13 @@ export async function createMembershipCard(host, options) {
       const slope = Math.atan2(my - cy, mx - cx) + (facet % 2 ? .9 : -.9);
       const depth = .55 + .45 * ((facet * 37) % 10) / 10;
       const tilt = ctx.createLinearGradient(mx - Math.cos(slope) * reach, my - Math.sin(slope) * reach, mx + Math.cos(slope) * reach, my + Math.sin(slope) * reach);
-      if (tint) {
-        // Each facet holds a little more or less blue, and fades across its own plane.
-        const blue = .12 + .62 * depth * (facet % 3 === 0 ? 1 : .5);
-        tilt.addColorStop(0, `rgb(${Math.round(255 - 60 * blue)},${Math.round(255 - 22 * blue)},255)`);
-        tilt.addColorStop(1, `rgb(${Math.round(255 - 150 * blue)},${Math.round(255 - 70 * blue)},255)`);
+      if (flat) {
+        const level = (facet * 73) % 256;
+        tilt.addColorStop(0, `rgb(${level},${level},${level})`);tilt.addColorStop(1, `rgb(${level},${level},${level})`);
+      } else if (tint) {
+        // Each facet holds a little more or less color, and fades across its own plane.
+        const hold = .12 + .62 * depth * (facet % 3 === 0 ? 1 : .5);
+        tilt.addColorStop(0, mix(hold * .4, facet % 2 === 1));tilt.addColorStop(1, mix(hold, facet % 2 === 1));
       } else {
         const [high, low] = [Math.round(154 + 90 * depth), Math.round(154 - 110 * depth)];
         tilt.addColorStop(0, `rgb(${high},${high},${high})`);tilt.addColorStop(1, `rgb(${low},${low},${low})`);
@@ -536,9 +531,10 @@ export async function createMembershipCard(host, options) {
     }
   };
 
-  const makeFacets = () => {
+  /** @param {boolean} [flat] */
+  const makeFacets = (flat = false) => {
     const [canvas, ctx] = makeCanvas();
-    cutFacets(ctx, false);
+    cutFacets(ctx, null, flat);
     return canvasTexture(canvas, false);
   };
 
@@ -698,16 +694,41 @@ export async function createMembershipCard(host, options) {
   front.position.z = .06;card.add(front);
   // Crystal substrate, built on first use: clear faces cut in facets with
   // frosted engraving, and a thicker, more dispersive edge.
-  /** @type {{ front: THREE.MeshPhysicalMaterial, back: THREE.MeshPhysicalMaterial, shell: THREE.MeshPhysicalMaterial } | null} */
-  let crystal = null;
-  const crystalMaterials = () => {
-    if (crystal) return crystal;
-    const facets = makeFacets();
+  /** @typedef {{ front: THREE.MeshPhysicalMaterial, back: THREE.MeshPhysicalMaterial, shell: THREE.MeshPhysicalMaterial }} Substrate */
+  /** @type {Map<Glass, Substrate>} */
+  const crystals = new Map();
+  /** @type {THREE.CanvasTexture | null} */
+  let facets = null;
+  /** @param {Glass} glass */
+  const crystalMaterials = (glass) => {
+    const cut = crystals.get(glass);
+    if (cut) return cut;
+    facets ??= makeFacets();
     /** @param {boolean} reverse */
-    const face = (reverse) => new THREE.MeshPhysicalMaterial({ metalness: 0, roughness: .55, roughnessMap: makeFrost(reverse), bumpMap: facets, bumpScale: 9, transmission: 1, thickness: .5, ior: 2.1, attenuationColor: '#69adff', attenuationDistance: .8, dispersion: 6, iridescence: .55, iridescenceIOR: 1.6, clearcoat: 1, clearcoatRoughness: .03, envMapIntensity: 2.4 });
-    const shellCrystal = new THREE.MeshPhysicalMaterial({ metalness: 0, roughness: .02, transmission: 1, thickness: .8, ior: 2.2, attenuationColor: '#3f8cff', attenuationDistance: .22, dispersion: 9, iridescence: .7, iridescenceIOR: 1.7, clearcoat: 1, envMapIntensity: 2.2 });
-    crystal = { front: face(false), back: face(true), shell: shellCrystal };
+    const face = (reverse) => new THREE.MeshPhysicalMaterial({ metalness: 0, roughness: .55, roughnessMap: makeFrost(reverse), bumpMap: facets, bumpScale: glass.relief, transmission: 1, thickness: .5, ior: 2.1, attenuationColor: glass.body, attenuationDistance: .8, dispersion: 6, iridescence: glass.fire, iridescenceIOR: 1.6, clearcoat: glass.gloss, clearcoatRoughness: .03, specularIntensity: glass.gloss, envMapIntensity: glass.shine });
+    const shellCrystal = new THREE.MeshPhysicalMaterial({ metalness: 0, roughness: .02, transmission: 1, thickness: .8, ior: 2.2, attenuationColor: glass.edge, attenuationDistance: .22, dispersion: 9, iridescence: .7, iridescenceIOR: 1.7, clearcoat: 1, envMapIntensity: 2.2 });
+    /** @type {Substrate} */
+    const crystal = { front: face(false), back: face(true), shell: shellCrystal };
     for (const material of Object.values(crystal)) filmThickness(material, 280, 760);
+    if (glass.sparkle) {
+      // Scintillation: every facet has its own angle at which it flares pale
+      // violet, so light runs from facet to facet as the card moves.
+      const identities = { value: makeFacets(true) };
+      const strength = glass.sparkle.toFixed(2);
+      for (const material of [crystal.front, crystal.back]) {
+        material.onBeforeCompile = (shader) => {
+          shader.uniforms.uFoilSweep = foilSweep;
+          shader.uniforms.uFacets = identities;
+          shader.fragmentShader = `uniform float uFoilSweep;\nuniform sampler2D uFacets;\n${shader.fragmentShader}`.replace('#include <emissivemap_fragment>', `
+            #include <emissivemap_fragment>
+            float flare = pow(0.5 + 0.5 * sin(texture2D(uFacets, vMapUv).g * 61.0 + uFoilSweep * 1.7), 16.0);
+            totalEmissiveRadiance += vec3(0.78, 0.66, 1.0) * flare * ${strength};
+          `);
+        };
+        material.customProgramCacheKey = () => `flightclub-crystal-sparkle-${strength}`;
+      }
+    }
+    crystals.set(glass, crystal);
     return crystal;
   };
   const silver = { value: new THREE.Color('#e7edf6') };
@@ -737,7 +758,6 @@ export async function createMembershipCard(host, options) {
   const rankTint = { value: new THREE.Color(RANKS[activeRank].color) };
   const rankMaterial = foilMaterial(first.foil, RANKS[activeRank].metal, rankTint, .8);
   rankMaterial.iridescenceThicknessMap = interferenceMap;
-  filmThickness(rankMaterial, 180, 620);
   inlay(rankMaterial, .069, 2);
   const backMaterial = faceMaterial(true, first.back);
   const back = new THREE.Mesh(faceGeometry(), backMaterial);
@@ -757,16 +777,18 @@ export async function createMembershipCard(host, options) {
     disposeTree(insignia);
     insignia = new THREE.Group();
     insignia.position.set(INSIGNIA_AT.x, INSIGNIA_AT.y, INSIGNIA_Z);
-    const isPioneer = rank === RANKS.pioneer;
+    const isPioneer = rank.film !== undefined;
+    const [rimFilm, fieldFilm] = [rank.film?.rim ?? [240, 480], rank.film?.field ?? [330, 470]];
     const isCrystal = rank.crystal === true;
+    const glass = rank.glass ?? ORCHID;
     /** @param {number} strength */
     const film = (strength) => ({ iridescence: isPioneer || isCrystal ? strength : FILM_OFF, iridescenceIOR: 1.38, iridescenceThicknessMap: interferenceMap });
     const rimMaterial = new THREE.MeshPhysicalMaterial({ color: rank.rim ?? rank.metal, metalness: 1, roughness: .3, bumpMap: foilGrain, bumpScale: .5, anisotropy: .5, clearcoat: .3, clearcoatRoughness: .3, ...film(1) });
     // The recessed field is a guilloche sunburst under a satin film: it stays
     // dark at rest and opens up when the card tilts.
-    const fieldMaterial = new THREE.MeshPhysicalMaterial({ color: rank.field, metalness: 1, roughness: .62, roughnessMap: guillocheMap, bumpMap: guillocheMap, bumpScale: 1.2, envMapIntensity: isPioneer || isCrystal ? 1.5 : 1.1, emissive: isPioneer ? '#3a0a78' : isCrystal ? '#0a3f9a' : '#000000', emissiveIntensity: .35, ...film(.5), iridescenceIOR: 1.5 });
-    const deviceMaterial = new THREE.MeshPhysicalMaterial({ color: rank.device, metalness: 1, roughness: isCrystal ? .05 : .24, envMapIntensity: isCrystal ? 2.6 : 1.5, emissive: isCrystal ? '#8cc4ff' : '#000000', emissiveIntensity: .16, vertexColors: isCrystal, clearcoat: .2, clearcoatRoughness: .2, ...film(isCrystal ? .9 : .45) });
-    filmThickness(rimMaterial, 240, 480);filmThickness(fieldMaterial, 330, 470);filmThickness(deviceMaterial, 240, 480);
+    const fieldMaterial = new THREE.MeshPhysicalMaterial({ color: rank.field, metalness: 1, roughness: .62, roughnessMap: guillocheMap, bumpMap: guillocheMap, bumpScale: 1.2, envMapIntensity: isPioneer || isCrystal ? 1.5 : 1.1, emissive: rank.film?.glow ?? (isCrystal ? glass.glow : '#000000'), emissiveIntensity: .35, ...film(isCrystal ? glass.fieldFilm : .5), iridescenceIOR: 1.5 });
+    const deviceMaterial = new THREE.MeshPhysicalMaterial({ color: rank.device, metalness: 1, roughness: isCrystal ? .05 : .24, envMapIntensity: isCrystal ? 2.6 : 1.5, emissive: isCrystal ? glass.gemGlow : '#000000', emissiveIntensity: .16, vertexColors: true, clearcoat: .2, clearcoatRoughness: .2, ...film(isCrystal ? .9 : .45) });
+    filmThickness(rimMaterial, rimFilm[0], rimFilm[1]);filmThickness(fieldMaterial, fieldFilm[0], fieldFilm[1]);filmThickness(deviceMaterial, rimFilm[0], rimFilm[1]);
     const shieldPoints = [[0, 1.38], [1.05, .94], [.91, -.65], [0, -1.32], [-.91, -.65], [-1.05, .94]];
     const frame = polygon(shieldPoints);
     frame.holes.push(polygon(shieldPoints.map(([x, y]) => [x * .9, y * .9]).reverse()));
@@ -774,15 +796,11 @@ export async function createMembershipCard(host, options) {
     const field = new THREE.Mesh(mapToBounds(new THREE.ShapeGeometry(polygon(shieldPoints.map(([x, y]) => [x * .93, y * .93])))), fieldMaterial);
     field.position.z = .02;
     insignia.add(field);
-    // The star and its chevrons are laid out as one centered stack, so four
-    // stripes never collide with the star.
-    const stripes = rank.stripes;
-    const [halfWidth, rise, thickness, pitchStep, starRadius, gap] = [.6, .34, .15, .22, .2, .1];
-    const stackHeight = starRadius * 2 + gap + rise + thickness + (stripes - 1) * pitchStep;
-    const top = .06 + .03 * (stripes - 1) + stackHeight / 2;
-    const facets = isCrystal ? gemFacets(.06, 1.2) : starFacets(top - starRadius, starRadius, .068, .06);
-    for (let index = 0; index < stripes; index++) facets.push(...chevronFacets(top - starRadius * 2 - gap - index * pitchStep, halfWidth, rise, thickness, .065));
-    const device = new THREE.Mesh(facetGeometry(facets, isCrystal ? GEM_TONES : undefined), deviceMaterial);
+    // Every rank carries the same device: the Exowing, cut in facets. Ranks
+    // differ by their metal or crystal, not by a count of stripes.
+    const facets = wingFacets(0, .98);
+    const tones = facetTones(facets, isCrystal ? glass.gemLight : '#ffffff', isCrystal ? glass.gemDeep : '#b4b4b4');
+    const device = new THREE.Mesh(facetGeometry(facets, tones), deviceMaterial);
     device.position.z = .022;
     insignia.add(device);
     card.add(insignia);
@@ -792,20 +810,23 @@ export async function createMembershipCard(host, options) {
   const applyRank = (rankKey) => {
     const rank = RANKS[rankKey];
     const textures = rankTextures(rankKey);
-    const substrate = rank.crystal ? crystalMaterials() : { front: frontMaterial, back: backMaterial, shell: shellMaterial };
+    /** @type {Substrate} */
+    const substrate = rank.crystal ? crystalMaterials(rank.glass ?? ORCHID) : { front: frontMaterial, back: backMaterial, shell: shellMaterial };
     front.material = substrate.front;back.material = substrate.back;shell.material = substrate.shell;
     backdrop.visible = rank.crystal === true;
     substrate.front.map = textures.front;
     substrate.back.map = textures.back;
     shellMaterial.color.set(rank.shell);
-    shellMaterial.iridescence = rankKey === 'pioneer' ? .6 : FILM_OFF;
+    shellMaterial.iridescence = rank.film ? .6 : FILM_OFF;
+    filmThickness(shellMaterial, ...(rank.film?.rim ?? [100, 400]));
+    filmThickness(rankMaterial, ...(rank.film?.label ?? [180, 620]));
     // Lettering turns to sapphire on crystal, where silver would vanish.
     frontInk.color.set(rank.ink ?? '#d6dbe2');backInk.color.set(rank.ink ?? '#d6dbe2');
     silver.value.set(rank.inkTint ?? '#e7edf6');
     rankMaterial.map = textures.foil.map;
     rankMaterial.bumpMap = textures.foil.bump;
     rankMaterial.color.set(rank.metal);
-    rankMaterial.iridescence = rankKey === 'pioneer' ? .8 : FILM_OFF;
+    rankMaterial.iridescence = rank.film ? .8 : FILM_OFF;
     rankTint.value.set(rank.color);
     buildInsignia(rank);
   };
@@ -1058,7 +1079,7 @@ export async function createMembershipCard(host, options) {
       disposed = true;
       cancelAnimationFrame(frameId);lifetime.abort();observer.disconnect();viewport.disconnect();
       disposeTree(scene);
-      for (const material of [frontMaterial, backMaterial, shellMaterial, ...Object.values(crystal ?? {})]) material.dispose();
+      for (const material of [frontMaterial, backMaterial, shellMaterial, ...[...crystals.values()].flatMap((substrate) => Object.values(substrate))]) material.dispose();
       for (const texture of disposable) texture.dispose();
       environment.dispose();renderer.dispose();context.remove();
     },
