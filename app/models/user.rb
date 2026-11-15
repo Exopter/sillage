@@ -41,7 +41,9 @@ class User < ApplicationRecord
   validates :password, length: { minimum: 8 }, allow_nil: true
   validates :membership_tier, inclusion: { in: MEMBERSHIP_TIERS }, allow_nil: true
   validates :first_name, :last_name, presence: true, if: :member?
-  validates :member_number, uniqueness: true, allow_nil: true
+  validates :member_number, uniqueness: true, allow_nil: true, unless: -> { membership_tier == "core_team" && member_number == 0 }
+  validates :member_number, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
+  validate :zero_member_number_requires_core_team
 
   normalizes :first_name, :last_name, with: ->(name) { name.to_s.squish.presence }
   normalizes :membership_tier, with: ->(tier) { tier.presence }
@@ -198,6 +200,12 @@ class User < ApplicationRecord
   end
 
   private
+
+  def zero_member_number_requires_core_team
+    if member_number == 0 && membership_tier != "core_team"
+      errors.add(:member_number, "is reserved for Core Team")
+    end
+  end
 
   def validate_avatar
     return unless avatar.attached?
