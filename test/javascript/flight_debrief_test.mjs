@@ -9,6 +9,7 @@ const source = (await readFile(new URL("../../app/javascript/controllers/flight_
 const { default: Recorder } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`)
 function recorder(key) {
   const value = new Recorder()
+  value.element = { dataset: {}, querySelectorAll: () => [], querySelector: () => null }
   value.keyValue = key
   value.statusTarget = { textContent: "" }
   value.summaryTarget = { value: "" }
@@ -28,8 +29,22 @@ await other.connect()
 assert.equal(other.saved, undefined)
 // Failed publication must preserve the original, including after a fresh controller opens.
 reopened.api = async () => { throw new Error("network unavailable") }
+reopened.summaryTarget.value = "Edited pilot summary"
 await reopened.publish()
+assert.equal(reopened.element.dataset.state, "ready")
+assert.equal(reopened.summaryTarget.value, "Edited pilot summary")
 assert.equal(await (await reopened.store("get")).parts[0].text(), "original audio bytes")
 assert.equal(reopened.statusTarget.textContent, "network unavailable")
 first.database.close(); reopened.database.close(); other.database.close()
 console.log("Audio recovery, account isolation and failed publication preservation passed")
+
+const controls = ["idle", "recording paused", "recovery", "ready"].map(states => ({ dataset: { debriefStates: states }, hidden: false }))
+const pauseButton = { textContent: "" }
+const ui = recorder("ui")
+ui.element.querySelectorAll = () => controls
+ui.element.querySelector = () => pauseButton
+for (const state of ["idle", "recording", "paused", "busy", "recovery", "ready", "published"]) {
+  ui.showState(state)
+  assert.deepEqual(controls.map(control => !control.hidden), controls.map(control => control.dataset.debriefStates.split(" ").includes(state)))
+  assert.equal(pauseButton.textContent, state === "paused" ? "Resume recording" : "Pause")
+}

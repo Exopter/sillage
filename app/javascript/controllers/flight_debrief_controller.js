@@ -43,7 +43,19 @@ export default class extends TypedController {
   /** @type {WakeLockSentinel | null} */
   wakeLock = null
 
+  /** @param {string} state */
+  showState(state) {
+    this.element.dataset.state = state
+    this.element.querySelectorAll("[data-debrief-states]").forEach(node => {
+      const element = /** @type {HTMLElement} */ (node)
+      element.hidden = !element.dataset.debriefStates?.split(" ").includes(state)
+    })
+    const pause = this.element.querySelector('[data-action="flight-debrief#pause"]')
+    if (pause) pause.textContent = state === "paused" ? "Resume recording" : "Pause"
+  }
+
   async connect() {
+    this.showState("idle")
     this.database = await new Promise((resolve, reject) => {
       const request = indexedDB.open("sillage-debriefs", 1)
       request.onupgradeneeded = () => request.result.createObjectStore("recordings")
@@ -51,6 +63,7 @@ export default class extends TypedController {
       request.onerror = () => reject(request.error)
     })
     this.saved = await this.store("get")
+    this.showState(this.saved ? "recovery" : "idle")
     if (this.saved) this.statusTarget.textContent = "A saved debrief is available. Recover it before starting another."
   }
 
@@ -89,6 +102,7 @@ export default class extends TypedController {
   async start() {
     try {
       if (this.saved || this.recorder?.state === "recording") throw new Error("Recover the saved debrief first.")
+      this.showState("busy")
       const reservation = await this.api(this.urlValue, { uuid: crypto.randomUUID() })
       this.saved = { uuid: reservation.uuid, parts: [], type: "", url: reservation.url }
       await this.store("put", this.saved)
@@ -108,6 +122,7 @@ export default class extends TypedController {
       }
       this.recorder.onstop = () => { void this.finish() }
       this.recorder.start(2000)
+      this.showState("recording")
       this.audioContext = new AudioContext()
       const analyser = this.audioContext.createAnalyser()
       analyser.fftSize = 256
@@ -131,7 +146,7 @@ export default class extends TypedController {
         this.saved.url = debrief.url
         await this.live()
       } catch { this.statusTarget.textContent = "Recording locally. Transcription will run after upload." }
-    } catch (error) { this.statusTarget.textContent = error instanceof Error ? error.message : String(error) }
+    } catch (error) { this.showState(this.saved ? "recovery" : "idle"); this.statusTarget.textContent = error instanceof Error ? error.message : String(error) }
   }
 
   async live() {
@@ -161,13 +176,15 @@ export default class extends TypedController {
   }
 
   pause() {
-    if (this.recorder?.state === "recording") { this.recorder.pause(); this.stream?.getAudioTracks().forEach(track => { track.enabled = false }); this.statusTarget.textContent = "Paused" }
-    else if (this.recorder?.state === "paused") { this.stream?.getAudioTracks().forEach(track => { track.enabled = true }); this.recorder.resume(); this.statusTarget.textContent = "Recording…" }
+    if (this.recorder?.state === "recording") { this.recorder.pause(); this.showState("paused"); this.stream?.getAudioTracks().forEach(track => { track.enabled = false }); this.statusTarget.textContent = "Paused" }
+    else if (this.recorder?.state === "paused") { this.stream?.getAudioTracks().forEach(track => { track.enabled = true }); this.recorder.resume(); this.showState("recording"); this.statusTarget.textContent = "Recording…" }
   }
 
   stop() { if (this.recorder && this.recorder.state !== "inactive") this.recorder.stop() }
 
   async finish() {
+    this.showState("busy")
+    this.statusTarget.textContent = "Saving your recording…"
     clearInterval(this.commitTimer)
     clearInterval(this.meterTimer)
     if (this.audioContext?.state !== "closed") await this.audioContext?.close()
@@ -187,6 +204,7 @@ export default class extends TypedController {
 
   async recover() {
     try {
+      this.showState("busy")
       if (this.recorder && this.recorder.state !== "inactive") throw new Error("Finish recording first.")
       this.saved = await this.store("get")
       if (!this.saved) throw new Error("No saved recording on this device.")
@@ -203,7 +221,7 @@ export default class extends TypedController {
       clearInterval(this.pollTimer)
       this.pollTimer = window.setInterval(() => this.poll(), 3000)
       await this.poll()
-    } catch (error) { this.statusTarget.textContent = error instanceof Error ? error.message : String(error) }
+    } catch (error) { this.showState(this.saved ? "recovery" : "idle"); this.statusTarget.textContent = error instanceof Error ? error.message : String(error) }
   }
 
   async poll() {
@@ -211,12 +229,13 @@ export default class extends TypedController {
       if (!this.saved?.url) return
       const debrief = await this.api(this.saved.url, {}, "GET")
       if (["ready", "published", "failed"].includes(debrief.status)) {
+        this.showState(debrief.status === "ready" ? "ready" : debrief.status === "failed" ? "recovery" : "published")
         clearInterval(this.pollTimer)
         this.statusTarget.textContent = debrief.error_message || (debrief.status === "published" ? "Published to Pilot Log." : "Ready to review and publish.")
         this.summaryTarget.value = debrief.summary || ""
         this.transcriptTarget.textContent = debrief.transcript || ""
       }
-    } catch { this.statusTarget.textContent = "Connection interrupted. Audio is saved; retry when connected." }
+    } catch { this.showState("recovery"); this.statusTarget.textContent = "Connection interrupted. Audio is saved; retry when connected." }
   }
 
   async discard() {
@@ -226,8 +245,11 @@ export default class extends TypedController {
       if (this.saved.url) await this.api(this.saved.url, {}, "DELETE")
       await this.store("delete")
       this.saved = null
+      this.showState("idle")
+      this.summaryTarget.value = ""
+      this.transcriptTarget.textContent = ""
       this.statusTarget.textContent = "Debrief discarded. You can record again."
-    } catch (error) { this.statusTarget.textContent = error instanceof Error ? error.message : String(error) }
+    } catch (error) { this.showState(this.saved ? "recovery" : "idle"); this.statusTarget.textContent = error instanceof Error ? error.message : String(error) }
   }
 
   async publish() {
@@ -237,6 +259,6 @@ export default class extends TypedController {
       await this.store("delete")
       this.saved = null
       window.location.reload()
-    } catch (error) { this.statusTarget.textContent = error instanceof Error ? error.message : String(error) }
+    } catch (error) { this.showState("ready"); this.statusTarget.textContent = error instanceof Error ? error.message : String(error) }
   }
 }

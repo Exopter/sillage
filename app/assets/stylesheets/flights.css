@@ -244,3 +244,23 @@
 .flight-pilot > .sillage-avatar { margin-left: 0; }
 .flight-pilot-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .flight-replay-header > .flight-pilot { margin-left: auto; max-width: 40%; }
+
+/* Audio debrief: progressive recording and review controls. */
+.flight-debrief{padding:24px;border:1px solid var(--border-rule);border-radius:12px;background:var(--surface-card);margin:24px 0;display:grid;gap:16px}
+.flight-debrief [hidden]{display:none!important}
+.flight-debrief h3,.flight-debrief p{margin:0}
+.flight-debrief h3{font-size:1.25rem;margin-top:6px}
+.flight-debrief-eyebrow,.flight-debrief-note{font-size:.8rem;color:var(--text-muted)}
+.flight-debrief [role="status"]{color:var(--text-muted);line-height:1.6;max-width:60ch}
+.flight-debrief .exds-btn{min-height:44px}
+.flight-debrief-actions{display:flex;flex-wrap:wrap;gap:10px}
+.flight-debrief-meter{display:flex;align-items:center;gap:24px;font-variant-numeric:tabular-nums}
+.flight-debrief-meter>span{font-size:1.75rem;font-weight:600}
+.flight-debrief-meter label{display:flex;align-items:center;gap:12px;font-size:.85rem;color:var(--text-muted)}
+.flight-debrief details{border-top:1px solid var(--border-rule);padding-top:16px}
+.flight-debrief summary{cursor:pointer;font-size:.875rem}
+.flight-debrief details p{margin-top:12px;white-space:pre-wrap;line-height:1.6}
+.flight-debrief-review{display:grid;gap:16px}
+.flight-debrief-review textarea{margin-top:8px;min-height:160px;line-height:1.6}
+.flight-debrief-review>.exds-btn{justify-self:start}
+@media(max-width:600px){.flight-debrief{padding:18px}.flight-debrief-actions .exds-btn{flex:1 1 auto}.flight-debrief-review>.exds-btn{width:100%}.flight-debrief-meter{flex-wrap:wrap;gap:12px}}

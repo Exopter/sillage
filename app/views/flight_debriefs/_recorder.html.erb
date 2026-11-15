@@ -1,16 +1,21 @@
 <% unless flight.live? %>
-<section class="exds-browser-editor-section" data-controller="flight-debrief" data-flight-debrief-url-value="<%= flight_debriefs_path(flight) %>" data-flight-debrief-key-value="<%= Current.user.id %>:<%= flight.id %>">
-  <h3>Pilot Log · Audio debrief</h3>
-  <p data-flight-debrief-target="status" role="status">Record on this device. Keep this page open while speaking.</p>
-  <p><span data-flight-debrief-target="duration">0:00</span> <label>Microphone level <meter min="0" max="1" value="0" data-flight-debrief-target="level"></meter></label></p>
-  <button type="button" class="exds-btn exds-btn--primary" data-action="flight-debrief#start">Record debrief</button>
-  <button type="button" class="exds-btn exds-btn--secondary" data-action="flight-debrief#pause">Pause / resume</button>
-  <button type="button" class="exds-btn exds-btn--secondary" data-action="flight-debrief#stop">Finish recording</button>
-  <button type="button" class="exds-btn exds-btn--secondary" data-action="flight-debrief#recover">Recover / retry saved audio</button>
-  <button type="button" class="exds-btn exds-btn--secondary" data-action="flight-debrief#discard">Discard unpublished debrief</button>
-  <p data-flight-debrief-target="transcript" aria-live="polite"></p>
-  <label class="exds-browser-field">Summary<textarea rows="5" maxlength="4000" data-flight-debrief-target="summary"></textarea></label>
+<section class="exds-browser-editor-section flight-debrief" data-controller="flight-debrief" data-flight-debrief-url-value="<%= flight_debriefs_path(flight) %>" data-flight-debrief-key-value="<%= Current.user.id %>:<%= flight.id %>">
+  <header><span class="flight-debrief-eyebrow">PILOT LOG</span><h3>Debrief your flight</h3></header>
+  <p data-flight-debrief-target="status" role="status">Capture what went well and what to improve. Review the summary before publishing.</p>
+  <p class="flight-debrief-meter" data-debrief-states="recording paused" hidden><span data-flight-debrief-target="duration">0:00</span> <label>Microphone level <meter min="0" max="1" value="0" data-flight-debrief-target="level"></meter></label></p>
+  <div class="flight-debrief-actions">
+  <button type="button" data-debrief-states="idle" class="exds-btn exds-btn--primary" data-action="flight-debrief#start">Record debrief</button>
+  <button type="button" class="exds-btn exds-btn--secondary" data-debrief-states="recording paused" hidden data-action="flight-debrief#pause">Pause</button>
+  <button type="button" class="exds-btn exds-btn--secondary" data-debrief-states="recording paused" hidden data-action="flight-debrief#stop">Finish recording</button>
+  <button type="button" class="exds-btn exds-btn--secondary" data-debrief-states="recovery" hidden data-action="flight-debrief#recover">Recover saved recording</button>
+  <button type="button" class="exds-btn exds-btn--secondary" data-debrief-states="recovery ready" hidden data-action="flight-debrief#discard">Discard draft</button>
+  </div>
+  <details data-debrief-states="recording paused ready" hidden><summary>Transcript</summary><p data-flight-debrief-target="transcript" aria-live="polite"></p></details>
+  <div class="flight-debrief-review" data-debrief-states="ready" hidden>
+  <label class="exds-browser-field">Review your summary<textarea rows="5" maxlength="4000" data-flight-debrief-target="summary"></textarea></label>
   <button type="button" class="exds-btn exds-btn--primary" data-action="flight-debrief#publish">Publish to Pilot Log</button>
+  </div>
+  <p class="flight-debrief-note">Your original audio is attached to the Pilot Log entry.</p>
 </section>
 <% else %>
 <p>End the live session to record your audio debrief.</p>
