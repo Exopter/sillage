@@ -73,16 +73,16 @@
               <% end %>
               <span class="fdr-wifi-order-actions">
                 <%= button_to move_forge_fdr_fdr_wifi_profile_path(@fdr, profile), method: :patch,
-                  params: { direction: "up" }, class: "fdr-wifi-icon-button", disabled: profile.position.zero?, title: "Move up" do %>
+                  params: { direction: "up" }, class: "fdr-wifi-icon-button exds-iconbtn exds-iconbtn--ghost", disabled: profile.position.zero?, title: "Move up" do %>
                   <%= sillage_icon "chevron-up", size: 15 %>
                 <% end %>
                 <%= button_to move_forge_fdr_fdr_wifi_profile_path(@fdr, profile), method: :patch,
-                  params: { direction: "down" }, class: "fdr-wifi-icon-button", disabled: profile.position == @wifi_profiles.size - 1, title: "Move down" do %>
+                  params: { direction: "down" }, class: "fdr-wifi-icon-button exds-iconbtn exds-iconbtn--ghost", disabled: profile.position == @wifi_profiles.size - 1, title: "Move down" do %>
                   <%= sillage_icon "chevron-down", size: 15 %>
                 <% end %>
               </span>
               <%= button_to forge_fdr_fdr_wifi_profile_path(@fdr, profile), method: :delete,
-                class: "fdr-wifi-icon-button is-danger", title: "Remove from FDR",
+                class: "fdr-wifi-icon-button exds-iconbtn exds-iconbtn--ghost is-danger", title: "Remove from FDR",
                 form: { data: { turbo_confirm: "Remove #{profile.ssid} from this FDR? The Forge credential will be kept." } } do %>
                 <%= sillage_icon "trash", size: 15 %>
               <% end %>
@@ -110,7 +110,7 @@
           <h3 id="wifi-scan-title">Networks in range</h3>
           <p data-fdr-wifi-configuration-target="scanStatus">Connect the FDR to scan nearby networks.</p>
         </div>
-        <button type="button" class="button-secondary is-compact" disabled data-fdr-wifi-configuration-target="scanButton" data-action="fdr-wifi-configuration#scan">
+        <button type="button" class="button-secondary exds-btn exds-btn--secondary is-compact" disabled data-fdr-wifi-configuration-target="scanButton" data-action="fdr-wifi-configuration#scan">
           <%= sillage_icon "rotate-ccw", size: 15 %>
           Scan now
         </button>
@@ -125,7 +125,7 @@
 
   <footer class="fdr-wifi-apply-bar">
     <span data-fdr-wifi-configuration-target="applyStatus">Changes remain pending until they are verified on the FDR.</span>
-    <button type="button" class="button-primary" disabled data-fdr-wifi-configuration-target="applyButton" data-action="fdr-wifi-configuration#apply">
+    <button type="button" class="button-primary exds-btn exds-btn--primary" disabled data-fdr-wifi-configuration-target="applyButton" data-action="fdr-wifi-configuration#apply">
       Apply to FDR
     </button>
   </footer>
@@ -133,7 +133,7 @@
   <dialog class="workspace-dialog" data-fdr-wifi-configuration-target="manualDialog">
     <div class="workspace-dialog-head">
       <div><span class="section-eyebrow">Forge Wi-Fi library</span><h3>Add a network</h3></div>
-      <button type="button" class="fdr-wifi-icon-button" aria-label="Close" data-action="fdr-wifi-configuration#closeManual"><%= sillage_icon "x", size: 17 %></button>
+      <button type="button" class="fdr-wifi-icon-button exds-iconbtn exds-iconbtn--ghost" aria-label="Close" data-action="fdr-wifi-configuration#closeManual"><%= sillage_icon "x", size: 17 %></button>
     </div>
 
     <% if @known_wifi_credentials.any? %>
@@ -144,7 +144,7 @@
             <span>Forge credential</span>
             <%= select_tag :wifi_credential_id, options_from_collection_for_select(@known_wifi_credentials, :id, ->(credential) { "#{credential.ssid} · #{credential.security_label}" }), required: true %>
           </label>
-          <div class="workspace-actions"><%= form.submit "Add saved network", class: "button-primary" %></div>
+          <div class="workspace-actions"><%= form.submit "Add saved network", class: "button-primary exds-btn exds-btn--primary" %></div>
         <% end %>
       </section>
     <% end %>
@@ -165,7 +165,7 @@
           <%= form.password_field :password, required: true, minlength: 8, maxlength: 63, autocomplete: "new-password", data: { fdr_wifi_configuration_target: "password" } %>
         </label>
         <p class="workspace-muted">The password will be encrypted by Sillage. It will never be returned by a normal list response.</p>
-        <div class="workspace-actions"><%= form.submit "Save in Forge and add", class: "button-primary" %></div>
+        <div class="workspace-actions"><%= form.submit "Save in Forge and add", class: "button-primary exds-btn exds-btn--primary" %></div>
       <% end %>
     </section>
   </dialog>

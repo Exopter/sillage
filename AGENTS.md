@@ -9,9 +9,9 @@ performance, documentation and project-file rules.
   pricing, and roadmap documentation in Notion Engineering.
 - Keep repository documentation limited to concise technical READMEs,
   executable component contracts, and implementation-coupled runbooks.
-- Use the shared Exopter design system for every product screen. Evolve shared
-  tokens or components before adding a visual pattern, and record the design
-  decision in Notion.
+- Follow the shared [design-system authoring rules](../design_system/AGENTS.md).
+  Stylesheets are generated exports of `templates/rails/stylesheets.json`;
+  edit their shared sources and run `script/sync_design_system_tokens --write`.
 - Keep Kamal configured through `.env.deploy.local`, loadable by global
   `kamal`, `bin/kamal`, and `bundle exec kamal`.
 - Run software validation locally with `bin/ci` under the shared scope and

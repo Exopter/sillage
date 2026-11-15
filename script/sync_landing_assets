@@ -42,6 +42,11 @@ source_icons = File.read(File.join(source_root, "ui_kits/os-flight/icons.jsx"))
 target_icons = File.read(File.join(root, "app/helpers/application_helper.rb"))
 source_mark = source_icons[/exopter: '([^']+)'/, 1]
 target_mark = target_icons[/"exopter" => '([^']+)'/, 1]
-abort "Exopter source icon differs from the shared design system." unless source_mark && source_mark == target_mark
+abort "Exopter source icon is missing from the shared design system." unless source_mark
+if mode == "--write" && target_mark && source_mark != target_mark
+  File.write(File.join(root, "app/helpers/application_helper.rb"), target_icons.sub(target_mark, source_mark))
+else
+  abort "Exopter source icon differs from the shared design system." unless source_mark == target_mark
+end
 
 puts "Brand and landing assets #{mode == '--write' ? 'synchronized' : 'verified'} against the shared design system."

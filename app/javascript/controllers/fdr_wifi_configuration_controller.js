@@ -683,7 +683,7 @@ export default class extends TypedController {
 
     const button = document.createElement("button")
     button.type = "button"
-    button.className = "button-secondary is-compact"
+    button.className = "button-secondary exds-btn exds-btn--secondary is-compact"
     button.textContent = "Add network"
     button.dataset.ssid = result.ssid
     button.dataset.security = String(result.security)

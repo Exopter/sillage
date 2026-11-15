@@ -6,7 +6,7 @@
     <h2>Fleet</h2>
     <p>Aircraft are durable identities; installations record which equipment flew, and when.</p>
   </div>
-  <%= link_to new_hangar_aircraft_path, class: "button-secondary" do %>
+  <%= link_to new_hangar_aircraft_path, class: "button-secondary exds-btn exds-btn--secondary" do %>
     <%= sillage_icon "plus", size: 17 %><span>Register aircraft</span>
   <% end %>
 </header>
@@ -47,9 +47,9 @@
           <% if @selected_aircraft.notes.present? %><p><%= @selected_aircraft.notes %></p><% end %>
         </div>
         <div class="workspace-actions">
-          <%= link_to "Configuration", hangar_aircraft_path(@selected_aircraft), class: "button-secondary is-compact" %>
-          <%= link_to "Edit", edit_hangar_aircraft_path(@selected_aircraft), class: "button-secondary is-compact" %>
-          <%= button_to "Delete", hangar_aircraft_path(@selected_aircraft), method: :delete, class: "button-danger is-compact",
+          <%= link_to "Configuration", hangar_aircraft_path(@selected_aircraft), class: "button-secondary exds-btn exds-btn--secondary is-compact" %>
+          <%= link_to "Edit", edit_hangar_aircraft_path(@selected_aircraft), class: "button-secondary exds-btn exds-btn--secondary is-compact" %>
+          <%= button_to "Delete", hangar_aircraft_path(@selected_aircraft), method: :delete, class: "button-danger exds-btn exds-btn--danger is-compact",
             form: { data: { turbo_confirm: "Delete aircraft #{@selected_aircraft.registration} permanently? This cannot be undone." } } %>
         </div>
       </header>

@@ -1,0 +1,22 @@
+.exds-iconbtn{
+  display:inline-flex;align-items:center;justify-content:center;
+  border-radius:var(--radius-compact);border:1px solid transparent;cursor:pointer;
+  color:var(--text-body);background:transparent;
+  width:var(--control-h);height:var(--control-h);flex:none;
+  transition:background var(--dur) var(--ease-out),color var(--dur) var(--ease-out),border-color var(--dur) var(--ease-out);
+}
+.exds-iconbtn:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+.exds-iconbtn[disabled]{cursor:not-allowed;opacity:.45}
+.exds-iconbtn svg{width:18px;height:18px}
+.exds-iconbtn--sm{width:var(--control-h-sm);height:var(--control-h-sm)}
+.exds-iconbtn--sm svg{width:16px;height:16px}
+.exds-iconbtn--lg{width:var(--control-h-lg);height:var(--control-h-lg)}
+.exds-iconbtn--ghost:hover:not([disabled]){background:var(--surface-hover)}
+.exds-iconbtn--outline{border-color:var(--border-strong);background:var(--surface-card)}
+.exds-iconbtn--outline:hover:not([disabled]){background:var(--surface-hover)}
+.exds-iconbtn--solid{background:var(--control-primary);color:var(--control-primary-text);border-color:var(--control-primary)}
+.exds-iconbtn--solid:hover:not([disabled]){background:var(--control-primary-hover)}
+/* round - only when shape IS the control (play, target, reset) */
+.exds-iconbtn--round{border-radius:var(--radius-round)}
+.exds-iconbtn--danger{color:var(--control-error)}
+.exds-iconbtn--danger:hover:not([disabled]){background:var(--ex-red-100)}

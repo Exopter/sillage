@@ -8,6 +8,33 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     sign_in_as @owner
   end
 
+  test "location suggestions reuse visible flight locations without exposing private flights" do
+    first = log_entry(location: "Bouloc")
+    log_entry(location: "Bouloc")
+    log_entry(location: "  Bouloc  ")
+    users(:operator).flights.create!(status: "preparation", location: "Private airfield")
+    users(:operator).flights.create!(status: "preparation", location: "Shared airfield", visibility: "team")
+
+    [ new_flight_path, edit_flight_path(first) ].each do |path|
+      get path
+      assert_response :success
+      assert_select "input[name='flight[location]'][role='combobox'][aria-controls='flight-location-suggestions'][aria-describedby='flight-location-help']"
+      assert_select "#flight-location-suggestions button[role=option]", text: "Bouloc", count: 1
+      assert_select "#flight-location-suggestions button[role=option]", text: "Shared airfield"
+      assert_select "#flight-location-suggestions button[role=option]", text: "Private airfield", count: 0
+    end
+
+    post flights_path, params: { flight: { location: "New drop zone" } }
+    assert_response :unprocessable_entity
+    assert_select "input[name='flight[location]'][value='New drop zone']"
+    assert_select "#flight-location-suggestions button[role=option]", text: "Bouloc"
+
+    assert_difference "Flight.count" do
+      post flights_path, params: { flight: { flown_on: "2026-11-15", location: "New drop zone" } }
+    end
+    assert_equal "New drop zone", @owner.flights.order(:id).last.location
+  end
+
   test "date and location alone create a complete log entry" do
     get new_flight_path
     assert_select "input[name='flight[flown_on]'][required]"

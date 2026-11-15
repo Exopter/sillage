@@ -27,7 +27,7 @@
         <span>Flight Club membership</span>
         <%= form.select :membership_tier, User::MEMBERSHIP_TIERS.map { |tier| [tier.titleize, tier] }, include_blank: "None" %>
       </label>
-      <%= form.submit "Save user", class: "button-primary" %>
+      <%= form.submit "Save user", class: "button-primary exds-btn exds-btn--primary" %>
       <%= link_to "Back", core_users_path, class: "authentication-link" %>
     <% end %>
   </section>

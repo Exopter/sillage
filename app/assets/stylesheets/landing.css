@@ -279,7 +279,7 @@ html {
 }
 
 .landing-section.is-light .landing-eyebrow {
-  color: #007f78;
+  color: var(--ex-khaki-600);
 }
 
 .landing-section.is-light .landing-section-title,

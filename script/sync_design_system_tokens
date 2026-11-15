@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require "json"
 require_relative "../lib/sillage/canonical_source"
 
 ROOT = File.expand_path("..", __dir__)
@@ -9,26 +10,31 @@ DESIGN_SYSTEM_ROOT = File.expand_path(
   ENV.fetch("EXOPTER_DESIGN_SYSTEM_PATH", File.join(ROOT, "..", "design-system"))
 )
 SOURCE = File.join(DESIGN_SYSTEM_ROOT, "tokens", "exopter-tokens.css")
-TARGET = File.join(ROOT, "app", "assets", "stylesheets", "exopter_design_system.css")
 
 mode = ARGV.fetch(0, "--check")
 abort "Usage: ruby script/sync_design_system_tokens [--check|--write]" unless %w[--check --write].include?(mode)
 abort "Canonical design-system tokens not found at #{SOURCE}" unless File.file?(SOURCE)
 
-source = Sillage::CanonicalSource.read(SOURCE)
+exports = JSON.parse(File.read(File.join(DESIGN_SYSTEM_ROOT, "templates/rails/stylesheets.json"))).invert
+stylesheet_root = File.join(ROOT, "app/assets/stylesheets")
+unknown = Dir[File.join(stylesheet_root, "*.css")].map { |path| File.basename(path) } - exports.values
+abort "Stylesheets without a shared design-system source: #{unknown.join(', ')}" unless unknown.empty?
 
-if mode == "--write"
-  FileUtils.mkdir_p(File.dirname(TARGET))
-  File.binwrite(TARGET, source)
-  puts "Copied canonical design-system tokens to #{TARGET.delete_prefix("#{ROOT}/")}."
-  exit 0
+mismatches = exports.filter_map do |source_path, filename|
+  source = Sillage::CanonicalSource.read(File.join(DESIGN_SYSTEM_ROOT, source_path))
+  target = File.join(ROOT, "app/assets/stylesheets", filename)
+  if mode == "--write"
+    FileUtils.mkdir_p(File.dirname(target))
+    File.binwrite(target, source)
+    nil
+  elsif !File.file?(target) || File.binread(target) != source
+    filename
+  end
 end
 
-if File.file?(TARGET) && File.binread(TARGET) == source
-  puts "Design-system tokens are synchronized byte for byte."
-  exit 0
+unless mismatches.empty?
+  warn "Sillage design-system exports differ: #{mismatches.join(', ')}."
+  abort "Run `ruby script/sync_design_system_tokens --write` from the Sillage root."
 end
 
-warn "Sillage design-system tokens differ from #{SOURCE}."
-warn "Run `ruby script/sync_design_system_tokens --write` from the Sillage root."
-exit 1
+puts "Design-system tokens, semantic aliases and component styles #{mode == '--write' ? 'synchronized' : 'verified'} against the canonical sources."

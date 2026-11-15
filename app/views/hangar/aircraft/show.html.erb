@@ -2,8 +2,8 @@
 <header class="workspace-header">
   <div><span class="section-eyebrow">Aircraft</span><h2><%= @aircraft.registration %></h2><p><%= @aircraft.name %></p></div>
   <div class="workspace-actions">
-    <%= link_to "Edit aircraft", edit_hangar_aircraft_path(@aircraft), class: "button-secondary" %>
-    <%= button_to "Delete aircraft", hangar_aircraft_path(@aircraft), method: :delete, class: "button-danger",
+    <%= link_to "Edit aircraft", edit_hangar_aircraft_path(@aircraft), class: "button-secondary exds-btn exds-btn--secondary" %>
+    <%= button_to "Delete aircraft", hangar_aircraft_path(@aircraft), method: :delete, class: "button-danger exds-btn exds-btn--danger",
       form: { data: { turbo_confirm: "Delete aircraft #{@aircraft.registration} permanently? This cannot be undone." } } %>
   </div>
 </header>
@@ -16,7 +16,7 @@
         <% @installations.active.each do |installation| %>
           <div class="workspace-list-row is-static">
             <span><strong><%= hangar_asset_code(installation.installable) %> · <%= hangar_asset_name(installation.installable) %></strong><small><%= installation.installable_type %> · installed <%= l installation.installed_at, format: :short %></small></span>
-            <%= button_to "Remove", hangar_installation_path(installation), method: :delete, class: "button-secondary", form: { data: { turbo_confirm: "Close this installation now?" } } %>
+            <%= button_to "Remove", hangar_installation_path(installation), method: :delete, class: "button-secondary exds-btn exds-btn--secondary", form: { data: { turbo_confirm: "Close this installation now?" } } %>
           </div>
         <% end %>
       </div>
@@ -37,7 +37,7 @@
             <span>Installed at</span>
             <%= form.datetime_local_field :installed_at, value: Time.current.strftime("%Y-%m-%dT%H:%M") %>
           </label>
-          <div class="workspace-actions"><%= form.submit "Install", class: "button-primary" %></div>
+          <div class="workspace-actions"><%= form.submit "Install", class: "button-primary exds-btn exds-btn--primary" %></div>
         <% end %>
       <% else %><p class="workspace-muted">No root assembly available.</p><% end %>
     </section>
@@ -54,7 +54,7 @@
             <span>Installed at</span>
             <%= form.datetime_local_field :installed_at, value: Time.current.strftime("%Y-%m-%dT%H:%M") %>
           </label>
-          <div class="workspace-actions"><%= form.submit "Install", class: "button-primary" %></div>
+          <div class="workspace-actions"><%= form.submit "Install", class: "button-primary exds-btn exds-btn--primary" %></div>
         <% end %>
       <% else %><p class="workspace-muted">No standalone part available.</p><% end %>
     </section>

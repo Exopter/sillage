@@ -1,5 +1,5 @@
 <%= turbo_frame_tag "flight-preview", class: "exds-browser-preview", role: "region", aria: { label: "Flight details" } do %>
-  <button type="button" class="button-secondary exds-browser-mobile-back" data-action="flight-browser#backToFlights"><%= sillage_icon "chevron-left", size: 16 %> Back to flights</button>
+  <button type="button" class="button-secondary exds-btn exds-btn--secondary exds-browser-mobile-back" data-action="flight-browser#backToFlights"><%= sillage_icon "chevron-left", size: 16 %> Back to flights</button>
   <% if entry %>
     <% flight = entry.is_a?(Flight) %>
     <% accessible = !flight || entry.visible_to?(Current.user) %>
@@ -35,7 +35,7 @@
       <div><dt>Visibility</dt><dd><%= sillage_icon(browser_visibility(entry) == "private" ? "lock-keyhole" : "users", size: 19) %><%= browser_visibility(entry).capitalize %><% if flight && entry.folder %><small>From folder</small><% elsif can_manage_operations? && flight && accessible %><%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button is-quiet", title: "Edit flight visibility", aria: { label: "Edit flight visibility" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %><% end %><% end %></dd></div>
     </dl>
     <% unless flight && entry.logbook_view? %>
-    <%= link_to browser_open_path(entry), class: "button-primary", data: { turbo_frame: (flight && entry.logbook_view? ? "flight-browser" : "_top") } do %><%= sillage_icon "arrow-up-right", size: 18 %> <%= flight ? "Open flight" : "Open recording" %><% end %>
+    <%= link_to browser_open_path(entry), class: "button-primary exds-btn exds-btn--primary", data: { turbo_frame: (flight && entry.logbook_view? ? "flight-browser" : "_top") } do %><%= sillage_icon "arrow-up-right", size: 18 %> <%= flight ? "Open flight" : "Open recording" %><% end %>
     <% end %>
   <% else %>
     <div class="exds-browser-empty"><%= sillage_icon "plane", size: 40 %><strong>Select a flight</strong><span>Its comments and details will appear here.</span></div>

@@ -14,14 +14,6 @@
   <% content_for :connection_control do %>
     <div class="signal-transport-control" data-controller="signal-connection"
          data-action="sillage:ground-radio-state@window->signal-connection#update">
-      <div class="exds-selection-field">
-        <select aria-label="Telemetry connection" data-signal-connection-target="transport" data-action="change->signal-connection#select">
-          <option value="ground-radio">SiK radio</option>
-          <option value="usb-c">USB-C</option>
-          <option value="ble">Bluetooth</option>
-          <option value="wifi">Wi-Fi via Sillage</option>
-        </select>
-      </div>
       <div class="exds-selection-field" hidden>
         <select aria-label="Wi-Fi recorder" data-signal-connection-target="recorder" hidden>
           <option value="">Select recorder</option>
@@ -35,6 +27,15 @@
               aria-label="Preparing telemetry" disabled>
         <%= sillage_icon "radio", size: 15 %><strong data-signal-connection-target="label">Preparing</strong>
       </button>
+      <span class="exds-icon-select">
+        <select aria-label="Telemetry connection" title="Telemetry connection: SiK radio" data-signal-connection-target="transport" data-action="change->signal-connection#select">
+          <option value="ground-radio" selected>SiK radio</option>
+          <option value="usb-c">USB-C</option>
+          <option value="ble">Bluetooth</option>
+          <option value="wifi">Wi-Fi via Sillage</option>
+        </select>
+        <%= sillage_icon "chevron-down", size: 12 %>
+      </span>
     </div>
   <% end %>
   <% content_for :head do %>
@@ -42,7 +43,7 @@
     <link rel="stylesheet" href="<%= Rails.application.config.x.cesium_base_url %>Widgets/widgets.css">
   <% end %>
   <% flight = @active_session.flight %>
-  <div class="signal-root"
+  <div class="signal-root ex-dark"
        data-controller="signal-workspace"
        data-signal-workspace-cesium-token-value="<%= @cesium_ion_token %>"
        data-signal-workspace-cesium-base-url-value="<%= Rails.application.config.x.cesium_base_url %>"
@@ -75,8 +76,8 @@
           <%= render "shared/status_help", id: "signal-preflight-detail", label: "Preflight", status_target: "preflightStatus", detail_target: "preflightDetail", initial_status: "Not checked", initial_detail: "No preflight check is available.", href: flight ? flight_imu_check_path(flight) : nil %>
         </div>
         <div class="signal-command-actions">
-          <button type="button" class="signal-tool-button" aria-label="Mark event" data-action="signal-workspace#markEvent"><%= sillage_icon "plus", size: 14 %><span>Mark event</span></button>
-          <button type="button" class="signal-tool-button is-danger" data-action="signal-workspace#endSession">End session</button>
+          <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" aria-label="Mark event" data-action="signal-workspace#markEvent"><%= sillage_icon "plus", size: 14 %><span>Mark event</span></button>
+          <button type="button" class="signal-tool-button exds-btn exds-btn--danger is-danger" data-action="signal-workspace#endSession">End session</button>
         </div>
       </header>
 
@@ -95,7 +96,7 @@
             <canvas data-signal-workspace-target="mapCanvas" aria-label="GPS track from received positions"></canvas>
             <div class="signal-aircraft" data-signal-workspace-target="aircraftMarker" hidden><span class="signal-heading-ray"></span><span class="signal-aircraft-icon"><%= sillage_icon "plane", size: 23, stroke_width: 1.8 %></span><span class="signal-aircraft-label"><strong><%= flight&.code || "Unassigned session" %></strong><small data-signal-workspace-target="aircraftLabel">Waiting for telemetry</small></span></div>
             <div class="signal-map-cache" data-signal-workspace-target="mapStatus">Loading 3D map</div>
-            <button type="button" class="signal-tool-button signal-map-follow" data-signal-workspace-target="mapFollow" data-action="signal-workspace#toggleMapFollow" aria-pressed="true" disabled>Following GPS</button>
+            <button type="button" class="signal-tool-button exds-btn exds-btn--secondary signal-map-follow" data-signal-workspace-target="mapFollow" data-action="signal-workspace#toggleMapFollow" aria-pressed="true" disabled>Following GPS</button>
             <div class="signal-map-event" data-signal-workspace-target="latestEvent" hidden></div>
           </div>
         </section>
@@ -148,7 +149,7 @@
     </div>
   </div>
 <% else %>
-  <div class="signal-home">
+  <div class="signal-home ex-dark">
     <div class="signal-home-inner">
       <header class="signal-home-head">
         <div><span class="signal-k">Sillage Signal</span><h1>Start live acquisition</h1><p>Connect the Holybro ground radio over USB to view live telemetry. Use Chrome or Edge on desktop.</p></div>
@@ -158,8 +159,8 @@
           <div class="signal-launch-body"><span class="signal-k">Recovery</span><h2>Unassigned sessions</h2><p>Review an interrupted acquisition to save or discard it.</p></div>
           <% @retained_sessions.each do |session| %>
             <div class="signal-prep-row"><div><strong><%= l session.started_at, format: :short %></strong><span><%= session.uuid.first(8).upcase %> · Pending review</span></div>
-              <%= link_to "Review session", signal_path(session: session.uuid, review: 1), class: "signal-tool-button" %>
-              <%= link_to "Radio history", signal_session_radio_history_path(session.uuid), class: "signal-tool-button" %>
+              <%= link_to "Review session", signal_path(session: session.uuid, review: 1), class: "signal-tool-button exds-btn exds-btn--secondary" %>
+              <%= link_to "Radio history", signal_session_radio_history_path(session.uuid), class: "signal-tool-button exds-btn exds-btn--secondary" %>
             </div>
           <% end %>
         </section>
@@ -167,12 +168,12 @@
       <div class="signal-launch-grid">
         <section class="signal-launch-card">
           <div class="signal-launch-body"><span class="signal-k">Prepared flights</span><h2>Attach to an existing flight</h2><p>Select a prepared flight or create a draft. Aircraft and configuration can be completed later.</p>
-            <%= button_to "Create draft flight", draft_signal_sessions_path, class: "signal-tool-button", form: { data: { turbo: false } } %>
+            <%= button_to "Create draft flight", draft_signal_sessions_path, class: "signal-tool-button exds-btn exds-btn--secondary", form: { data: { turbo: false } } %>
           </div>
           <% @preparation_flights.each do |flight| %>
             <div class="signal-prep-row">
-              <div><strong><%= flight.code %></strong><span><%= flight.name %> · <%= flight.display_aircraft %></span><%= link_to "Edit draft", edit_flight_path(flight), class: "workspace-strong-link" %></div>
-              <%= button_to "Open session", signal_sessions_path(flight_id: flight.id), class: "signal-tool-button is-primary", form: { data: { turbo: false } } %>
+              <div><strong><%= flight.code %></strong><span><%= flight.name %> · <%= flight.display_aircraft %></span><span>Created <time datetime="<%= flight.created_at.iso8601 %>"><%= flight.created_at.utc.strftime("%d %b %Y · %H:%M UTC") %></time></span><%= link_to "Edit draft", edit_flight_path(flight), class: "workspace-strong-link" %></div>
+              <%= button_to "Open session", signal_sessions_path(flight_id: flight.id), class: "signal-tool-button exds-btn exds-btn--primary is-primary", form: { data: { turbo: false } } %>
             </div>
           <% end %>
           <% if @preparation_flights.empty? %><div class="signal-prep-empty">No flight is currently in Preparation.</div><% end %>
@@ -180,29 +181,11 @@
         <section class="signal-launch-card">
           <div class="signal-launch-body">
             <span class="signal-k">Direct acquisition</span><h2>Unassigned acquisition</h2><p>Start telemetry without creating a flight. When leaving Signal, save the acquisition as a new flight or discard it.</p>
-            <%= button_to signal_sessions_path, class: "signal-tool-button is-primary signal-start-direct", form: { data: { turbo: false } } do %><%= sillage_icon "radio", size: 15 %><span>Start unassigned session</span><% end %>
+            <%= button_to signal_sessions_path, class: "signal-tool-button exds-btn exds-btn--primary is-primary signal-start-direct", form: { data: { turbo: false } } do %><%= sillage_icon "radio", size: 15 %><span>Start unassigned session</span><% end %>
             <div class="signal-launch-rules"><div><%= sillage_icon "download", size: 15 %><span><strong>Local capture first</strong>Raw MAVLink continues during a brief Internet cut.</span></div><div><%= sillage_icon "upload", size: 15 %><span><strong>Automatic recovery</strong>Queued batches resume from the last acknowledgement.</span></div><div><%= sillage_icon "shield", size: 15 %><span><strong>microSD authoritative</strong>Signal complements the onboard recorder.</span></div></div>
           </div>
         </section>
       </div>
-      <% if @completed_sessions.any? %>
-        <section class="signal-launch-card" aria-label="Completed sessions">
-          <div class="signal-launch-body"><span class="signal-k">History</span><h2>Completed sessions</h2><p>Review received signal strength across the complete acquisition.</p></div>
-          <% @completed_sessions.each do |session| %>
-            <div class="signal-prep-row">
-              <div><strong><%= session.flight.code %></strong><span><%= l session.started_at, format: :long %></span>
-                <% if session.materialization_status != "complete" %>
-                  <span><%= session.materialization_status == "failed" ? "Flight processing failed. Your recording is saved." : "Preparing flight. Your recording is saved." %></span>
-                <% end %>
-              </div>
-              <% if session.materialization_status != "complete" %>
-                <%= button_to "Retry processing", retry_processing_signal_session_path(session.uuid), class: "signal-tool-button", form: { data: { turbo: false } } %>
-              <% end %>
-              <%= link_to "Radio history", signal_session_radio_history_path(session.uuid), class: "signal-tool-button" %>
-            </div>
-          <% end %>
-        </section>
-      <% end %>
     </div>
   </div>
 <% end %>

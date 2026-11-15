@@ -1,0 +1,19 @@
+.exds-field{display:flex;flex-direction:column;gap:var(--sp-2);font-family:var(--font-ui);min-width:0}
+.exds-field__label{font-size:var(--fs-sm);font-weight:600;line-height:1.3;color:var(--text-body)}
+.exds-field__req{color:var(--control-error);margin-left:4px}
+.exds-input-wrap{display:flex;align-items:center;gap:var(--sp-3);box-sizing:border-box;background:var(--surface-card);border:1px solid var(--border-strong);border-radius:var(--radius-compact);height:var(--control-h);padding:0 var(--sp-3);box-shadow:inset 0 1px 2px #070b0d06;transition:border-color var(--dur-fast),box-shadow var(--dur-fast)}
+.exds-input-wrap:hover:not([data-disabled="true"]){border-color:var(--text-muted)}
+.exds-input-wrap:focus-within{border-color:var(--focus-ring);outline:2px solid var(--focus-ring);outline-offset:2px;box-shadow:none}
+.exds-input-wrap--error,.exds-input-wrap--error:hover:not([data-disabled="true"]){border-color:var(--control-error)}
+.exds-input-wrap--error:focus-within{outline-color:var(--control-error)}
+.exds-input-wrap[data-disabled="true"]{background:var(--surface-panel);opacity:.5;cursor:not-allowed}
+.exds-input{flex:1;min-width:0;width:100%;border:none;outline:none;background:transparent;font:400 var(--fs-body)/1.4 var(--font-ui);color:var(--text-body);height:100%;padding:0}
+.exds-input:disabled{cursor:not-allowed}
+.exds-input::placeholder{color:var(--text-muted);opacity:1}
+.exds-input--data{font-family:var(--font-data);font-variant-numeric:tabular-nums;text-align:right}
+.exds-input__affix{display:flex;align-items:center;align-self:stretch;font:400 var(--fs-sm)/1 var(--font-mono);color:var(--text-muted);white-space:nowrap}
+.exds-input + .exds-input__affix{border-left:1px solid var(--border-rule);padding-left:var(--sp-3);min-width:22px;justify-content:center}
+.exds-input__affix svg{width:16px;height:16px;display:block}
+.exds-field__hint{font-size:var(--fs-sm);line-height:1.4;color:var(--text-muted)}
+.exds-field__hint--error{color:var(--control-error)}
+@media(prefers-reduced-motion:reduce){.exds-input-wrap{transition:none}}

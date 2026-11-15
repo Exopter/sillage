@@ -50,7 +50,7 @@
     </fieldset>
   <% end %>
   <div class="workspace-actions">
-    <%= link_to "Cancel", assembly.persisted? ? hangar_assembly_path(assembly) : hangar_assemblies_path, class: "button-secondary" %>
-    <%= form.submit class: "button-primary", disabled: assembly.new_record? && (assembly.assembly_type.blank? || (assembly.controlled_fdr? && @functional_configurations.empty?)), data: { assembly_form_target: "submit" } %>
+    <%= link_to "Cancel", assembly.persisted? ? hangar_assembly_path(assembly) : hangar_assemblies_path, class: "button-secondary exds-btn exds-btn--secondary" %>
+    <%= form.submit class: "button-primary exds-btn exds-btn--primary", disabled: assembly.new_record? && (assembly.assembly_type.blank? || (assembly.controlled_fdr? && @functional_configurations.empty?)), data: { assembly_form_target: "submit" } %>
   </div>
 <% end %>

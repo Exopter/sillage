@@ -5,11 +5,7 @@
   --ds-ink: var(--ex-carbon-900);
   --ds-muted: var(--ex-graphite-600);
   --ds-line: var(--ex-line-200);
-  --ds-line-strong: var(--ex-line-300);
   --ds-night: var(--ex-carbon-950);
-  --ds-night-2: var(--ex-carbon-800);
-  --ds-teal: #007f78;
-  --ds-teal-dark: var(--ex-state-live-text);
   --ds-aqua: var(--ex-aqua-500);
   --ds-coral: var(--ex-red-600);
   --ds-amber: var(--ex-amber-500);
@@ -20,29 +16,6 @@
   --ds-shadow: var(--ex-shadow-raised);
   --ds-shadow-soft: var(--ex-shadow-panel);
   --ds-page: min(1180px, calc(100vw - 113px));
-  --ex-graphite-400: #97a1a0;
-  --ex-sky-100: #dceeff;
-  --font-ui: var(--ex-font-sans);
-  --font-mono: var(--ex-font-mono);
-  --font-data: var(--ex-font-mono);
-  --fs-xs: 0.6875rem;
-  --fs-sm: 0.8125rem;
-  --ls-label: 0.08em;
-  --radius: var(--ex-radius-surface);
-  --radius-round: 999px;
-  --control-h: 42px;
-  --shadow-sm: var(--ex-shadow-panel);
-  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
-  --dur: 180ms;
-  --surface-app: var(--ex-vapor-50);
-  --surface-card: var(--ex-white);
-  --surface-panel: var(--ex-vapor-100);
-  --surface-hover: var(--ex-vapor-100);
-  --text-strong: var(--ex-carbon-950);
-  --text-body: var(--ex-carbon-900);
-  --text-muted: var(--ex-graphite-600);
-  --border-rule: var(--ex-line-200);
-  --border-strong: var(--ex-line-300);
 }
 
 * {
@@ -131,7 +104,7 @@ body {
 .operations-form-grid textarea {
   width: 100%;
   border: 1px solid var(--border-strong);
-  border-radius: 5px;
+  border-radius: var(--ex-radius-instrument);
   background: var(--surface-card);
   color: var(--text-body);
   font-family: var(--font-ui);
@@ -149,14 +122,14 @@ body {
 
 .operations-form-grid input,
 .operations-form-grid select {
-  min-height: 40px;
+  min-height: var(--ex-control-height);
 }
 
 .operations-form-grid input:focus,
 .operations-form-grid select:focus,
 .operations-form-grid textarea:focus {
-  border-color: var(--ex-aqua-500);
-  outline: 2px solid color-mix(in srgb, var(--ex-aqua-500) 28%, transparent);
+  border-color: var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -167,13 +140,13 @@ body {
   margin: 2px -18px -18px;
   padding: 14px 18px;
   border-top: 1px solid var(--border-rule);
-  background: var(--ds-panel-2);
+  background: var(--surface-panel);
 }
 
 .operations-help {
   margin: 0;
   padding: 11px 12px;
-  border-radius: 6px;
+  border-radius: var(--ex-radius-surface);
   background: var(--surface-panel);
   color: var(--text-muted);
   font-size: 12px;
@@ -188,7 +161,7 @@ body {
   place-items: center;
   padding: 0 8px;
   border: 1px solid var(--border-rule);
-  border-radius: 4px;
+  border-radius: var(--ex-radius-surface);
   color: var(--text-muted);
   font-family: var(--ex-font-mono);
   font-size: 11px;
@@ -262,22 +235,22 @@ body {
   gap: 9px;
   padding: 13px;
   border: 1px solid var(--border-rule);
-  border-radius: 7px;
+  border-radius: var(--ex-radius-surface);
   background: var(--surface-card);
   cursor: pointer;
 }
 
 .import-source-card:has(input:checked) {
-  border-color: var(--ex-aqua-500);
-  background: color-mix(in srgb, var(--ex-aqua-500) 7%, var(--surface-card));
-  box-shadow: inset 0 0 0 1px var(--ex-aqua-500);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface-card));
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 .import-source-card input {
   width: 15px;
   height: 15px;
   margin: 0;
-  accent-color: var(--ex-aqua-500);
+  accent-color: var(--accent);
 }
 
 .import-source-card svg {
@@ -330,7 +303,7 @@ body {
 }
 
 .sillage-home-link:focus-visible {
-  outline: 2px solid var(--ex-aqua-500);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
 }
 
@@ -360,8 +333,9 @@ body {
 }
 
 .sillage-room-link.is-active {
-  background: var(--ex-carbon-800);
-  color: var(--ex-aqua-500);
+  background: var(--surface-selected);
+  color: var(--selection-marker);
+  box-shadow: inset 2px 0 var(--selection-marker);
 }
 
 .sillage-room-link.is-separated {
@@ -433,8 +407,8 @@ body {
   top: 0;
   z-index: 20;
   display: flex;
-  height: 57px;
-  min-height: 57px;
+  height: var(--ex-shell-header-height);
+  min-height: var(--ex-shell-header-height);
   flex: 0 0 auto;
   align-items: center;
   gap: 16px;
@@ -544,10 +518,9 @@ body {
 }
 
 .aircraft-connection-pill:hover,
-.aircraft-connection-pill:focus-visible,
-.aircraft-connection-pill[data-aircraft-connection-state="connected"] {
-  border-color: var(--ex-aqua-500);
-  color: var(--ex-aqua-500);
+.aircraft-connection-pill:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .aircraft-connection-pill[data-aircraft-connection-state="connected"]::before {
@@ -555,7 +528,7 @@ body {
 }
 
 .aircraft-connection-pill:focus-visible {
-  outline: 2px solid var(--ex-aqua-500);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -599,7 +572,7 @@ body {
 }
 
 .sillage-account-menu summary:focus-visible {
-  outline: 2px solid var(--ex-aqua-500);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
 }
 
@@ -647,8 +620,8 @@ body {
 }
 
 .sillage-account-action:hover {
-  border-color: var(--ex-aqua-500);
-  color: var(--ex-aqua-500);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .sillage-content {
@@ -660,7 +633,7 @@ body {
 .app-shell {
   width: var(--ds-page);
   margin: 0 auto;
-  padding: 24px 0 64px;
+  padding: 16px 0 40px;
 }
 
 .search-control {
@@ -668,8 +641,8 @@ body {
   align-items: center;
   gap: 8px;
   min-width: 230px;
-  min-height: 42px;
-  padding: 0 12px;
+  min-height: var(--ex-control-height);
+  padding: 0 10px;
   border: 1px solid var(--ds-line);
   border-radius: var(--ds-radius);
   background: var(--ex-white);
@@ -677,8 +650,8 @@ body {
 }
 
 .search-control:focus-within {
-  border-color: var(--ds-aqua);
-  outline: 2px solid rgba(47, 214, 198, 0.22);
+  border-color: var(--selection-marker);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -783,10 +756,7 @@ body {
   overflow: hidden;
   border: 1px dashed rgba(16, 24, 26, 0.24);
   border-radius: var(--ds-radius);
-  background:
-    linear-gradient(135deg, rgba(47, 214, 198, 0.12), transparent 45%),
-    linear-gradient(315deg, rgba(242, 162, 58, 0.1), transparent 42%),
-    var(--ds-panel-2);
+  background: var(--surface-card);
   cursor: pointer;
   text-align: center;
 }
@@ -796,25 +766,19 @@ body {
   width: 220px;
   height: 220px;
   content: "";
-  border: 1px solid rgba(47, 214, 198, 0.18);
+  border: 1px solid var(--border-rule);
   transform: rotate(26deg);
 }
 
 .upload-drop:hover {
-  border-color: var(--ds-aqua);
-  background:
-    linear-gradient(135deg, rgba(47, 214, 198, 0.16), transparent 45%),
-    linear-gradient(315deg, rgba(242, 162, 58, 0.1), transparent 42%),
-    #fbfefd;
+  border-color: var(--selection-marker);
+  background: var(--surface-card);
 }
 
 .upload-drop.is-dragging {
-  border-color: var(--ds-aqua);
-  background:
-    linear-gradient(135deg, rgba(47, 214, 198, 0.22), transparent 45%),
-    linear-gradient(315deg, rgba(242, 162, 58, 0.14), transparent 42%),
-    #f7fffd;
-  box-shadow: 0 0 0 3px rgba(47, 214, 198, 0.16);
+  border-color: var(--selection-marker);
+  background: var(--surface-card);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .upload-drop input {
@@ -890,12 +854,10 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 42px;
-  padding: 0 16px;
-  border: 1px solid transparent;
-  border-radius: var(--ds-radius);
+
+
   cursor: pointer;
-  font-weight: 780;
+
 }
 
 .primary-button svg,
@@ -904,31 +866,11 @@ body {
   flex: 0 0 auto;
 }
 
-.primary-button {
-  background: linear-gradient(135deg, var(--ds-night-2), var(--ds-night));
-  color: #fff;
-  box-shadow: 0 10px 22px rgba(16, 24, 26, 0.2);
-}
-
-.primary-button:hover {
-  filter: brightness(0.96);
-}
-
 .primary-button:disabled {
   cursor: not-allowed;
-  filter: grayscale(0.25);
+
   opacity: 0.58;
-  box-shadow: none;
-}
 
-.secondary-button {
-  border-color: var(--ds-line);
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--ds-ink);
-}
-
-.secondary-button:hover {
-  border-color: var(--ds-line-strong);
 }
 
 .secondary-button:disabled {
@@ -938,8 +880,8 @@ body {
 
 .danger-button {
   width: 100%;
-  background: var(--ds-red);
-  color: #fff;
+
+
 }
 
 .flight-list {
@@ -967,8 +909,8 @@ body {
   height: 34px;
   place-items: center;
   border-radius: var(--ds-radius);
-  background: var(--ex-state-live-bg);
-  color: var(--ds-teal-dark);
+  background: var(--surface-selected);
+  color: var(--link);
 }
 
 .flight-card-body {
@@ -978,7 +920,7 @@ body {
 }
 
 .flight-card:hover {
-  border-color: var(--ds-aqua);
+  border-color: var(--selection-marker);
   box-shadow: var(--ds-shadow);
   transform: translateY(-1px);
 }
@@ -1112,7 +1054,7 @@ body {
 }
 
 .flash-dismiss:focus-visible {
-  outline: 2px solid var(--ex-aqua-500);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -1120,33 +1062,13 @@ body {
 .button-secondary,
 .button-danger {
   display: inline-flex;
-  min-height: 38px;
+
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 0 14px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  font-weight: 750;
-  line-height: 1;
+
+
   cursor: pointer;
-}
-
-.button-primary {
-  background: var(--ex-carbon-950);
-  color: var(--ex-vapor-50);
-}
-
-.button-secondary {
-  border-color: var(--border-rule);
-  background: var(--surface-card);
-  color: var(--text-body);
-}
-
-.button-danger {
-  border-color: var(--ex-state-fault-text);
-  background: var(--ex-state-fault-bg);
-  color: var(--ex-state-fault-text);
 }
 
 .button-primary:disabled,
@@ -1154,13 +1076,6 @@ body {
 .button-danger:disabled {
   cursor: not-allowed;
   opacity: .45;
-}
-
-.button-danger:hover,
-.button-danger:focus-visible {
-  border-color: var(--ex-red-600);
-  background: var(--ex-red-600);
-  color: var(--ex-white);
 }
 
 .authentication-page {
@@ -1180,7 +1095,7 @@ body {
   gap: 20px;
   padding: 28px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  border-radius: var(--ex-radius-surface);
   background: var(--surface-card);
   box-shadow: var(--shadow-sm);
 }
@@ -1188,7 +1103,7 @@ body {
 .authentication-logo {
   width: 38px;
   height: 38px;
-  border-radius: 8px;
+  border-radius: var(--ex-radius-surface);
 }
 
 .authentication-header {
@@ -1238,16 +1153,16 @@ body {
 .core-form input,
 .core-form select {
   width: 100%;
-  min-height: 42px;
-  padding: 0 12px;
+  min-height: var(--ex-control-height);
+  padding: 0 10px;
   border: 1px solid var(--border-rule);
-  border-radius: 6px;
+  border-radius: var(--ex-radius-surface);
   background: var(--surface-card);
   color: var(--text-body);
 }
 
 .authentication-link {
-  color: var(--ds-teal);
+  color: var(--link);
   font-size: var(--fs-sm);
   font-weight: 750;
 }
@@ -1262,7 +1177,7 @@ body {
   padding: 24px;
   place-items: center;
   border: 1px solid var(--border-rule);
-  border-radius: 8px;
+  border-radius: var(--ex-radius-surface);
   background: var(--ex-white);
 }
 
@@ -1285,7 +1200,7 @@ body {
   display: block;
   padding: 10px 12px;
   border: 1px solid var(--border-rule);
-  border-radius: 6px;
+  border-radius: var(--ex-radius-surface);
   background: var(--surface-card);
   color: var(--text-body);
   font: 700 var(--fs-sm) var(--font-mono);
@@ -1317,7 +1232,7 @@ body {
   gap: 16px;
   padding: 18px;
   border: 1px solid var(--border-rule);
-  border-radius: 8px;
+  border-radius: var(--ex-radius-surface);
   background: var(--surface-card);
 }
 
@@ -1339,7 +1254,7 @@ body {
   align-items: center;
   padding: 12px;
   border: 1px solid var(--border-rule);
-  border-radius: 8px;
+  border-radius: var(--ex-radius-surface);
   background: var(--surface-panel);
 }
 
@@ -1380,9 +1295,9 @@ body {
 }
 
 .status-pill.is-active {
-  border-color: rgba(0, 127, 120, 0.26);
-  background: rgba(0, 127, 120, 0.08);
-  color: var(--ds-teal);
+  border-color: var(--ex-field-500);
+  background: var(--ex-state-ready-bg);
+  color: var(--ex-state-ready-text);
 }
 
 .status-pill.is-pending {
@@ -1401,7 +1316,7 @@ body {
   margin: 0;
   padding: 24px;
   overflow: hidden;
-  border: 1px solid rgba(47, 214, 198, 0.18);
+  border: 1px solid var(--border-rule);
   border-radius: var(--ds-radius);
   background: var(--ds-night);
   color: var(--ex-vapor-50);
@@ -1441,8 +1356,8 @@ body {
 }
 
 .trajectory-icon-button:hover {
-  border-color: rgba(47, 214, 198, 0.46);
-  background: rgba(47, 214, 198, 0.14);
+  border-color: var(--selection-marker);
+  background: var(--surface-selected);
 }
 
 .play-icon {
@@ -1468,7 +1383,7 @@ body {
   width: 100%;
   height: clamp(340px, 56vh, 680px);
   margin: 16px 0 14px;
-  border: 1px solid rgba(47, 214, 198, 0.22);
+  border: 1px solid var(--border-rule);
   border-radius: var(--ds-radius);
   background: var(--ds-night);
   cursor: grab;
@@ -1498,7 +1413,7 @@ body {
   z-index: 2;
   max-width: min(420px, calc(100% - 28px));
   padding: 10px 12px;
-  border: 1px solid rgba(47, 214, 198, 0.28);
+  border: 1px solid var(--border-rule);
   border-radius: var(--ds-radius);
   background: rgba(7, 11, 13, 0.78);
   color: var(--ex-vapor-50);
@@ -1629,7 +1544,7 @@ body {
 .details-form select,
 .details-form textarea {
   width: 100%;
-  min-height: 40px;
+  min-height: var(--ex-control-height);
   padding: 9px 10px;
   border: 1px solid var(--ds-line);
   border-radius: var(--ds-radius);
@@ -1640,9 +1555,9 @@ body {
 .details-form input:focus,
 .details-form select:focus,
 .details-form textarea:focus {
-  outline: 2px solid rgba(47, 214, 198, 0.28);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
-  border-color: var(--ds-aqua);
+  border-color: var(--selection-marker);
 }
 
 .details-grid {
@@ -1692,7 +1607,7 @@ body {
 .app-shell.is-full-bleed {
   width: 100%;
   max-width: none;
-  min-height: calc(100vh - 57px);
+  min-height: calc(100vh - var(--ex-shell-header-height));
   margin: 0;
   padding: 0;
 }
@@ -1707,7 +1622,7 @@ body {
 .flight-replay-page {
   display: flex;
   width: 100%;
-  min-height: calc(100vh - 57px);
+  min-height: calc(100vh - var(--ex-shell-header-height));
   flex-direction: column;
   background: var(--ex-carbon-950);
   color: var(--ex-vapor-50);
@@ -1715,7 +1630,7 @@ body {
 
 .flight-replay-header {
   position: sticky;
-  top: 57px;
+  top: var(--ex-shell-header-height);
   z-index: 19;
   display: flex;
   min-height: 52px;
@@ -1727,28 +1642,15 @@ body {
   backdrop-filter: blur(14px);
 }
 
-.flight-replay-header .kit-icon-button {
-  width: 34px;
-  height: 34px;
-}
-
 .kit-icon-button {
   display: inline-grid;
-  width: 42px;
-  height: 42px;
+
+
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--ex-vapor-50);
-  cursor: pointer;
-}
 
-.kit-icon-button:hover { background: var(--ex-carbon-800); }
-.kit-icon-button:focus-visible {
-  outline: 2px solid var(--ex-aqua-500);
-  outline-offset: 2px;
+
+  cursor: pointer;
 }
 .is-back-icon { transform: rotate(180deg); }
 
@@ -1974,25 +1876,25 @@ body {
 }
 
 .flight-analysis-workspace .flight-phase-button:hover {
-  background: rgba(47, 214, 198, 0.08);
+  background: var(--surface-selected);
   color: var(--ex-carbon-900);
 }
 
 .flight-phase-button.is-active {
-  border-color: rgba(47, 214, 198, 0.35);
+  border-color: var(--selection-marker);
   background: var(--ex-carbon-800);
-  color: var(--ex-aqua-500);
+  color: var(--accent);
 }
 
 .flight-analysis-workspace .flight-phase-button.is-active {
   border-color: var(--ex-line-300);
   background: var(--ex-white);
-  color: var(--ds-teal-dark);
+  color: var(--link);
   box-shadow: var(--shadow-sm);
 }
 
 .flight-phase-button:focus-visible {
-  outline: 2px solid var(--ex-aqua-500);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -2070,7 +1972,7 @@ body {
 }
 
 .trajectory-icon-button:focus-visible {
-  outline: 2px solid var(--ex-aqua-500);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -2331,7 +2233,7 @@ body {
   overflow: hidden;
   grid-template-rows: auto 1fr;
   border: 1px solid var(--border-rule);
-  border-radius: 6px;
+  border-radius: var(--ex-radius-surface);
   background: var(--surface-card);
   box-shadow: none;
 }
@@ -2523,12 +2425,6 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.flight-replay-page .secondary-button {
-  border-color: var(--ex-carbon-700);
-  background: var(--ex-carbon-950);
-  color: var(--ex-vapor-100);
-}
-
 .flight-replay-page .video-stage {
   border-color: var(--ex-carbon-700);
 }
@@ -2549,11 +2445,6 @@ body.flight-analysis-theme,
 .flight-analysis-theme .flight-replay-header {
   border-bottom-color: var(--ex-line-200);
   background: rgba(255, 255, 255, 0.96);
-}
-
-.flight-analysis-theme .flight-replay-header .kit-icon-button,
-.flight-analysis-theme .flight-replay-title span {
-  color: var(--ex-carbon-900);
 }
 
 .flight-analysis-theme .flight-replay-header .mode-badge.is-neutral {
@@ -2597,8 +2488,8 @@ body.flight-analysis-theme,
 }
 
 .flight-analysis-theme .trajectory-icon-button:hover {
-  border-color: var(--ex-aqua-500);
-  background: color-mix(in srgb, var(--ex-aqua-500) 10%, var(--ex-white));
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--ex-white));
 }
 
 .flight-analysis-theme .trajectory-scene {
@@ -2633,12 +2524,6 @@ body.flight-analysis-theme,
 }
 
 .flight-analysis-theme .flight-replay-page .details-grid dd {
-  color: var(--ex-carbon-900);
-}
-
-.flight-analysis-theme .flight-replay-page .secondary-button {
-  border-color: var(--ex-line-300);
-  background: var(--ex-white);
   color: var(--ex-carbon-900);
 }
 
@@ -2934,8 +2819,8 @@ button.aircraft-connection-pill:disabled { cursor: default; opacity: .55; }
   text-decoration: underline dotted;
   text-underline-offset: 4px;
 }
-.workspace-help-trigger:hover { color: var(--ex-aqua-500); }
-.workspace-help-trigger:focus-visible { outline: 2px solid var(--ex-aqua-500); outline-offset: 3px; }
+.workspace-help-trigger:hover { color: var(--accent); }
+.workspace-help-trigger:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 .workspace-help-tooltip {
   position: fixed;
   inset: auto;
@@ -2954,3 +2839,8 @@ button.aircraft-connection-pill:disabled { cursor: default; opacity: .55; }
 }
 .workspace-help-tooltip > span { white-space: pre-line; }
 .workspace-help-tooltip b { display: block; margin-bottom: 4px; font-weight: 600; }
+
+@media (pointer: coarse) {
+}
+
+.aircraft-connection-pill[data-aircraft-connection-state="connected"] { border-color: var(--ex-aqua-500); color: var(--ex-aqua-500); }

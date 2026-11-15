@@ -36,7 +36,11 @@ class SignalRadioHistoryTest < ActionDispatch::IntegrationTest
     assert_equal "7", csv.first["rx_errors"]
     assert_equal "120", csv.first["air_telemetry_age_ms"]
     get signal_path(view: "home")
-    assert_select "a[href='#{signal_session_radio_history_path(@session.uuid)}']", text: "Radio history"
+    assert_select "[aria-label='Completed sessions']", count: 0
+    assert_select "a[href='#{signal_session_radio_history_path(@session.uuid)}']", count: 0
+    get flight_path(@flight)
+    assert_response :success
+    assert_select "a[href='#{signal_session_radio_history_path(@session.uuid, format: :csv)}']"
   end
 
   test "private and discarded sessions cannot be read or exported by other users" do

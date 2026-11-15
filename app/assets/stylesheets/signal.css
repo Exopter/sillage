@@ -13,14 +13,14 @@
 }
 
 .signal-root {
-  min-height: calc(100vh - 57px);
+  min-height: calc(100vh - var(--ex-shell-header-height));
   background: var(--ex-carbon-950);
   color: var(--ex-vapor-50);
 }
 
 .signal-live-shell {
   display: flex;
-  height: calc(100vh - 57px);
+  height: calc(100vh - var(--ex-shell-header-height));
   min-height: 620px;
   flex-direction: column;
   overflow: hidden;
@@ -98,7 +98,7 @@
 .signal-quality-stack [data-state="unknown"] { color: var(--ex-graphite-400); }
 .signal-quality-stack a { min-width: 0; text-decoration: underline; text-underline-offset: 3px; }
 .signal-quality-stack a strong { display: block; }
-.signal-quality-stack a:focus-visible { outline: 1px solid var(--ex-aqua-500); outline-offset: 3px; }
+.signal-quality-stack a:focus-visible { outline: 1px solid var(--focus-ring); outline-offset: 3px; }
 
 .signal-command-actions {
   display: flex;
@@ -112,39 +112,16 @@
 
 .signal-tool-button {
   display: inline-flex;
-  height: 32px;
+
   align-items: center;
   justify-content: center;
   gap: 7px;
-  padding: 0 10px;
-  border: 1px solid var(--ex-carbon-700);
-  border-radius: 5px;
-  background: var(--ex-carbon-900);
-  color: var(--ex-vapor-50);
+
+
   cursor: pointer;
-  font: 600 9px/1 var(--font-mono);
-  letter-spacing: .04em;
-  text-transform: uppercase;
+
+
   white-space: nowrap;
-}
-
-.signal-tool-button:hover:not(:disabled),
-.signal-tool-button:focus-visible {
-  border-color: var(--ex-aqua-500);
-  color: var(--ex-aqua-500);
-  outline: 0;
-}
-
-.signal-tool-button.is-primary {
-  border-color: var(--ex-aqua-500);
-  background: rgba(47, 214, 198, .09);
-  color: var(--ex-aqua-500);
-}
-
-.signal-tool-button.is-danger:hover:not(:disabled),
-.signal-tool-button.is-danger:focus-visible {
-  border-color: var(--ex-state-fault-text);
-  color: var(--ex-state-fault-text);
 }
 
 .signal-tool-button:disabled {
@@ -217,7 +194,7 @@
   padding: 0;
   place-items: center;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--ex-radius-surface);
   background: transparent;
   color: var(--ex-graphite-400);
   cursor: grab;
@@ -228,7 +205,7 @@
 .signal-drag-handle:focus-visible {
   border-color: var(--ex-carbon-700);
   background: var(--ex-carbon-950);
-  color: var(--ex-aqua-500);
+  color: var(--selection-marker);
   outline: 0;
 }
 
@@ -263,7 +240,7 @@
   margin-left: auto;
   padding: 4px 7px;
   border: 1px solid var(--ex-aqua-500);
-  border-radius: 4px;
+  border-radius: var(--ex-radius-surface);
   color: var(--ex-aqua-500);
   font: 600 8px/1 var(--font-mono);
   letter-spacing: .08em;
@@ -286,7 +263,7 @@
   gap: 2px;
   padding: 2px;
   border: 1px solid var(--ex-carbon-700);
-  border-radius: 4px;
+  border-radius: var(--ex-radius-surface);
   background: var(--ex-carbon-950);
 }
 
@@ -294,7 +271,7 @@
   height: 21px;
   padding: 0 6px;
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--ex-radius-surface);
   background: transparent;
   color: var(--ex-graphite-400);
   cursor: pointer;
@@ -306,7 +283,7 @@
 .signal-mode-buttons button:focus-visible,
 .signal-mode-buttons button[aria-pressed="true"] {
   background: var(--ex-carbon-700);
-  color: var(--ex-aqua-500);
+  color: var(--selection-marker);
   outline: 0;
 }
 
@@ -402,7 +379,7 @@
   left: 48px;
   min-width: 190px;
   padding: 6px 8px;
-  border-radius: 4px;
+  border-radius: var(--ex-radius-surface);
   background: rgba(7, 11, 13, .9);
   color: var(--ex-vapor-50);
   font: 600 10px/1.35 var(--font-mono);
@@ -425,7 +402,7 @@
   top: 12px;
   padding: 6px 8px;
   border: 1px solid var(--ex-carbon-700);
-  border-radius: 4px;
+  border-radius: var(--ex-radius-surface);
   background: rgba(7, 11, 13, .88);
   color: var(--ex-graphite-400);
   font: 600 8px/1 var(--font-mono);
@@ -517,8 +494,8 @@
 }
 
 .signal-home {
-  min-height: calc(100vh - 57px);
-  padding: 28px;
+  min-height: calc(100vh - var(--ex-shell-header-height));
+  padding: 18px;
   background: var(--ex-carbon-950);
   color: var(--ex-vapor-50);
 }
@@ -545,32 +522,6 @@
 .signal-fdr-connectivity .signal-k {
   color: var(--text-muted);
   font-size: 10px;
-}
-
-.signal-fdr-connectivity .signal-tool-button {
-  height: 34px;
-  border-color: var(--border-strong);
-  background: var(--surface-card);
-  color: var(--text-body);
-  font-size: 10px;
-}
-
-.signal-fdr-connectivity .signal-tool-button:hover:not(:disabled),
-.signal-fdr-connectivity .signal-tool-button:focus-visible {
-  border-color: var(--ds-teal);
-  color: var(--ds-teal);
-}
-
-.signal-fdr-connectivity .signal-tool-button.is-primary {
-  border-color: var(--ds-teal);
-  background: var(--ex-state-live-bg);
-  color: var(--ds-teal-dark);
-}
-
-.signal-fdr-connectivity .signal-tool-button.is-danger:hover:not(:disabled),
-.signal-fdr-connectivity .signal-tool-button.is-danger:focus-visible {
-  border-color: var(--ex-state-fault-text);
-  color: var(--ex-state-fault-text);
 }
 
 .signal-fdr-head {
@@ -670,7 +621,7 @@
 .signal-fdr-wifi-settings-link:focus-visible {
   border-color: var(--border-strong);
   background: var(--surface-panel);
-  color: var(--ds-teal);
+  color: var(--selection-marker);
   outline: 0;
 }
 
@@ -718,10 +669,10 @@
   flex: 0 0 28px;
   align-items: center;
   justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--ds-teal) 32%, var(--border-rule));
+  border: 1px solid color-mix(in srgb, var(--ex-state-live-text) 32%, var(--border-rule));
   border-radius: 50%;
   background: var(--ex-state-live-bg);
-  color: var(--ds-teal);
+  color: var(--ex-state-live-text);
 }
 
 .signal-fdr-channel-head strong {
@@ -791,8 +742,8 @@
 
 .signal-fdr-capabilities-trigger:hover,
 .signal-fdr-capabilities-trigger:focus-visible {
-  border-color: var(--ds-teal);
-  color: var(--ds-teal);
+  border-color: var(--selection-marker);
+  color: var(--selection-marker);
   outline: 0;
 }
 
@@ -836,7 +787,7 @@
 }
 
 .signal-fdr-transport-notice-label {
-  color: var(--ds-teal);
+  color: var(--ex-state-live-text);
   font: 600 8px/1.2 var(--font-mono);
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -861,14 +812,14 @@
 .signal-fdr-capabilities-tooltip li svg {
   flex: 0 0 auto;
   margin-top: 1px;
-  color: var(--ds-teal);
+  color: var(--ex-state-live-text);
 }
 
 .signal-fdr-transport-notice {
   display: grid;
   gap: 3px;
   padding: 7px 8px;
-  border-left: 2px solid var(--ds-teal);
+  border-left: 2px solid var(--ex-state-live-text);
   background: var(--ex-state-live-bg);
 }
 
@@ -901,7 +852,7 @@
   width: 100%;
   height: 6px;
   margin: 0;
-  accent-color: var(--ds-teal);
+  accent-color: var(--selection-marker);
 }
 
 .signal-fdr-technical {
@@ -986,8 +937,8 @@
   gap: 18px;
   margin: 0 22px 18px;
   padding: 14px 16px;
-  border: 1px solid color-mix(in srgb, var(--ds-teal) 45%, var(--border-rule));
-  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--ex-state-live-text) 45%, var(--border-rule));
+  border-radius: var(--ex-radius-surface);
   background: var(--ex-state-live-bg);
 }
 
@@ -1016,8 +967,8 @@
 }
 
 .signal-fdr-source[data-state="ready"] {
-  border-color: color-mix(in srgb, var(--ds-teal) 45%, var(--border-rule));
-  color: var(--ds-teal);
+  border-color: color-mix(in srgb, var(--ex-state-live-text) 45%, var(--border-rule));
+  color: var(--ex-state-live-text);
 }
 
 .signal-fdr-source[data-state="error"] {
@@ -1032,7 +983,7 @@
   gap: 1px;
   overflow: hidden;
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: var(--ex-radius-surface);
   background: var(--border-rule);
 }
 
@@ -1045,13 +996,13 @@
   padding: 6px 7px 6px 10px;
   border: 1px solid var(--border-strong);
   border-left: 3px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: var(--ex-radius-surface);
   background: var(--surface-card);
   transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
 }
 
 .signal-fdr-recording-control[data-state="on"] {
-  border-left-color: var(--ds-teal);
+  border-left-color: var(--ex-state-live-text);
   background: color-mix(in srgb, var(--ex-state-live-bg) 70%, var(--surface-card));
 }
 
@@ -1107,11 +1058,11 @@
 }
 
 .signal-fdr-recording-switch:hover:not(:disabled) {
-  border-color: var(--ds-teal);
+  border-color: var(--selection-marker);
 }
 
 .signal-fdr-recording-switch:focus-visible {
-  outline: 2px solid var(--ex-aqua-500);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -1143,8 +1094,8 @@
 }
 
 .signal-fdr-recording-switch[aria-checked="true"] .signal-fdr-recording-switch-track {
-  border-color: var(--ds-teal);
-  background: var(--ds-teal);
+  border-color: var(--selection-marker);
+  background: var(--selection-marker);
 }
 
 .signal-fdr-recording-switch[aria-checked="true"] .signal-fdr-recording-switch-thumb {
@@ -1155,7 +1106,7 @@
 .signal-fdr-recording-control[data-state="on"] .signal-fdr-recording-switch-track::after {
   position: absolute;
   inset: -3px;
-  border: 1px solid var(--ds-teal);
+  border: 1px solid var(--ex-state-live-text);
   border-radius: inherit;
   animation: signal-fdr-recording-pulse 1.8s var(--ease-out) infinite;
   content: "";
@@ -1265,7 +1216,7 @@
 
 .signal-fdr-tools-summary::after {
   content: "+";
-  color: var(--ds-teal);
+  color: var(--accent);
   font: 600 15px/1 var(--font-mono);
 }
 
@@ -1323,7 +1274,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--ds-teal);
+  color: var(--ex-state-live-text);
   font: 600 9px/1.2 var(--font-mono);
   text-transform: uppercase;
 }
@@ -1340,7 +1291,7 @@
   padding: 9px;
   overflow: auto;
   border: 1px solid var(--border-rule);
-  border-radius: 4px;
+  border-radius: var(--ex-radius-surface);
   background: var(--surface-panel);
   color: var(--text-muted);
   font: 500 9px/1.4 var(--font-mono);
@@ -1350,7 +1301,7 @@
 .signal-home-head h1 {
   margin: 4px 0 5px;
   color: var(--ex-vapor-50);
-  font-size: 27px;
+  font-size: 23px;
 }
 
 .signal-home-head p,
@@ -1385,10 +1336,6 @@
   .signal-fdr-channel-head {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .signal-fdr-channel-head .signal-tool-button {
-    width: 100%;
   }
 
   .signal-fdr-channel-actions {
@@ -1428,10 +1375,6 @@
     flex-direction: column;
   }
 
-  .signal-fdr-onboarding .signal-tool-button {
-    width: 100%;
-  }
-
 }
 
 .signal-launch-card {
@@ -1442,7 +1385,7 @@
 }
 
 .signal-launch-body {
-  padding: 18px;
+  padding: 14px;
 }
 
 .signal-launch-body h2 {
@@ -1455,7 +1398,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 9px 12px;
   border-top: 1px solid var(--ex-carbon-700);
 }
 
@@ -1500,9 +1443,9 @@
 .signal-launch-rules > div {
   display: flex;
   gap: 9px;
-  padding: 10px 0;
+  padding: 7px 0;
   border-top: 1px solid var(--ex-carbon-700);
-  color: var(--ex-aqua-500);
+  color: var(--accent);
 }
 
 .signal-launch-rules span {
@@ -1621,9 +1564,9 @@ textarea {
   text-transform: uppercase;
 }
 
-.signal-telemetry-toggle:hover { color: var(--ex-aqua-500); }
-.signal-telemetry-toggle:focus-visible { outline: 2px solid var(--ex-aqua-500); outline-offset: -2px; }
+.signal-telemetry-toggle:hover { color: var(--selection-marker); }
+.signal-telemetry-toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 
 .signal-transport-control { display: flex; align-items: center; gap: var(--ex-space-2); flex-wrap: wrap; }
-.signal-transport-control select { width: auto; max-width: 14rem; }
+.signal-transport-control > .exds-selection-field select { width: auto; max-width: 14rem; }
 .signal-transport-control [hidden] { display: none; }

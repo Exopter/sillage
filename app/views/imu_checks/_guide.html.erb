@@ -3,7 +3,7 @@
     <span>ATTITUDE <strong data-imu-check-target="attitude" data-state="unknown">Unknown</strong></span>
     <span>HEADING <strong data-imu-check-target="heading" data-state="unknown">Unknown</strong></span>
     <small data-imu-check-target="qualityReason">Connect the ground radio to read this recorder.</small>
-    <button type="button" class="button-secondary" data-action="imu-check#connectRadio" data-imu-check-target="connectButton">Connect ground radio</button>
+    <button type="button" class="button-secondary exds-btn exds-btn--secondary" data-action="imu-check#connectRadio" data-imu-check-target="connectButton">Connect ground radio</button>
   </div>
   <div class="exds-calibration-guide">
     <div class="calibration-visual" data-imu-check-target="visual" data-state="waiting">
@@ -38,8 +38,8 @@
       <label class="calibration-confirm" data-imu-check-target="confirmation"><input type="checkbox" data-imu-check-target="confirmed"> <span>On the ground, clear of magnets and tools. The enclosure reference is level in both directions.</span></label>
       <progress class="calibration-progress" data-imu-check-target="progress" max="100" value="0" aria-label="Measured progress"></progress>
       <div class="workspace-actions">
-        <button type="button" class="button-primary" data-action="imu-check#advance" data-imu-check-target="actionButton" disabled>Start</button>
-        <button type="button" class="button-secondary" data-action="imu-check#cancel" data-imu-check-target="cancelButton">Cancel</button>
+        <button type="button" class="button-primary exds-btn exds-btn--primary" data-action="imu-check#advance" data-imu-check-target="actionButton" disabled>Start</button>
+        <button type="button" class="button-secondary exds-btn exds-btn--secondary" data-action="imu-check#cancel" data-imu-check-target="cancelButton">Cancel</button>
       </div>
       <div class="calibration-result" data-imu-check-target="result" role="status"></div>
       <p class="workspace-muted">Static consistency check in the selected mounting. Source sensor axes are preserved.</p>
