@@ -1,5 +1,6 @@
 <%= render "flights/signal_processing", flight: @flight %>
 <dl class="exds-browser-metadata">
+  <div><dt>Pilot</dt><dd><%= @flight.display_pilot %></dd></div>
   <div><dt>Date</dt><dd><%= logbook_date(@flight) %></dd></div>
   <div><dt>Location</dt><dd><%= @flight.display_location %></dd></div>
   <div><dt>Visibility</dt><dd><%= @flight.effective_visibility.capitalize %></dd></div>

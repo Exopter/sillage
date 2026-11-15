@@ -15,6 +15,8 @@ class User < ApplicationRecord
   has_many :feedbacks, dependent: :restrict_with_error
   has_many :flight_imports, dependent: :restrict_with_error
   has_many :flights, dependent: :restrict_with_error
+  has_many :piloted_flights, class_name: "Flight", foreign_key: :pilot_id,
+    inverse_of: :pilot, dependent: :restrict_with_error
   has_many :flight_comments, dependent: :restrict_with_error
   has_many :flight_folders, dependent: :destroy
   has_many :flight_folder_memberships, dependent: :destroy
@@ -45,6 +47,7 @@ class User < ApplicationRecord
   validate :accepted_users_have_password_digest
 
   scope :active, -> { where(disabled_at: nil) }
+  scope :available_as_pilot, -> { active.where.not(invitation_accepted_at: nil) }
   scope :admins, -> { where(role: "admin") }
 
   def self.default_admin

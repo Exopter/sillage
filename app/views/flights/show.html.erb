@@ -321,6 +321,8 @@
         </div>
         <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
           <%= form_with model: @flight, class: "details-form" do |form| %>
+            <%= form.label :pilot_id, "Pilot *" %>
+            <%= form.collection_select :pilot_id, @pilots, :id, ->(pilot) { pilot.full_name || pilot.email_address }, { prompt: "Select a pilot" }, required: true %>
             <%= form.label :description, "Description (optional)" %>
             <%= form.text_field :description %>
             <%= form.label :aircraft_id, t("flights.form.aircraft") %>
@@ -347,6 +349,7 @@
           <% end %>
         <% else %>
           <dl class="details-grid">
+            <div><dt>Pilot</dt><dd><%= @flight.display_pilot %></dd></div>
             <div><dt>Description</dt><dd><%= @flight.description %></dd></div>
             <div><dt>Aircraft</dt><dd><%= @flight.display_aircraft %></dd></div>
             <div><dt>Location</dt><dd><%= @flight.display_location %></dd></div>

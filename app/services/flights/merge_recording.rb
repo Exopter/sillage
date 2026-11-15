@@ -54,6 +54,7 @@ module Flights
       raise InvalidMerge, "The imported flight contains additional context requiring manual review." if
         sessions.any? { |session| session.flight_id == source.id } || source.operator_events.exists? || source.imu_checks.exists? ||
         ActiveStorage::Attachment.where(record: source).exists? || source.notes.present? || source.folder_id.present? ||
+        source.pilot_id != source.user_id ||
         FlightImport.where(target_flight_id: source.id).exists?
       raise InvalidMerge, "The Signal telemetry has no retained source batches." unless
         SignalBatch.where(signal_session_id: sessions.map(&:id)).exists?
