@@ -110,7 +110,16 @@ buildings load independently when configured; unavailable map data leaves the
 
 ## Signal ground radio
 
-Open `/signal` in desktop Chrome or Edge, start a session, then select
+Open `/signal` in desktop Chrome or Edge. The home header can check the ground
+radio and live wing telemetry before any session is created. It reads the same
+MAVLink stream without writing a local capture or sending session batches. A
+connected USB radio or SiK report alone never marks the wing connected; received
+FDR traffic expires after 1.5 seconds. The preview releases its serial lock before
+starting an acquisition. `Radio ready` describes the link only. The current
+recorder-to-assembly-to-aircraft installation chain determines the displayed
+aircraft name and registration.
+
+Start a session, then select
 **Connect radio** in the header. Choose the Holybro USB radio, not the recorder's USB
 port. Web Serial uses 57,600 baud and requires HTTPS or localhost. Both radios
 must already share the same SiK configuration.
@@ -146,6 +155,16 @@ The instrument and telemetry-strip `G load` readouts show the received three-axi
 accelerometer magnitude divided by 9.80665 m/s²: about 1 g at rest and 0 g in free
 fall, regardless of mounting orientation. This unsigned total load is derived
 only for display; stale or invalid acceleration shows no value.
+
+Signal's top-bar module icons display Main (the tunnel prototype's Seat), Central,
+AirSpeed and Display independently: source identity, sensor readiness, storage,
+recording and status age. `FDR_MODULE_STATUS` (MAVLink 42002) is emitted at 1 Hz
+per role by the distributed target. Status expires after three seconds, including
+its age before forwarding; heartbeat and another module cannot refresh it.
+The executable wire layout is `protocol/fdr.xml` in the FDR repository. Existing
+firmware without that message and the unimplemented Display remain Unknown.
+The compatible distributed firmware must be installed separately; local parser
+and rendering checks do not qualify radio operation on the boards.
 
 ## Controller identity maintenance
 
@@ -323,3 +342,37 @@ security updates; host package upgrades do not update existing image layers.
 The 2026-11-02 infrastructure security image tags retain the existing database/cache major versions and update operating-system packages. Native database backups and stopped rollback containers are retained on the production host. Existing storage mounts were verified unchanged.
 
 The final 2026-11-02 dependency refresh includes Nokogiri 1.19.6 and rails-html-sanitizer 1.7.2, addressing the serializer, concurrent scrubber and regular-expression security advisories published during the maintenance.
+
+## Shared live flights and audio debriefs
+
+Signal creates a Flight immediately. Starts are serialized with a PostgreSQL
+transaction advisory lock across this Sillage instance. Existing active sessions
+are joined, subject to flight visibility. The acquisition browser claims a persistent
+gateway token before opening its serial port. Remote stop requests are acknowledged
+only when that browser flushes its capture and completes the session. A disconnected
+gateway retains ownership so queued samples cannot collide with another producer.
+An explicit disconnected close ends the logical flight without claiming that the
+radio stopped. Late batches remain stored; samples before the closing timestamp
+can be materialized until an authoritative recording is attached.
+
+Join links use `?session=<uuid>&join=1`. Phone participants poll shared status every
+three seconds. Operation permissions remain administrator-only; flight visibility
+still governs access. The acquisition device must remain open and connected.
+
+Audio debriefs use browser MediaRecorder and IndexedDB recovery, Active Storage for
+the original audio, and an Active Job for transcription and summarization. Configure
+`OPENAI_API_KEY` in the application environment and Kamal secret bridge. Standard
+credentials never reach the browser: live transcription uses a short-lived client
+secret. Models are `gpt-live-transcribe`, `gpt-transcribe` for recovery, and
+`gpt-6-luna` for summaries. No API call is made until recording is requested.
+
+Reserve a debrief online before recording. Network loss during recording retains
+local audio; use Recover / retry saved audio after reconnecting. Mobile recording
+requires a foreground HTTPS page and microphone permission. Browser suspension may
+interrupt capture. A failed live transcript is regenerated from the original audio.
+Review the summary before publishing. Publishing is idempotent and retains the audio
+and transcript alongside the comment. The existing storage backup scope includes
+these Active Storage objects.
+
+For isolated validation, set `POSTGRES_DB=sillage_debrief_development` and
+`POSTGRES_TEST_DB=sillage_debrief_test`; never point test preparation at production.

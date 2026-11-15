@@ -1,7 +1,10 @@
 <% content_for :title, @active_session ? @active_session.flight&.code || "Unassigned session" : "Signal sessions" %>
 
-<% if @active_session %>
+<% if @active_session && params[:join] == "1" %>
+  <%= render "signal/shared_session", session: @active_session %>
+<% elsif @active_session %>
   <% content_for :connection_metrics do %>
+    <%= render "signal/module_status" %>
     <%= render "signal/radio_quality" %>
   <% end %>
   <% content_for :rail_control do %>
@@ -50,6 +53,8 @@
        data-signal-workspace-review-value="<%= params[:review] == "1" %>"
        data-signal-workspace-completed-value="<%= @active_session.status == "completed" %>"
        data-signal-workspace-session-value="<%= @active_session.uuid %>"
+       data-signal-workspace-recorder-device-id-value="<%= @active_session.station_metadata["recorder_device_id"] %>"
+       data-signal-workspace-recorder-assembly-id-value="<%= @active_session.station_metadata["recorder_assembly_id"] %>"
        data-signal-workspace-mount-profiles-value="<%= @imu_mount_profiles.to_json %>"
        data-signal-workspace-flight-id-value="<%= flight&.id %>"
        data-signal-workspace-flight-code-value="<%= flight&.code || "UNASSIGNED" %>"
@@ -149,11 +154,20 @@
     </div>
   </div>
 <% else %>
+  <% content_for :connection_control do %>
+    <%= render "signal/radio_status" %>
+  <% end %>
   <div class="signal-home ex-dark">
     <div class="signal-home-inner">
       <header class="signal-home-head">
-        <div><span class="signal-k">Sillage Signal</span><h1>Start live acquisition</h1><p>Connect the Holybro ground radio over USB to view live telemetry. Use Chrome or Edge on desktop.</p></div>
+        <div><span class="signal-k">Sillage Signal</span><h1>Start live acquisition</h1><p>Check the wing connection in the header, then start an acquisition. Use Chrome or Edge on desktop.</p></div>
       </header>
+      <% if @live_session %>
+        <section class="signal-launch-card"><div class="signal-launch-body">
+          <h2><%= @live_session.flight&.code || "Unassigned acquisition" %> · Live</h2>
+          <%= link_to "Join live session", signal_path(session: @live_session.uuid, join: 1), class: "exds-btn exds-btn--primary" %>
+        </div></section>
+      <% end %>
       <% if @retained_sessions.any? %>
         <section class="signal-launch-card" aria-label="Unassigned sessions">
           <div class="signal-launch-body"><span class="signal-k">Recovery</span><h2>Unassigned sessions</h2><p>Review an interrupted acquisition to save or discard it.</p></div>
@@ -165,6 +179,7 @@
           <% end %>
         </section>
       <% end %>
+      <p class="operations-help" data-signal-acquisition-notice>Connect a recorder assigned to an assembly to enable acquisition.</p>
       <div class="signal-launch-grid">
         <section class="signal-launch-card">
           <div class="signal-launch-body"><span class="signal-k">Prepared flights</span><h2>Attach to an existing flight</h2><p>Select a prepared flight or create a draft. Aircraft and configuration can be completed later.</p>
@@ -173,15 +188,15 @@
           <% @preparation_flights.each do |flight| %>
             <div class="signal-prep-row">
               <div><strong><%= flight.code %></strong><span><%= flight.name %> · <%= flight.display_aircraft %></span><span>Created <time datetime="<%= flight.created_at.iso8601 %>"><%= flight.created_at.utc.strftime("%d %b %Y · %H:%M UTC") %></time></span><%= link_to "Edit draft", edit_flight_path(flight), class: "workspace-strong-link" %></div>
-              <%= button_to "Open session", signal_sessions_path(flight_id: flight.id), class: "signal-tool-button exds-btn exds-btn--primary is-primary", form: { data: { turbo: false } } %>
+              <%= button_to "Open session", signal_sessions_path(flight_id: flight.id), class: "signal-tool-button exds-btn exds-btn--primary is-primary", disabled: true, data: { signal_acquisition: true }, params: { device_id: "" }, form: { data: { turbo: false, signal_acquisition_form: true } } %>
             </div>
           <% end %>
           <% if @preparation_flights.empty? %><div class="signal-prep-empty">No flight is currently in Preparation.</div><% end %>
         </section>
         <section class="signal-launch-card">
           <div class="signal-launch-body">
-            <span class="signal-k">Direct acquisition</span><h2>Unassigned acquisition</h2><p>Start telemetry without creating a flight. When leaving Signal, save the acquisition as a new flight or discard it.</p>
-            <%= button_to signal_sessions_path, class: "signal-tool-button exds-btn exds-btn--primary is-primary signal-start-direct", form: { data: { turbo: false } } do %><%= sillage_icon "radio", size: 15 %><span>Start unassigned session</span><% end %>
+            <span class="signal-k">Direct acquisition</span><h2>New live flight</h2><p>Start a shared flight and connect the radio on this device.</p>
+            <%= button_to signal_sessions_path, class: "signal-tool-button exds-btn exds-btn--primary is-primary signal-start-direct", disabled: true, data: { signal_acquisition: true }, params: { device_id: "" }, form: { data: { turbo: false, signal_acquisition_form: true } } do %><%= sillage_icon "radio", size: 15 %><span>Start live flight</span><% end %>
             <div class="signal-launch-rules"><div><%= sillage_icon "download", size: 15 %><span><strong>Local capture first</strong>Raw MAVLink continues during a brief Internet cut.</span></div><div><%= sillage_icon "upload", size: 15 %><span><strong>Automatic recovery</strong>Queued batches resume from the last acknowledgement.</span></div><div><%= sillage_icon "shield", size: 15 %><span><strong>microSD authoritative</strong>Signal complements the onboard recorder.</span></div></div>
           </div>
         </section>

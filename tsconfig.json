@@ -39,6 +39,7 @@
       "signal_layout": [
         "./app/javascript/lib/signal_layout.js"
       ],
+      "signal_radio_link": ["./app/javascript/lib/signal_radio_link.js"],
       "signal_telemetry": [
         "./app/javascript/lib/signal_telemetry.js"
       ],

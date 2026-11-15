@@ -5,11 +5,12 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
 
   setup do
     sign_in_as users(:julien)
-    @asset = Assembly.create!(name: "Signal FDR")
-    @fdr = create_embedded_controller(assembly: @asset,
+    @asset = create_exofdr_assembly
+    @fdr = create_embedded_controller(assembly: @asset, device_id: "ECU-112233445566",
       mavlink_system_id: 1,
       mavlink_component_id: 191
     )
+    @signal_recorder = @fdr
     Installation.create!(aircraft: aircraft(:pilatus), installable: @asset, installed_at: 1.hour.ago)
   end
 
@@ -18,7 +19,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     flight.update!(status: "preparation")
     uuid = SecureRandom.uuid
 
-    post api_v1_signal_sessions_path, params: { uuid:, flight_id: flight.id, started_at: Time.current.iso8601 }, as: :json
+    post api_v1_signal_sessions_path, params: { device_id: signal_recorder.device_id, uuid:, flight_id: flight.id, started_at: Time.current.iso8601 }, as: :json
 
     assert_response :created
     session = SignalSession.find_by!(uuid:)
@@ -78,20 +79,21 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     flight = flights(:one)
     flight.update!(status: "waiting_for_recording")
     assert_no_difference "SignalSession.count" do
-      post api_v1_signal_sessions_path, params: { flight_id: flight.id }, as: :json
+      post api_v1_signal_sessions_path, params: { device_id: signal_recorder.device_id, flight_id: flight.id }, as: :json
       assert_response :unprocessable_entity
-      post signal_sessions_path, params: { flight_id: flight.id }
+      post signal_sessions_path, params: { device_id: signal_recorder.device_id, flight_id: flight.id }
       assert_redirected_to signal_path(view: "home")
     end
     assert_equal "waiting_for_recording", flight.reload.status
   end
 
-  test "direct acquisition stays unassigned until saved and materializes exactly once" do
+  test "retained assigned-recorder acquisition materializes exactly once" do
     uuid = SecureRandom.uuid
+    create_signal_session(uuid:)
     assert_no_difference "Flight.count" do
-      post api_v1_signal_sessions_path, params: { uuid: }, as: :json
+      post api_v1_signal_sessions_path, params: { device_id: signal_recorder.device_id, uuid: }, as: :json
       assert_response :created
-      post api_v1_signal_sessions_path, params: { uuid: }, as: :json
+      post api_v1_signal_sessions_path, params: { device_id: signal_recorder.device_id, uuid: }, as: :json
       assert_response :created
     end
     session = SignalSession.find_by!(uuid:)
@@ -157,7 +159,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "processing recovery is visible and owner scoped" do
-    session = users(:julien).signal_sessions.create!(started_at: Time.current)
+    session = create_signal_session(started_at: Time.current)
     Signal::CompleteSession.new(signal_session: session, disposition: "save").call
     get signal_path(view: "home")
     assert_select "[aria-label='Completed sessions']", count: 0
@@ -177,7 +179,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "discard clears an unassigned acquisition and cannot be reversed by replay" do
-    session = users(:julien).signal_sessions.create!
+    session = create_signal_session
     Signal::IngestBatch.new(signal_session: session, sequence: 0, payload: { samples: [] }).call
     session.operator_events.create!(label: "Marker")
     assert_no_difference "Flight.count" do
@@ -210,14 +212,14 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_nil flight.aircraft
     get signal_path(view: "home")
     assert_select "a[href=?]", edit_flight_path(flight), text: "Edit draft"
-    post signal_sessions_path(flight_id: flight.id)
+    post signal_sessions_path(flight_id: flight.id), params: { device_id: signal_recorder.device_id }
     assert_equal flight, users(:julien).signal_sessions.order(:id).last.flight
   end
 
   test "recovery is owner scoped and excludes discarded acquisitions" do
-    session = users(:julien).signal_sessions.create!
+    session = create_signal_session
     other = users(:operator).signal_sessions.create!
-    discarded = users(:julien).signal_sessions.create!(status: "discarded")
+    discarded = create_signal_session(status: "discarded")
     get signal_path(view: "home")
     assert_response :success
     assert_select "a[href=?]", signal_path(session: session.uuid, review: 1), text: "Review session"
@@ -228,7 +230,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "attached sessions cannot be discarded and saving does not create another flight" do
-    session = users(:julien).signal_sessions.create!(flight: flights(:one))
+    session = create_signal_session(flight: flights(:one))
     patch complete_api_v1_signal_session_path(session.uuid), params: { disposition: "discard" }, as: :json
     assert_response :unprocessable_entity
     assert_no_difference "Flight.count" do
@@ -238,7 +240,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "mixed optional GPS columns are coerced and inserted atomically" do
-    session = users(:julien).signal_sessions.create!(flight: flights(:one))
+    session = create_signal_session(flight: flights(:one))
     post batches_api_v1_signal_session_path(session.uuid), params: {
       sequence: 0,
       samples: [
@@ -259,7 +261,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "malformed batches return the offending field without consuming their sequence" do
-    session = users(:julien).signal_sessions.create!(flight: flights(:one))
+    session = create_signal_session(flight: flights(:one))
     malformed = [
       [ { kind: "gps", latitude: "invalid", longitude: 5.7 }, "latitude" ],
       [ { kind: "gps", latitude: 91, longitude: 5.7 }, "latitude" ],
@@ -288,7 +290,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
 
   test "completed sessions accept duplicate receipts but cannot resume capture or overwrite imported status" do
     flight = users(:julien).flights.create!(name: "Completed Signal", status: "live")
-    session = users(:julien).signal_sessions.create!(flight:)
+    session = create_signal_session(flight:)
     post batches_api_v1_signal_session_path(session.uuid), params: { sequence: 0, samples: [] }, as: :json
     assert_response :success
     ended_at = Time.current.change(usec: 0)
@@ -315,7 +317,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
 
   test "a completed Signal flight becomes analysed through the existing import job" do
     flight = users(:julien).flights.create!(name: "Signal to recording", status: "live", aircraft: aircraft(:pilatus))
-    session = users(:julien).signal_sessions.create!(flight:)
+    session = create_signal_session(flight:)
     session.complete!
     assert_equal "waiting_for_recording", flight.reload.status
     assert_enqueued_with(job: FlySightImportJob) do
@@ -341,8 +343,8 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
 
   test "completion preserves another active session and an authoritative import in progress" do
     flight = users(:julien).flights.create!(name: "Shared capture", status: "live")
-    first = users(:julien).signal_sessions.create!(flight:)
-    second = users(:julien).signal_sessions.create!(flight:)
+    first = create_signal_session(flight:)
+    second = create_signal_session(flight:)
     first.complete!
     assert_equal "live", flight.reload.status
     flight.update!(status: "processing", flight_import: flight_imports(:one))
@@ -351,8 +353,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "a first live batch identifies an unassigned aircraft" do
-    post api_v1_signal_sessions_path, params: { uuid: SecureRandom.uuid }, as: :json
-    session = SignalSession.order(:created_at).last
+    session = create_signal_session
     assert_nil session.flight
 
     post batches_api_v1_signal_session_path(session.uuid), params: {
@@ -370,14 +371,15 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "a prepared flight learns the observed MAVLink identity for its installed FDR" do
-    asset = Assembly.create!(name: "Unidentified FDR")
-    fdr = create_embedded_controller(assembly: asset)
+    asset = create_exofdr_assembly
+    fdr = create_embedded_controller(assembly: asset, device_id: "ECU-FFEEDDCCBBAA")
     Installation.create!(aircraft: aircraft(:exowing), installable: asset, installed_at: 1.hour.ago)
     flight = flights(:two)
     flight.update!(status: "preparation")
     uuid = SecureRandom.uuid
 
-    post api_v1_signal_sessions_path, params: { uuid:, flight_id: flight.id }, as: :json
+    post api_v1_signal_sessions_path, params: { device_id: fdr.device_id, uuid:, flight_id: flight.id }, as: :json
+    assert_response :created
     post batches_api_v1_signal_session_path(uuid), params: {
       sequence: 0,
       mavlink_system_id: 42,
@@ -395,7 +397,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_equal({ "system_id" => 42, "component_id" => 191 }, controller_snapshot.dig("embedded_controller", "mavlink"))
   end
 
-  test "an ambiguous MAVLink system does not select an aircraft" do
+  test "the exact recorder identity resolves an aircraft despite an ambiguous MAVLink system" do
     second_asset = Assembly.create!(name: "Second Signal FDR")
     create_embedded_controller(assembly: second_asset,
       mavlink_system_id: 1,
@@ -403,7 +405,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     )
     Installation.create!(aircraft: aircraft(:exowing), installable: second_asset, installed_at: 1.hour.ago)
 
-    post api_v1_signal_sessions_path, params: { uuid: SecureRandom.uuid }, as: :json
+    post api_v1_signal_sessions_path, params: { device_id: signal_recorder.device_id, uuid: SecureRandom.uuid }, as: :json
     session = SignalSession.order(:created_at).last
     post batches_api_v1_signal_session_path(session.uuid), params: {
       sequence: 0,
@@ -415,12 +417,12 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     patch complete_api_v1_signal_session_path(session.uuid), params: { disposition: "save" }, as: :json
     assert_response :success
-    assert_nil session.reload.flight.aircraft
+    assert_equal aircraft(:pilatus), session.reload.flight.aircraft
   end
 
   test "renders the unified Signal workspace without view tabs" do
     flight = flights(:one)
-    session = users(:julien).signal_sessions.create!(flight:)
+    session = create_signal_session(flight:)
 
     get signal_path(session: session.uuid)
 
@@ -449,7 +451,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     create_installed_part(assembly: @asset, function: controller_function, manufacturer: "Seeed Studio", model: "XIAO ESP32S3")
     create_installed_part(assembly: @asset, function: storage_function, manufacturer: "SanDisk", model: "High Endurance")
 
-    get forge_fdrs_path
+    get forge_fdrs_path(connect: "1")
 
     assert_response :success
     assert_select ".workspace-table", text: /Model not reported/, count: 0
@@ -566,7 +568,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "Wi-Fi settings shortcut opens the only recorder connectivity page" do
-    get forge_fdrs_path
+    get forge_fdrs_path(connect: "1")
 
     shortcut = css_select("a.signal-fdr-wifi-settings-link").sole
     assert_equal connectivity_forge_fdr_path(@fdr), shortcut["href"]
@@ -578,7 +580,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "explicit Signal home does not reopen another active session" do
-    session = users(:julien).signal_sessions.create!(flight: flights(:one))
+    session = create_signal_session(flight: flights(:one))
 
     get signal_path(view: "home")
     assert_response :success
@@ -601,9 +603,9 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-recorder-session-host][hidden] #sillage-fdr-connectivity[data-turbo-permanent]", count: 1
     assert_select "#signal-development-status", count: 0
     assert_select ".signal-home button", minimum: 1
-    assert_select ".signal-home button[disabled]", count: 0
-    assert_select ".signal-prep-row button:not([disabled])", text: "Open session", count: 1
-    assert_select ".signal-start-direct:not([disabled])", text: /Start unassigned session/, count: 1
+    assert_select ".signal-home [data-signal-acquisition][disabled]", count: 2
+    assert_select ".signal-prep-row button[disabled]", text: "Open session", count: 1
+    assert_select ".signal-start-direct[disabled]", text: /Start live flight/, count: 1
   end
 
   test "keeps recorder connections hidden outside Forge" do

@@ -9,6 +9,8 @@ const STANDARD_GRAVITY = 9.80665
 /** Live measurements are expired independently, so a heartbeat cannot keep a failed sensor alive. */
 export class SignalTelemetry {
   bodyFrame = false
+  /** @type {Map<number, {report: import("../types/signal").ModuleStatusTelemetry, at: number}>} */
+  modules = new Map()
   /** @type {Map<string, {value: number | number[] | null, at: number}>} */
   values = new Map()
   /** @type {number[][]} */
@@ -69,7 +71,13 @@ export class SignalTelemetry {
 
   /** @param {import("../types/signal").DecodedMessage} decoded @param {number} now */
   apply(decoded, now) {
-    if (decoded.name === "live_instruments") {
+    if (decoded.name === "module_status") {
+      const previous = this.modules.get(decoded.role)
+      // Duplicate or reordered relay frames cannot extend a module's lifetime.
+      if (previous && ((decoded.timeBootMs - previous.report.timeBootMs) >>> 0) >= 0x80000000) return
+      if (previous && decoded.timeBootMs === previous.report.timeBootMs) return
+      this.modules.set(decoded.role, {report: decoded, at: now})
+    } else if (decoded.name === "live_instruments") {
       if (decoded.attitude) this.apply(decoded.attitude, now)
       else for (const key of ["roll", "pitch", "heading"]) this.set(key, null, now)
       for (const key of ["accel", "gyro", "mag", "temperature"]) this.set(key, null, now)
@@ -130,11 +138,33 @@ export class SignalTelemetry {
   }
 
   /** @param {number} now */
+  moduleSnapshot(now) {
+    return ["Main", "Central", "AirSpeed", "Display"].map((name, index) => {
+      const item = this.modules.get(index + 1), report = item?.report
+      const ageMs = report?.ageMs != null && item ? report.ageMs + Math.max(0, now - item.at) : null
+      const known = Boolean(report && (report.flags & 1) && ageMs != null)
+      const fresh = known && ageMs != null && ageMs < 3_000
+      const validity = report?.validity ?? 0
+      const sensors = index <= 1 ? ((validity & 120) === 120 ? "IMU ready" : "IMU unavailable") +
+        (validity & 1 ? (validity & 2 ? " · GPS fix" : " · GPS no fix") : " · GPS unavailable")
+        : index === 2 ? (validity & 4 ? "Pitot ready" : "Pitot unavailable") : "Sensor status unavailable"
+      const sensorReady = index <= 1 ? (validity & 123) === 123 : index === 2 ? Boolean(validity & 4) : false
+      const storageReady = Boolean(report && (report.flags & 2))
+      const state = !known ? "unknown" : !fresh ? "stale" : storageReady && sensorReady && !(report && (report.flags & 16)) ? "ready" : "degraded"
+      return {role: index + 1, name, state, ageMs, deviceId: report?.deviceId || "",
+        sensors: fresh ? sensors : "Sensor status unavailable",
+        storage: fresh ? (report && (report.flags & 16) ? "Cache full · live only" : storageReady ? (report && (report.flags & 4) ? "Recording" : "Storage ready") : "Storage unavailable") +
+          (report && (report.flags & 8) ? " · past write errors" : "") : "Storage status unavailable"}
+    })
+  }
+
+  /** @param {number} now */
   snapshot(now) {
     const verticalSpeed = this.number("verticalSpeed", now)
     const groundspeed = this.number("groundspeed", now)
     const acceleration = this.vector("accel", now)
     return {
+      modules: this.moduleSnapshot(now),
       heading: this.number("heading", now) ?? this.number("course", now),
       airspeed: this.number("airspeed", now), altitude: this.number("altitude", now), verticalSpeed,
       glide: verticalSpeed != null && verticalSpeed < -0.5 && groundspeed != null ? groundspeed / -verticalSpeed : null,

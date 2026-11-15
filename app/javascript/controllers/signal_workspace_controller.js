@@ -6,6 +6,7 @@ import { ImuHealth } from "imu_health"
 import { BELLY_MOUNT, NATIVE_MOUNT, interpretImu } from "imu_mount"
 import { SignalTelemetry, groundStationHeartbeat } from "signal_telemetry"
 import { directTelemetryPort } from "signal_transport"
+import { resolveRadioIdentity } from "signal_radio_link"
 import { SignalMap } from "signal_map"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
 
@@ -57,6 +58,8 @@ const CHART_WINDOW_MS = 30_000
  * @property {HTMLElement[]} streamBadgeTargets
  * @property {HTMLElement} latestEventTarget
  * @property {boolean} completedValue
+ * @property {string} recorderDeviceIdValue
+ * @property {number} recorderAssemblyIdValue
  * @property {string} sessionValue
  * @property {string} flightCodeValue
  * @property {string} batchUrlValue
@@ -86,6 +89,8 @@ export default class extends TypedController {
   qualitySignature = ""
   preflightInvalidated = false
   qualityContextLoading = false
+  acquisitionAuthorized = false
+  /** @type {symbol|null} */ captureAuthorization = null
   measurements = new SignalTelemetry()
   telemetry = this.measurements.snapshot(0)
   /** @type {number|undefined} */
@@ -209,6 +214,8 @@ export default class extends TypedController {
     completed: Boolean,
     review: Boolean,
     session: String,
+    recorderDeviceId: String,
+    recorderAssemblyId: Number,
     mountProfiles: Object,
     flightCode: String,
     flightId: String,
@@ -419,7 +426,23 @@ export default class extends TypedController {
 
   /** @param {SerialPort} port */
   async openSerial(port) {
+    if (!this.recorderDeviceIdValue || !this.recorderAssemblyIdValue) throw new Error("Assign a recorder to an assembly and start a new acquisition.")
+    const tokenKey = `signal-gateway:${this.sessionValue}`
+    let token = localStorage.getItem(tokenKey)
+    if (!token) { token = crypto.randomUUID(); localStorage.setItem(tokenKey, token) }
+    const gatewayUrl = `/api/v1/signal_sessions/${this.sessionValue}/gateway`
+    const heartbeat = async () => {
+      const response = await fetch(gatewayUrl, { method: "POST", headers: { "X-Signal-Gateway": localStorage.getItem(`signal-gateway:${this.sessionValue}`) || "", "Content-Type": "application/json", "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "" }, body: JSON.stringify({ token }) })
+      if (!response.ok) throw new Error("Another device owns this session, or access was revoked.")
+      const state = await response.json()
+      if (state.stop_requested && !this.ending && !this.ended) await this.finishSession("save")
+    }
+    await heartbeat()
+    if (this.ended || this.ending) return
+    const timer = window.setInterval(() => { if (this.port && !this.ended) void heartbeat().catch(() => this.showWarning("Gateway connection interrupted. Remote commands are unavailable.")); else window.clearInterval(timer) }, 3000)
+
     const generation = this.connectionGeneration
+    this.acquisitionAuthorized = false
     this.port = port
     this.portOpening = port.open({ baudRate: 57_600, bufferSize: 65_536 })
     try {
@@ -439,10 +462,10 @@ export default class extends TypedController {
     this.frameTimes = []
     this.mavlinkSystemId = null
     this.mavlinkComponentId = null
-    this.worker = new Worker("/signal_serial_worker.js?v=67-direct-transports")
+    this.worker = new Worker("/signal_serial_worker.js?v=module-status-42002")
     this.worker.onmessage = ({ data }) => this.handleWorkerMessage(data)
     this.worker.onerror = () => this.showWarning("Telemetry decoding stopped. Reconnect the recorder.")
-    this.worker.postMessage({ type: "init-capture", filename: `${this.flightCodeValue}-${this.sessionValue}.mavcap` })
+    this.recorderStatusTarget.textContent = "Checking recorder assignment"
     this.renderRadioControl()
     this.radioStatusTarget.textContent = "Connected · waiting for MAVLink"
     this.updateGroundRadioState("connected")
@@ -508,6 +531,8 @@ export default class extends TypedController {
   }
 
   async performStopSerial() {
+    this.acquisitionAuthorized = false
+    this.captureAuthorization = null
     window.clearInterval(this.radioTimer)
     this.radioTimer = undefined
     try { await this.radioWriter?.abort() } catch (_) { /* A disconnected port may reject abort. */ }
@@ -540,6 +565,26 @@ export default class extends TypedController {
     setAircraftConnection(this.connectionKind, state === "connected")
   }
 
+  /** @param {import("../types/signal").FrameMessage} message */
+  async authorizeCapture(message) {
+    if (this.captureAuthorization) return
+    const token = this.captureAuthorization = Symbol("capture-authorization")
+    const port = this.port
+    try {
+      const identity = await resolveRadioIdentity(this.recorderDeviceIdValue)
+      if (this.captureAuthorization !== token || this.port !== port || !port || this.ended) return
+      if (!identity.canAcquire || identity.assemblyId !== this.recorderAssemblyIdValue) throw new Error("The recorder is no longer assigned to this acquisition's assembly.")
+      this.acquisitionAuthorized = true
+      this.worker?.postMessage({type: "init-capture", filename: `${this.flightCodeValue}-${this.sessionValue}.mavcap`})
+      this.handleWorkerMessage(message)
+    } catch (error) {
+      if (this.captureAuthorization === token && this.port === port) {
+        this.showWarning(error instanceof Error ? error.message : String(error))
+        await this.stopSerial()
+      }
+    } finally { if (this.captureAuthorization === token) this.captureAuthorization = null }
+  }
+
   /** @param {import("../types/signal").CaptureMessage} message */
   handleWorkerMessage(message) {
     if (message.type === "capture-ready") {
@@ -556,6 +601,16 @@ export default class extends TypedController {
       return
     }
     if (message.type !== "frame") return
+    if (message.decoded.name === "imu_quality" && message.decoded.deviceId !== this.recorderDeviceIdValue &&
+        (this.mavlinkSystemId == null || (String(message.systemId) === this.mavlinkSystemId && String(message.componentId) === this.mavlinkComponentId))) {
+      this.showWarning("The connected recorder does not match this acquisition. Start a new session with the assigned board.")
+      void this.stopSerial()
+      return
+    }
+    if (!this.acquisitionAuthorized) {
+      if (message.decoded.name === "imu_quality" && message.decoded.deviceId === this.recorderDeviceIdValue) void this.authorizeCapture(message)
+      return
+    }
     if (message.decoded.name === "heartbeat" && message.decoded.type === 6) return
 
     const now = Date.now()
@@ -624,11 +679,18 @@ export default class extends TypedController {
         ? `Live · ${this.mavlinkSystemId}/${this.mavlinkComponentId} · ${this.frameTimes.length} frames/s`
         : this.lastFrameAt ? "No telemetry · link lost" : "Connected · waiting for MAVLink"
     }
+    this.renderModules()
     this.renderRadioMetrics(live, now)
     this.dataStatusTarget.textContent = this.ended ? "Session ended locally" : live ? "Receiving telemetry" : this.lastFrameAt ? "Telemetry stale" : "Waiting for telemetry"
     this.pushHistory(live, now)
     this.renderValues()
     this.drawAll()
+  }
+
+  renderModules() {
+    window.dispatchEvent(new CustomEvent("sillage:module-status", {detail: {
+      modules: this.telemetry.modules, connected: Boolean(this.port && !this.ended), ended: this.ended
+    }}))
   }
 
   renderRadioControl() {
@@ -726,6 +788,7 @@ export default class extends TypedController {
         sequence,
         first_received_at: samples[0].recorded_at,
         last_received_at: samples[samples.length - 1].recorded_at,
+        device_id: this.recorderDeviceIdValue,
         mavlink_system_id: this.mavlinkSystemId,
         mavlink_component_id: this.mavlinkComponentId,
         position: this.telemetry.gps ? { longitude: this.telemetry.gps[0], latitude: this.telemetry.gps[1] } : null,
@@ -966,7 +1029,7 @@ export default class extends TypedController {
       this.returnHomeAfterSync = false
       this.completionDisposition = null
       if (this.exitForm) this.exitForm.form.requestSubmit(this.exitForm.submitter || undefined)
-      else window.location.assign(this.exitDestination || this.homeUrlValue)
+      else window.location.assign(this.exitDestination || (this.flightIdValue ? `/flights/${this.flightIdValue}` : this.homeUrlValue))
     } catch (error) {
       this.leaving = false
       this.showWarning(`Session finalized; local cleanup failed: ${error instanceof Error ? error.message : String(error)}. Keep this page open to retry.`)
@@ -986,11 +1049,15 @@ export default class extends TypedController {
       for (const record of records) {
         const response = await fetch(record.url, {
           method: record.method,
-          headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "" },
+          headers: { "X-Signal-Gateway": localStorage.getItem(`signal-gateway:${this.sessionValue}`) || "", "Content-Type": "application/json", "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "" },
           body: JSON.stringify(record.body)
         })
         if (!response.ok) {
           const body = await response.json().catch(() => null)
+          if (body?.code === "recorder_assignment_required") {
+            this.showWarning(body.error || "Recorder assignment is required.")
+            await this.releaseCapture()
+          }
           const detail = typeof body?.error === "string" ? body.error : `Cloud returned ${response.status}`
           throw new Error(record.kind === "batch" ? `Batch ${record.sequence}: ${detail}` : detail)
         }

@@ -1,6 +1,9 @@
 export type AttitudeTelemetry = { name: "attitude"; timeBootMs?: number; coordinateFrame?: "sensor_native" | "body_frd_ned"; quaternion: number[]; rollDeg: number; pitchDeg: number; yawDeg: number; rollSpeed: number; pitchSpeed: number; yawSpeed: number }
 
+export type ModuleStatusTelemetry = { name: "module_status"; timeBootMs: number; bootId: number; ageMs: number | null; validity: number; role: number; flags: number; deviceId: string }
+
 export type DecodedMessage =
+  | ModuleStatusTelemetry
   | { name: "live_instruments"; timeUs: string; attitude: AttitudeTelemetry | null; differentialPa: number | null; gLoad: number | null }
   | { name: "imu_quality"; deviceId: string; bootId: number; timeBootMs: number; imuEpoch: number; firmware: string; headingAccuracyDeg: number | null; agesMs: number[]; validity: number; accuracy: number[] }
   | { name: "heartbeat"; customMode: number; type: number; autopilot: number; baseMode: number; systemStatus: number }
@@ -33,6 +36,7 @@ export type SignalSample = { kind: "sensor"; sensor_type: string; recorded_at: s
       horizontal_accuracy_m?: number; vertical_accuracy_m?: number; horizontal_speed_mps?: number;
       heading_deg?: number; gps_fix?: number; satellite_count?: number }
 export interface BatchBody {
+  device_id?: string;
   sequence: number; first_received_at: string; last_received_at: string;
   mavlink_system_id?: string | null; mavlink_component_id?: string | null;
   position?: { longitude: number; latitude: number } | null; samples: SignalSample[];

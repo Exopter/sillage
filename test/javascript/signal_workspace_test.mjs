@@ -9,18 +9,30 @@ const healthURL = new URL("../../app/javascript/lib/imu_health.js", import.meta.
 const telemetryURL = new URL("../../app/javascript/lib/signal_telemetry.js", import.meta.url).href
 const instrumentsURL = new URL("../../app/javascript/lib/signal_instruments.js", import.meta.url).href
 const layoutURL = new URL("../../app/javascript/lib/signal_layout.js", import.meta.url).href
-const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountedReference} from "${mountURL}";\nimport {ImuHealth} from "${healthURL}";\nimport {SignalTelemetry, groundStationHeartbeat} from "${telemetryURL}";\nimport {instrumentStyle} from "${instrumentsURL}";\nimport {clamp, signalLayoutPreset, parseSignalLayout} from "${layoutURL}";\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString("base64")}`)
+const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountedReference} from "${mountURL}";\nimport {ImuHealth} from "${healthURL}";\nimport {SignalTelemetry, groundStationHeartbeat} from "${telemetryURL}";\nimport {instrumentStyle} from "${instrumentsURL}";\nimport {clamp, signalLayoutPreset, parseSignalLayout} from "${layoutURL}";\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\nconst resolveRadioIdentity = (...args) => globalThis.signalIdentityLookup(...args);\n${source}`).toString("base64")}`)
 const view = new Workspace()
 for (const name of ["qualityAttitude", "qualityHeading", "attitudeDetail", "headingDetail", "preflightDetail", "preflightStatus"]) view[`${name}Target`] = {textContent: "", dataset: {}}
 for (const name of ["radioStatus", "parserStatus", "dataStatus", "heading", "airspeed", "altitude", "verticalSpeed", "glide", "aircraftLabel"]) view[`${name}Target`] = {textContent: ""}
 view.sensorValueTargets = ["accel", "gyro", "mag", "pressure", "temperature", "gps", "gLoad"].map((sensor) => ({dataset: {sensor}, textContent: ""}))
 view.streamBadgeTargets = ["charts", "map", "instruments"].map((widget) => ({dataset: {}, textContent: "", closest: () => ({getAttribute: () => widget})}))
 view.port = {}
+view.acquisitionAuthorized = true
+view.recorderDeviceIdValue = "ECU-112233445566"
 view.drawAll = () => {}
 const originalNow = Date.now
 let now = 10_000
 Date.now = () => now
 const frame = (decoded, systemId = 1, componentId = 191) => ({type: "frame", decoded, systemId, componentId, receivedAtUs: String(now * 1000), parser: {errors: 0, ignored: 0, dropped: 0}})
+const moduleSource = (await readFile(new URL("../../app/javascript/controllers/signal_module_status_controller.js", import.meta.url), "utf8"))
+  .replace(/^import .*$/gm, "").replace(/const TypedController = .*$/m, "const TypedController = class {}")
+const {default: ModuleStatus} = await import(`data:text/javascript;base64,${Buffer.from(moduleSource).toString("base64")}`)
+const moduleView = new ModuleStatus()
+moduleView.moduleTargets = [1,2,3,4].map(role => ({dataset: {moduleRole: String(role)},
+  fields: Object.fromEntries(["state", "identity", "sensors", "storage", "age"].map(key => [key, {textContent: ""}])),
+  attributes: {},
+  querySelector(selector) { return selector === "[data-module-trigger]" ? {setAttribute: (key,value) => {this.attributes[key] = value}} : this.fields[selector.match(/data-module-(\w+)/)[1]] }
+
+}))
 const originalRadioWindow = globalThis.window
 const radioSource = (await readFile(new URL("../../app/javascript/controllers/radio_quality_controller.js", import.meta.url), "utf8"))
   .replace(/^import .*$/gm, "")
@@ -33,6 +45,7 @@ radioView.linkTargets = ["ground", "air"].map(endpoint => ({dataset: {endpoint},
 }))
 globalThis.window = new EventTarget()
 window.addEventListener("sillage:radio-quality", event => radioView.update(event))
+window.addEventListener("sillage:module-status", event => moduleView.update(event))
 const radio = {name: "radio", rssi: 133, remoteRssi: 114, noise: 38, remoteNoise: 100, txBufferPercent: 90, rxErrors: 10, fixed: 20}
 view.handleWorkerMessage(frame({name: "heartbeat", type: 6}, 255, 190))
 assert.equal(view.mavlinkSystemId, null, "a ground station heartbeat cannot select the aircraft")
@@ -60,6 +73,17 @@ view.handleWorkerMessage(frame(radio, 51, 68))
 assert.equal(view.mavlinkSystemId, "1")
 view.handleWorkerMessage(frame({name: "attitude", rollDeg: 100, pitchDeg: 100, yawDeg: 120}, 2))
 assert.equal(view.telemetry.heading, 30, "another aircraft must not overwrite the selected source")
+const moduleReport = {name: "module_status", role: 2, timeBootMs: 10000, bootId: 2, ageMs: 0,
+  flags: 7, validity: 123, deviceId: "ECU-DCB4D93A2350"}
+view.handleWorkerMessage(frame(moduleReport, 2))
+view.refreshTelemetry()
+assert.equal(moduleView.moduleTargets[1].fields.state.textContent, "Unknown", "other aircraft cannot populate module status")
+view.handleWorkerMessage(frame(moduleReport))
+view.refreshTelemetry()
+assert.equal(moduleView.moduleTargets[1].fields.state.textContent, "Ready")
+assert.equal(moduleView.moduleTargets[1].attributes["aria-label"], "Central: Ready")
+assert.equal(moduleView.moduleTargets[1].fields.identity.textContent, moduleReport.deviceId)
+assert.equal(moduleView.moduleTargets[3].fields.state.textContent, "Unknown")
 const gps = {name: "gps", timeUs: "1000000", latitude: 0, longitude: 0, altitudeM: 100, hdop: null, vdop: null, velocityMps: null, courseDeg: null, satellites: 0, fix: 1}
 view.handleWorkerMessage(frame(gps))
 view.refreshTelemetry()
@@ -72,13 +96,15 @@ assert.equal(view.streamBadgeTargets[1].textContent, "Live")
 const point = view.pendingSamples.at(-1)
 assert.equal(point.kind, "gps")
 assert.equal("horizontal_accuracy_m" in point, false, "unitless GPS dilution must not reach the API as metre accuracy")
-now += 2_000
+now += 3_000
 view.handleWorkerMessage(frame(radio, 51, 68))
-assert.equal(view.pendingSamples.at(-1).readings.airTelemetryAgeMs, 2000, "radio history preserves stale aircraft telemetry context")
+assert.equal(view.pendingSamples.at(-1).readings.airTelemetryAgeMs, 3000, "radio history preserves stale aircraft telemetry context")
 view.refreshTelemetry()
 assert.equal(view.streamBadgeTargets[0].textContent, "Stale", "ground-radio status cannot keep the Air link live")
 assert.ok(radioView.linkTargets.every(link => link.dataset.level === "0" && link.value.textContent === "RSSI --- · S/N ---"), "repeated radio reports must not show live strength after Air telemetry stops")
 assert.ok(radioView.linkTargets.every(link => link.label.textContent === "No telemetry"))
+assert.equal(moduleView.moduleTargets[1].fields.state.textContent, "Link lost")
+assert.equal(moduleView.moduleTargets[1].fields.storage.textContent, "Storage status unavailable")
 assert.equal(view.airspeedTarget.textContent, "---")
 assert.equal(view.headingTarget.textContent, "---")
 assert.equal(view.altitudeTarget.textContent, "---")
@@ -308,3 +334,45 @@ transmitter.ended = false
 transmitter.port.writable.getWriter = () => {throw new Error("device disconnected")}
 await transmitter.sendRadioHeartbeat()
 assert.equal(transmitter.radioWrite, null, "a failed diagnostic write does not break reception or retain an in-flight write")
+
+// Local capture stays closed until the received ECU and current assembly agree.
+const tick = () => new Promise(resolve => setImmediate(resolve))
+let lookupCount = 0, finishLookup
+const gate = new Workspace()
+gate.port = {}
+gate.recorderDeviceIdValue = "ECU-112233445566"
+gate.recorderAssemblyIdValue = 42
+gate.worker = {commands:[],postMessage(command){this.commands.push(command)}}
+gate.applyTelemetry = () => {gate.applied = (gate.applied || 0) + 1}
+gate.parserStatusTarget = {textContent:""}
+gate.showWarning = message => {gate.warning = message}
+gate.stopSerial = async () => {gate.port=null; gate.acquisitionAuthorized=false; gate.captureAuthorization=null}
+globalThis.signalIdentityLookup = () => {lookupCount++; return new Promise(resolve => {finishLookup=resolve})}
+gate.handleWorkerMessage(frame(radio))
+assert.equal(gate.pendingSamples.length,0)
+assert.equal(gate.worker.commands.length,0)
+const identity = frame({name:"imu_quality",deviceId:gate.recorderDeviceIdValue})
+gate.handleWorkerMessage(identity)
+gate.handleWorkerMessage(identity)
+assert.equal(lookupCount,1,"concurrent quality frames share a single assignment check")
+assert.equal(gate.worker.commands.length,0,"a pending identity check cannot open capture")
+finishLookup({canAcquire:true,assemblyId:42}); await tick()
+assert.equal(gate.acquisitionAuthorized,true)
+assert.equal(gate.worker.commands[0].type,"init-capture")
+assert.equal(gate.applied,1)
+gate.handleWorkerMessage(frame({name:"imu_quality",deviceId:"ECU-FFFFFFFFFFFF"}))
+assert.equal(gate.acquisitionAuthorized,false,"switching the selected ECU stops capture")
+assert.match(gate.warning,/does not match/)
+gate.port = {}; gate.mavlinkSystemId=null; gate.worker.commands=[]
+globalThis.signalIdentityLookup = async () => ({canAcquire:false,assemblyId:null})
+gate.handleWorkerMessage(identity); await tick()
+assert.equal(gate.worker.commands.length,0,"unassigned recorders cannot create a raw capture")
+assert.match(gate.warning,/no longer assigned/)
+gate.port = {}
+globalThis.signalIdentityLookup = () => new Promise(resolve => {finishLookup=resolve})
+gate.handleWorkerMessage(identity)
+gate.captureAuthorization=null; gate.port={}
+finishLookup({canAcquire:true,assemblyId:42}); await tick()
+assert.equal(gate.worker.commands.length,0,"a late identity response cannot authorize a different connection")
+delete globalThis.signalIdentityLookup
+console.log("Signal capture assignment, ECU switch and delayed authorization tests passed")

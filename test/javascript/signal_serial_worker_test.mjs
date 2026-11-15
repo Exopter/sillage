@@ -292,3 +292,23 @@ liveView.setFloat32(28, 0, true)
 await feed(mavlinkV2Frame({sequence: 83, messageId: 42001, payload: livePayload.slice(0, 28), crcExtra: 201, componentId: 191}), '900300000')
 assert.equal(frameMessages().at(-1).decoded.gLoad, 0, 'trailing-zero truncation preserves free fall')
 assert.equal(frameMessages().at(-1).decoded.differentialPa, null)
+
+const modulePayload = new Uint8Array(32), moduleView = new DataView(modulePayload.buffer)
+moduleView.setUint32(0, 12000, true); moduleView.setUint32(4, 123, true); moduleView.setUint32(8, 500, true)
+moduleView.setUint16(12, 127, true); modulePayload[14] = 2; modulePayload[15] = 7
+modulePayload.set(new TextEncoder().encode("ECU-441BF685BEC8"), 16)
+await feed(mavlinkV2Frame({sequence: 90, messageId: 42002, payload: modulePayload, crcExtra: 30, componentId: 191}), "1000000000")
+assert.equal(frameMessages().at(-1).decoded.name, "module_status")
+assert.deepEqual(JSON.parse(JSON.stringify(frameMessages().at(-1).decoded)), {name: "module_status", timeBootMs: 12000,
+  bootId: 123, ageMs: 500, validity: 127, role: 2, flags: 7, deviceId: "ECU-441BF685BEC8"})
+moduleView.setUint32(8, 0xffffffff, true); modulePayload[14] = 4; modulePayload[15] = 0; modulePayload.fill(0, 16)
+await feed(mavlinkV2Frame({sequence: 91, messageId: 42002, payload: modulePayload.slice(0,15), crcExtra: 30, componentId: 191}), "1000000001")
+assert.equal(frameMessages().at(-1).decoded.ageMs, null, "unavailable modules survive MAVLink trailing-zero truncation")
+assert.equal(frameMessages().at(-1).decoded.deviceId, "")
+modulePayload[15] = 1
+await feed(mavlinkV2Frame({sequence: 92, messageId: 42002, payload: modulePayload, crcExtra: 30, componentId: 191}), "1000000002")
+assert.equal(frameMessages().at(-1).decoded.name, "unknown", "known health requires a full device identity")
+modulePayload[14] = 5; modulePayload[15] = 0
+await feed(mavlinkV2Frame({sequence: 93, messageId: 42002, payload: modulePayload, crcExtra: 30, componentId: 191}), "1000000003")
+assert.equal(frameMessages().at(-1).decoded.name, "unknown", "unsupported roles cannot populate a module")
+console.log("Signal module wire payload, identity and truncation tests passed")

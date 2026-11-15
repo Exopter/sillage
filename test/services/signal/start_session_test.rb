@@ -5,14 +5,14 @@ class Signal::StartSessionTest < ActiveSupport::TestCase
     flight = flights(:one)
     flight.update!(status: "preparation", visibility: "team")
     flight.update!(pilot: users(:member))
-    session = Signal::StartSession.new(user: users(:operator), flight_id: flight.id).call
+    session = Signal::StartSession.new(device_id: signal_recorder.device_id, user: users(:operator), flight_id: flight.id).call
     assert_equal flight, session.flight
     assert_equal users(:operator), session.user
     assert_equal users(:julien), flight.reload.user
     assert_equal users(:member), flight.pilot
     flight.update!(visibility: "private")
-    assert_raises(ActiveRecord::RecordNotFound) do
-      Signal::StartSession.new(user: users(:operator), flight_id: flight.id).call
+    assert_raises(Signal::StartSession::InvalidFlight) do
+      Signal::StartSession.new(device_id: signal_recorder.device_id, user: users(:operator), flight_id: flight.id).call
     end
   end
 
@@ -22,6 +22,7 @@ class Signal::StartSessionTest < ActiveSupport::TestCase
     started_at = Time.zone.parse("2026-08-18 10:00:00")
 
     session = Signal::StartSession.new(
+      device_id: signal_recorder.device_id,
       user: users(:julien),
       flight_id: flight.id,
       uuid: SecureRandom.uuid,
@@ -32,21 +33,23 @@ class Signal::StartSessionTest < ActiveSupport::TestCase
     assert_equal flight, session.flight
     assert_equal "live", flight.reload.status
     assert_equal "team", flight.visibility
-    assert_equal({ "source" => "test" }, session.station_metadata)
+    assert_equal({ "source" => "test", "recorder_device_id" => signal_recorder.device_id,
+      "recorder_assembly_id" => signal_recorder.assembly.id }, session.station_metadata)
+    assert_equal signal_recorder.assembly, flight.fdr
     assert_equal flight.aircraft.configuration_snapshot, flight.configuration_snapshot
   end
 
-  test "creates an unassigned session and is idempotent for a supplied uuid" do
+  test "creates a live flight and is idempotent for a supplied uuid" do
     uuid = SecureRandom.uuid
     service = -> {
-      Signal::StartSession.new(user: users(:julien), uuid:, started_at: Time.current).call
+      Signal::StartSession.new(device_id: signal_recorder.device_id, user: users(:julien), uuid:, started_at: Time.current).call
     }
 
-    assert_no_difference "Flight.count" do
+    assert_difference "Flight.count", 1 do
       assert_difference "SignalSession.count", 1 do
         first = service.call
         assert_equal first, service.call
-        assert_nil first.flight
+        assert_equal "live", first.flight.status
       end
     end
   end

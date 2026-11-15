@@ -5,6 +5,7 @@ class FlightComment < ApplicationRecord
   IMAGE_TYPES = %w[image/jpeg image/png image/gif image/webp].freeze
 
   belongs_to :flight
+  has_one :flight_debrief, dependent: :nullify
   belongs_to :user
   has_many_attached :images
   attr_reader :removed_image_ids

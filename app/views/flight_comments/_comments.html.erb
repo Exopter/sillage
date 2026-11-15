@@ -2,6 +2,7 @@
 <% editing_comment = local_assigns[:editing_comment] %>
 <% comments = flight.comments.includes(user: { avatar_attachment: :blob }, images_attachments: :blob).chronological.to_a %>
 <%= turbo_frame_tag dom_id(flight, :comments), class: "exds-comments exds-browser-editor-section", role: "region", aria: { label: "Flight comments" }, data: { controller: "flight-comments", action: "keydown.esc->flight-comments#close click@window->flight-comments#outside" } do %>
+  <%= render "flight_debriefs/recorder", flight: flight if can_manage_operations? %>
   <div class="exds-comments-heading"><h3>Comments</h3><span><%= comments.size %></span></div>
   <% if comments.empty? %><p class="exds-comments-empty">No comments yet. Add the first observation.</p><% end %>
   <% comments.each do |comment| %>
@@ -32,6 +33,11 @@
           <% end %>
         <% else %>
           <p class="exds-comment-body"><%= comment.body %></p>
+          <% if (debrief = comment.flight_debrief) && debrief.audio.attached? %>
+            <audio controls preload="metadata" src="<%= attachment_path(debrief.audio.attachment) %>"></audio>
+            <%= link_to "Download original audio", attachment_path(debrief.audio.attachment), download: true %>
+            <details><summary>Full transcript</summary><p><%= debrief.transcript %></p></details>
+          <% end %>
           <% if comment.images.any? %>
             <div class="exds-comment-images">
               <% comment.images.each do |image| %>

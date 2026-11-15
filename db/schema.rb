@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_15_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_15_170000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -257,6 +257,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_15_150000) do
     t.index ["flight_id"], name: "index_flight_comments_on_imported_note", unique: true, where: "imported_from_notes"
     t.index ["user_id"], name: "index_flight_comments_on_user_id"
     t.check_constraint "length(body) > 0", name: "flight_comments_body_present"
+  end
+
+  create_table "flight_debriefs", force: :cascade do |t|
+    t.bigint "flight_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "flight_comment_id"
+    t.string "uuid", null: false
+    t.string "status", default: "recording", null: false
+    t.text "transcript"
+    t.text "summary"
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["flight_comment_id"], name: "index_flight_debriefs_on_flight_comment_id", unique: true
+    t.index ["flight_id"], name: "index_flight_debriefs_on_flight_id"
+    t.index ["user_id"], name: "index_flight_debriefs_on_user_id"
+    t.index ["uuid"], name: "index_flight_debriefs_on_uuid", unique: true
   end
 
   create_table "flight_folder_memberships", force: :cascade do |t|
@@ -550,6 +567,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_15_150000) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.string "uuid", null: false
+    t.string "gateway_token_digest"
+    t.datetime "gateway_seen_at"
+    t.datetime "stop_requested_at"
     t.index ["flight_id"], name: "index_signal_sessions_on_flight_id"
     t.index ["status"], name: "index_signal_sessions_on_status"
     t.index ["user_id"], name: "index_signal_sessions_on_user_id"
@@ -793,6 +813,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_15_150000) do
   add_foreign_key "feedbacks", "users"
   add_foreign_key "flight_comments", "flights"
   add_foreign_key "flight_comments", "users"
+  add_foreign_key "flight_debriefs", "flight_comments"
+  add_foreign_key "flight_debriefs", "flights"
+  add_foreign_key "flight_debriefs", "users"
   add_foreign_key "flight_folder_memberships", "flight_folders", on_delete: :cascade
   add_foreign_key "flight_folder_memberships", "users", on_delete: :cascade
   add_foreign_key "flight_folders", "users"

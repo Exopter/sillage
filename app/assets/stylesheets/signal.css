@@ -1570,3 +1570,27 @@ textarea {
 .signal-transport-control { display: flex; align-items: center; gap: var(--ex-space-2); flex-wrap: wrap; }
 .signal-transport-control > .exds-selection-field select { width: auto; max-width: 14rem; }
 .signal-transport-control [hidden] { display: none; }
+
+/* Compact module indicators share the existing top-bar tooltip interaction. */
+.signal-modules { display: flex; flex: none; align-items: center; gap: var(--ex-space-1); }
+.signal-module .signal-module-indicator { color: var(--ex-graphite-400); }
+.signal-module[data-state="ready"] .signal-module-indicator { color: var(--ex-field-500); }
+.signal-module[data-state="degraded"] .signal-module-indicator { color: var(--ex-amber-500); }
+.signal-module[data-state="stale"] .signal-module-indicator { color: var(--ex-red-600); }
+.signal-module-tooltip > span { display: block; }
+
+.signal-home-link { display: flex; align-items: center; gap: var(--ex-space-3); min-width: 0; }
+.signal-home-link-state { display: flex; align-items: center; gap: var(--ex-space-2); color: var(--ex-graphite-400); }
+.signal-home-link-state strong { display: block; max-width: 360px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 600 11px/1.4 var(--font-mono); }
+.signal-home-link-state small { display: block; max-width: 330px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--ex-graphite-400); font: 500 10px/1.4 var(--font-mono); }
+.signal-home-link[data-state="connected"] .signal-home-link-state { color: var(--ex-field-500); }
+.signal-home-link[data-state="waiting"] .signal-home-link-state,
+.signal-home-link[data-state="degraded"] .signal-home-link-state { color: var(--ex-amber-500); }
+.signal-home-link[data-state="stale"] .signal-home-link-state { color: var(--ex-red-600); }
+@media (max-width: 760px) {
+  .signal-home-link { flex-wrap: wrap; }
+}
+
+.signal-assignment-fields { display: grid; grid-template-columns: 1fr; gap: var(--ex-space-3); margin: 12px 0 0; padding: 0; border: 0; }
+.signal-assignment-fields[hidden] { display: none; }
+.signal-home-link [hidden] { display: none; }

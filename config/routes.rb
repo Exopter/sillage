@@ -100,6 +100,7 @@ Rails.application.routes.draw do
     namespace :v1 do
       resource :recorder_connections, only: :update, controller: "recorder_connections", path: "recorder-connections"
       get "recorder-connections", to: "recorder_connections#index"
+      resource :signal_recorder_assignment, only: :create, path: "signal-recorder-assignment"
       resources :imu_checks, only: %i[index create], path: "imu-checks"
       resource :fdr_registration, only: %i[show create], path: "fdr-registration"
       resource :fdr_live_telemetry, controller: "fdr_live_telemetry", only: :create, path: "fdr-live-telemetry"
@@ -125,6 +126,10 @@ Rails.application.routes.draw do
           post :batches
           post :events
           patch :complete
+          get :shared_state
+          post :gateway
+          post :request_stop
+          post :close_disconnected
         end
       end
     end
@@ -138,6 +143,14 @@ Rails.application.routes.draw do
     member { patch :color, action: :update_color }
   end
   resources :flights do
+    resources :debriefs, controller: "flight_debriefs", only: %i[create show update destroy] do
+      member do
+        post :upload
+        post :process_audio
+        post :publish
+        post :realtime
+      end
+    end
     resources :comments, controller: "flight_comments", only: [ :index, :create, :edit, :update, :destroy ]
     collection do
       get :preview

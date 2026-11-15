@@ -8,7 +8,7 @@ class AttachmentsController < ApplicationController
 
     no_store
     blob = attachment.blob
-    inline = (attachment.record_type == "Flight" && attachment.name == "video") ||
+    inline = attachment.record_type == "FlightDebrief" || (attachment.record_type == "Flight" && attachment.name == "video") ||
       attachment.record_type == "Feedback" || (attachment.record_type == "FlightComment" && attachment.name == "images") ||
       (attachment.record_type == "User" && attachment.name == "avatar")
     disposition = inline ? "inline" : "attachment"
@@ -38,6 +38,8 @@ class AttachmentsController < ApplicationController
       Current.user.admin?
     when Flight
       record.visible_to?(Current.user)
+    when FlightDebrief
+      attachment.name == "audio" && record.flight.visible_to?(Current.user) && (record.user_id == Current.user.id || record.status == "published")
     when FlightComment
       attachment.name == "images" && record.flight.visible_to?(Current.user)
     when FlightImport

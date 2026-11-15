@@ -20,6 +20,7 @@ class Flight < ApplicationRecord
   has_many :sensor_samples, dependent: :delete_all, inverse_of: :flight
   has_many :signal_sessions, dependent: :restrict_with_error
   has_many :operator_events, dependent: :delete_all
+  has_many :flight_debriefs, dependent: :destroy
   has_many :comments, class_name: "FlightComment", dependent: :destroy, inverse_of: :flight
   attr_accessor :initial_comment, :initial_comment_images
   has_one_attached :video_upload
