@@ -1,13 +1,7 @@
 <% content_for :title, "Users" %>
 
 <section class="core-users">
-  <%= render "core/navigation" %>
-  <div class="core-users-header">
-    <div>
-      <span class="section-eyebrow">Sillage Core</span>
-      <h1>Users</h1>
-    </div>
-  </div>
+  <%= render "core/navigation", title: "Users", lede: "People, roles and access to Sillage." %>
 
   <div class="core-users-grid">
     <section class="core-panel">
@@ -33,7 +27,9 @@
           <span>Flight Club membership</span>
           <%= form.select :membership_tier, User::MEMBERSHIP_TIERS.map { |tier| [tier.titleize, tier] }, include_blank: "None" %>
         </label>
-        <%= form.submit "Send invitation", class: "button-primary exds-btn exds-btn--primary" %>
+        <div class="exds-form-actions">
+          <%= form.submit "Send invitation", class: "button-primary exds-btn exds-btn--primary" %>
+        </div>
       <% end %>
     </section>
 

@@ -1,6 +1,39 @@
 <!DOCTYPE html>
-<html>
-  <body style="font-family: Arial, sans-serif; color: #111827;">
-    <%= yield %>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <title><%= message.subject %></title>
+  </head>
+  <%# Email clients ignore stylesheets and custom properties: every rule is inline, on tables. %>
+  <body style="margin:0;padding:0;background-color:#e5ece9;color:#10181a;-webkit-text-size-adjust:100%;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#e5ece9;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="520" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:520px;background-color:#ffffff;border:1px solid #d4dfdc;border-radius:4px;">
+            <tr>
+              <td style="padding:20px 28px;border-bottom:1px solid #d4dfdc;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="font-family:'Aptos Mono','SF Mono',Menlo,Consolas,monospace;font-size:14px;font-weight:bold;letter-spacing:3.4px;color:#070b0d;">EXOPTER</td>
+                    <td align="right" style="font-family:'Aptos Mono','SF Mono',Menlo,Consolas,monospace;font-size:11px;font-weight:bold;letter-spacing:0.9px;color:#5f6c6b;">SILLAGE</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px;font-family:'Aptos','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:14px;line-height:20px;color:#10181a;">
+                <%= yield %>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 28px;background-color:#f5f8f6;border-top:1px solid #d4dfdc;font-family:'Aptos Mono','SF Mono',Menlo,Consolas,monospace;font-size:10px;letter-spacing:1.2px;color:#5f6c6b;">EXOPTER / THE STORY IS OURS TO WRITE.</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>

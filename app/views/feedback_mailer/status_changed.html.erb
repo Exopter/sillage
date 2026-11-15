@@ -1,4 +1,9 @@
-<p>The status of your Sillage feedback #<%= @feedback.id %> has changed from <strong><%= @previous_status %></strong> to <strong><%= @status %></strong>.</p>
-<p>Your feedback:</p>
-<%= simple_format @feedback.description %>
-<p><%= link_to "Open Sillage", root_url %></p>
+<h1 style="margin:0 0 16px;font-family:'Aptos','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:24px;line-height:28px;font-weight:600;color:#070b0d;">Your feedback is now <%= @status.downcase %></h1>
+<p style="margin:0 0 16px;">The status of your Sillage feedback #<%= @feedback.id %> has changed from <strong><%= @previous_status %></strong> to <strong><%= @status %></strong>.</p>
+<p style="margin:0 0 20px;"><span style="display:inline-block;padding:4px 8px;border-radius:2px;background-color:#e5ece9;color:#5f6c6b;font-family:'Aptos Mono','SF Mono',Menlo,Consolas,monospace;font-size:11px;font-weight:bold;letter-spacing:0.9px;text-transform:uppercase;"><%= @previous_status %></span> <span style="color:#5f6c6b;">&rarr;</span> <span style="display:inline-block;padding:4px 8px;border-radius:2px;background-color:#e5ece9;color:#5f6c6b;font-family:'Aptos Mono','SF Mono',Menlo,Consolas,monospace;font-size:11px;font-weight:bold;letter-spacing:0.9px;text-transform:uppercase;background-color:#e8f7dc;color:#315a26;"><%= @status %></span></p>
+<div style="margin:0 0 20px;padding:12px 16px;border-radius:4px;background-color:#f5f8f6;">
+  <p style="margin:0 0 6px;font-family:'Aptos Mono','SF Mono',Menlo,Consolas,monospace;font-size:11px;font-weight:bold;letter-spacing:0.9px;color:#5f6c6b;text-transform:uppercase;">Your feedback</p>
+  <%= simple_format @feedback.description, { style: "margin:0;" } %>
+</div>
+<p style="margin:0 0 20px;"><%= link_to "Open Sillage", root_url, style: "display:inline-block;padding:10px 16px;border-radius:8px;background-color:#10181a;color:#ffffff;font-family:'Aptos','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:14px;line-height:18px;font-weight:600;text-decoration:none;" %></p>
+<p style="margin:0;padding-top:16px;border-top:1px solid #d4dfdc;font-size:12px;line-height:16px;color:#5f6c6b;word-break:break-all;">You receive this email because you sent feedback from Sillage.</p>

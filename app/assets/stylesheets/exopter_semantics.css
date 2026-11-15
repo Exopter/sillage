@@ -25,6 +25,12 @@
   --fs-body:    0.9375rem;
   --fs-sm:      0.8125rem;
   --fs-xs:      0.6875rem;
+  /* Application scale: one page title, then section, card, text, caption, label. */
+  --fs-page:    1.5rem;
+  --fs-section: 1.25rem;
+  --fs-card:    1rem;
+  --fs-text:    0.875rem;
+  --fs-caption: 0.75rem;
   --fs-metric:    2rem;
   --fs-metric-lg: 3rem;
 
@@ -172,9 +178,9 @@
   --focus-ring: var(--ex-khaki-300);
   --control-error: #ff8b83;
 
-  --control-primary: var(--ex-carbon-700);
-  --control-primary-hover: var(--ex-graphite-600);
-  --control-primary-text: var(--ex-vapor-50);
+  --control-primary: var(--ex-vapor-50);
+  --control-primary-hover: var(--ex-vapor-100);
+  --control-primary-text: var(--ex-carbon-950);
 
   --accent:          var(--ex-khaki-300);
   --accent-hover:    var(--ex-khaki-200);

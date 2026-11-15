@@ -1,2 +1,5 @@
-<p>You have been invited to Sillage.</p>
-<p><%= link_to "Accept invitation", edit_invitation_url(@user.invitation_token) %></p>
+<h1 style="margin:0 0 16px;font-family:'Aptos','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:24px;line-height:28px;font-weight:600;color:#070b0d;">You are invited to Sillage</h1>
+<p style="margin:0 0 16px;">You have been invited to Sillage, the Exopter flight log. Choose a password to open your account.</p>
+<p style="margin:0 0 20px;"><%= link_to "Accept invitation", @invitation_url, style: "display:inline-block;padding:10px 16px;border-radius:8px;background-color:#10181a;color:#ffffff;font-family:'Aptos','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:14px;line-height:18px;font-weight:600;text-decoration:none;" %></p>
+<p style="margin:0 0 16px;font-size:12px;line-height:16px;color:#5f6c6b;">This invitation is personal and valid until <%= long_date(@user.invitation_expires_at) %>.</p>
+<p style="margin:0;padding-top:16px;border-top:1px solid #d4dfdc;font-size:12px;line-height:16px;color:#5f6c6b;word-break:break-all;">If the button does not open, copy this address into your browser:<br><%= @invitation_url %></p>

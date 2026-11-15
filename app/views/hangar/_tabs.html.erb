@@ -1,22 +1,18 @@
-<header class="hangar-page-heading">
-  <span class="section-eyebrow">Sillage</span>
-  <h1>Hangar</h1>
-  <p>Aircraft, serialized inventory, and physical installations.</p>
+<header class="exds-page-header">
+  <div>
+    <h1>Hangar</h1>
+    <p>Aircraft, serialized inventory, and physical installations.</p>
+  </div>
 </header>
-<div class="workspace-navigation-groups">
-<div>
-<span class="section-eyebrow">Inventory</span>
-<nav class="workspace-tabs workspace-segmented-tabs hangar-tabs" aria-label="Hangar inventory">
-  <%= link_to "Fleet", hangar_aircraft_index_path, class: [ "workspace-tab", ("is-active" if controller_name == "aircraft" || controller_name == "installations") ] %>
-  <%= link_to "Assemblies", hangar_assemblies_path, class: [ "workspace-tab", ("is-active" if controller_name == "assemblies") ] %>
-  <%= link_to "Parts", hangar_parts_path, class: [ "workspace-tab", ("is-active" if controller_name == "parts") ] %>
-</nav>
-</div>
-<div>
-<span class="section-eyebrow">Configuration</span>
-<nav class="workspace-tabs workspace-segmented-tabs" aria-label="Hangar configuration">
-  <%= link_to "Functions", hangar_functions_path, class: [ "workspace-tab", ("is-active" if controller_name == "functions") ] %>
-  <%= link_to "ExoFDR functional configurations", hangar_fdr_functional_configurations_path, class: [ "workspace-tab", ("is-active" if controller_name == "fdr_functional_configurations") ] %>
-</nav>
-</div>
+<div class="exds-tabs hangar-tabs">
+  <nav class="exds-tab-group" aria-label="Hangar inventory">
+    <%= link_to "Fleet", hangar_aircraft_index_path, class: "exds-tab", aria: { current: ("page" if controller_name == "aircraft" || controller_name == "installations") } %>
+    <%= link_to "Assemblies", hangar_assemblies_path, class: "exds-tab", aria: { current: ("page" if controller_name == "assemblies") } %>
+    <%= link_to "Parts", hangar_parts_path, class: "exds-tab", aria: { current: ("page" if controller_name == "parts") } %>
+  </nav>
+  <span class="exds-tab-divider" aria-hidden="true"></span>
+  <nav class="exds-tab-group" aria-label="Hangar configuration">
+    <%= link_to "Functions", hangar_functions_path, class: "exds-tab", aria: { current: ("page" if controller_name == "functions") } %>
+    <%= link_to "ExoFDR functional configurations", hangar_fdr_functional_configurations_path, class: "exds-tab", aria: { current: ("page" if controller_name == "fdr_functional_configurations") } %>
+  </nav>
 </div>

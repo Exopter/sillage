@@ -1,5 +1,5 @@
-.hangar-page-heading {
-  margin-bottom: 12px;
+.hangar-tabs {
+  margin-bottom: var(--sp-5);
 }
 
 .workspace-navigation-groups {
@@ -34,19 +34,6 @@
 .workspace-form .workspace-radio-choice { display: flex; align-items: center; gap: 10px; cursor: pointer; }
 .workspace-choice-table tr:has(input:checked) { background: var(--surface-panel); }
 
-.hangar-page-heading h1 {
-  margin: 4px 0 4px;
-  color: var(--text-strong, #10181a);
-  font-size: 24px;
-  line-height: 1.1;
-}
-
-.hangar-page-heading p {
-  margin: 0;
-  color: var(--text-muted, #5f6c6b);
-  font-size: 13px;
-}
-
 .workspace-tabs {
   display: flex;
   gap: 6px;
@@ -67,8 +54,7 @@
   border-bottom-color: var(--selection-marker);
 }
 
-.workspace-segmented-tabs,
-.hangar-tabs {
+.workspace-segmented-tabs {
   width: max-content;
   max-width: 100%;
   gap: 4px;
