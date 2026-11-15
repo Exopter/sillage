@@ -82,6 +82,10 @@ class User < ApplicationRecord
     membership_tier.present?
   end
 
+  def signal_access?
+    admin? || !member?
+  end
+
   def full_name
     [ first_name, last_name ].compact_blank.join(" ").presence
   end

@@ -22,6 +22,14 @@ class SignalSessionChannelTest < ActionCable::Channel::TestCase
     assert subscription.rejected?
   end
 
+  test "Flight Club members cannot subscribe even when the flight is shared" do
+    @flight.update!(visibility: "team")
+    stub_connection current_user: users(:member)
+    subscribe uuid: @session.uuid
+    assert subscription.rejected?
+    assert_no_streams
+  end
+
   test "an existing stream stops transmitting when flight access is revoked" do
     @flight.update!(visibility: "team")
     subscribe uuid: @session.uuid

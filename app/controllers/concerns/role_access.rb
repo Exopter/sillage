@@ -14,7 +14,7 @@ module RoleAccess
 
   included do
     before_action :enforce_role_access
-    helper_method :can_manage_operations?
+    helper_method :can_manage_operations?, :can_access_signal?
   end
 
   private
@@ -23,12 +23,18 @@ module RoleAccess
     Current.user&.admin? == true
   end
 
+  def can_access_signal?
+    Current.user&.signal_access? == true
+  end
+
   def enforce_role_access
     return unless Current.user || resume_session
     return if can_manage_operations? || ACCOUNT_CONTROLLERS.include?(controller_path)
-    return if (request.get? || request.head?) && READ_ACTIONS.fetch(controller_path, []).include?(action_name)
+    return if (request.get? || request.head?) && READ_ACTIONS.fetch(controller_path, []).include?(action_name) &&
+      (!controller_path.start_with?("signal") || can_access_signal?)
 
-    message = "Your account has read-only access to Flights and Signal. Administrator access is required for this action."
+    rooms = can_access_signal? ? "Flights and Signal" : "Flights"
+    message = "Your account has read-only access to #{rooms}. Administrator access is required for this action."
     if request.format.json? || controller_path.start_with?("api/")
       render json: { error: message }, status: :forbidden
     else

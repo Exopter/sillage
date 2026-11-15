@@ -18,7 +18,7 @@ class SignalSession < ApplicationRecord
 
   scope :recent, -> { order(started_at: :desc) }
   scope :accessible_to, ->(user) {
-    user ? where(flight_id: Flight.visible_to(user).select(:id)).or(where(user:, flight_id: nil)) : none
+    user&.signal_access? ? where(flight_id: Flight.visible_to(user).select(:id)).or(where(user:, flight_id: nil)) : none
   }
 
   def acknowledge!(sequence)

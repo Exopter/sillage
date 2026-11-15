@@ -45,7 +45,7 @@ class AttachmentsController < ApplicationController
     when FlightImport
       FlightImport.accessible_to(Current.user).exists?(record.id)
     when SignalSession
-      record.flight ? record.flight.visible_to?(Current.user) : record.user_id == Current.user.id
+      SignalSession.accessible_to(Current.user).exists?(record.id)
     else
       false
     end
