@@ -1,5 +1,26 @@
 import { SignalTelemetry, groundStationHeartbeat } from "signal_telemetry"
 
+/** @typedef {{deviceId: string, recorderLabel: string, aircraftLabel: string|null, registered: boolean}} RadioIdentity */
+
+/** Resolve the received full ECU identity through Sillage's current installation chain.
+ * @param {string} deviceId @returns {Promise<RadioIdentity>} */
+export async function resolveRadioIdentity(deviceId) {
+  const response = await fetch(`/api/v1/fdr-registration?device_id=${encodeURIComponent(deviceId)}`, {
+    credentials: "same-origin", cache: "no-store", headers: {Accept: "application/json"}, signal: AbortSignal.timeout(5000)
+  })
+  if (!response.ok) throw new Error("Aircraft identity is unavailable")
+  const payload = await response.json()
+  if (payload?.registered === false) return {deviceId, recorderLabel: deviceId, aircraftLabel: null, registered: false}
+  if (payload?.registered !== true || payload.recorder?.device_id !== deviceId)
+    throw new Error("Recorder identity does not match the radio")
+  const recorderLabel = payload.recorder.assembly?.serial_number || payload.recorder.name || deviceId
+  const aircraftLabel = payload.aircraft?.display_name ?? null
+  if (typeof recorderLabel !== "string" || !recorderLabel.trim() ||
+      (payload.aircraft != null && (typeof aircraftLabel !== "string" || !aircraftLabel.trim())))
+    throw new Error("Invalid aircraft identity")
+  return {deviceId, recorderLabel, aircraftLabel, registered: true}
+}
+
 /** A USB connection or SiK report alone is not evidence of an aircraft. */
 export class SignalRadioReadiness {
   measurements = new SignalTelemetry()
@@ -28,15 +49,19 @@ export class SignalRadioReadiness {
     this.measurements.apply(d, now)
   }
 
-  /** @param {number} now @param {boolean} connected */
-  snapshot(now, connected) {
+  /** @param {number} now @param {boolean} connected @param {RadioIdentity|null} [identity] */
+  snapshot(now, connected, identity = null) {
     if (!connected) return {state: "offline", label: "No wing connected", detail: "Connect the ground radio to check the wing."}
     if (this.lastWingAt == null) return {state: "waiting", label: "Waiting for wing", detail: "Ground radio connected · No wing telemetry"}
+    const resolved = identity?.deviceId === this.deviceId ? identity : null
+    const name = resolved?.aircraftLabel || resolved?.recorderLabel || this.deviceId
     if (now < this.lastWingAt || now - this.lastWingAt >= 1500)
-      return {state: "stale", label: "Wing link lost", detail: "No recent wing telemetry · Check the radio link"}
+      return {state: "stale", label: name ? `${name} · Link lost` : "Wing link lost", detail: "No recent wing telemetry · Check the radio link"}
     const issues = this.measurements.moduleSnapshot(now).filter(module => module.role <= 3 && ["degraded", "stale"].includes(module.state))
-    if (issues.length) return {state: "degraded", label: "Wing needs attention", detail: issues.map(module => `${module.name}: ${module.state === "stale" ? "link lost" : `${module.sensors} · ${module.storage}`}`).join("; ")}
-    return {state: "connected", label: "Wing connected", detail: "Radio ready · Preflight not checked"}
+    if (issues.length) return {state: "degraded", label: name ? `${name} · Needs attention` : "Recorder needs attention", detail: issues.map(module => `${module.name}: ${module.state === "stale" ? "link lost" : `${module.sensors} · ${module.storage}`}`).join("; ")}
+    const detail = !this.deviceId ? "Radio ready · Waiting for recorder identity" : !resolved ? "Radio ready · Identifying aircraft…"
+      : !resolved.registered ? "Radio ready · Recorder not registered" : !resolved.aircraftLabel ? "Radio ready · No aircraft assigned" : "Radio ready"
+    return {state: "connected", label: name ? `${name} connected` : "Identifying wing…", detail}
   }
 }
 

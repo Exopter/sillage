@@ -74,6 +74,35 @@ class RecorderIdentityFlowTest < ActionDispatch::IntegrationTest
     assert_equal "Historical FDR identity unavailable", recording.recorder_label
   end
 
+  test "radio identity follows current assembly aircraft installation without writes" do
+    installation = Installation.create!(installable: @assembly, aircraft: aircraft(:exowing), installed_at: 1.hour.ago)
+    assert_no_difference [ "EmbeddedController.count", "DeviceActivity.count", "RecorderConnection.count" ] do
+      get api_v1_fdr_registration_path, params: { device_id: @ecu.device_id }, as: :json
+    end
+    assert_response :success
+    assert_equal aircraft(:exowing).display_name, response.parsed_body.dig("aircraft", "display_name")
+    assert_equal @assembly.serial_number, response.parsed_body.dig("recorder", "assembly", "serial_number")
+
+    installation.remove!
+    get api_v1_fdr_registration_path, params: { device_id: @ecu.device_id }, as: :json
+    assert_nil response.parsed_body["aircraft"], "a removed installation must not keep labelling the wing"
+    Installation.create!(installable: @assembly, aircraft: aircraft(:pilatus), installed_at: Time.current)
+    get api_v1_fdr_registration_path, params: { device_id: @ecu.device_id }, as: :json
+    assert_equal aircraft(:pilatus).display_name, response.parsed_body.dig("aircraft", "display_name")
+  end
+
+  test "radio identity resolves a module through its systems assembly" do
+    configuration = create_fdr_functional_configuration(version: 2)
+    system = Assembly.create!(assembly_type: "ExoFDR", fdr_component_type: "SYSTEMS", fdr_functional_configuration: configuration)
+    main = Assembly.create!(assembly_type: "ExoFDR", fdr_component_type: "MAIN", fdr_functional_configuration: configuration, parent: system)
+    controller = create_embedded_controller(assembly: main, device_id: "ECU-441BF685BEC8")
+    Installation.create!(installable: system, aircraft: aircraft(:exowing), installed_at: 1.hour.ago)
+    get api_v1_fdr_registration_path, params: { device_id: controller.device_id }, as: :json
+    assert_response :success
+    assert_equal aircraft(:exowing).display_name, response.parsed_body.dig("aircraft", "display_name")
+    assert_equal main.serial_number, response.parsed_body.dig("recorder", "assembly", "serial_number")
+  end
+
   private
 
   def registered_identity(controller)

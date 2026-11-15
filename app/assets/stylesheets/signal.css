@@ -1581,7 +1581,7 @@ textarea {
 
 .signal-home-link { display: flex; align-items: center; gap: var(--ex-space-3); min-width: 0; }
 .signal-home-link-state { display: flex; align-items: center; gap: var(--ex-space-2); color: var(--ex-graphite-400); }
-.signal-home-link-state strong { display: block; font: 600 11px/1.4 var(--font-mono); }
+.signal-home-link-state strong { display: block; max-width: 360px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 600 11px/1.4 var(--font-mono); }
 .signal-home-link-state small { display: block; max-width: 330px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--ex-graphite-400); font: 500 10px/1.4 var(--font-mono); }
 .signal-home-link[data-state="connected"] .signal-home-link-state { color: var(--ex-field-500); }
 .signal-home-link[data-state="waiting"] .signal-home-link-state,

@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { SignalRadioLink } from "signal_radio_link"
+import { SignalRadioLink, resolveRadioIdentity } from "signal_radio_link"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
 
 /** @typedef {{buttonTarget: HTMLButtonElement, labelTarget: HTMLElement, detailTarget: HTMLElement}} Bindings */
@@ -10,6 +10,10 @@ export default class extends TypedController {
   link = new SignalRadioLink(() => this.render())
   /** @type {number|undefined} */ timer = undefined
   /** @type {(() => void)|null} */ unregister = null
+  /** @type {import("../lib/signal_radio_link").RadioIdentity|null} */ identity = null
+  identityKey = ""
+  identityCheckedAt = 0
+  /** @type {symbol|null} */ identityRequest = null
   active = false
   resubmitting = false
   submitting = false
@@ -43,6 +47,7 @@ export default class extends TypedController {
 
   disconnect() {
     this.active = false
+    this.identityRequest = null
     this.unregister?.(); this.unregister = null
     navigator.serial?.removeEventListener("connect", this.connectedRadio)
     window.removeEventListener("pagehide", this.pageHide)
@@ -56,12 +61,38 @@ export default class extends TypedController {
     else void this.link.connect(true)
   }
 
+  /** @param {string} key @param {string} deviceId */
+  async loadIdentity(key, deviceId) {
+    if (this.identityKey !== key) this.identity = null
+    this.identityKey = key
+    const request = this.identityRequest = Symbol("radio-identity")
+    const current = () => this.active && this.identityRequest === request &&
+      `${this.link.generation}/${this.link.readiness.deviceId}` === key
+    try {
+      const identity = await resolveRadioIdentity(deviceId)
+      if (current()) this.identity = identity
+    } catch {
+      if (current()) this.identity = null
+    } finally {
+      if (this.identityRequest === request) {
+        this.identityRequest = null
+        this.identityCheckedAt = Date.now()
+        this.render()
+      }
+    }
+  }
+
   render() {
     if (!this.active) return
-    const status = this.link.readiness.snapshot(Date.now(), this.link.connected)
+    const now = Date.now(), deviceId = this.link.readiness.deviceId
+    const key = `${this.link.generation}/${deviceId}`
+    if (this.link.connected && deviceId && (key !== this.identityKey || (!this.identityRequest && now - this.identityCheckedAt > 30000)))
+      void this.loadIdentity(key, deviceId)
+    const status = this.link.readiness.snapshot(now, this.link.connected, this.identity)
     this.element.dataset.state = this.link.error ? "degraded" : status.state
     this.labelTarget.textContent = this.link.error === "Radio in use in another tab" ? "Radio in use" : this.link.error ? "Radio unavailable" : status.label
-    this.detailTarget.textContent = this.link.error || status.detail
+    this.labelTarget.title = this.labelTarget.textContent
+    this.detailTarget.textContent = this.link.error || (status.state === "connected" && deviceId && !this.identity && !this.identityRequest ? "Radio ready · Aircraft identity unavailable" : status.detail)
     this.detailTarget.title = this.detailTarget.textContent
     this.buttonTarget.disabled = this.link.busy || !navigator.serial
     this.buttonTarget.textContent = this.link.closing ? "Disconnecting…" : this.link.busy ? "Connecting…" : this.link.connected ? "Disconnect radio" : "Connect radio"
