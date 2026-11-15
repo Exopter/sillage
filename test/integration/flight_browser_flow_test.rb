@@ -9,6 +9,25 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     sign_in_as @owner
   end
 
+  test "flight rows distinguish duration dates descriptions and preparation" do
+    @flight.update!(duration_seconds: 4786, description: "Test flight")
+    get flights_path(folder: @folder.id)
+    assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
+      assert_select ".exds-browser-entry-heading .status-dot", count: 0
+      assert_select ".exds-browser-entry-location", text: @flight.location
+      assert_select ".exds-browser-entry-duration[aria-label='Duration: 1h 19m 46s']"
+      assert_select ".exds-browser-entry-date", text: "15 May 2026 · 20:01"
+      assert_select ".exds-browser-entry-description", text: "Test flight"
+    end
+    @flight.update!(status: "preparation", started_at: nil, flight_import: nil, duration_seconds: nil, description: "Draft flight")
+    get flights_path(folder: @folder.id)
+    assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
+      assert_select ".exds-browser-entry-heading .status-dot", text: "Preparation"
+      assert_select ".exds-browser-entry-duration", text: "Created · UTC"
+      assert_select ".exds-browser-entry-description", text: ""
+    end
+  end
+
   test "columns are the only view with direct folder actions and a separate preview frame" do
     get flights_path(folder: @folder.id)
     assert_response :success

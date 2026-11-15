@@ -2,5 +2,5 @@
   <% if function.errors.any? %><div class="workspace-errors"><%= function.errors.full_messages.to_sentence %></div><% end %>
   <label><span>Name</span><%= form.text_field :name, required: true, autofocus: true %></label>
   <label><span>Description</span><%= form.text_area :description, rows: 4 %></label>
-  <div class="workspace-actions"><%= link_to "Cancel", hangar_functions_path, class: "button-secondary" %><%= form.submit class: "button-primary" %></div>
+  <div class="workspace-actions"><%= link_to "Cancel", hangar_functions_path, class: "button-secondary exds-btn exds-btn--secondary" %><%= form.submit class: "button-primary exds-btn exds-btn--primary" %></div>
 <% end %>

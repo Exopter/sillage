@@ -2,7 +2,7 @@
 <header class="operations-heading">
   <div><span class="section-eyebrow"><%= @signal_session.flight&.code || "Signal session" %></span><h1>Radio history</h1><p><%= l @signal_session.started_at, format: :long %> · <%= @rows.size %> received reports · <%= @signal_session.status.capitalize %></p></div>
   <div class="workspace-actions">
-    <% if @signal_session.flight %><%= link_to "Back to flight", flight_path(@signal_session.flight), class: "button-secondary" %><% else %><%= link_to "Back to Signal", signal_path(view: "home"), class: "button-secondary" %><% end %>
+    <% if @signal_session.flight %><%= link_to "Back to flight", flight_path(@signal_session.flight), class: "button-secondary exds-btn exds-btn--secondary" %><% else %><%= link_to "Back to Signal", signal_path(view: "home"), class: "button-secondary exds-btn exds-btn--secondary" %><% end %>
   </div>
 </header>
 <%= render "signal_radio_histories/chart", session: @signal_session, rows: @rows, session_duration: @duration %>

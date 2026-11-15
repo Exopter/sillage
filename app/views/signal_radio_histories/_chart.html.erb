@@ -8,7 +8,7 @@
     </div>
     <div class="exds-history__actions">
       <span class="exds-history__badge"><%= session.status.capitalize %></span>
-      <%= link_to signal_session_radio_history_path(session.uuid, format: :csv), class: "button-secondary", data: { turbo: false } do %>
+      <%= link_to signal_session_radio_history_path(session.uuid, format: :csv), class: "button-secondary exds-btn exds-btn--secondary", data: { turbo: false } do %>
         <%= sillage_icon "download", size: 16 %><span>Export CSV</span>
       <% end %>
     </div>

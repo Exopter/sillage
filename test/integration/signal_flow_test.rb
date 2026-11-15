@@ -100,6 +100,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "strong", text: "Unassigned session"
     assert_select ".sillage-topbar [data-controller='signal-connection'] button", count: 1
+    assert_select ".exds-icon-select select[aria-label='Telemetry connection'] option[value='ground-radio'][selected]", text: "SiK radio"
     assert_select "select[aria-label='Telemetry connection'] option", count: 4
     assert_select "select[aria-label='Telemetry connection'] option[value='usb-c']", text: "USB-C"
     assert_select "select[aria-label='Telemetry connection'] option[value='ble']", text: "Bluetooth"
@@ -158,11 +159,15 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     session = users(:julien).signal_sessions.create!(started_at: Time.current)
     Signal::CompleteSession.new(signal_session: session, disposition: "save").call
     get signal_path(view: "home")
+    assert_select "[aria-label='Completed sessions']", count: 0
+    assert_select "button", text: "Retry processing", count: 0
+    get flight_path(session.reload.flight)
+    assert_response :success
     assert_select "button", text: "Retry processing"
-    assert_select "span", text: "Preparing flight. Your recording is saved."
+    assert_select "p", text: "Preparing flight. Your recording is saved."
     assert_enqueued_with(job: SignalMaterializationJob) do
       post retry_processing_signal_session_path(session.uuid)
-      assert_redirected_to signal_path(view: "home")
+      assert_redirected_to flight_path(session.flight)
     end
     other = users(:operator).signal_sessions.create!
     post retry_processing_signal_session_path(other.uuid)

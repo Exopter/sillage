@@ -40,7 +40,7 @@
 .exds-history__detail dt { margin-bottom: 4px; }
 .exds-history__detail dd { margin: 0; color: var(--text-body); font-family: var(--font-mono); overflow-wrap: anywhere; }
 .exds-history__more > summary { width: fit-content; padding: 10px 0; color: var(--text-body); font-size: 12px; font-weight: 600; cursor: pointer; }
-.exds-history summary:focus-visible, .exds-history button:focus-visible { outline: 2px solid var(--ex-aqua-500); outline-offset: 4px; border-radius: var(--ex-radius-instrument); }
+.exds-history summary:focus-visible, .exds-history button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 4px; border-radius: var(--ex-radius-instrument); }
 @media (max-width: 640px) {
   .exds-history { padding: 16px; }
   .exds-history__heading h2 { font-size: 19px; }

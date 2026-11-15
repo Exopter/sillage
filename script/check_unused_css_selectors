@@ -5,7 +5,7 @@ require "set"
 
 ROOT = File.expand_path("..", __dir__)
 STYLESHEET_GLOB = File.join(ROOT, "app/assets/stylesheets/**/*.css")
-CANONICAL_TOKEN_STYLESHEET = File.join(ROOT, "app/assets/stylesheets/exopter_design_system.css")
+CANONICAL_TOKEN_STYLESHEETS = %w[exopter_design_system.css exopter_semantics.css].map { |name| File.join(ROOT, "app/assets/stylesheets", name) }.freeze
 CONSUMER_GLOBS = %w[
   app/components/**/*.{erb,rb}
   app/helpers/**/*.rb
@@ -35,12 +35,15 @@ RUNTIME_CLASSES = Set.new(%w[
   notice
 ]).freeze
 
+# Complete shared primitives retain supported variants for other consumers.
+# sync_design_system_tokens verifies these files against the canonical sources.
+shared_primitives = %w[button.css icon_button.css input.css select.css].map { |name| File.join(ROOT, "app/assets/stylesheets", name) }
 stylesheets = Dir[STYLESHEET_GLOB].sort
 consumers = CONSUMER_GLOBS.flat_map { |glob| Dir[File.join(ROOT, glob)] }.uniq.sort
 consumer_source = consumers.map { |path| File.read(path) }.join("\n")
 stylesheet_sources = stylesheets.to_h { |path| [ path, File.read(path) ] }
 
-defined_classes = stylesheet_sources.values.flat_map do |source|
+defined_classes = stylesheet_sources.reject { |path, _source| shared_primitives.include?(path) }.values.flat_map do |source|
   source.scan(/([^{}]+)\{/).flat_map do |selector|
     selector.first.scan(/\.([A-Za-z_][A-Za-z0-9_-]*)/).flatten
   end
@@ -50,7 +53,7 @@ unused_classes = defined_classes.reject do |name|
   RUNTIME_CLASSES.include?(name) || consumer_source.match?(/(?<![A-Za-z0-9_-])#{Regexp.escape(name)}(?![A-Za-z0-9_-])/)
 end.sort
 
-local_custom_properties = stylesheet_sources.reject { |path, _source| path == CANONICAL_TOKEN_STYLESHEET }.values.flat_map do |source|
+local_custom_properties = stylesheet_sources.reject { |path, _source| CANONICAL_TOKEN_STYLESHEETS.include?(path) }.values.flat_map do |source|
   source.scan(/^\s*(--[A-Za-z0-9_-]+)\s*:/).flatten
 end.uniq.sort
 stylesheet_usage_source = stylesheet_sources.values.join("\n").gsub(/^\s*--[A-Za-z0-9_-]+\s*:/, "")
@@ -60,7 +63,7 @@ unused_custom_properties = local_custom_properties.reject do |name|
 end
 
 if unused_classes.empty? && unused_custom_properties.empty?
-  puts "Unused CSS guard passed: every declared class and local custom property has a consumer."
+  puts "Unused CSS guard passed: every local class and custom property has a consumer."
   exit 0
 end
 

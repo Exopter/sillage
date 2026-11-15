@@ -15,7 +15,7 @@
         <span>Role</span>
         <%= form.select :role, User::ROLES.map { |role| [role.titleize, role] } %>
       </label>
-      <%= form.submit "Save user", class: "button-primary" %>
+      <%= form.submit "Save user", class: "button-primary exds-btn exds-btn--primary" %>
       <%= link_to "Back", core_users_path, class: "authentication-link" %>
     <% end %>
   </section>

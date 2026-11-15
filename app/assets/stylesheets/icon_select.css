@@ -1,0 +1,9 @@
+/* Compact native select: the icon opens the platform option picker. */
+.exds-icon-select { position:relative; display:inline-grid; place-items:center; flex:none; width:var(--ex-control-height); height:var(--ex-control-height); border-radius:var(--ex-radius-instrument); color:var(--text-muted); }
+.exds-icon-select select { position:absolute; inset:0; width:100%; height:100%; margin:0; padding:0; opacity:0; cursor:pointer; }
+.exds-icon-select > svg { width:12px; height:12px; pointer-events:none; }
+.exds-icon-select:hover { color:var(--text-body); background:var(--surface-hover); }
+.exds-icon-select:focus-within { outline:2px solid var(--focus-ring); outline-offset:2px; }
+.exds-icon-select:has(select:disabled) { opacity:.45; background:transparent; }
+.exds-icon-select select:disabled { cursor:not-allowed; }
+@media (pointer:coarse) { .exds-icon-select { width:44px; height:44px; } }

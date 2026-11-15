@@ -14,6 +14,7 @@ export default class extends TypedController {
   static targets = ["label", "button", "transport", "recorder"]
 
   select() {
+    this.transportTarget.title = `Telemetry connection: ${this.transportTarget.selectedOptions?.[0]?.textContent || this.transportTarget.value}`
     this.recorderTarget.hidden = this.transportTarget.value !== "wifi"
     if (this.recorderTarget.parentElement) this.recorderTarget.parentElement.hidden = this.recorderTarget.hidden
   }

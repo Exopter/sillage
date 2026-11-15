@@ -1,7 +1,7 @@
 <% content_for :title, "Signal" %>
 <header class="workspace-header">
   <div><span class="section-eyebrow">Signal</span><h1>Sessions</h1><p>Read-only access. Administrators manage acquisition and connected equipment.</p></div>
-  <%= link_to "Refresh", signal_path(session: @active_session&.uuid), class: "button-secondary" %>
+  <%= link_to "Refresh", signal_path(session: @active_session&.uuid), class: "button-secondary exds-btn exds-btn--secondary" %>
 </header>
 <% if @active_session %>
   <section class="workspace-panel" aria-label="Selected Signal session">
@@ -13,9 +13,9 @@
       <div><dt>Received batches</dt><dd><%= @active_session.signal_batches.count %></dd></div>
     </dl>
     <div class="workspace-actions">
-      <% if @active_session.flight %><%= link_to "Open flight", flight_path(@active_session.flight), class: "button-secondary" %><% end %>
-      <%= link_to "Radio history", signal_session_radio_history_path(@active_session.uuid), class: "button-secondary" %>
-      <% if @active_session.raw_capture.attached? %><%= link_to "Download capture", attachment_path(@active_session.raw_capture.attachment), class: "button-secondary" %><% end %>
+      <% if @active_session.flight %><%= link_to "Open flight", flight_path(@active_session.flight), class: "button-secondary exds-btn exds-btn--secondary" %><% end %>
+      <%= link_to "Radio history", signal_session_radio_history_path(@active_session.uuid), class: "button-secondary exds-btn exds-btn--secondary" %>
+      <% if @active_session.raw_capture.attached? %><%= link_to "Download capture", attachment_path(@active_session.raw_capture.attachment), class: "button-secondary exds-btn exds-btn--secondary" %><% end %>
     </div>
   </section>
 <% end %>

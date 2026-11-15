@@ -7,7 +7,7 @@
     <h2>Parts</h2>
     <p>Serialized physical inventory with installation state and functional role.</p>
   </div>
-  <%= link_to new_hangar_part_path, class: "button-primary" do %><%= sillage_icon "plus", size: 17 %><span>Register part</span><% end %>
+  <%= link_to new_hangar_part_path, class: "button-primary exds-btn exds-btn--primary" do %><%= sillage_icon "plus", size: 17 %><span>Register part</span><% end %>
 </header>
 
 <%= form_with url: hangar_parts_path, method: :get, class: "workspace-filterbar", data: { controller: "auto-submit" } do |form| %>
@@ -20,7 +20,7 @@
     <span class="sr-only">Filter by state</span>
     <%= form.select :state, options_for_select([["Current parts", ""], ["All states", "all"], *Part::STATES.map { |state| [state.titleize, state] }], @state), {}, data: { action: "change->auto-submit#submit" } %>
   </label>
-  <% if @query.present? || @state.present? %><%= link_to "Clear", hangar_parts_path, class: "button-secondary" %><% end %>
+  <% if @query.present? || @state.present? %><%= link_to "Clear", hangar_parts_path, class: "button-secondary exds-btn exds-btn--secondary" %><% end %>
   <span class="workspace-result-count"><%= pluralize @parts.size, "part" %></span>
 <% end %>
 
@@ -39,7 +39,7 @@
               <td><span class="status-dot is-<%= part.state == "quarantined" ? "caution" : part.state == "retired" ? "fault" : part.state == "available" ? "unknown" : "ready" %>"><span></span><%= part.state == "quarantined" ? "Review flag" : part.state.titleize %></span></td>
               <td class="workspace-table-actions">
                 <div class="workspace-actions">
-                  <%= link_to "Edit", edit_hangar_part_path(part), class: "button-secondary is-compact" %>
+                  <%= link_to "Edit", edit_hangar_part_path(part), class: "button-secondary exds-btn exds-btn--secondary is-compact" %>
                 </div>
               </td>
             </tr>

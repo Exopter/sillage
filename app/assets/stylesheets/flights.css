@@ -118,11 +118,11 @@
   width: 16px;
   height: 16px;
   margin: 0;
-  accent-color: var(--ds-teal);
+  accent-color: var(--selection-marker);
 }
 
 .flights-selection-checkbox input:focus-visible {
-  outline: 2px solid var(--ex-sky-500);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
 }
 
