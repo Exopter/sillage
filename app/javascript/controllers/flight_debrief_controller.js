@@ -136,6 +136,7 @@ export default class extends TypedController {
         lastTick = now
         analyser.getByteTimeDomainData(values)
         this.levelTarget.value = Math.min(1, Math.sqrt(values.reduce((sum, value) => sum + ((value - 128) / 128) ** 2, 0) / values.length) * 4)
+        this.element.style.setProperty("--debrief-level", this.levelTarget.value.toFixed(2))
         const seconds = Math.floor(elapsed / 1000)
         this.durationTarget.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
       }, 200)

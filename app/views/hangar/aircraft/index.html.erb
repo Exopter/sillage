@@ -70,5 +70,5 @@
     </section>
   </div>
 <% else %>
-  <div class="workspace-empty">No aircraft registered yet.</div>
+  <div class="workspace-empty">No aircraft registered yet. <%= link_to "Register the first aircraft", new_hangar_aircraft_path %> to start recording installations.</div>
 <% end %>

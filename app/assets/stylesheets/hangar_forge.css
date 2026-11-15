@@ -316,7 +316,7 @@
   background: transparent;
   color: var(--text-strong, #10181a);
   font-family: var(--ex-font-mono, ui-monospace, monospace);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
@@ -769,7 +769,7 @@
 .fdr-wifi-scan-row small {
   margin-top: 4px;
   color: var(--ex-state-ready-text, #27744f);
-  font-size: 10px;
+  font-size: var(--fs-xs);
 }
 
 .fdr-wifi-network small.is-pending {
@@ -778,7 +778,7 @@
 
 .fdr-wifi-cell-muted {
   color: var(--text-muted, #5f6c6b);
-  font-size: 10px;
+  font-size: var(--fs-xs);
 }
 
 .fdr-wifi-toggle {

@@ -527,7 +527,7 @@
 
 .signal-fdr-connectivity .signal-k {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--fs-xs);
 }
 
 .signal-fdr-head {
@@ -1460,7 +1460,7 @@
 .signal-launch-rules span {
   display: block;
   color: var(--ex-graphite-400);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
 }
 

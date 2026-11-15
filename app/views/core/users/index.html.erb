@@ -3,46 +3,51 @@
 <section class="core-users">
   <%= render "core/navigation", title: "Users", lede: "People, roles and access to Sillage.", action: link_to("Invite user", new_core_user_path, class: "button-primary exds-btn exds-btn--primary") %>
 
-  <section class="core-panel">
-    <h2>Directory</h2>
-    <div class="core-user-list">
-      <% @users.each do |user| %>
-        <article class="core-user-row">
-          <div>
-            <strong><%= user.full_name || user.email_address %></strong>
-            <span><%= [ (user.email_address if user.full_name), user.role.titleize ].compact.join(" / ") %></span>
-          </div>
-          <div class="core-user-status">
-            <% if user.disabled? %>
-              <span class="status-pill is-disabled">Disabled</span>
-            <% elsif user.invitation_pending? %>
-              <span class="status-pill is-pending">Invited</span>
-            <% else %>
-              <span class="status-pill is-active">Active</span>
-            <% end %>
-            <% if user.member? %>
-              <span class="status-pill"><%= user.membership_rank %> <%= user.member_code %></span>
-            <% end %>
-            <% if user.admin? %>
-              <span class="status-pill"><%= user.totp_configured? ? "2FA ready" : "2FA required" %></span>
-            <% end %>
-          </div>
-          <div class="core-user-actions">
-            <%= link_to "Edit", edit_core_user_path(user), class: "button-secondary exds-btn exds-btn--secondary core-user-action-edit" %>
-            <% if user.invitation_pending? %>
-              <%= button_to "Resend", resend_invitation_core_user_path(user), method: :post, class: "button-secondary exds-btn exds-btn--secondary core-user-action-resend" %>
-            <% end %>
-            <% if user.disabled? %>
-              <%= button_to "Enable", enable_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary core-user-action-access" %>
-            <% else %>
-              <%= button_to "Disable", disable_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary core-user-action-access" %>
-            <% end %>
-            <% if user.totp_configured? %>
-              <%= button_to "Reset 2FA", reset_two_factor_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary core-user-action-security" %>
-            <% end %>
-          </div>
-        </article>
-      <% end %>
+  <section class="workspace-panel is-flush" aria-label="Directory">
+    <div class="workspace-table-wrap">
+      <table class="workspace-table is-stacked">
+        <thead><tr><th>User</th><th>Role</th><th>Flight Club</th><th>Two-factor</th><th>State</th><th class="workspace-table-actions">Actions</th></tr></thead>
+        <tbody>
+          <% @users.each do |user| %>
+            <tr class="core-user-row">
+              <td>
+                <div class="core-user-identity">
+                  <%= render "shared/user_avatar", user: user %>
+                  <div><strong><%= user.full_name || user.email_address %></strong><% if user.full_name %><small><%= user.email_address %></small><% end %></div>
+                </div>
+              </td>
+              <td data-label="Role"><%= user.role.titleize %></td>
+              <td data-label="Flight Club"><% if user.member? %><span class="status-pill"><%= user.membership_rank %> <%= user.member_code %></span><% else %>Not a member<% end %></td>
+              <td data-label="Two-factor"><%= user.admin? ? (user.totp_configured? ? "Enabled" : "Setup required") : "Not required" %></td>
+              <td>
+                <% if user.disabled? %>
+                  <span class="status-dot is-unknown"><span></span>Disabled</span>
+                <% elsif user.invitation_pending? %>
+                  <span class="status-dot is-caution"><span></span>Invited</span>
+                <% else %>
+                  <span class="status-dot is-ready"><span></span>Active</span>
+                <% end %>
+              </td>
+              <td class="workspace-table-actions">
+                <div class="workspace-actions">
+                  <%= link_to "Edit", edit_core_user_path(user), class: "button-secondary exds-btn exds-btn--secondary is-compact" %>
+                  <% if user.invitation_pending? %>
+                    <%= button_to "Resend", resend_invitation_core_user_path(user), method: :post, class: "button-secondary exds-btn exds-btn--secondary is-compact" %>
+                  <% end %>
+                  <% if user.disabled? %>
+                    <%= button_to "Enable", enable_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary is-compact" %>
+                  <% else %>
+                    <%= button_to "Disable", disable_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary is-compact" %>
+                  <% end %>
+                  <% if user.totp_configured? %>
+                    <%= button_to "Reset 2FA", reset_two_factor_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary is-compact" %>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
     </div>
   </section>
 </section>

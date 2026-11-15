@@ -31,7 +31,7 @@
 .exds-hierarchy-copy strong { display:block; font:600 12px/1.4 var(--ex-font-mono); overflow-wrap:anywhere; }
 .exds-hierarchy-copy small { display:block; font:11px/1.4 var(--ex-font-sans); color:var(--text-muted); margin-top:3px; }
 .exds-hierarchy-row.is-part .exds-hierarchy-copy strong { font:500 12px/1.4 var(--ex-font-sans); }
-.exds-hierarchy-row.is-part .exds-hierarchy-copy small { font-size:10px; }
+.exds-hierarchy-row.is-part .exds-hierarchy-copy small { font-size: var(--fs-xs); }
 .exds-hierarchy-icon { color:var(--text-muted); flex-shrink:0; width:24px; height:28px; display:grid; place-items:center; }
 .is-system .exds-hierarchy-icon { color:var(--selection-marker); }
 .exds-hierarchy-location { font:11px/1.5 var(--ex-font-mono); color:var(--text-body); padding-left:0; }
@@ -60,7 +60,7 @@
 .exds-hierarchy-close { display:block; margin:0 14px 12px auto; }
 
 @media(max-width:1100px) { .exds-hierarchy-layout { grid-template-columns:1fr; }.is-enhanced .exds-hierarchy-details { display:none; }.exds-hierarchy-tools { padding:12px; } }
-@media(max-width:500px) { .exds-hierarchy-columns,.exds-hierarchy-row { grid-template-columns:minmax(0,1fr) 82px; }.exds-hierarchy-row { padding-right:8px; }.exds-hierarchy-columns { padding-right:8px; }.exds-hierarchy-icon { display:none; }.exds-hierarchy-copy strong { font-size:10px; }.exds-hierarchy-copy small { font-size:10px; }.exds-hierarchy-location { font-size:9px; }.exds-hierarchy-primary { padding-left:calc(var(--exds-hierarchy-depth)*14px); }.exds-hierarchy-primary.is-nested:before { left:calc((var(--exds-hierarchy-depth) - 1)*14px + 23px); width:5px; }.exds-hierarchy-summary { gap:12px; }.exds-hierarchy-heading { gap:8px; }.exds-hierarchy-heading .button-primary { padding:9px; font-size: var(--fs-xs); }.exds-hierarchy-filters button { padding:7px 8px; } }
+@media(max-width:500px) { .exds-hierarchy-columns,.exds-hierarchy-row { grid-template-columns:minmax(0,1fr) 82px; }.exds-hierarchy-row { padding-right:8px; }.exds-hierarchy-columns { padding-right:8px; }.exds-hierarchy-icon { display:none; }.exds-hierarchy-copy strong { font-size: var(--fs-xs); }.exds-hierarchy-copy small { font-size: var(--fs-xs); }.exds-hierarchy-location { font-size:9px; }.exds-hierarchy-primary { padding-left:calc(var(--exds-hierarchy-depth)*14px); }.exds-hierarchy-primary.is-nested:before { left:calc((var(--exds-hierarchy-depth) - 1)*14px + 23px); width:5px; }.exds-hierarchy-summary { gap:12px; }.exds-hierarchy-heading { gap:8px; }.exds-hierarchy-heading .button-primary { padding:9px; font-size: var(--fs-xs); }.exds-hierarchy-filters button { padding:7px 8px; } }
 .exds-hierarchy-select { text-decoration:none; }
 .exds-hierarchy-disclosure:disabled { cursor:default; }
 .exds-hierarchy-path a { text-decoration:none; }

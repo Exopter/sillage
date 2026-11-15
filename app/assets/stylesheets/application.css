@@ -89,7 +89,7 @@ body {
   gap: 6px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: .06em;
   text-transform: uppercase;
@@ -1357,58 +1357,31 @@ body {
   letter-spacing: 0;
 }
 
-.core-user-list {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) repeat(4, max-content);
-  gap: 10px;
+.core-user-row td {
+  vertical-align: middle;
 }
 
-.core-user-row {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
-  gap: 14px;
+.core-user-identity {
+  display: flex;
+  min-width: 0;
   align-items: center;
-  padding: 12px;
-  border: 1px solid var(--border-rule);
-  border-radius: var(--ex-radius-surface);
-  background: var(--surface-panel);
+  gap: var(--sp-3);
 }
 
-.core-user-row > div:first-child strong,
-.core-user-row > div:first-child span {
+.core-user-identity strong,
+.core-user-identity small {
   display: block;
   overflow-wrap: anywhere;
 }
 
-.core-user-row > div:first-child span {
+.core-user-identity small {
   color: var(--text-muted);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-caption);
 }
 
-.core-user-status,
-.core-user-actions {
-  display: flex;
+.core-user-row .workspace-actions {
   flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  justify-content: flex-end;
 }
-
-.core-user-actions form {
-  display: contents;
-}
-
-.core-user-row .core-user-actions {
-  display: grid;
-  grid-column: 3 / -1;
-  grid-template-columns: subgrid;
-}
-
-.core-user-action-edit { grid-column: 1; }
-.core-user-action-resend { grid-column: 2; }
-.core-user-action-access { grid-column: 3; }
-.core-user-action-security { grid-column: 4; }
 
 .status-pill {
   display: inline-flex;
@@ -2000,7 +1973,7 @@ body {
   color: var(--ex-graphite-400);
   cursor: pointer;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 650;
   transition: background var(--dur) var(--ease-out), color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
 }
@@ -2085,7 +2058,7 @@ body {
 
 .trajectory-compact .trajectory-time {
   min-width: 86px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
 }
 
 .trajectory-viewport {
@@ -2389,7 +2362,7 @@ body {
 .flight-stat-card header span {
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -2797,19 +2770,11 @@ body.flight-analysis-theme,
   }
 
 
-  .core-user-list,
-  .core-user-row {
-    grid-template-columns: 1fr;
-  }
-
-  .core-user-status,
-  .core-user-actions {
-    justify-content: flex-start;
-  }
-
-  .core-user-row .core-user-actions {
-    display: flex;
-    grid-column: auto;
+  .workspace-panel.is-flush .workspace-table.is-stacked .core-user-row td.workspace-table-actions {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    justify-self: start;
+    margin-top: var(--sp-2);
   }
 
   .flight-card {
@@ -2923,7 +2888,7 @@ body.flight-analysis-theme,
 
   .flight-analysis-toolbar .flight-phase-range {
     justify-self: start;
-    font-size: 10px;
+    font-size: var(--fs-xs);
   }
 
   .flight-chart-stage {
@@ -3155,4 +3120,10 @@ button.aircraft-connection-pill:disabled { cursor: default; opacity: .55; }
 
 .flight-record-panel[hidden] {
   display: none;
+}
+
+/* The Pilot log reads as one column, like a form. */
+.flight-record-log {
+  width: min(100%, 760px);
+  margin-inline: auto;
 }

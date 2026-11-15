@@ -32,11 +32,20 @@
             <div class="exds-comment-edit-actions"><%= link_to "Cancel", flight_comments_path(flight), class: "button-secondary exds-btn exds-btn--secondary" %><%= form.submit "Save changes", class: "button-primary exds-btn exds-btn--primary" %></div>
           <% end %>
         <% else %>
-          <p class="exds-comment-body"><%= comment.body %></p>
-          <% if (debrief = comment.flight_debrief) && debrief.audio.attached? %>
-            <audio controls preload="metadata" src="<%= attachment_path(debrief.audio.attachment) %>"></audio>
-            <%= link_to "Download original audio", attachment_path(debrief.audio.attachment), download: true %>
-            <details><summary>Full transcript</summary><p><%= debrief.transcript %></p></details>
+          <% if (debrief = comment.flight_debrief) %>
+            <div class="flight-debrief-entry">
+              <span class="flight-debrief-badge"><%= sillage_icon "mic", size: 13 %>Audio debrief</span>
+              <%= debrief_summary(comment.body) %>
+              <% if debrief.audio.attached? %>
+                <audio class="flight-debrief-audio" controls preload="metadata" src="<%= attachment_path(debrief.audio.attachment) %>"></audio>
+                <%= link_to attachment_path(debrief.audio.attachment), download: true, class: "flight-debrief-download" do %><%= sillage_icon "download", size: 15 %><span>Download original audio</span><% end %>
+              <% end %>
+              <% if debrief.transcript.present? %>
+                <details class="exds-disclosure flight-debrief-transcript"><summary>Full transcript</summary><p><%= debrief.transcript %></p></details>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="exds-comment-body"><%= comment.body %></p>
           <% end %>
           <% if comment.images.any? %>
             <div class="exds-comment-images">

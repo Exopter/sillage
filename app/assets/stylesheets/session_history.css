@@ -28,7 +28,7 @@
 .exds-history__events { margin: 0; padding: 0; list-style: none; }
 .exds-history__event { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; align-items: start; gap: 18px; padding: 16px 0; border-top: 1px solid var(--border-rule); }
 .exds-history__time { display: grid; gap: 5px; color: var(--text-body); font: 500 12px var(--font-mono); font-variant-numeric: tabular-nums; line-height: 1.5; }
-.exds-history__time small { color: var(--text-muted); font-size: 10px; font-weight: 400; }
+.exds-history__time small { color: var(--text-muted); font-size: var(--fs-xs); font-weight: 400; }
 .exds-history__event-body { min-width: 0; padding-left: 14px; border-left: 2px solid var(--border-rule); }
 .exds-history__event-body--caution { border-color: var(--ex-amber-500); }
 .exds-history__event-body--fault { border-color: var(--ex-red-600); }

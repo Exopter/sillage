@@ -15,12 +15,12 @@
 .exds-signal-strength[data-level="4"] rect { opacity: 1; }
 .exds-signal-strength__label {
   color: var(--ex-vapor-100);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: .05em;
   text-transform: uppercase;
 }
 .exds-signal-strength__quality { font-size: var(--fs-xs); font-weight: 500; }
-.exds-signal-strength__value { color: var(--ex-graphite-400); font-size: 10px; line-height: 1.2; white-space: nowrap; }
+.exds-signal-strength__value { color: var(--ex-graphite-400); font-size: var(--fs-xs); line-height: 1.2; white-space: nowrap; }
 .exds-signal-strength[data-level="0"] { color: var(--ex-graphite-400); }
 .exds-signal-strength[data-level="1"] { color: var(--ex-amber-500); }

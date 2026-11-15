@@ -198,3 +198,5 @@
   .exds-browser-entry-description { grid-row: 4; }
   .exds-browser-entry-copy > .exds-browser-entry-duration { grid-row: 3; }
 }
+
+.exds-browser-preview-actions { display: flex; flex: 0 0 auto; gap: var(--ex-space-2); }
