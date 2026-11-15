@@ -137,6 +137,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     end
     flight = session.reload.flight
     assert_equal "Range test", flight.name
+    assert_equal users(:julien), flight.pilot
     assert_equal "processing", flight.status
     assert_equal "pending", response.parsed_body.fetch("materialization_status")
     assert_equal 0, flight.track_points.count
@@ -206,6 +207,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     end
     flight = users(:julien).flights.order(:id).last
     assert_equal "preparation", flight.status
+    assert_equal users(:julien), flight.pilot
     assert_nil flight.aircraft
     get signal_path(view: "home")
     assert_select "a[href=?]", edit_flight_path(flight), text: "Edit draft"

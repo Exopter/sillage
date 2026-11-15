@@ -22,7 +22,7 @@ class FlightsController < ApplicationController
     @selected_entry = if params[:kind] == "import"
       FlightImport.accessible_to(Current.user).find(params[:id])
     else
-      Flight.visible_to(Current.user).includes(:aircraft, :fdr, folder: :memberships).find(params[:id])
+      Flight.visible_to(Current.user).includes(:pilot, :aircraft, :fdr, folder: :memberships).find(params[:id])
     end
     @destination_folders = FlightFolder.contributable_to(Current.user).ordered
     @preview_points = Flights::RoutePreview.call(@selected_entry)
@@ -31,7 +31,7 @@ class FlightsController < ApplicationController
 
   def new
     status = params[:intent] == "prepare" ? "preparation" : "logged"
-    @flight = Current.user.flights.new(status:, flown_on: (Date.current if status == "logged"))
+    @flight = Current.user.flights.new(pilot: Current.user, status:, flown_on: (Date.current if status == "logged"))
     load_browser(panel: "new")
     @flight.folder = @folder if @folder&.contributable_by?(Current.user)
     load_form_options
@@ -159,7 +159,7 @@ class FlightsController < ApplicationController
   end
 
   def set_flight
-    @flight = Flight.visible_to(Current.user).includes(:aircraft, :fdr, folder: :memberships).find(params[:id])
+    @flight = Flight.visible_to(Current.user).includes(:pilot, :aircraft, :fdr, folder: :memberships).find(params[:id])
   end
 
   def disable_caching
@@ -178,6 +178,7 @@ class FlightsController < ApplicationController
       :flown_on,
       :flown_at,
       :fdr_id,
+      :pilot_id,
       :visibility,
       :folder_id,
       :location,
@@ -193,6 +194,9 @@ class FlightsController < ApplicationController
   end
 
   def load_form_options
+    @pilots = User.available_as_pilot
+    @pilots = @pilots.or(User.where(id: @flight.pilot_id_in_database)) if @flight&.pilot_id_in_database
+    @pilots = @pilots.order(:first_name, :last_name, :email_address)
     @location_suggestions = Flight.visible_to(Current.user).where.not(location: [ nil, "" ])
       .distinct.order(:location).pluck(:location).map(&:strip).reject(&:blank?).uniq
     @form_folders = FlightFolder.contributable_to(Current.user).ordered

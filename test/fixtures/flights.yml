@@ -2,6 +2,7 @@
 
 one:
   user: julien
+  pilot: julien
   flight_import: one
   aircraft: pilatus
   code: FLT-2026-001
@@ -27,6 +28,7 @@ one:
 
 two:
   user: julien
+  pilot: julien
   flight_import: two
   aircraft: exowing
   code: FLT-2026-002

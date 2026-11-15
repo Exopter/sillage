@@ -37,6 +37,7 @@ module FlySight
       flight = import.flights.first
       assert_equal "imported", import.status
       assert_equal @user, import.user
+      assert_equal @user, flight.pilot
       assert_equal "fixture-device", import.device_id
       assert_equal 1, import.flights.count
       assert_equal 8, flight.track_points.count

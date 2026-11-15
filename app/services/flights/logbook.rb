@@ -19,7 +19,7 @@ module Flights
         .take(PER_PAGE + 1).skip(([ number.to_i, 1 ].max - 1) * PER_PAGE)
       rows = ApplicationRecord.connection.select_all(query)
       flights = Flight.visible_to(@user).where(id: rows.select { |row| row["kind"] == "flight" }.map { |row| row["id"] })
-        .includes(:flight_import, :aircraft, :fdr, folder: :memberships).index_by(&:id)
+        .includes(:pilot, :flight_import, :aircraft, :fdr, folder: :memberships).index_by(&:id)
       imports = FlightImport.accessible_to(@user).where(id: rows.select { |row| row["kind"] == "import" }.map { |row| row["id"] })
         .includes(:aircraft).index_by(&:id)
       rows.filter_map { |row| (row["kind"] == "flight" ? flights : imports)[row["id"]] }
