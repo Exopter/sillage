@@ -110,7 +110,15 @@ buildings load independently when configured; unavailable map data leaves the
 
 ## Signal ground radio
 
-Open `/signal` in desktop Chrome or Edge, start a session, then select
+Open `/signal` in desktop Chrome or Edge. The home header can check the ground
+radio and live wing telemetry before any session is created. It reads the same
+MAVLink stream without writing a local capture or sending session batches. A
+connected USB radio or SiK report alone never marks the wing connected; received
+FDR traffic expires after 1.5 seconds. The preview releases its serial lock before
+starting an acquisition. `Radio ready` describes the link only; the flight
+preflight remains separate.
+
+Start a session, then select
 **Connect radio** in the header. Choose the Holybro USB radio, not the recorder's USB
 port. Web Serial uses 57,600 baud and requires HTTPS or localhost. Both radios
 must already share the same SiK configuration.

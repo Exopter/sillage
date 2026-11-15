@@ -150,10 +150,13 @@
     </div>
   </div>
 <% else %>
+  <% content_for :connection_control do %>
+    <%= render "signal/radio_status" %>
+  <% end %>
   <div class="signal-home ex-dark">
     <div class="signal-home-inner">
       <header class="signal-home-head">
-        <div><span class="signal-k">Sillage Signal</span><h1>Start live acquisition</h1><p>Connect the Holybro ground radio over USB to view live telemetry. Use Chrome or Edge on desktop.</p></div>
+        <div><span class="signal-k">Sillage Signal</span><h1>Start live acquisition</h1><p>Check the wing connection in the header, then start an acquisition. Use Chrome or Edge on desktop.</p></div>
       </header>
       <% if @retained_sessions.any? %>
         <section class="signal-launch-card" aria-label="Unassigned sessions">

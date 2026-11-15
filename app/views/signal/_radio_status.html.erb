@@ -1,0 +1,7 @@
+<div class="signal-home-link" data-controller="signal-radio-status" data-state="offline">
+  <div class="signal-home-link-state" role="status" aria-live="polite">
+    <%= sillage_icon "radio", size: 18 %>
+    <div><strong data-signal-radio-status-target="label">No wing connected</strong><small data-signal-radio-status-target="detail">Connect the ground radio to check the wing.</small></div>
+  </div>
+  <button type="button" class="exds-btn exds-btn--secondary" data-signal-radio-status-target="button" data-action="signal-radio-status#toggle">Connect radio</button>
+</div>
