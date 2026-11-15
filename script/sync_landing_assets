@@ -26,7 +26,9 @@ files = {
 end
 %w[pioneer explorer pathfinder trailblazer core_team].each do |tier|
   files["assets/flight-club/insignia-#{tier}.svg"] = "app/assets/images/flight_club/insignia-#{tier}.svg"
+  files["assets/flight-club/card-#{tier}.jpg"] = "app/assets/images/flight_club/card-#{tier}.jpg"
 end
+files["assets/flight-club/wordmark.png"] = "app/assets/images/flight_club/wordmark.png"
 
 files.each do |source_path, target_paths|
   source = Sillage::CanonicalSource.read(File.join(source_root, source_path))

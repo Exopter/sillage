@@ -541,8 +541,8 @@ body {
   margin-left: 4px;
   place-items: center;
   border-radius: 50%;
-  background: var(--ex-field-500);
-  color: var(--ex-white);
+  background: var(--accent);
+  color: var(--accent-contrast);
   font-family: var(--ex-font-mono);
   font-size: 12px;
   font-weight: 600;
@@ -579,6 +579,7 @@ body {
 }
 
 .sillage-profile {
+  color: var(--text-body);
   display: grid;
   align-items: start;
   gap: 28px;
@@ -598,6 +599,7 @@ body {
 }
 
 .sillage-profile-card {
+  --membership-card-surface: var(--surface-panel);
   position: relative;
   display: grid;
   color: var(--text-body);

@@ -1,23 +1,23 @@
 <% sans = "font-family:'Aptos','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;" %>
 <% mono = "font-family:'Aptos Mono','SF Mono',Menlo,Consolas,monospace;" %>
 <tr>
-  <td style="padding:44px 0 0;<%= mono %>font-size:11px;letter-spacing:1.6px;color:#767873;">YOUR MEMBERSHIP IS ACTIVE</td>
+  <td style="padding:44px 0 0;<%= mono %>font-size:11px;letter-spacing:1.6px;color:#97a1a0;">YOUR MEMBERSHIP IS ACTIVE</td>
 </tr>
 <tr>
-  <td style="padding:16px 0 0;font-family:'Aptos Display','Aptos','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:40px;line-height:44px;letter-spacing:-1.4px;color:#070b0d;">
+  <td style="padding:16px 0 0;font-family:'Aptos Display','Aptos','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:40px;line-height:44px;letter-spacing:-1.4px;color:#f5f8f6;">
     Welcome to Flight Club,<br><%= @user.first_name %>.
   </td>
 </tr>
 <tr>
-  <td style="padding:20px 0 26px;<%= sans %>font-size:16px;line-height:26px;color:#3d4347;">
+  <td style="padding:20px 0 26px;<%= sans %>font-size:16px;line-height:26px;color:#c7d0cd;">
     You are now <%= @user.membership_rank_phrase %>. Your card stays in your profile, and every flight you take is kept for you in Sillage.
   </td>
 </tr>
 <%= render "flight_club_card", user: @user, caption: "MEMBER" %>
 <%= render "flight_club_button", label: "Open Sillage", url: root_url %>
 <tr>
-  <td align="center" style="padding:16px 0 40px;<%= sans %>font-size:13px;line-height:20px;color:#767873;">
-    <%= link_to "View my membership card", profile_url(anchor: "membership"), style: "color:#767873;" %>
+  <td align="center" style="padding:16px 0 40px;<%= sans %>font-size:13px;line-height:20px;color:#97a1a0;">
+    <%= link_to "View my membership card", profile_url(anchor: "membership"), style: "color:#97a1a0;" %>
   </td>
 </tr>
 <% content_for :footer do %>

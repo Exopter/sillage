@@ -17,15 +17,16 @@
 
 .flight-club-welcome,
 .flight-club-membership {
-  --club-paper: #f5f4f0;
-  --club-ink: var(--ex-carbon-950);
-  --club-muted: #767873;
-  --club-line: #ddddd5;
-  --club-foil: #e8dcfa;
+  --club-paper: var(--ex-carbon-950);
+  --club-ink: var(--ex-vapor-50);
+  --club-muted: var(--ex-graphite-400);
+  --club-line: var(--ex-carbon-700);
+  --club-foil: var(--accent);
   --club-surface: var(--club-paper);
   --club-text: var(--club-ink);
   --club-secondary: var(--club-muted);
   --club-rule: var(--club-line);
+  --membership-card-surface: var(--club-surface);
 
   position: relative;
   display: grid;
@@ -50,11 +51,11 @@
   border-radius: 8px;
 }
 
-/* First light: the prelude is night, the reveal brings the paper stage. */
+/* The welcome keeps the dark Sillage surface throughout the card reveal. */
 .flight-club-welcome[data-stage="invitation"] {
   --club-surface: var(--ex-carbon-950);
-  --club-text: #f8f7fc;
-  --club-secondary: #a9a5b0;
+  --club-text: var(--ex-vapor-50);
+  --club-secondary: var(--ex-graphite-400);
   --club-rule: rgba(255, 255, 255, 0.14);
 }
 
@@ -85,7 +86,7 @@
   transition: filter 1.8s ease;
 }
 
-.flight-club-welcome[data-stage="invitation"] .flight-club-wordmark,
+.flight-club-wordmark,
 .flight-club-emblem img {
   filter: invert(1);
 }
@@ -150,10 +151,10 @@
   width: 96px;
   height: 96px;
   margin-bottom: 10px;
-  border: 1px solid #72628b;
+  border: 1px solid var(--accent);
   border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(90, 68, 118, 0.3), transparent 70%);
-  box-shadow: 0 0 65px rgba(176, 120, 255, 0.1);
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%);
+  box-shadow: 0 0 65px color-mix(in srgb, var(--accent) 10%, transparent);
   place-items: center;
 }
 
@@ -174,7 +175,7 @@
   border: 0;
   border-radius: 5px;
   background: var(--club-foil);
-  color: #21192c;
+  color: var(--accent-contrast);
   font: inherit;
   font-size: 15px;
   cursor: pointer;
@@ -182,13 +183,13 @@
 }
 
 .flight-club-action:hover {
-  background: #f2eaff;
+  background: var(--accent-hover);
 }
 
 .flight-club-action:focus-visible,
 .flight-club-link:focus-visible,
 .flight-club-form input:focus-visible {
-  outline: 2px solid var(--ex-flight-violet);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 4px;
 }
 
@@ -318,10 +319,10 @@
 
 .flight-club-rank {
   padding: 5px 10px;
-  border: 1px solid #bca1db;
+  border: 1px solid var(--accent);
   border-radius: 4px;
-  background: #ece7f3;
-  color: #69458c;
+  background: var(--surface-selected);
+  color: var(--accent);
   font-size: 12px;
   letter-spacing: 0.025em;
 }
@@ -363,12 +364,12 @@
 .flight-club-controls .flight-club-action {
   width: auto;
   min-width: 210px;
-  background: var(--club-ink);
-  color: var(--club-paper);
+  background: var(--control-primary);
+  color: var(--control-primary-text);
 }
 
 .flight-club-controls .flight-club-action:hover {
-  background: #1d2427;
+  background: var(--control-primary-hover);
 }
 
 .flight-club-link {
