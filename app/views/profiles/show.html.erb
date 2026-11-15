@@ -1,0 +1,38 @@
+<% content_for :title, "My profile" %>
+
+<div class="sillage-profile">
+  <section class="sillage-profile-panel" aria-labelledby="profile-heading">
+    <div class="sillage-profile-heading">
+      <%= render "shared/user_avatar", user: @user, large: true %>
+      <div>
+        <p class="sillage-profile-eyebrow">Your account</p>
+        <h1 id="profile-heading"><%= @user.full_name || "My profile" %></h1>
+        <p><%= @user.email_address %></p>
+        <% if @user.member? %><p><%= @user.membership_rank %> · <%= @user.member_code %></p><% end %>
+      </div>
+    </div>
+
+    <%= form_with model: @user, url: profile_path, method: :patch, class: "sillage-profile-form" do |form| %>
+      <% if @user.errors.any? %>
+        <p class="workspace-errors" role="alert"><%= @user.errors.full_messages.to_sentence %> Please select your photo again before saving.</p>
+      <% end %>
+      <div class="sillage-profile-names">
+        <label><span>First name</span><span class="exds-input-wrap"><%= form.text_field :first_name, autocomplete: "given-name", required: @user.member?, class: "exds-input" %></span></label>
+        <label><span>Last name</span><span class="exds-input-wrap"><%= form.text_field :last_name, autocomplete: "family-name", required: @user.member?, class: "exds-input" %></span></label>
+      </div>
+      <label><span>Profile photo</span><%= form.file_field :avatar, class: "exds-file-input", accept: User::AVATAR_TYPES.join(","), aria: { describedby: "avatar-help" } %></label>
+      <p id="avatar-help">JPEG, PNG or WebP. Up to 5 MB. Your photo appears beside your name. Initials are shown until you add one.</p>
+      <% if @user.avatar.attached? && @user.avatar.attachment.persisted? %>
+        <label class="sillage-profile-remove"><%= form.check_box :remove_avatar, checked: false %><span>Remove current photo</span></label>
+      <% end %>
+      <div><%= form.submit "Save profile", class: "exds-btn exds-btn--primary" %></div>
+    <% end %>
+  </section>
+
+  <% if @user.member? %>
+    <section id="membership" class="sillage-profile-membership" aria-labelledby="profile-membership-heading">
+      <div class="sillage-profile-section-heading"><div><p class="sillage-profile-eyebrow">Flight Club</p><h2 id="profile-membership-heading">Your membership card</h2></div><span><%= @user.member_code %></span></div>
+      <%= render "flight_club/memberships/membership", member: @user %>
+    </section>
+  <% end %>
+</div>

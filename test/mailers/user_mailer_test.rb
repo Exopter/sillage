@@ -42,6 +42,6 @@ class UserMailerTest < ActionMailer::TestCase
     assert_equal "Welcome to Flight Club, Elias", message.subject
     assert_includes message.html_part.body.decoded, "an Explorer"
     assert_includes message.html_part.body.decoded, "FC 0008"
-    assert_includes message.text_part.body.decoded, "http://www.example.com/flight-club"
+    assert_includes message.text_part.body.decoded, "http://www.example.com/profile#membership"
   end
 end

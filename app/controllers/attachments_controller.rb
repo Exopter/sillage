@@ -9,7 +9,8 @@ class AttachmentsController < ApplicationController
     no_store
     blob = attachment.blob
     inline = (attachment.record_type == "Flight" && attachment.name == "video") ||
-      attachment.record_type == "Feedback" || (attachment.record_type == "FlightComment" && attachment.name == "images")
+      attachment.record_type == "Feedback" || (attachment.record_type == "FlightComment" && attachment.name == "images") ||
+      (attachment.record_type == "User" && attachment.name == "avatar")
     disposition = inline ? "inline" : "attachment"
     response.headers["Accept-Ranges"] = "bytes"
     if blob.service.is_a?(ActiveStorage::Service::DiskService)
@@ -31,6 +32,8 @@ class AttachmentsController < ApplicationController
 
   def accessible?(attachment)
     case record = attachment.record
+    when User
+      attachment.name == "avatar"
     when Feedback
       Current.user.admin?
     when Flight

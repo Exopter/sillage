@@ -1,13 +1,13 @@
 <% new_comment = local_assigns[:new_comment] || FlightComment.new %>
 <% editing_comment = local_assigns[:editing_comment] %>
-<% comments = flight.comments.includes(:user, images_attachments: :blob).chronological.to_a %>
+<% comments = flight.comments.includes(user: { avatar_attachment: :blob }, images_attachments: :blob).chronological.to_a %>
 <%= turbo_frame_tag dom_id(flight, :comments), class: "exds-comments exds-browser-editor-section", role: "region", aria: { label: "Flight comments" }, data: { controller: "flight-comments", action: "keydown.esc->flight-comments#close click@window->flight-comments#outside" } do %>
   <div class="exds-comments-heading"><h3>Comments</h3><span><%= comments.size %></span></div>
   <% if comments.empty? %><p class="exds-comments-empty">No comments yet. Add the first observation.</p><% end %>
   <% comments.each do |comment| %>
     <% current = editing_comment&.id == comment.id ? editing_comment : comment %>
     <article class="exds-comment" id="<%= dom_id(comment) %>">
-      <span class="exds-comment-avatar" aria-hidden="true"><%= sillage_user_initials(comment.user) %></span>
+      <%= render "shared/user_avatar", user: comment.user, avatar_class: "exds-comment-avatar" %>
       <div class="exds-comment-main">
         <div class="exds-comment-header">
           <div><strong><%= comment_author_name(comment.user) %></strong><% if comment.owned_by?(Current.user) %><span class="exds-comment-you">You</span><% end %>

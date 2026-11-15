@@ -7,9 +7,12 @@ class User < ApplicationRecord
   MEMBERSHIP_TIERS = %w[pioneer explorer pathfinder trailblazer core_team].freeze
   MEMBER_NUMBER_SEQUENCE = "flight_club_member"
   INVITATION_VALIDITY = 14.days
+  AVATAR_TYPES = %w[image/jpeg image/png image/webp].freeze
+  MAX_AVATAR_SIZE = 5.megabytes
   DEFAULT_ADMIN_EMAIL = "julien@exopter.com"
 
   has_secure_password validations: false, reset_token: { expires_in: 30.minutes }
+  has_one_attached :avatar
 
   has_many :sessions, dependent: :destroy
   has_many :feedbacks, dependent: :restrict_with_error
@@ -43,6 +46,7 @@ class User < ApplicationRecord
 
   before_validation :assign_member_number, if: -> { member? && member_number.nil? }
   validate :accepted_users_have_password_digest
+  validate :validate_avatar
 
   scope :active, -> { where(disabled_at: nil) }
   scope :admins, -> { where(role: "admin") }
@@ -187,6 +191,13 @@ class User < ApplicationRecord
   end
 
   private
+
+  def validate_avatar
+    return unless avatar.attached?
+
+    errors.add(:avatar, "must be a JPEG, PNG or WebP image") unless AVATAR_TYPES.include?(avatar.blob.content_type)
+    errors.add(:avatar, "must be 5 MB or smaller") if avatar.blob.byte_size > MAX_AVATAR_SIZE
+  end
 
   def assign_member_number
     self.member_number = IdentifierSequence.next_value!(MEMBER_NUMBER_SEQUENCE)

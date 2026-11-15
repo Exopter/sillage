@@ -126,6 +126,7 @@ module ApplicationHelper
   end
 
   def sillage_shell_crumb
+    return "My profile" if controller_path == "profiles"
     return "Feedback" if sillage_current_room == "feedback"
     return "Hangar" if sillage_current_room == "hangar"
     return "Signal" if sillage_current_room == "signal"

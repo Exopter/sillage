@@ -16,4 +16,8 @@
 .exds-input__affix svg{width:16px;height:16px;display:block}
 .exds-field__hint{font-size:var(--fs-sm);line-height:1.4;color:var(--text-muted)}
 .exds-field__hint--error{color:var(--control-error)}
+.exds-file-input{font:400 var(--fs-sm)/1.4 var(--font-ui);color:var(--text-muted);max-width:100%}
+.exds-file-input::file-selector-button{min-height:var(--control-h);margin-right:12px;padding:4px 14px;border:1px solid var(--border-strong);border-radius:var(--radius-compact);background:var(--surface-card);color:var(--text-body);font:600 var(--fs-sm)/1.2 var(--font-ui);cursor:pointer}
+.exds-file-input::file-selector-button:hover{background:var(--surface-hover)}
+.exds-file-input:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.exds-input-wrap{transition:none}}

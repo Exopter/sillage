@@ -211,8 +211,8 @@ Design decisions and governance live in the
 
 ## Flight Club onboarding
 
-A user with a `membership_tier` (`pioneer`, `explorer`, `pathfinder` or
-`trailblazer`) is a Flight Club member. Core invites members with a first name,
+A user with a `membership_tier` (`pioneer`, `explorer`, `pathfinder`,
+`trailblazer` or `core_team`) is a Flight Club member. Core invites members with a first name,
 a last name and a tier; the permanent member number comes from the
 `flight_club_member` identifier sequence. Accounts without a tier keep the
 standard invitation and never see Flight Club.
@@ -225,7 +225,17 @@ standard invitation and never see Flight Club.
    (`PATCH /flight-club/welcome`), every HTML page redirects there
    (`MembershipWelcome`), after two-factor verification when it applies.
 4. The confirmation sends `UserMailer#membership_confirmation` once and opens
-   Sillage. `GET /flight-club` keeps the card in the account menu.
+   Sillage. `GET /profile` keeps the card with the member profile; the confirmation
+   email links directly to that section. `GET /flight-club` remains available.
+
+All accounts can edit their own name and profile photo at `/profile`. Photos use
+Active Storage, accept JPEG, PNG and WebP up to 5 MB, and are served through
+authenticated attachment URLs. Multipart uploads are inspected by content; signed
+blob IDs are rejected. Initials remain the fallback. The shared avatar overlays
+the member insignia in the account menu, profile and flight comments. Insignia SVGs
+are generated from the card ranks by the design system
+(`node scripts/export-flight-club-insignia.mjs`) and synchronized with
+`script/sync_landing_assets`.
 
 `app/javascript/lib/membership_card.js` is a byte-for-byte copy of
 `ui_kits/flightclub/membership-card.js` from the design system; change it there

@@ -1,0 +1,12 @@
+<% large = local_assigns.fetch(:large, false) %>
+<% saved_avatar = user.avatar.attachment if user.avatar.attached? && user.avatar.attachment.persisted? %>
+<span class="sillage-avatar <%= local_assigns[:avatar_class] %><%= ' sillage-avatar--large' if large %>" role="img" aria-label="<%= [user.full_name || user.email_address, user.membership_rank].compact.join(', ') %>">
+  <% if saved_avatar %>
+    <%= image_tag attachment_path(saved_avatar), alt: "", class: "sillage-avatar-photo", decoding: "async" %>
+  <% else %>
+    <span aria-hidden="true"><%= sillage_user_initials(user) %></span>
+  <% end %>
+  <% if user.member? %>
+    <%= image_tag "flight_club/insignia-#{user.membership_tier}.svg", alt: "", class: "sillage-avatar-insignia", aria: { hidden: true } %>
+  <% end %>
+</span>

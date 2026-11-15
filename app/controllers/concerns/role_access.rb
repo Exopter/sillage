@@ -10,7 +10,7 @@ module RoleAccess
     "signal_radio_histories" => %w[show],
     "attachments" => %w[show]
   }.freeze
-  ACCOUNT_CONTROLLERS = %w[sessions passwords invitations two_factor/setups two_factor/challenges flight_club/welcomes flight_club/memberships].freeze
+  ACCOUNT_CONTROLLERS = %w[sessions passwords invitations profiles two_factor/setups two_factor/challenges flight_club/welcomes flight_club/memberships].freeze
 
   included do
     before_action :enforce_role_access

@@ -24,6 +24,9 @@ files = {
 %w[axonometric plan front profile].each do |view|
   files["assets/blueprints/exowing-#{view}.svg"] = "app/assets/images/blueprints/exowing-#{view}.svg"
 end
+%w[pioneer explorer pathfinder trailblazer core_team].each do |tier|
+  files["assets/flight-club/insignia-#{tier}.svg"] = "app/assets/images/flight_club/insignia-#{tier}.svg"
+end
 
 files.each do |source_path, target_paths|
   source = Sillage::CanonicalSource.read(File.join(source_root, source_path))
