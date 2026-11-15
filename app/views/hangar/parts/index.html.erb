@@ -48,6 +48,6 @@
       </table>
     </div>
   <% else %>
-    <div class="workspace-empty">No parts registered yet.</div>
+    <div class="workspace-empty">No parts registered yet. <%= link_to "Register the first part", new_hangar_part_path %> to build the inventory.</div>
   <% end %>
 </section>

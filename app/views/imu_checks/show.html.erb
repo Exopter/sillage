@@ -7,5 +7,5 @@
   <%= render "imu_checks/guide", fdr: @fdr, kind: "preflight", flight: @flight %>
   <%= render "imu_checks/history", checks: @flight.imu_checks.recent.limit(10) %>
 <% else %>
-  <div class="workspace-empty">No identified recorder is installed on this aircraft. Assign it in Hangar first.</div>
+  <div class="workspace-empty">No identified recorder is installed on this aircraft. <%= link_to "Assign one in Hangar", hangar_path %> first.</div>
 <% end %>

@@ -136,6 +136,7 @@ export default class extends TypedController {
         lastTick = now
         analyser.getByteTimeDomainData(values)
         this.levelTarget.value = Math.min(1, Math.sqrt(values.reduce((sum, value) => sum + ((value - 128) / 128) ** 2, 0) / values.length) * 4)
+        this.element.style.setProperty("--debrief-level", this.levelTarget.value.toFixed(2))
         const seconds = Math.floor(elapsed / 1000)
         this.durationTarget.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
       }, 200)
@@ -232,7 +233,8 @@ export default class extends TypedController {
         this.showState(debrief.status === "ready" ? "ready" : debrief.status === "failed" ? "recovery" : "published")
         clearInterval(this.pollTimer)
         this.statusTarget.textContent = debrief.error_message || (debrief.status === "published" ? "Published to Pilot Log." : "Ready to review and publish.")
-        this.summaryTarget.value = debrief.summary || ""
+        // Summaries are plain text; drafts written before that still carry Markdown bullets and emphasis.
+        this.summaryTarget.value = (debrief.summary || "").replace(/^[-*\u2022]\s+/gm, "").replace(/\*\*(.+?)\*\*/g, "$1")
         this.transcriptTarget.textContent = debrief.transcript || ""
       }
     } catch { this.showState("recovery"); this.statusTarget.textContent = "Connection interrupted. Audio is saved; retry when connected." }

@@ -1195,9 +1195,10 @@ export default class extends TypedController {
         showBackground: true,
         backgroundColor: Cesium.Color.fromCssColorString("rgba(7, 24, 23, 0.82)"),
         backgroundPadding: new Cesium.Cartesian2(8, 6),
-        horizontalOrigin: Cesium.HorizontalOrigin.LEFT,
-        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-        pixelOffset: new Cesium.Cartesian2(18, -18),
+        // Below and left of the marker, away from the camera controls in the top-right corner.
+        horizontalOrigin: Cesium.HorizontalOrigin.RIGHT,
+        verticalOrigin: Cesium.VerticalOrigin.TOP,
+        pixelOffset: new Cesium.Cartesian2(-18, 18),
         disableDepthTestDistance: Number.POSITIVE_INFINITY
       }
     })

@@ -31,6 +31,7 @@
   --fs-card:    1rem;
   --fs-text:    0.875rem;
   --fs-caption: 0.75rem;
+  --fs-micro:   0.625rem; /* floor: dense instrument and rail labels only */
   --fs-metric:    2rem;
   --fs-metric-lg: 3rem;
 

@@ -33,7 +33,7 @@
       </table>
     </div>
   <% else %>
-    <div class="workspace-empty">No FDR yet. Connect a recorder over USB-C or Bluetooth to set it up.</div>
+    <div class="workspace-empty">No FDR yet. <%= link_to "Connect a recorder", forge_path(connect: 1) %> over USB-C or Bluetooth to set it up.</div>
   <% end %>
 </section>
 

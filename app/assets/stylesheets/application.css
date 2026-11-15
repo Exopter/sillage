@@ -89,7 +89,7 @@ body {
   gap: 6px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: .06em;
   text-transform: uppercase;
@@ -194,7 +194,7 @@ body {
 
 .preparation-grid dt {
   color: var(--text-muted);
-  font: 600 9px/1 var(--font-mono);
+  font: 600 var(--fs-micro)/1 var(--font-mono);
   letter-spacing: .08em;
   text-transform: uppercase;
 }
@@ -203,7 +203,7 @@ body {
   margin: 6px 0 0;
   overflow: hidden;
   color: var(--text-strong);
-  font: 600 13px/1.3 var(--font-mono);
+  font: 600 var(--fs-sm)/1.3 var(--font-mono);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -223,7 +223,7 @@ body {
   margin-bottom: 1px;
   padding: 0;
   color: var(--text-muted);
-  font: 600 10px/1 var(--font-mono);
+  font: 600 var(--fs-micro)/1 var(--font-mono);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
@@ -383,13 +383,13 @@ body {
 }
 
 .sillage-room-label {
-  max-width: 46px;
+  max-width: 50px;
   overflow: hidden;
   color: currentColor;
   font-family: var(--ex-font-mono);
-  font-size: 8px;
+  font-size: var(--fs-micro);
   font-weight: 400;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   line-height: 1;
   text-overflow: ellipsis;
   text-transform: uppercase;
@@ -1357,58 +1357,31 @@ body {
   letter-spacing: 0;
 }
 
-.core-user-list {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) repeat(4, max-content);
-  gap: 10px;
+.core-user-row td {
+  vertical-align: middle;
 }
 
-.core-user-row {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
-  gap: 14px;
+.core-user-identity {
+  display: flex;
+  min-width: 0;
   align-items: center;
-  padding: 12px;
-  border: 1px solid var(--border-rule);
-  border-radius: var(--ex-radius-surface);
-  background: var(--surface-panel);
+  gap: var(--sp-3);
 }
 
-.core-user-row > div:first-child strong,
-.core-user-row > div:first-child span {
+.core-user-identity strong,
+.core-user-identity small {
   display: block;
   overflow-wrap: anywhere;
 }
 
-.core-user-row > div:first-child span {
+.core-user-identity small {
   color: var(--text-muted);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-caption);
 }
 
-.core-user-status,
-.core-user-actions {
-  display: flex;
+.core-user-row .workspace-actions {
   flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  justify-content: flex-end;
 }
-
-.core-user-actions form {
-  display: contents;
-}
-
-.core-user-row .core-user-actions {
-  display: grid;
-  grid-column: 3 / -1;
-  grid-template-columns: subgrid;
-}
-
-.core-user-action-edit { grid-column: 1; }
-.core-user-action-resend { grid-column: 2; }
-.core-user-action-access { grid-column: 3; }
-.core-user-action-security { grid-column: 4; }
 
 .status-pill {
   display: inline-flex;
@@ -1868,7 +1841,7 @@ body {
 .flight-section-kicker {
   color: var(--ex-graphite-400);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2000,7 +1973,7 @@ body {
   color: var(--ex-graphite-400);
   cursor: pointer;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 650;
   transition: background var(--dur) var(--ease-out), color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
 }
@@ -2085,7 +2058,7 @@ body {
 
 .trajectory-compact .trajectory-time {
   min-width: 86px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
 }
 
 .trajectory-viewport {
@@ -2198,7 +2171,7 @@ body {
   overflow: hidden;
   padding: 2px 1px;
   color: var(--ex-graphite-500);
-  font-size: 8px;
+  font-size: var(--fs-micro);
   line-height: 1;
   white-space: nowrap;
 }
@@ -2232,7 +2205,7 @@ body {
 
 .trajectory-credits .cesium-credit-textContainer,
 .trajectory-credits .cesium-credit-expand-link {
-  font-size: 8px;
+  font-size: var(--fs-micro);
   line-height: 11px;
 }
 
@@ -2389,7 +2362,7 @@ body {
 .flight-stat-card header span {
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -2500,7 +2473,7 @@ body {
 }
 
 .flight-speed-unit {
-  font-size: 8px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   opacity: 0.82;
 }
@@ -2743,7 +2716,7 @@ body.flight-analysis-theme,
 
   .sillage-room-label {
     max-width: none;
-    font-size: 9px;
+    font-size: var(--fs-micro);
   }
 
   .sillage-main {
@@ -2797,19 +2770,11 @@ body.flight-analysis-theme,
   }
 
 
-  .core-user-list,
-  .core-user-row {
-    grid-template-columns: 1fr;
-  }
-
-  .core-user-status,
-  .core-user-actions {
-    justify-content: flex-start;
-  }
-
-  .core-user-row .core-user-actions {
-    display: flex;
-    grid-column: auto;
+  .workspace-panel.is-flush .workspace-table.is-stacked .core-user-row td.workspace-table-actions {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    justify-self: start;
+    margin-top: var(--sp-2);
   }
 
   .flight-card {
@@ -2923,7 +2888,7 @@ body.flight-analysis-theme,
 
   .flight-analysis-toolbar .flight-phase-range {
     justify-self: start;
-    font-size: 10px;
+    font-size: var(--fs-xs);
   }
 
   .flight-chart-stage {
@@ -2997,7 +2962,7 @@ button.aircraft-connection-pill:disabled { cursor: default; opacity: .55; }
   background: var(--ex-carbon-900);
   box-shadow: var(--shadow-sm);
   color: var(--ex-vapor-50);
-  font: 500 12px/1.5 var(--font-data);
+  font: 500 var(--fs-caption)/1.5 var(--font-data);
   letter-spacing: normal;
   text-transform: none;
   white-space: normal;
@@ -3155,4 +3120,10 @@ button.aircraft-connection-pill:disabled { cursor: default; opacity: .55; }
 
 .flight-record-panel[hidden] {
   display: none;
+}
+
+/* The Pilot log reads as one column, like a form. */
+.flight-record-log {
+  width: min(100%, 760px);
+  margin-inline: auto;
 }

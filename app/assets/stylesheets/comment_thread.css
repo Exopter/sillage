@@ -1,9 +1,9 @@
 .exds-comments { position:relative; }
 .exds-comments-heading { display:flex; align-items:center; gap:9px; }
-.exds-comments-heading > span { font:12px var(--ex-font-mono); color:var(--text-muted); }
+.exds-comments-heading > span { font:var(--fs-caption) var(--ex-font-mono); color:var(--text-muted); }
 .exds-comment { display:flex; align-items:flex-start; gap:12px; padding:12px 0; }
 .exds-comment + .exds-comment { border-top:1px solid var(--surface-panel); }
-.exds-comment-avatar { display:grid; place-items:center; width:30px; height:30px; flex:0 0 30px; border-radius:50%; background:var(--surface-panel); color:var(--text-muted); font:600 12px var(--ex-font-sans); }
+.exds-comment-avatar { display:grid; place-items:center; width:30px; height:30px; flex:0 0 30px; border-radius:50%; background:var(--surface-panel); color:var(--text-muted); font:600 var(--fs-caption) var(--ex-font-sans); }
 .exds-comment-main { flex:1; min-width:0; }
 .exds-comment-header { display:flex; align-items:flex-start; gap:8px; position:relative; }
 .exds-comment-header strong { font-size: var(--fs-text); }
@@ -12,7 +12,7 @@
 .exds-comment-actions { margin-left:auto; }
 .exds-comment-body { font-size: var(--fs-text); line-height:1.5; margin:10px 0 0; white-space:pre-wrap; overflow-wrap:anywhere; }
 .exds-comment-menu { position:absolute; z-index:12; right:0; top:34px; min-width:166px; padding:5px; background:var(--surface-card); border:1px solid var(--border-rule); border-radius:var(--ex-radius-surface); box-shadow:var(--ex-shadow-panel); }
-.exds-comment-menu :is(button,a) { display:flex; align-items:center; gap:9px; background:transparent; border:0; border-radius:var(--ex-radius-instrument); width:100%; padding:10px; font:14px var(--ex-font-sans); color:var(--text-body); text-align:left; text-decoration:none; }
+.exds-comment-menu :is(button,a) { display:flex; align-items:center; gap:9px; background:transparent; border:0; border-radius:var(--ex-radius-instrument); width:100%; padding:10px; font:var(--fs-text) var(--ex-font-sans); color:var(--text-body); text-align:left; text-decoration:none; }
 .exds-comment-menu :is(button,a):hover { background:var(--surface-app); }
 .exds-comment-menu button { color:var(--ex-state-fault-text); }
 .exds-comments svg { width:16px; height:16px; flex-shrink:0; }

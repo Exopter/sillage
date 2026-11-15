@@ -14,5 +14,5 @@
     </table>
   </section>
 <% else %>
-  <div class="workspace-empty">No functional configurations yet. Define a version and its planned capabilities before creating an ExoFDR.</div>
+  <div class="workspace-empty">No functional configurations yet. <%= link_to "Define a version", new_hangar_fdr_functional_configuration_path %> and its planned capabilities before creating an ExoFDR.</div>
 <% end %>

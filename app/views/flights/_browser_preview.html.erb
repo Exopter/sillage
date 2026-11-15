@@ -4,7 +4,12 @@
     <% flight = entry.is_a?(Flight) %>
     <% accessible = !flight || entry.visible_to?(Current.user) %>
     <header class="exds-browser-preview-heading"><div><h2><%= browser_name(entry) %></h2><p><%= flight ? entry.description : entry.import_type.upcase %></p></div>
-      <% if can_manage_operations? && flight && accessible %><%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button", aria: { label: "Edit flight" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 17 %><% end %><% end %>
+      <% if can_manage_operations? && flight && accessible %>
+        <div class="exds-browser-preview-actions">
+          <% unless entry.live? %><%= link_to "##{dom_id(entry, :debrief)}", class: "exds-browser-icon-button", title: "Record debrief", aria: { label: "Record debrief" }, data: { turbo: false } do %><%= sillage_icon "mic", size: 17 %><% end %><% end %>
+          <%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button", aria: { label: "Edit flight" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 17 %><% end %>
+        </div>
+      <% end %>
     </header>
     <% if @preview_points.any? %>
       <div data-controller="flight-preview-map" data-flight-preview-map-points-value="<%= @preview_points.to_json %>">
