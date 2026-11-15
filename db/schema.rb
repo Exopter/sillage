@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_15_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -735,8 +735,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
     t.datetime "created_at", null: false
     t.datetime "disabled_at"
     t.string "email_address", null: false
+    t.string "first_name"
     t.datetime "invitation_accepted_at"
     t.datetime "invitation_sent_at"
+    t.string "last_name"
+    t.integer "member_number"
+    t.datetime "membership_started_at"
+    t.string "membership_tier"
+    t.datetime "membership_welcomed_at"
     t.datetime "otp_enabled_at"
     t.datetime "otp_last_verified_at"
     t.text "otp_secret_ciphertext"
@@ -745,6 +751,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
     t.datetime "updated_at", null: false
     t.index ["disabled_at"], name: "index_users_on_disabled_at"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
+    t.index ["member_number"], name: "index_users_on_member_number", unique: true
+    t.index ["membership_tier"], name: "index_users_on_membership_tier"
     t.index ["role"], name: "index_users_on_role"
   end
 

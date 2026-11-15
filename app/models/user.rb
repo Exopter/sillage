@@ -3,6 +3,9 @@ require "digest"
 
 class User < ApplicationRecord
   ROLES = %w[admin user].freeze
+  MEMBERSHIP_TIERS = %w[pioneer explorer pathfinder trailblazer].freeze
+  MEMBER_NUMBER_SEQUENCE = "flight_club_member"
+  INVITATION_VALIDITY = 14.days
   DEFAULT_ADMIN_EMAIL = "julien@exopter.com"
 
   has_secure_password validations: false, reset_token: { expires_in: 30.minutes }
@@ -22,7 +25,7 @@ class User < ApplicationRecord
 
   normalizes :email_address, with: ->(email) { email.to_s.strip.downcase }
 
-  generates_token_for :invitation, expires_in: 14.days do
+  generates_token_for :invitation, expires_in: INVITATION_VALIDITY do
     [ email_address, invitation_sent_at&.to_i, invitation_accepted_at&.to_i ]
   end
 
@@ -30,6 +33,14 @@ class User < ApplicationRecord
   validates :email_address, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
   validates :role, inclusion: { in: ROLES }
   validates :password, length: { minimum: 8 }, allow_nil: true
+  validates :membership_tier, inclusion: { in: MEMBERSHIP_TIERS }, allow_nil: true
+  validates :first_name, :last_name, presence: true, if: :member?
+  validates :member_number, uniqueness: true, allow_nil: true
+
+  normalizes :first_name, :last_name, with: ->(name) { name.to_s.squish.presence }
+  normalizes :membership_tier, with: ->(tier) { tier.presence }
+
+  before_validation :assign_member_number, if: -> { member? && member_number.nil? }
   validate :accepted_users_have_password_digest
 
   scope :active, -> { where(disabled_at: nil) }
@@ -42,9 +53,10 @@ class User < ApplicationRecord
     end
   end
 
-  def self.invite!(email_address:, role:)
+  def self.invite!(email_address:, role:, **profile)
     user = find_or_initialize_by(email_address:)
     user.role = role
+    user.assign_attributes(profile.slice(:first_name, :last_name, :membership_tier))
     user.disabled_at = nil
     user.send_invitation!
     user
@@ -56,6 +68,40 @@ class User < ApplicationRecord
 
   def disabled?
     disabled_at.present?
+  end
+
+  def member?
+    membership_tier.present?
+  end
+
+  def full_name
+    [ first_name, last_name ].compact_blank.join(" ").presence
+  end
+
+  def membership_rank
+    membership_tier&.titleize
+  end
+
+  # "a Pioneer", "an Explorer".
+  def membership_rank_phrase
+    "#{membership_rank.match?(/\A[AEIOU]/) ? "an" : "a"} #{membership_rank}" if member?
+  end
+
+  # Member numbers are permanent: a number is never reassigned or renumbered.
+  def member_code
+    format("FC %04d", member_number) if member_number
+  end
+
+  def awaiting_membership_welcome?
+    member? && membership_welcomed_at.nil?
+  end
+
+  def complete_membership_welcome!
+    update!(membership_welcomed_at: Time.current) if awaiting_membership_welcome?
+  end
+
+  def invitation_expires_at
+    invitation_sent_at + INVITATION_VALIDITY if invitation_sent_at
   end
 
   def invitation_pending?
@@ -76,6 +122,7 @@ class User < ApplicationRecord
     self.password = password
     self.password_confirmation = password_confirmation
     self.invitation_accepted_at = Time.current
+    self.membership_started_at ||= invitation_accepted_at if member?
     save
   end
 
@@ -132,6 +179,10 @@ class User < ApplicationRecord
   end
 
   private
+
+  def assign_member_number
+    self.member_number = IdentifierSequence.next_value!(MEMBER_NUMBER_SEQUENCE)
+  end
 
   def accepted_users_have_password_digest
     return unless invitation_accepted_at.present? && password_digest.blank?

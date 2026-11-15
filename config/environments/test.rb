@@ -32,6 +32,7 @@ Rails.application.configure do
   config.active_storage.service = :test
 
   config.action_mailer.default_url_options = { host: "www.example.com" }
+  config.action_mailer.asset_host = "http://www.example.com"
   config.action_mailer.delivery_method = :test
 
   # Print deprecation notices to the stderr.

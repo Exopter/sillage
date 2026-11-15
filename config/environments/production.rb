@@ -35,6 +35,8 @@ Rails.application.configure do
   mail_from_header = mail_from_name ? "#{mail_from_name} <#{mail_from}>" : mail_from
 
   config.action_mailer.default_url_options = { host: sillage_host, protocol: "https" }
+  # Mail images are served by the application itself.
+  config.action_mailer.asset_host = "https://#{sillage_host}"
   config.action_mailer.default_options = {
     from: mail_from_header,
     reply_to: ENV["MAIL_REPLY_TO"].presence

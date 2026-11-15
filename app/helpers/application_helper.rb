@@ -167,8 +167,23 @@ module ApplicationHelper
     classes.uniq.join(" ")
   end
 
+  # Stimulus bindings for a member's Flight Club card.
+  def flight_club_card_data(member)
+    {
+      controller: "membership-card",
+      membership_card_name_value: member.full_name,
+      membership_card_number_value: member.member_number,
+      membership_card_tier_value: member.membership_tier,
+      membership_card_since_value: (member.membership_started_at || Time.current).strftime("%b %Y"),
+      membership_card_wordmark_value: image_path("logo-wordmark.svg"),
+      membership_card_monogram_value: image_path("flight_club/ex-monogram.svg"),
+      membership_card_wing_value: image_path("blueprints/exowing-axonometric.svg")
+    }
+  end
+
   def sillage_user_initials(user)
     return "--" unless user
+    return "#{user.first_name[0]}#{user.last_name[0]}".upcase if user.first_name.present? && user.last_name.present?
 
     parts = user.email_address.to_s.split("@").first.to_s.split(/[._-]/).reject(&:blank?)
     initials = parts.first(2).map { |part| part[0] }.join

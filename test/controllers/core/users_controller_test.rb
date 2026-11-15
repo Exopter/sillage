@@ -40,6 +40,32 @@ class Core::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_equal "user", User.find_by!(email_address: "new.operator@exopter.com").role
   end
 
+  test "invites Flight Club members with a name, a rank and a member number" do
+    sign_in_as users(:julien)
+
+    assert_enqueued_emails 1 do
+      post core_users_path, params: {
+        user: { email_address: "new.member@example.com", role: "user", first_name: "Noor", last_name: "Vance", membership_tier: "trailblazer" }
+      }
+    end
+
+    member = User.find_by!(email_address: "new.member@example.com")
+    assert_equal [ "Noor Vance", "trailblazer" ], [ member.full_name, member.membership_tier ]
+    assert member.member_number
+    get core_users_path
+    assert_select ".status-pill", text: "Trailblazer #{member.member_code}"
+  end
+
+  test "a membership without a name is refused" do
+    sign_in_as users(:julien)
+
+    assert_no_enqueued_emails do
+      post core_users_path, params: { user: { email_address: "nameless@example.com", role: "user", membership_tier: "pioneer" } }
+    end
+
+    assert_response :unprocessable_entity
+  end
+
   test "updates roles and resets two-factor authentication" do
     admin = users(:julien)
     user = users(:operator)

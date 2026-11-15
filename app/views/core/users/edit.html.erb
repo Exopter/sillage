@@ -15,6 +15,18 @@
         <span>Role</span>
         <%= form.select :role, User::ROLES.map { |role| [role.titleize, role] } %>
       </label>
+      <label>
+        <span>First name</span>
+        <%= form.text_field :first_name, autocomplete: "off" %>
+      </label>
+      <label>
+        <span>Last name</span>
+        <%= form.text_field :last_name, autocomplete: "off" %>
+      </label>
+      <label>
+        <span>Flight Club membership</span>
+        <%= form.select :membership_tier, User::MEMBERSHIP_TIERS.map { |tier| [tier.titleize, tier] }, include_blank: "None" %>
+      </label>
       <%= form.submit "Save user", class: "button-primary" %>
       <%= link_to "Back", core_users_path, class: "authentication-link" %>
     <% end %>

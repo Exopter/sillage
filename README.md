@@ -204,6 +204,31 @@ ruby script/sync_design_system_tokens --write
 Design decisions and governance live in the
 [Exopter Design System in Notion](https://app.notion.com/p/3abe497e504f81c8a557e1f1a26e09ae).
 
+## Flight Club onboarding
+
+A user with a `membership_tier` (`pioneer`, `explorer`, `pathfinder` or
+`trailblazer`) is a Flight Club member. Core invites members with a first name,
+a last name and a tier; the permanent member number comes from the
+`flight_club_member` identifier sequence. Accounts without a tier keep the
+standard invitation and never see Flight Club.
+
+1. `UserMailer#invitation` sends the member invitation (HTML and text) with the
+   rank card render, the member identity and the expiry date of the 14 day token.
+2. `invitations#edit` presents the invitation on the dark Flight Club layout and
+   sets the password.
+3. `GET /flight-club/welcome` plays the card reveal. Until the member confirms it
+   (`PATCH /flight-club/welcome`), every HTML page redirects there
+   (`MembershipWelcome`), after two-factor verification when it applies.
+4. The confirmation sends `UserMailer#membership_confirmation` once and opens
+   Sillage. `GET /flight-club` keeps the card in the account menu.
+
+`app/javascript/lib/membership_card.js` is a byte-for-byte copy of
+`ui_kits/flightclub/membership-card.js` from the design system; change it there
+first. Mail views carry inline rules because mail clients ignore stylesheets;
+their images (`app/assets/images/flight_club/`) are renders of the same card and
+are served from `config.action_mailer.asset_host`. Preview both messages at
+`/rails/mailers/user_mailer` (`?tier=explorer` selects another rank).
+
 ## Configuration
 
 Use `.env.deploy.local.example` as the repository-safe reference for deployment

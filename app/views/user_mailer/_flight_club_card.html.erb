@@ -1,0 +1,12 @@
+<%# The card is a render of the member's rank finish; the engraved identity is live text below it. %>
+<tr>
+  <td align="center" style="padding:8px 0 0;">
+    <%= image_tag "flight_club/card-#{user.membership_tier}.jpg", alt: "Flight Club #{user.membership_rank} membership card", width: 560, style: "display:block;width:100%;max-width:560px;height:auto;border:0;" %>
+  </td>
+</tr>
+<tr>
+  <td align="center" style="padding:6px 0 0;font-family:'Aptos Mono','SF Mono',Menlo,Consolas,monospace;font-size:11px;line-height:18px;letter-spacing:1.4px;color:#070b0d;">
+    <%= caption %> <%= user.full_name.upcase %><br>
+    <span style="color:#767873;"><%= user.membership_rank.upcase %> &nbsp;/&nbsp; <%= user.member_code %></span>
+  </td>
+</tr>

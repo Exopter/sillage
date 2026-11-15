@@ -1,5 +1,5 @@
 class InvitationsController < ApplicationController
-  layout "authentication"
+  layout -> { @user&.member? ? "flight_club" : "authentication" }
   allow_unauthenticated_access only: %i[edit update]
 
   before_action :set_user_by_token
@@ -10,7 +10,13 @@ class InvitationsController < ApplicationController
   def update
     if @user.accept_invitation!(password: params[:password], password_confirmation: params[:password_confirmation])
       start_new_session_for(@user)
-      redirect_to(@user.totp_required? ? new_two_factor_setup_path : after_authentication_url, notice: "Invitation accepted.")
+      if @user.totp_required?
+        redirect_to new_two_factor_setup_path, notice: "Invitation accepted."
+      elsif @user.member?
+        redirect_to flight_club_welcome_path
+      else
+        redirect_to after_authentication_url, notice: "Invitation accepted."
+      end
     else
       flash.now[:alert] = @user.errors.full_messages.to_sentence
       render :edit, status: :unprocessable_entity

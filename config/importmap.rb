@@ -38,3 +38,5 @@ pin "fdr_import_queue", to: "lib/fdr_import_queue.js"
 
 pin "recorder_session", to: "lib/recorder_session.js"
 pin "signal_transport", to: "lib/signal_transport.js"
+
+pin "membership_card", to: "lib/membership_card.js", preload: false

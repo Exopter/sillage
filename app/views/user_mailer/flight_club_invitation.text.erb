@@ -1,0 +1,22 @@
+EXOPTER / FLIGHT CLUB
+A personal invitation
+
+<%= @user.first_name %>, your place in Flight Club is ready.
+
+You are invited to join Flight Club as <%= @user.membership_rank_phrase %><%= ", among the founding members of the first chapter" if @user.membership_tier == "pioneer" %>.
+Your membership card is ready, engraved with your name and your number.
+
+Reserved for <%= @user.full_name %>
+<%= @user.membership_rank %> / <%= @user.member_code %>
+
+Accept my invitation:
+<%= @invitation_url %>
+
+This invitation is personal and valid until <%= long_date(@user.invitation_expires_at) %>.
+
+01  Secure your membership. Choose a password. It takes a minute.
+02  Meet your card. Your card is revealed, with your rank insignia and member number.
+03  Enter Sillage. Your flights and live Signal sessions, in one place.
+
+Sent to <%= @user.email_address %> because Exopter invited you to Flight Club.
+If you were not expecting it, no action is needed: the invitation expires on its own.

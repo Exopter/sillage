@@ -8,7 +8,7 @@ module Core
     end
 
     def create
-      @user = User.invite!(email_address: requested_email_address, role: requested_role)
+      @user = User.invite!(email_address: requested_email_address, role: requested_role, **requested_profile)
       redirect_to core_users_path, notice: "Invitation sent to #{@user.email_address}."
     rescue ActiveRecord::RecordInvalid => error
       @users = User.order(:email_address)
@@ -23,7 +23,7 @@ module Core
     def update
       if demoting_last_active_admin?
         redirect_to edit_core_user_path(@user), alert: "At least one active admin is required."
-      elsif @user.update(role: requested_role)
+      elsif @user.update(role: requested_role, **requested_profile)
         redirect_to core_users_path, notice: "User updated."
       else
         flash.now[:alert] = @user.errors.full_messages.to_sentence
@@ -74,6 +74,10 @@ module Core
 
     def requested_role
       params.require(:user).require(:role)
+    end
+
+    def requested_profile
+      params.require(:user).permit(:first_name, :last_name, :membership_tier).to_h.symbolize_keys
     end
 
     def demoting_last_active_admin?

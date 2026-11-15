@@ -27,6 +27,11 @@ Rails.application.routes.draw do
     resource :challenge, only: %i[new create]
   end
 
+  scope module: :flight_club, path: "flight-club" do
+    get "/" => "memberships#show", as: :flight_club
+    resource :welcome, only: %i[show update], as: :flight_club_welcome
+  end
+
   root "flights#index"
   resources :feedbacks, only: %i[new create]
   get "hangar" => "hangar/aircraft#index", as: :hangar

@@ -16,3 +16,24 @@ invited:
   email_address: invited@exopter.com
   role: user
   invitation_sent_at: <%= 1.hour.ago.to_fs(:db) %>
+
+invited_member:
+  email_address: member@example.com
+  role: user
+  first_name: Ada
+  last_name: Lindqvist
+  membership_tier: pioneer
+  member_number: 7
+  invitation_sent_at: <%= 1.hour.ago.to_fs(:db) %>
+
+member:
+  email_address: explorer@example.com
+  password_digest: <%= BCrypt::Password.create("password123456", cost: BCrypt::Engine::MIN_COST) %>
+  role: user
+  first_name: Elias
+  last_name: Okafor
+  membership_tier: explorer
+  member_number: 8
+  invitation_sent_at: <%= 2.days.ago.to_fs(:db) %>
+  invitation_accepted_at: <%= 2.days.ago.to_fs(:db) %>
+  membership_started_at: <%= 2.days.ago.to_fs(:db) %>

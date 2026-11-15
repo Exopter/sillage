@@ -95,6 +95,9 @@
       ],
       "signal_transport": [
         "./app/javascript/lib/signal_transport.js"
+      ],
+      "membership_card": [
+        "./app/javascript/lib/membership_card.js"
       ]
     },
     "strict": true,

@@ -1,0 +1,18 @@
+EXOPTER / FLIGHT CLUB
+Your membership is active
+
+Welcome to Flight Club, <%= @user.first_name %>.
+
+You are now <%= @user.membership_rank_phrase %>. Your card stays with your account,
+and every flight you take is kept for you in Sillage.
+
+<%= @user.full_name %>
+<%= @user.membership_rank %> / <%= @user.member_code %>
+
+Open Sillage:
+<%= root_url %>
+
+View my membership card:
+<%= flight_club_url %>
+
+Sent to <%= @user.email_address %> to confirm your Flight Club membership.

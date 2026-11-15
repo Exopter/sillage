@@ -14,7 +14,7 @@
     <link rel="icon" href="/icon.svg?v=exopter-ex-20261009" type="image/svg+xml">
 
     <%# Includes all stylesheet files in app/assets/stylesheets %>
-    <%= stylesheet_link_tag "exopter_fonts", "exopter_design_system", "application", "icon_button_edge", "selection_toolbar", "column_browser", "feedback_popover", "flights", "signal", "hangar_forge", "hierarchy_browser", "calibration_guide", "signal_strength", "recorder_workspace", "session_history", "comment_thread", "kanban", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "exopter_fonts", "exopter_design_system", "application", "icon_button_edge", "selection_toolbar", "column_browser", "feedback_popover", "flights", "signal", "hangar_forge", "hierarchy_browser", "calibration_guide", "signal_strength", "recorder_workspace", "session_history", "comment_thread", "kanban", "flight_club", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
 
@@ -86,6 +86,9 @@
             <div class="sillage-account-popover" role="menu">
               <strong>Account</strong>
               <span><%= Current.user&.email_address %></span>
+              <% if Current.user&.member? %>
+                <%= link_to "Flight Club", flight_club_path, class: "sillage-account-action" %>
+              <% end %>
               <% if Current.user&.admin? %>
                 <%= link_to "Users", core_users_path, class: "sillage-account-action" %>
                 <%= link_to "Feedback inbox", core_feedbacks_path, class: "sillage-account-action" %>

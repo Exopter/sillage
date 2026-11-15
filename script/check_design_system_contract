@@ -85,7 +85,8 @@ end
 undefined_classes = used_classes.keys.reject { |name| defined_classes.include?(name) }.sort
 
 invalid_inline_styles = views.filter_map do |path|
-  next if path.end_with?("/layouts/mailer.html.erb")
+  # Email clients ignore stylesheets and custom properties, so mail views carry inline rules.
+  next if path.match?(%r{/layouts/\w*mailer\.html\.erb\z|/\w+_mailer/})
 
   source = File.read(path)
   next unless source.scan(/style\s*=\s*["'](.*?)["']/m).any? { |match| !match.first.lstrip.start_with?("--") }

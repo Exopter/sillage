@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <title><%= message.subject %></title>
+  </head>
+  <%# Email clients ignore stylesheets and custom properties: every rule is inline, on tables. %>
+  <body style="margin:0;padding:0;background-color:#f5f4f0;color:#070b0d;-webkit-text-size-adjust:100%;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f5f4f0;font-size:1px;line-height:1px;"><%= @preheader %></div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f4f0;">
+      <tr>
+        <td align="center" style="padding:0 16px;">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+            <tr>
+              <td style="padding:36px 0 22px;border-bottom:1px solid #ddddd5;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="vertical-align:middle;">
+                      <%= image_tag "flight_club/wordmark.png", alt: "EXOPTER", width: 118, height: 12, style: "display:block;border:0;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;letter-spacing:3px;color:#070b0d;" %>
+                    </td>
+                    <td align="right" style="vertical-align:middle;font-family:'Aptos Mono','SF Mono',Menlo,Consolas,monospace;font-size:11px;letter-spacing:1.4px;color:#767873;">FLIGHT CLUB</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <%= yield %>
+            <tr>
+              <td style="padding:26px 0 44px;border-top:1px solid #ddddd5;font-family:'Aptos','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:19px;color:#767873;">
+                <%= yield :footer %>
+                <p style="margin:14px 0 0;font-family:'Aptos Mono','SF Mono',Menlo,Consolas,monospace;font-size:10px;letter-spacing:1.2px;color:#767873;">EXOPTER / THE STORY IS OURS TO WRITE.</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
