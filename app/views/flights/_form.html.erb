@@ -1,4 +1,6 @@
+<% preparation = flight.preparation? && !@logging_preparation %>
 <%= form_with model: flight, class: "exds-browser-form", data: { turbo_frame: "flight-browser" } do |form| %>
+  <%= hidden_field_tag :intent, preparation ? "prepare" : "log", id: nil %>
   <%= hidden_field_tag :return_to_browser, "1", id: nil %>
   <% browser_context.each do |key, value| %><%= hidden_field_tag key, value, id: nil %><% end %>
   <% if flight.errors.any? %>
@@ -7,17 +9,17 @@
 
   <div class="exds-browser-form-grid">
     <label class="exds-browser-field">
-      <span>Date *</span>
-      <%= form.date_field :flown_on, value: flight.flown_on || (flight.display_flown_on unless flight.errors[:flown_on].any?), required: true %>
+      <span><%= preparation ? "Date (optional)" : "Date *" %></span>
+      <%= form.date_field :flown_on, value: flight.flown_on || (flight.display_flown_on unless preparation || flight.errors[:flown_on].any?), required: !preparation %>
     </label>
     <label class="exds-browser-field">
       <span>Time (optional)</span>
-      <%= form.time_field :flown_at %>
+      <%= form.time_field :flown_at, data: { controller: ("local-time" if !preparation && (flight.new_record? || @logging_preparation) && flight.errors.empty?) } %>
     </label>
     <div class="exds-browser-field is-wide" data-controller="location-suggestions" data-action="focusout->location-suggestions#leave">
-      <%= form.label :location, "Location *" %>
+      <%= form.label :location, preparation ? "Location (optional)" : "Location *" %>
       <div class="exds-browser-autocomplete">
-        <%= form.text_field :location, required: true, autocomplete: "off", role: "combobox", aria: { autocomplete: "list", expanded: "false", controls: "flight-location-suggestions", describedby: "flight-location-help" }, data: { location_suggestions_target: "input", action: "input->location-suggestions#search focus->location-suggestions#search keydown->location-suggestions#navigate" }, placeholder: "Airfield, drop zone or operating location" %>
+        <%= form.text_field :location, required: !preparation, autocomplete: "off", role: "combobox", aria: { autocomplete: "list", expanded: "false", controls: "flight-location-suggestions", describedby: "flight-location-help" }, data: { location_suggestions_target: "input", action: "input->location-suggestions#search focus->location-suggestions#search keydown->location-suggestions#navigate" }, placeholder: "Airfield, drop zone or operating location" %>
         <div id="flight-location-suggestions" class="exds-browser-autocomplete-results" role="listbox" aria-label="Existing locations" data-location-suggestions-target="results" hidden>
           <% @location_suggestions.each_with_index do |location, index| %>
             <button type="button" id="flight-location-option-<%= index %>" class="exds-browser-autocomplete-option" role="option" aria-selected="false" tabindex="-1" data-location-suggestions-target="option" data-action="mousedown->location-suggestions#keepFocus click->location-suggestions#select"><%= location %></button>
@@ -65,6 +67,6 @@
 
   <div class="exds-browser-form-actions">
     <%= link_to "Cancel", browser_path(selected: (browser_key(flight) if flight.persisted?)), class: "button-secondary exds-btn exds-btn--secondary", data: { turbo_frame: "flight-browser" } %>
-    <%= form.submit flight.persisted? ? "Save flight" : "Create flight", class: "button-primary exds-btn exds-btn--primary" %>
+    <%= form.submit @logging_preparation || (flight.new_record? && !preparation) ? "Log flight" : (flight.persisted? ? "Save flight" : "Create flight"), class: "button-primary exds-btn exds-btn--primary" %>
   </div>
 <% end %>

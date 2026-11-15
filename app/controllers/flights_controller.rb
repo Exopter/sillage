@@ -30,7 +30,8 @@ class FlightsController < ApplicationController
   end
 
   def new
-    @flight = Current.user.flights.new(status: "logged", flown_on: Date.current)
+    status = params[:intent] == "prepare" ? "preparation" : "logged"
+    @flight = Current.user.flights.new(status:, flown_on: (Date.current if status == "logged"))
     load_browser(panel: "new")
     @flight.folder = @folder if @folder&.contributable_by?(Current.user)
     load_form_options
@@ -39,11 +40,12 @@ class FlightsController < ApplicationController
   def create
     attributes = flight_params
     prepare_manual_location(attributes)
-    @flight = Current.user.flights.new(attributes.merge(status: "logged"))
+    status = params[:intent] == "prepare" ? "preparation" : "logged"
+    @flight = Current.user.flights.new(attributes.merge(status:))
 
-    if @flight.save(context: :logbook)
+    if @flight.save
       @flight.capture_configuration!
-      redirect_to flight_path(@flight, **(params[:return_to_browser] == "1" ? browser_return_parameters : {})), notice: "Flight logged."
+      redirect_to flight_path(@flight, **(params[:return_to_browser] == "1" ? browser_return_parameters : {})), notice: (@flight.preparation? ? "Flight prepared." : "Flight logged.")
     else
       load_browser(panel: "new")
       load_form_options
@@ -52,6 +54,7 @@ class FlightsController < ApplicationController
   end
 
   def edit
+    @logging_preparation = @flight.preparation? && params[:intent] == "log"
     load_browser(panel: "edit", focus: @flight)
     load_form_options
   end
@@ -76,6 +79,7 @@ class FlightsController < ApplicationController
   end
 
   def update
+    @logging_preparation = @flight.preparation? && params[:intent] == "log"
     attributes = flight_params
     prepare_manual_location(attributes, current_location: @flight.location)
     video_upload = attributes.delete(:video_upload)
@@ -85,10 +89,11 @@ class FlightsController < ApplicationController
       return
     end
 
-    @flight.flown_on ||= @flight.display_flown_on if attributes.key?(:location) && !attributes.key?(:flown_on)
+    @flight.flown_on ||= @flight.display_flown_on if !@flight.preparation? && attributes.key?(:location) && !attributes.key?(:flown_on)
     @flight.folder_assignment_user = Current.user
     @flight.assign_attributes(attributes)
-    context = attributes.key?(:flown_on) || attributes.key?(:location) ? :logbook : nil
+    @flight.status = "logged" if @logging_preparation
+    context = !@flight.preparation? && (attributes.key?(:flown_on) || attributes.key?(:location)) ? :logbook : nil
     if @flight.save(context:)
       @flight.capture_configuration!(replace: true) if @flight.saved_change_to_aircraft_id?
       enqueue_video_processing(video_upload) if video_upload.present?

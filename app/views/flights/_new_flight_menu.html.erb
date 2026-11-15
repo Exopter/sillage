@@ -1,0 +1,7 @@
+<details class="exds-browser-create" data-controller="flight-create-menu" data-action="keydown.esc->flight-create-menu#close click@document->flight-create-menu#dismiss turbo:before-cache@document->flight-create-menu#close">
+  <summary class="exds-btn exds-btn--primary"><%= sillage_icon "plus", size: 17 %> New flight <%= sillage_icon "chevron-down", size: 16 %></summary>
+  <nav class="exds-browser-create-options" aria-label="New flight" data-action="click->flight-create-menu#close">
+    <%= link_to "Prepare a flight", new_flight_path(**browser_context, intent: "prepare"), data: { turbo_frame: "flight-browser" } %>
+    <%= link_to "Log a flight", new_flight_path(**browser_context, intent: "log"), data: { turbo_frame: "flight-browser" } %>
+  </nav>
+</details>

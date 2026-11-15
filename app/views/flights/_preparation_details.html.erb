@@ -8,6 +8,9 @@
   <% end %>
 </dl>
 <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
+  <% if @flight.preparation? %>
+    <%= link_to "Log flight", edit_flight_path(@flight, **browser_context, intent: "log"), class: "button-primary exds-btn exds-btn--primary", data: { turbo_frame: "flight-browser" } %>
+  <% end %>
   <%= link_to edit_flight_path(@flight, **browser_context), class: "button-secondary exds-btn exds-btn--secondary", data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %> Edit flight<% end %>
 <% end %>
 <%= render "flight_comments/comments", flight: @flight %>

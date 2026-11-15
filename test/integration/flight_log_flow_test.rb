@@ -8,6 +8,87 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     sign_in_as @owner
   end
 
+  test "new flight offers preparation and logging with browser context" do
+    get flights_path, params: { q: "Bouloc" }
+    assert_select ".exds-browser-create summary", text: /New flight/
+    assert_select ".exds-browser-create-options a[href=?]", new_flight_path(q: "Bouloc", intent: "prepare"), text: "Prepare a flight"
+    assert_select ".exds-browser-create-options a[href=?]", new_flight_path(q: "Bouloc", intent: "log"), text: "Log a flight"
+  end
+
+  test "preparation accepts incomplete details and stays in preparation when edited" do
+    get new_flight_path(intent: "prepare")
+    assert_response :success
+    assert_select "#flight-panel-title", text: "Prepare a flight"
+    assert_select "input[name=intent][value=prepare]"
+    assert_select "input[name='flight[flown_on]'][required], input[name='flight[location]'][required]", count: 0
+    assert_select "input[name='flight[flown_on]'][value]", count: 0
+    assert_select "input[name='flight[flown_at]'][data-controller=local-time]", count: 0
+    assert_select "input[type=submit][value='Create flight']"
+
+    assert_difference "Flight.count" do
+      post flights_path, params: { intent: "prepare", flight: { description: "Upcoming flight" } }
+    end
+    flight = @owner.flights.order(:id).last
+    assert flight.preparation?
+    assert_nil flight.flown_on
+    assert_nil flight.flown_at
+    assert_nil flight.location
+
+    patch flight_path(flight), params: { intent: "prepare", flight: { location: "", flown_on: "" } }
+    assert_response :redirect
+    assert flight.reload.preparation?
+    assert_nil flight.flown_on
+    get flight_path(flight)
+    assert_select "a[href=?]", edit_flight_path(flight, intent: "log"), text: "Log flight"
+  end
+
+  test "logging requires date and location and keeps the local time default" do
+    get new_flight_path(intent: "log")
+    assert_select "#flight-panel-title", text: "Log a flight"
+    assert_select "input[name=intent][value=log]"
+    assert_select "input[name='flight[flown_on]'][required]"
+    assert_select "input[name='flight[location]'][required]"
+    assert_select "input[name='flight[flown_at]'][data-controller=local-time]"
+    assert_select "input[type=submit][value='Log flight']"
+
+    post flights_path, params: { intent: "log", flight: { description: "Missing details", flown_at: "14:35" } }
+    assert_response :unprocessable_entity
+    assert_select "input[name=intent][value=log]"
+    assert_select "input[name='flight[flown_at]']" do |inputs|
+      assert_match(/\A14:35(?::00(?:\.0+)?)?\z/, inputs.first["value"])
+    end
+    assert_select "input[name='flight[flown_at]'][data-controller=local-time]", count: 0
+  end
+
+  test "preparation can be logged only after required details are supplied" do
+    flight = @owner.flights.create!(status: "preparation", description: "Upcoming flight")
+    get edit_flight_path(flight, intent: "log")
+    assert_select "#flight-panel-title", text: "Log a flight"
+    assert_select "input[name=intent][value=log]"
+    assert_select "input[name='flight[flown_on]'][required]"
+    assert_select "input[type=submit][value='Log flight']"
+
+    patch flight_path(flight), params: { intent: "log", return_to_browser: "1", flight: { flown_on: "", location: "" } }
+    assert_response :unprocessable_entity
+    assert flight.reload.preparation?
+    assert_select "input[name=intent][value=log]"
+
+    patch flight_path(flight), params: { intent: "log", flight: { flown_on: "2026-11-15", location: "Bouloc", flown_at: "14:35" } }
+    assert_response :redirect
+    assert flight.reload.logged?
+    assert_equal Date.new(2026, 11, 15), flight.flown_on
+    assert_equal "14:35", flight.flown_at.strftime("%H:%M")
+  end
+
+  test "preparation validation preserves intent and entered details" do
+    post flights_path, params: { intent: "prepare", flight: { flown_at: "invalid", description: "Upcoming flight" } }
+    assert_response :unprocessable_entity
+    assert_select "#flight-panel-title", text: "Prepare a flight"
+    assert_select "input[name=intent][value=prepare]"
+    assert_select "input[name='flight[description]'][value='Upcoming flight']"
+    assert_select "input[name='flight[location]'][required]", count: 0
+  end
+
   test "location suggestions reuse visible flight locations without exposing private flights" do
     first = log_entry(location: "Bouloc")
     log_entry(location: "Bouloc")

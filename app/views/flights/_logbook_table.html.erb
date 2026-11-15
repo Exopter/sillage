@@ -18,9 +18,7 @@
     <%= link_to new_flight_import_path, class: "button-secondary exds-btn exds-btn--secondary" do %>
       <%= sillage_icon "upload", size: 17 %><span>Import data</span>
     <% end %>
-    <%= link_to new_flight_path(folder: @folder&.id), class: "button-primary exds-btn exds-btn--primary" do %>
-      <%= sillage_icon "plus", size: 17 %><span>New flight</span>
-    <% end %>
+    <%= render "flights/new_flight_menu" %>
   </header>
 
   <%= render "flights/recording_details" if @flight_import %>
