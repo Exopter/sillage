@@ -270,6 +270,7 @@ body {
 }
 
 .sillage-workbench {
+  position: relative;
   display: flex;
   min-height: 100vh;
   background: var(--surface-app);
@@ -412,7 +413,7 @@ body {
   flex: 0 0 auto;
   align-items: center;
   gap: 16px;
-  padding: 0 20px;
+  padding: 0 76px 0 20px;
   border-bottom: 1px solid var(--ex-carbon-700);
   background: var(--ex-carbon-900);
   color: var(--ex-vapor-50);
@@ -424,59 +425,6 @@ body {
   min-width: 260px;
   gap: 0;
   line-height: 1.15;
-}
-
-.sillage-breadcrumb {
-  overflow: hidden;
-  color: var(--ex-graphite-400);
-  font-family: var(--ex-font-mono);
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0.12em;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.sillage-breadcrumb ol {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.sillage-breadcrumb li {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: 6px;
-}
-
-.sillage-breadcrumb li:not(:last-child)::after {
-  flex: 0 0 auto;
-  content: "·";
-  color: var(--ex-graphite-500);
-}
-
-.sillage-breadcrumb a,
-.sillage-breadcrumb span {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  color: inherit;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sillage-breadcrumb a:hover {
-  color: var(--ex-vapor-100);
-}
-
-.sillage-breadcrumb [aria-current="page"] {
-  color: var(--ex-vapor-100);
 }
 
 .sillage-title-block > strong {
@@ -557,10 +505,10 @@ body {
 
 .sillage-avatar-insignia {
   position: absolute;
-  right: -5px;
-  bottom: -4px;
-  width: 15px;
-  height: 19px;
+  right: -4px;
+  top: -3px;
+  width: 12px;
+  height: 15px;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
 }
 
@@ -572,10 +520,10 @@ body {
 }
 
 .sillage-avatar--large .sillage-avatar-insignia {
-  right: -3px;
-  bottom: -2px;
-  width: 30px;
-  height: 38px;
+  right: -1px;
+  top: -2px;
+  width: 26px;
+  height: 33px;
 }
 
 .sillage-profile {
@@ -711,7 +659,10 @@ body {
 }
 
 .sillage-account-menu {
-  position: relative;
+  position: fixed;
+  top: calc((var(--ex-shell-header-height) - 36px) / 2);
+  right: 20px;
+  z-index: 40;
   flex: 0 0 auto;
 }
 
@@ -2724,7 +2675,7 @@ body.flight-analysis-theme,
     flex-basis: auto;
     flex-direction: row;
     justify-content: flex-start;
-    padding: 8px 12px;
+    padding: 8px 72px 8px 12px;
     overflow-x: auto;
     border-right: 0;
     border-bottom: 1px solid var(--ex-carbon-700);
@@ -2760,6 +2711,20 @@ body.flight-analysis-theme,
   .sillage-core-link {
     margin-top: 0;
     margin-left: auto;
+  }
+
+  .sillage-account-menu {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+  }
+
+  .sillage-topbar.is-context-only {
+    display: none;
+  }
+
+  .sillage-workbench:has(.sillage-rail[hidden]) .sillage-topbar {
+    padding-right: 72px;
   }
 
   .sillage-topbar {

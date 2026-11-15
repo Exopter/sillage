@@ -51,25 +51,32 @@
         <% end %>
       </aside>
 
+      <details class="sillage-account-menu ex-dark">
+        <summary aria-label="Open account menu">
+          <%= render "shared/user_avatar", user: Current.user %>
+        </summary>
+        <div class="sillage-account-popover ex-dark" role="menu">
+          <strong>Account</strong>
+          <span><%= Current.user&.email_address %></span>
+          <%= link_to "My profile", profile_path, class: "sillage-account-action" %>
+          <% if Current.user&.member? %>
+            <%= link_to "Flight Club", flight_club_path, class: "sillage-account-action" %>
+          <% end %>
+          <% if Current.user&.admin? %>
+            <%= link_to "Users", core_users_path, class: "sillage-account-action" %>
+            <%= link_to "Feedback inbox", core_feedbacks_path, class: "sillage-account-action" %>
+          <% end %>
+          <%= button_to logout_path, method: :delete, class: "sillage-account-action", form: { role: "none" } do %>
+            <%= sillage_icon "log-out", size: 15 %>
+            <span>Log out</span>
+          <% end %>
+        </div>
+      </details>
+
       <div class="sillage-main">
-        <header class="sillage-topbar ex-dark">
+        <header class="sillage-topbar ex-dark<%= " is-context-only" unless content_for?(:rail_control) || content_for?(:connection_metrics) || content_for?(:connection_control) %>">
           <%= yield :rail_control %>
           <div class="sillage-title-block">
-            <nav class="sillage-breadcrumb" aria-label="Breadcrumb">
-              <ol>
-                <% sillage_breadcrumb_items.each do |item| %>
-                  <li>
-                    <% if item[:current] %>
-                      <span aria-current="page"><%= item[:label] %></span>
-                    <% elsif item[:href].present? %>
-                      <%= link_to item[:label], item[:href] %>
-                    <% else %>
-                      <span><%= item[:label] %></span>
-                    <% end %>
-                  </li>
-                <% end %>
-              </ol>
-            </nav>
             <strong><%= sillage_shell_title %></strong>
           </div>
 
@@ -78,28 +85,6 @@
           <%= yield :connection_metrics %>
 
           <%= yield :connection_control %>
-
-          <details class="sillage-account-menu">
-            <summary aria-label="Open account menu">
-              <%= render "shared/user_avatar", user: Current.user %>
-            </summary>
-            <div class="sillage-account-popover ex-dark" role="menu">
-              <strong>Account</strong>
-              <span><%= Current.user&.email_address %></span>
-              <%= link_to "My profile", profile_path, class: "sillage-account-action" %>
-              <% if Current.user&.member? %>
-                <%= link_to "Flight Club", flight_club_path, class: "sillage-account-action" %>
-              <% end %>
-              <% if Current.user&.admin? %>
-                <%= link_to "Users", core_users_path, class: "sillage-account-action" %>
-                <%= link_to "Feedback inbox", core_feedbacks_path, class: "sillage-account-action" %>
-              <% end %>
-              <%= button_to logout_path, method: :delete, class: "sillage-account-action", form: { role: "none" } do %>
-                <%= sillage_icon "log-out", size: 15 %>
-                <span>Log out</span>
-              <% end %>
-            </div>
-          </details>
         </header>
 
         <%= render "shared/flashes" unless sillage_flight_browser? %>
