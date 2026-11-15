@@ -83,6 +83,18 @@
 
       <div class="signal-storage-warning" data-signal-workspace-target="warning" hidden></div>
 
+      <section class="signal-modules" aria-label="FDR module status">
+        <% ["Main", "Central", "AirSpeed", "Display"].each_with_index do |name, index| %>
+          <article class="signal-module" data-signal-workspace-target="module" data-module-role="<%= index + 1 %>" data-state="unknown" aria-label="<%= name %> module">
+            <div class="signal-module-heading"><strong><%= name %></strong><span data-module-state>Unknown</span></div>
+            <small data-module-identity>No module identified</small>
+            <span data-module-sensors>Sensor status unavailable</span>
+            <span data-module-storage>Storage status unavailable</span>
+            <small data-module-age>Waiting for module status</small>
+          </article>
+        <% end %>
+      </section>
+
       <main class="signal-dashboard" data-signal-workspace-target="board" aria-label="Movable live Signal widgets">
         <section class="signal-widget" data-signal-workspace-target="widget" data-widget="map" data-mode="large">
           <header class="signal-widget-head">

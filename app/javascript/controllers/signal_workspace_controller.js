@@ -42,6 +42,7 @@ const CHART_WINDOW_MS = 30_000
  * @property {Record<string,string>} mountProfilesValue
  * @property {HTMLElement} mountLabelTarget
  * @property {boolean} hasMountLabelTarget
+ * @property {HTMLElement[]} moduleTargets
  * @property {HTMLElement[]} sensorAxesTargets
  * @property {HTMLElement} warningTarget
  * @property {HTMLElement} headingTarget
@@ -200,7 +201,7 @@ export default class extends TypedController {
     "heading", "airspeed", "altitude", "verticalSpeed", "glide", "dataStatus",
     "qualityAttitude", "qualityHeading", "attitudeDetail", "headingDetail", "preflightDetail", "preflightStatus",
     "exitDialog", "exitError", "exitStatus", "flightName", "exitAction",
-    "parserStatus", "aircraftMarker", "aircraftLabel", "latestEvent", "sensorValue", "streamBadge", "mountLabel", "sensorAxes"
+    "parserStatus", "aircraftMarker", "aircraftLabel", "latestEvent", "sensorValue", "streamBadge", "mountLabel", "sensorAxes", "module"
   ]
 
   static values = {
@@ -439,7 +440,7 @@ export default class extends TypedController {
     this.frameTimes = []
     this.mavlinkSystemId = null
     this.mavlinkComponentId = null
-    this.worker = new Worker("/signal_serial_worker.js?v=67-direct-transports")
+    this.worker = new Worker("/signal_serial_worker.js?v=module-status-42002")
     this.worker.onmessage = ({ data }) => this.handleWorkerMessage(data)
     this.worker.onerror = () => this.showWarning("Telemetry decoding stopped. Reconnect the recorder.")
     this.worker.postMessage({ type: "init-capture", filename: `${this.flightCodeValue}-${this.sessionValue}.mavcap` })
@@ -624,11 +625,35 @@ export default class extends TypedController {
         ? `Live · ${this.mavlinkSystemId}/${this.mavlinkComponentId} · ${this.frameTimes.length} frames/s`
         : this.lastFrameAt ? "No telemetry · link lost" : "Connected · waiting for MAVLink"
     }
+    this.renderModules()
     this.renderRadioMetrics(live, now)
     this.dataStatusTarget.textContent = this.ended ? "Session ended locally" : live ? "Receiving telemetry" : this.lastFrameAt ? "Telemetry stale" : "Waiting for telemetry"
     this.pushHistory(live, now)
     this.renderValues()
     this.drawAll()
+  }
+
+  renderModules() {
+    /** @type {Record<string,string>} */
+    const labels = {unknown: "Unknown", stale: "Link lost", ready: "Ready", degraded: "Degraded"}
+    for (const target of this.moduleTargets || []) {
+      const module = this.telemetry.modules.find(item => item.role === Number(target.dataset.moduleRole))
+      if (!module) continue
+      const connected = Boolean(this.port && !this.ended)
+      const state = !connected ? "unknown" : module.state
+      target.dataset.state = state
+      const values = {
+        state: this.ended ? "Session ended" : !this.port ? "Disconnected" : labels[state],
+        identity: module.deviceId || "No module identified",
+        sensors: connected ? module.sensors : "Sensor status unavailable",
+        storage: connected ? module.storage : "Storage status unavailable",
+        age: connected && module.ageMs != null ? `Last status ${Math.floor(module.ageMs / 1000)} s ago` : "Waiting for module status"
+      }
+      for (const [key, value] of Object.entries(values)) {
+        const element = target.querySelector(`[data-module-${key}]`)
+        if (element && element.textContent !== value) element.textContent = value
+      }
+    }
   }
 
   renderRadioControl() {

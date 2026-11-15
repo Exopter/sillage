@@ -21,6 +21,10 @@ const originalNow = Date.now
 let now = 10_000
 Date.now = () => now
 const frame = (decoded, systemId = 1, componentId = 191) => ({type: "frame", decoded, systemId, componentId, receivedAtUs: String(now * 1000), parser: {errors: 0, ignored: 0, dropped: 0}})
+view.moduleTargets = [1,2,3,4].map(role => ({dataset: {moduleRole: String(role)},
+  fields: Object.fromEntries(["state", "identity", "sensors", "storage", "age"].map(key => [key, {textContent: ""}])),
+  querySelector(selector) { return this.fields[selector.match(/data-module-(\w+)/)[1]] }
+}))
 const originalRadioWindow = globalThis.window
 const radioSource = (await readFile(new URL("../../app/javascript/controllers/radio_quality_controller.js", import.meta.url), "utf8"))
   .replace(/^import .*$/gm, "")
@@ -60,6 +64,16 @@ view.handleWorkerMessage(frame(radio, 51, 68))
 assert.equal(view.mavlinkSystemId, "1")
 view.handleWorkerMessage(frame({name: "attitude", rollDeg: 100, pitchDeg: 100, yawDeg: 120}, 2))
 assert.equal(view.telemetry.heading, 30, "another aircraft must not overwrite the selected source")
+const moduleReport = {name: "module_status", role: 2, timeBootMs: 10000, bootId: 2, ageMs: 0,
+  flags: 7, validity: 123, deviceId: "ECU-DCB4D93A2350"}
+view.handleWorkerMessage(frame(moduleReport, 2))
+view.refreshTelemetry()
+assert.equal(view.moduleTargets[1].fields.state.textContent, "Unknown", "other aircraft cannot populate module status")
+view.handleWorkerMessage(frame(moduleReport))
+view.refreshTelemetry()
+assert.equal(view.moduleTargets[1].fields.state.textContent, "Ready")
+assert.equal(view.moduleTargets[1].fields.identity.textContent, moduleReport.deviceId)
+assert.equal(view.moduleTargets[3].fields.state.textContent, "Unknown")
 const gps = {name: "gps", timeUs: "1000000", latitude: 0, longitude: 0, altitudeM: 100, hdop: null, vdop: null, velocityMps: null, courseDeg: null, satellites: 0, fix: 1}
 view.handleWorkerMessage(frame(gps))
 view.refreshTelemetry()
@@ -72,13 +86,15 @@ assert.equal(view.streamBadgeTargets[1].textContent, "Live")
 const point = view.pendingSamples.at(-1)
 assert.equal(point.kind, "gps")
 assert.equal("horizontal_accuracy_m" in point, false, "unitless GPS dilution must not reach the API as metre accuracy")
-now += 2_000
+now += 3_000
 view.handleWorkerMessage(frame(radio, 51, 68))
-assert.equal(view.pendingSamples.at(-1).readings.airTelemetryAgeMs, 2000, "radio history preserves stale aircraft telemetry context")
+assert.equal(view.pendingSamples.at(-1).readings.airTelemetryAgeMs, 3000, "radio history preserves stale aircraft telemetry context")
 view.refreshTelemetry()
 assert.equal(view.streamBadgeTargets[0].textContent, "Stale", "ground-radio status cannot keep the Air link live")
 assert.ok(radioView.linkTargets.every(link => link.dataset.level === "0" && link.value.textContent === "RSSI --- · S/N ---"), "repeated radio reports must not show live strength after Air telemetry stops")
 assert.ok(radioView.linkTargets.every(link => link.label.textContent === "No telemetry"))
+assert.equal(view.moduleTargets[1].fields.state.textContent, "Link lost")
+assert.equal(view.moduleTargets[1].fields.storage.textContent, "Storage status unavailable")
 assert.equal(view.airspeedTarget.textContent, "---")
 assert.equal(view.headingTarget.textContent, "---")
 assert.equal(view.altitudeTarget.textContent, "---")

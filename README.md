@@ -147,6 +147,16 @@ accelerometer magnitude divided by 9.80665 m/s²: about 1 g at rest and 0 g in f
 fall, regardless of mounting orientation. This unsigned total load is derived
 only for display; stale or invalid acceleration shows no value.
 
+Signal's module strip displays Main (the tunnel prototype's Seat), Central,
+AirSpeed and Display independently: source identity, sensor readiness, storage,
+recording and status age. `FDR_MODULE_STATUS` (MAVLink 42002) is emitted at 1 Hz
+per role by the distributed target. Status expires after three seconds, including
+its age before forwarding; heartbeat and another module cannot refresh it.
+The executable wire layout is `protocol/fdr.xml` in the FDR repository. Existing
+firmware without that message and the unimplemented Display remain Unknown.
+The compatible distributed firmware must be installed separately; local parser
+and rendering checks do not qualify radio operation on the boards.
+
 ## Controller identity maintenance
 
 Firmware `/57` uses `ECU-` plus all 12 hexadecimal MAC digits. Deploy compatible

@@ -1570,3 +1570,31 @@ textarea {
 .signal-transport-control { display: flex; align-items: center; gap: var(--ex-space-2); flex-wrap: wrap; }
 .signal-transport-control > .exds-selection-field select { width: auto; max-width: 14rem; }
 .signal-transport-control [hidden] { display: none; }
+
+/* Distributed recorder module health stays separate from instrument validity. */
+.signal-modules {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid var(--ex-carbon-700);
+  background: var(--ex-carbon-900);
+}
+.signal-module {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding: 9px 12px;
+  border-right: 1px solid var(--ex-carbon-700);
+  color: var(--ex-graphite-400);
+  font: 500 10px/1.3 var(--font-mono);
+}
+.signal-module-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+.signal-module-heading strong { color: var(--ex-vapor-50); }
+.signal-module-heading span { font-weight: 700; }
+.signal-module small { font-size: 9px; overflow-wrap: anywhere; }
+.signal-module[data-state="ready"] .signal-module-heading span { color: var(--ex-field-500); }
+.signal-module[data-state="degraded"] .signal-module-heading span { color: var(--ex-amber-500); }
+.signal-module[data-state="stale"] .signal-module-heading span { color: var(--ex-red-600); }
+@media (max-width: 760px) {
+  .signal-modules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

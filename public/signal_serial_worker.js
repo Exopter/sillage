@@ -1,7 +1,7 @@
 const MAGIC_V2 = 0xfd
 const MAGIC_V1 = 0xfe
-const CRC_EXTRAS = new Map([[0, 50], [1, 124], [4, 237], [24, 24], [31, 246], [74, 20], [105, 93], [109, 185], [137, 195], [253, 83], [42000, 212], [42001, 201]])
-const BASE_LENGTHS = new Map([[0, 9], [1, 31], [4, 14], [24, 30], [31, 32], [74, 20], [105, 62], [109, 9], [137, 14], [253, 51], [42000, 48], [42001, 32]])
+const CRC_EXTRAS = new Map([[0, 50], [1, 124], [4, 237], [24, 24], [31, 246], [74, 20], [105, 93], [109, 185], [137, 195], [253, 83], [42000, 212], [42001, 201], [42002, 30]])
+const BASE_LENGTHS = new Map([[0, 9], [1, 31], [4, 14], [24, 30], [31, 32], [74, 20], [105, 62], [109, 9], [137, 14], [253, 51], [42000, 48], [42001, 32], [42002, 32]])
 // Firmware /55 explicitly preserves native BNO085 axes in its radio payloads.
 const FDR_SENSOR_NATIVE_MODE = 0x46445200
 /** @type {Map<string, "sensor_native" | "body_frd_ned">} */
@@ -205,6 +205,14 @@ function decode(messageId, payload, coordinateFrame) {
   const i16 = (/** @type {number} */ offset) => view.getInt16(offset, true)
   const u32 = (/** @type {number} */ offset) => view.getUint32(offset, true)
   const i32 = (/** @type {number} */ offset) => view.getInt32(offset, true)
+  if (messageId === 42002 && payload.length >= 32) {
+    const deviceId = new TextDecoder().decode(payload.slice(16, 32)).split("\0")[0]
+    const role = payload[14], flags = payload[15]
+    if (role < 1 || role > 4 || (flags & ~15) ||
+        (deviceId && !/^ECU-[A-F0-9]{12}$/.test(deviceId)) || ((flags & 1) && !deviceId)) return {name: "unknown"}
+    return {name: "module_status", timeBootMs: u32(0), bootId: u32(4), ageMs: u32(8) === 0xffffffff ? null : u32(8),
+      validity: u16(12), role, flags, deviceId}
+  }
   if (messageId === 42001 && payload.length >= 32) {
     const differentialPa = f32(24), gLoad = f32(28)
     return {name: "live_instruments", timeUs: String(u32(0) * 1000),
