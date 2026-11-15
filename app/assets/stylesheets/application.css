@@ -315,7 +315,7 @@ body {
 
 .sillage-room-link {
   display: flex;
-  width: 44px;
+  width: 52px;
   height: 44px;
   flex-direction: column;
   align-items: center;
@@ -347,7 +347,7 @@ body {
 .sillage-room-link.is-separated::before {
   position: absolute;
   top: -8px;
-  left: 5px;
+  left: 9px;
   width: 34px;
   height: 1px;
   background: var(--ex-carbon-700);
@@ -2683,7 +2683,7 @@ body.flight-analysis-theme,
   }
 
   .sillage-room-link {
-    width: 44px;
+    width: 52px;
     flex: 0 0 auto;
   }
 
