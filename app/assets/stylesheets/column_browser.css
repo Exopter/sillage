@@ -40,9 +40,9 @@
 .exds-browser-color-dot { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: var(--surface-card); background: var(--exds-folder-color); }
 .exds-browser-color-dot svg { visibility: hidden; }
 .exds-browser-color-swatch[aria-pressed="true"] svg { visibility: visible; }
-.exds-browser-color-error { max-width: 224px; margin: 8px 4px 2px; color: var(--ex-state-fault-text); font: 12px/1.4 var(--ex-font-sans); }
+.exds-browser-color-error { max-width: 224px; margin: 8px 4px 2px; color: var(--ex-state-fault-text); font: var(--fs-caption)/1.4 var(--ex-font-sans); }
 .exds-browser-color-field { min-width: 0; margin: 0; padding: 0; border: 0; }
-.exds-browser-color-field legend { margin-bottom: 6px; padding: 0; color: var(--text-muted); font: 600 10px/1 var(--ex-font-mono); letter-spacing: .07em; text-transform: uppercase; }
+.exds-browser-color-field legend { margin-bottom: 6px; padding: 0; color: var(--text-muted); font: 600 var(--fs-micro)/1 var(--ex-font-mono); letter-spacing: .07em; text-transform: uppercase; }
 .exds-browser-color-field .exds-browser-color-options { grid-template-columns: repeat(6, 44px); }
 .exds-browser-color-radio { position: relative; width: 44px; height: 44px; }
 .exds-browser-color-radio input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
@@ -51,7 +51,7 @@
 .exds-browser-color-radio input:checked + .exds-browser-color-swatch { border-color: var(--text-body); }
 .exds-browser-color-radio input:checked + .exds-browser-color-swatch svg { visibility: visible; }
 .exds-browser-color-radio input:focus-visible + .exds-browser-color-swatch { outline: 2px solid var(--selection-marker); outline-offset: 2px; }
-.exds-browser-section-label { display: flex; align-items: center; justify-content: space-between; margin: 12px 16px 6px; padding-top: 12px; border-top: 1px solid var(--border-rule); color: var(--text-muted); font: 11px var(--ex-font-mono); text-transform: uppercase; letter-spacing: .08em; }
+.exds-browser-section-label { display: flex; align-items: center; justify-content: space-between; margin: 12px 16px 6px; padding-top: 12px; border-top: 1px solid var(--border-rule); color: var(--text-muted); font: var(--fs-xs) var(--ex-font-mono); text-transform: uppercase; letter-spacing: .08em; }
 .exds-browser-section-label a { text-transform: none; letter-spacing: 0; }
 .exds-browser-collection { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface-card); border-right: 1px solid var(--border-rule); }
 .exds-browser-collection-header { display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 12px 16px; }
@@ -70,7 +70,7 @@
 .exds-browser-entry-copy small { display: block; margin: 0; color: var(--text-muted); font-size: var(--fs-caption); line-height: 18px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .exds-browser-entry-heading { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .exds-browser-entry-heading strong { flex: 0 0 auto; }
-.exds-browser-entry-heading .status-dot { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 11px/18px var(--ex-font-sans); letter-spacing: 0; text-transform: none; color: var(--text-muted); }
+.exds-browser-entry-heading .status-dot { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 var(--fs-xs)/var(--fs-card) var(--ex-font-sans); letter-spacing: 0; text-transform: none; color: var(--text-muted); }
 .exds-browser-entry-heading .status-dot > span { flex-shrink: 0; width: 6px; height: 6px; }
 .exds-browser-entry-location { grid-column: 1; grid-row: 2; }
 .exds-browser-entry-date { grid-column: 2; grid-row: 1; text-align: right; font-variant-numeric: tabular-nums; }
@@ -89,11 +89,11 @@
 .exds-browser-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 .exds-browser-field { display: grid; align-content: start; gap: 10px; min-width: 0; font-size: var(--fs-sm); font-weight: 600; }
 .exds-browser-field.is-wide { grid-column: 1 / -1; }
-.exds-browser-field :is(input, select, textarea) { width: 100%; min-width: 0; min-height: var(--ex-control-height); padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--ex-radius-instrument); background: var(--surface-card); color: var(--text-body); font: 14px var(--ex-font-sans); }
+.exds-browser-field :is(input, select, textarea) { width: 100%; min-width: 0; min-height: var(--ex-control-height); padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--ex-radius-instrument); background: var(--surface-card); color: var(--text-body); font: var(--fs-text) var(--ex-font-sans); }
 .exds-browser-field textarea { resize: vertical; }
 .exds-browser-field .operations-help { margin: 0; font-weight: 400; }
 .exds-browser-fieldset { display: grid; gap: 20px; min-width: 0; margin: 0; padding: 20px 0 0; border: 0; border-top: 1px solid var(--border-rule); }
-.exds-browser-fieldset legend { padding: 0 8px 0 0; font: 11px var(--ex-font-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.exds-browser-fieldset legend { padding: 0 8px 0 0; font: var(--fs-xs) var(--ex-font-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
 .exds-browser-form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; padding-top: 20px; border-top: 1px solid var(--border-rule); }
 .exds-browser-form-actions > :is(a, button, input) { flex: 0 1 auto; }
 .exds-browser-editor-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-rule); }
@@ -114,7 +114,7 @@
 .exds-browser-empty strong { color: var(--text-body); font-size: var(--fs-card); }
 .exds-browser-metadata { margin: 12px 0; }
 .exds-browser-metadata > div { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; align-items: center; padding: 6px 0; }
-.exds-browser-metadata dt { font: 11px var(--ex-font-mono); color: var(--text-muted); text-transform: uppercase; }
+.exds-browser-metadata dt { font: var(--fs-xs) var(--ex-font-mono); color: var(--text-muted); text-transform: uppercase; }
 .exds-browser-metadata dd { margin: 0; font-size: var(--fs-text); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; overflow-wrap: anywhere; }
 .exds-browser-metadata dd > small { color: var(--text-muted); font-size: var(--fs-caption); }
 .exds-browser-footer { display: flex; justify-content: space-between; gap: 16px; padding: 8px 16px; border-top: 1px solid var(--border-rule); font-size: var(--fs-caption); color: var(--text-muted); }
@@ -128,14 +128,14 @@
 .exds-browser-member-search { margin-top: 8px; }
 .exds-browser-member-results { max-height: 220px; overflow-y: auto; margin-top: 6px; border: 1px solid var(--border-rule); border-radius: var(--ex-radius-instrument); background: var(--surface-card); }
 .exds-browser-member-results[hidden] { display: none; }
-.exds-browser-member-option { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 10px; border: 0; background: transparent; color: var(--text-body); font: 14px var(--ex-font-sans); text-align: left; cursor: pointer; }
+.exds-browser-member-option { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 10px; border: 0; background: transparent; color: var(--text-body); font: var(--fs-text) var(--ex-font-sans); text-align: left; cursor: pointer; }
 .exds-browser-member-option:hover, .exds-browser-member-option[aria-selected="true"] { background: var(--surface-selected); }
 .exds-browser-member-list { list-style: none; padding: 0; margin: 12px 0; max-height: 240px; overflow-y: auto; }
 .exds-browser-member-list:empty { display: none; }
 .exds-browser-member { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
 .exds-browser-member + .exds-browser-member { border-top: 1px solid var(--border-rule); }
-.exds-browser-member-avatar { display: grid; place-items: center; flex: 0 0 30px; height: 30px; border-radius: 50%; background: var(--surface-panel); color: var(--text-muted); font: 600 13px var(--ex-font-sans); }
-.exds-browser-member-email { flex: 1; min-width: 0; overflow-wrap: anywhere; font: 14px var(--ex-font-sans); }
+.exds-browser-member-avatar { display: grid; place-items: center; flex: 0 0 30px; height: 30px; border-radius: 50%; background: var(--surface-panel); color: var(--text-muted); font: 600 var(--fs-sm) var(--ex-font-sans); }
+.exds-browser-member-email { flex: 1; min-width: 0; overflow-wrap: anywhere; font: var(--fs-text) var(--ex-font-sans); }
 .exds-browser-member .exds-browser-icon-button { flex-shrink: 0; }
 .exds-browser-dialog h2 { margin: 0 0 20px; font-size: var(--fs-section); }
 .exds-browser-dialog-actions { display: flex; justify-content: flex-end; gap: 12px; }
@@ -184,9 +184,9 @@
 .exds-browser-autocomplete { position: relative; min-width: 0; }
 .exds-browser-autocomplete-results { position: absolute; z-index: 30; inset: calc(100% + 4px) 0 auto; max-height: 224px; overflow-y: auto; padding: 4px; border: 1px solid var(--border-rule); border-radius: var(--ex-radius-instrument); background: var(--surface-card); box-shadow: var(--ex-shadow-raised); }
 .exds-browser-autocomplete-results[hidden], .exds-browser-autocomplete-option[hidden] { display: none; }
-.exds-browser-autocomplete-option { display: block; width: 100%; min-height: 36px; padding: 8px 10px; border: 0; border-radius: var(--ex-radius-instrument); background: transparent; color: var(--text-body); font: 400 13px/1.4 var(--ex-font-sans); text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+.exds-browser-autocomplete-option { display: block; width: 100%; min-height: 36px; padding: 8px 10px; border: 0; border-radius: var(--ex-radius-instrument); background: transparent; color: var(--text-body); font: 400 var(--fs-sm)/1.4 var(--ex-font-sans); text-align: left; overflow-wrap: anywhere; cursor: pointer; }
 .exds-browser-autocomplete-option:hover, .exds-browser-autocomplete-option[aria-selected="true"] { background: var(--surface-selected); color: var(--text-strong); }
-.exds-browser-field > .exds-browser-autocomplete-help { margin: 0; color: var(--text-muted); font: 400 12px/1.4 var(--ex-font-sans); }
+.exds-browser-field > .exds-browser-autocomplete-help { margin: 0; color: var(--text-muted); font: 400 var(--fs-caption)/1.4 var(--ex-font-sans); }
 @media (pointer: coarse) { .exds-browser-autocomplete-option { min-height: 44px; } }
 /* Phone: the flight code is never truncated; status wraps under it and the date takes its own line. */
 @media (max-width: 560px) {

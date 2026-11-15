@@ -65,7 +65,7 @@
         <% @active_installations.each do |installation| %>
           <%= render "hangar/aircraft/configuration_asset", asset: installation.installable, level: 0 %>
         <% end %>
-        <% if @active_installations.empty? %><div class="workspace-empty">No equipment currently installed.</div><% end %>
+        <% if @active_installations.empty? %><div class="workspace-empty">No equipment currently installed. <%= link_to "Open the configuration", hangar_aircraft_path(@selected_aircraft) %> to record an installation.</div><% end %>
       </div>
     </section>
   </div>

@@ -53,7 +53,7 @@
 .exds-recording-selection > strong { margin-right: auto; }
 .exds-recording-table-wrap { overflow-x: auto; border: 1px solid var(--border-rule); border-radius: var(--ex-radius-instrument); background: var(--surface-card); }
 .exds-recording-table { width: 100%; border-collapse: collapse; text-align: left; font-size: var(--fs-text); }
-.exds-recording-table th { color: var(--text-muted); font: 600 11px var(--ex-font-mono); letter-spacing: .06em; text-transform: uppercase; padding: var(--ex-space-4) var(--ex-space-5); }
+.exds-recording-table th { color: var(--text-muted); font: 600 var(--fs-xs) var(--ex-font-mono); letter-spacing: .06em; text-transform: uppercase; padding: var(--ex-space-4) var(--ex-space-5); }
 .exds-recording-table td { padding: var(--ex-space-4) var(--ex-space-5); border-top: 1px solid var(--border-rule); vertical-align: middle; font-variant-numeric: tabular-nums; }
 .exds-recording-table th:first-child, .exds-recording-table td:first-child { width: 44px; padding-right: 0; }
 .exds-recording-table input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--selection-marker); cursor: pointer; }
@@ -61,9 +61,9 @@
 .exds-recording-table td:nth-child(3), .exds-recording-table td:nth-child(4) { white-space: nowrap; }
 .exds-recording-table td:last-child { width: 44px; padding-left: 0; }
 .exds-recording-table tr[data-selected="true"] { background: var(--surface-selected); }
-.exds-recording-table .exds-recording-group th { background: var(--surface-app); border-top: 1px solid var(--border-rule); padding: var(--ex-space-3) var(--ex-space-5); color: var(--text-body); font: 600 13px var(--ex-font-sans); text-transform: none; letter-spacing: 0; }
+.exds-recording-table .exds-recording-group th { background: var(--surface-app); border-top: 1px solid var(--border-rule); padding: var(--ex-space-3) var(--ex-space-5); color: var(--text-body); font: 600 var(--fs-sm) var(--ex-font-sans); text-transform: none; letter-spacing: 0; }
 .exds-recording-group small { margin-left: var(--ex-space-4); color: var(--text-muted); font-size: var(--fs-caption); font-weight: 400; }
-.exds-recording-name { display: block; color: var(--text-muted); font: 12px var(--ex-font-mono); margin-top: var(--ex-space-2); }
+.exds-recording-name { display: block; color: var(--text-muted); font: var(--fs-caption) var(--ex-font-mono); margin-top: var(--ex-space-2); }
 .exds-recording-bound { display: block; font-size: var(--fs-caption); color: var(--text-muted); margin-top: var(--ex-space-1); }
 .exds-recording-state { display: flex; align-items: center; gap: var(--ex-space-2); font-size: var(--fs-sm); }
 .exds-recording-state svg { flex-shrink: 0; color: var(--ex-graphite-500); }
@@ -73,7 +73,7 @@
 .exds-recording-menu summary { cursor: pointer; list-style: none; display: grid; place-items: center; min-width: 32px; min-height: 32px; color: var(--text-muted); }
 .exds-recording-menu summary::-webkit-details-marker { display: none; }
 .exds-recording-menu > div { position: absolute; right: 0; bottom: 100%; z-index: 5; min-width: 180px; background: var(--surface-card); border: 1px solid var(--border-rule); border-radius: var(--ex-radius-instrument); box-shadow: var(--ex-shadow-panel); padding: var(--ex-space-1); }
-.exds-recording-menu button { display: block; width: 100%; text-align: left; padding: var(--ex-space-3); background: transparent; border: 0; font: 13px var(--ex-font-sans); color: var(--text-body); cursor: pointer; }
+.exds-recording-menu button { display: block; width: 100%; text-align: left; padding: var(--ex-space-3); background: transparent; border: 0; font: var(--fs-sm) var(--ex-font-sans); color: var(--text-body); cursor: pointer; }
 .exds-recording-menu button:hover { background: var(--surface-panel); }
 .exds-recording-footer { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ex-space-4); margin-top: var(--ex-space-5); color: var(--text-muted); font-size: var(--fs-caption); }
 .exds-recording-footer > label { display: flex; align-items: center; gap: var(--ex-space-2); cursor: pointer; }

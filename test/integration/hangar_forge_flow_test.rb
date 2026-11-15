@@ -189,7 +189,8 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".workspace-panel-header", text: /Assigned inventory.*0 parts/m
-    assert_select ".workspace-empty", text: "No parts use this function yet.", count: 1
+    assert_select ".workspace-empty", text: /No parts use this function yet\./, count: 1
+    assert_select ".workspace-empty a[href='#{new_hangar_part_path}']", text: "Register a part"
     assert_select ".workspace-list", count: 0
   end
 

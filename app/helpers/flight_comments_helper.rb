@@ -1,22 +1,27 @@
 module FlightCommentsHelper
+  DEBRIEF_LABEL = /\A(?<label>\p{L}[\p{L} '\u2019\/-]{1,39}?)\s*:\s+(?<text>\S.*)\z/
+
   def comment_author_name(user)
     user.email_address.split("@").first.split(/[._-]/).map(&:capitalize).join(" ")
   end
 
-  # Debrief summaries arrive as short Markdown lists. Render the list and bold
-  # labels only; every fragment is escaped by safe_join.
+  # Debrief summaries are short lines, each optionally opened by a label
+  # ("Positives: ..."). Older entries use Markdown bullets and bold labels.
+  # Every fragment is escaped by content_tag and safe_join.
   def debrief_summary(text)
-    lines = text.to_s.lines.map(&:strip).reject(&:blank?)
+    lines = text.to_s.lines.map { |line| line.strip.sub(/\A[-*\u2022]\s+/, "") }.reject(&:blank?)
     content_tag(:ul, class: "flight-debrief-summary") do
-      safe_join(lines.map { |line| content_tag(:li, debrief_inline(line.sub(/\A[-*\u2022]\s+/, ""))) })
+      safe_join(lines.map { |line| content_tag(:li, debrief_line(line)) })
     end
   end
 
   private
 
-  def debrief_inline(text)
-    safe_join(text.split(/(\*\*.+?\*\*)/).reject(&:empty?).map do |part|
-      part.match?(/\A\*\*.+\*\*\z/) ? content_tag(:strong, part[2..-3].strip.sub(/\s*:\z/, "")) : part
-    end)
+  def debrief_line(line)
+    plain = line.gsub(/\*\*(.+?)\*\*/, "\\1")
+    match = DEBRIEF_LABEL.match(plain)
+    return plain unless match
+
+    safe_join([ content_tag(:strong, match[:label].strip), match[:text] ])
   end
 end
