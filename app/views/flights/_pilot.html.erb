@@ -1,0 +1,4 @@
+<span class="flight-pilot" title="Pilot: <%= flight.display_pilot %>">
+  <%= render "shared/user_avatar", user: flight.pilot %>
+  <% if local_assigns.fetch(:show_name, true) %><span class="flight-pilot-name"><%= flight.display_pilot %></span><% end %>
+</span>

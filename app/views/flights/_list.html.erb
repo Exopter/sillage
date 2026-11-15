@@ -2,7 +2,7 @@
   <div class="flight-list">
     <% flights.each do |flight| %>
       <%= link_to flight, class: "flight-card" do %>
-        <span class="flight-card-icon"><%= sillage_icon "route", size: 18 %></span>
+        <%= render "flights/pilot", flight: flight, show_name: false %>
         <span class="flight-card-body">
           <span class="flight-date"><%= logbook_date(flight) %></span>
           <strong><%= flight.code %></strong><% if flight.description.present? %><span><%= flight.description %></span><% end %>

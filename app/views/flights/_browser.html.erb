@@ -64,6 +64,7 @@
                 <% if can_manage_operations? && accessible %><label><input type="checkbox" name="entries[]" value="<%= browser_key(entry) %>" data-table-selection-target="item" data-action="change->table-selection#update"><span class="sr-only">Select <%= browser_name(entry) %></span></label><% end %>
                 <%= link_to browser_preview_path(entry), class: "exds-browser-entry-link", draggable: false, data: { turbo_frame: "flight-preview", flight_browser_target: "entry", open_url: browser_open_path(entry), selected: selected, name: browser_name(entry), action: "click->flight-browser#select dblclick->flight-browser#open" }, aria: { label: "Preview #{browser_name(entry)}" } do %>
                   <% entry_state, entry_status = entry.is_a?(Flight) ? logbook_status(entry) : recording_logbook_status(entry) %>
+                  <%= render "flights/pilot", flight: entry, show_name: false if entry.is_a?(Flight) %>
                   <span class="exds-browser-entry-copy">
                     <span class="exds-browser-entry-heading">
                       <strong><%= browser_name(entry) %></strong>

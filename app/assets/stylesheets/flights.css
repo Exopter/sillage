@@ -238,3 +238,9 @@
     text-align: center;
   }
 }
+
+/* Assigned pilot identity reuses the shared profile photo and rank badge. */
+.flight-pilot { display: inline-flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; vertical-align: middle; }
+.flight-pilot > .sillage-avatar { margin-left: 0; }
+.flight-pilot-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flight-replay-header > .flight-pilot { margin-left: auto; max-width: 40%; }
