@@ -6,12 +6,12 @@
 </tr>
 <tr>
   <td style="padding:16px 0 0;font-family:'Aptos Display','Aptos','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:40px;line-height:44px;letter-spacing:-1.4px;color:#f5f8f6;">
-    <%= @user.first_name %>, your place<br>in Flight Club is ready.
+    <%= @user.first_name %>, your place<br>in the Flight Club is ready.
   </td>
 </tr>
 <tr>
   <td style="padding:20px 0 26px;<%= sans %>font-size:16px;line-height:26px;color:#c7d0cd;">
-    You are invited to join Flight Club as <%= @user.membership_rank_phrase %><%= ", among the founding members of the first chapter" if founding %>.
+    You are invited to join the Flight Club as <%= @user.membership_rank_phrase %><%= ", among the founding members of the first chapter" if founding %>.
     Your membership card is ready, engraved with your name and your number.
   </td>
 </tr>
@@ -48,7 +48,7 @@
 </tr>
 <% content_for :footer do %>
   <p style="margin:0;">
-    Sent to <%= @user.email_address %> because Exopter invited you to Flight Club.
+    Sent to <%= @user.email_address %> because Exopter invited you to the Flight Club.
     If you were not expecting it, no action is needed: the invitation expires on its own.
     <% if ENV["MAIL_REPLY_TO"].present? %>A question? Reply to this message.<% end %>
   </p>

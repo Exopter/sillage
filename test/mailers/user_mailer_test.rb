@@ -6,12 +6,12 @@ class UserMailerTest < ActionMailer::TestCase
     message = UserMailer.invitation(member)
 
     assert_equal [ member.email_address ], message.to
-    assert_equal "Ada, your place in Flight Club is ready", message.subject
+    assert_equal "Ada, your place in the Flight Club is ready", message.subject
     html = message.html_part.body.decoded
     text = message.text_part.body.decoded
     [ html, text ].each do |body|
       assert_includes body, "as a Pioneer"
-      assert_includes body, "FC 0007"
+      assert_includes body, "Member 0007"
       assert_includes body, "valid until #{member.invitation_expires_at.strftime("%-d %B %Y")}"
       assert_match %r{http://www.example.com/invitations/\S+/edit}, body
     end
@@ -39,9 +39,9 @@ class UserMailerTest < ActionMailer::TestCase
     member = users(:member)
     message = UserMailer.membership_confirmation(member)
 
-    assert_equal "Welcome to Flight Club, Elias", message.subject
+    assert_equal "Welcome to the Flight Club, Elias", message.subject
     assert_includes message.html_part.body.decoded, "an Explorer"
-    assert_includes message.html_part.body.decoded, "FC 0008"
+    assert_includes message.html_part.body.decoded, "Member 0008"
     assert_includes message.text_part.body.decoded, "http://www.example.com/profile#membership"
   end
 end

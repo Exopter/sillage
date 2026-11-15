@@ -7,7 +7,7 @@
     <span class="flight-club-emblem"><%= image_tag "logo-mark.svg", alt: "" %></span>
     <span class="flight-club-micro">A personal invitation</span>
     <h1 id="flight-club-invitation-title"><%= user.first_name %>, your place is ready.</h1>
-    <p>You are joining Flight Club as <%= user.membership_rank_phrase %>.<br>Choose a password to secure your membership, then meet your card.</p>
+    <p>You are joining the Flight Club as <%= user.membership_rank_phrase %>.<br>Choose a password to secure your membership, then meet your card.</p>
 
     <% flash.each do |type, message| %>
       <div class="flash <%= type %>"><%= message %></div>

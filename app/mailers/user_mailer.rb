@@ -5,13 +5,13 @@ class UserMailer < ApplicationMailer
     return mail(to: @user.email_address, subject: "Your Sillage invitation") unless @user.member?
 
     @preheader = "Your #{@user.membership_rank} membership is ready. Accept your invitation by #{long_date(@user.invitation_expires_at)}."
-    flight_club_mail subject: "#{@user.first_name}, your place in Flight Club is ready", template_name: "flight_club_invitation"
+    flight_club_mail subject: "#{@user.first_name}, your place in the Flight Club is ready", template_name: "flight_club_invitation"
   end
 
   def membership_confirmation(user)
     @user = user
     @preheader = "Your #{@user.membership_rank} membership is active. Your card and your flights are in Sillage."
-    flight_club_mail subject: "Welcome to Flight Club, #{@user.first_name}", template_name: "membership_confirmation"
+    flight_club_mail subject: "Welcome to the Flight Club, #{@user.first_name}", template_name: "membership_confirmation"
   end
 
   private

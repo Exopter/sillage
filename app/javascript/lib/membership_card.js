@@ -461,7 +461,7 @@ export async function createMembershipCard(host, options) {
     const [left, right] = [128, 1920];
     if (reverse) {
       text(ctx, memberName, left, 1084, 34, { ...strong, tracking: 4, maxWidth: 900 });
-      text(ctx, `FC ${number} / ${rank.label.toUpperCase()} / ${since.toUpperCase()}`, left, 1146, 30, mono);
+      text(ctx, `Member ${number} / ${rank.label.toUpperCase()} / ${since.toUpperCase()}`, left, 1146, 30, mono);
       const edition = options.edition ?? (rank === RANKS.pioneer ? 'THE FIRST CHAPTER / 001' : '');
       text(ctx, footnote ? edition : '', right, 1084, 30, { ...mono, align: 'right' });
       text(ctx, footnote || edition, right, 1146, 30, { ...mono, align: 'right' });
@@ -670,7 +670,7 @@ export async function createMembershipCard(host, options) {
       backMaps.set(rankKey, makeFace(RANKS[rankKey], true));
       rankMaps.set(rankKey, makeFoil((ctx) => {
         text(ctx, RANKS[rankKey].label.toUpperCase(), 128, 806, 60, { family: 'Aptos Mono', tracking: 6 });
-        if (personal) text(ctx, 'FC', 1742, 1072, 30, { family: 'Aptos Mono', tracking: 4, align: 'right' });
+        if (personal) text(ctx, 'MEMBER', 1742, 1072, 30, { family: 'Aptos Mono', tracking: 4, align: 'right' });
       }));
     }
     return {

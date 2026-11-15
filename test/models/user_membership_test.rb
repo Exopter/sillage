@@ -4,7 +4,7 @@ class UserMembershipTest < ActiveSupport::TestCase
   test "Core Team can share zero while positive member numbers remain unique" do
     first = User.create!(email_address: "zero-one@example.com", role: "user", first_name: "First", last_name: "Member", membership_tier: "core_team", member_number: 0)
     second = User.create!(email_address: "zero-two@example.com", role: "user", first_name: "Second", last_name: "Member", membership_tier: "core_team", member_number: 0)
-    assert_equal "FC 0000", first.member_code
+    assert_equal "Member 0000", first.member_code
     assert_equal first.member_number, second.member_number
     second.membership_tier = "pioneer"
     assert_not second.valid?
@@ -33,7 +33,7 @@ class UserMembershipTest < ActiveSupport::TestCase
     second = User.invite!(email_address: "two@example.com", role: "user", first_name: "Dos", last_name: "Member", membership_tier: "trailblazer")
 
     assert_equal [ 9, 10 ], [ first.member_number, second.member_number ]
-    assert_equal "FC 0009", first.member_code
+    assert_equal "Member 0009", first.member_code
     first.update!(membership_tier: "trailblazer")
     assert_equal 9, first.reload.member_number
   end
