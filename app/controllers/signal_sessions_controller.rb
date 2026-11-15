@@ -18,11 +18,12 @@ class SignalSessionsController < ApplicationController
   def create
     signal_session = Signal::StartSession.new(
       user: Current.user,
+      device_id: params[:device_id],
       flight_id: params[:flight_id],
       station_metadata: { "source" => "web_serial" }
     ).call
     redirect_to signal_path(session: signal_session.uuid), notice: "Signal session started."
-  rescue Signal::StartSession::InvalidFlight => error
+  rescue Signal::StartSession::InvalidFlight, Signal::RecorderAccess::Denied => error
     redirect_to signal_path(view: "home"), alert: error.message
   end
 end

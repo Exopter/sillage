@@ -121,7 +121,7 @@ class Signal::ReconcileRecordingTest < ActiveSupport::TestCase
 
   test "a second active Signal session prevents replacement until it completes" do
     first = signal_session
-    active = @user.signal_sessions.create!(flight: first.flight, started_at: @at)
+    active = create_signal_session(user: @user, flight: first.flight, started_at: @at)
     import = recording
     ExoFdr::ImportService.new(import).call
     assert_nil import.reload.target_flight_id
@@ -178,7 +178,9 @@ class Signal::ReconcileRecordingTest < ActiveSupport::TestCase
   def signal_session(device: @device, boot: 1234, user: @user, time: @at, identity_time: time,
     complete: true, assigned: true)
     flight = user.flights.create!(status: "live", name: "Signal context", started_at: time - 20.minutes) if assigned
-    session = user.signal_sessions.create!(flight:, started_at: time - 20.minutes)
+    recorder = EmbeddedController.find_by(device_id: device) || EmbeddedController.create!(device_id: device)
+    FdrIdentity::BindBoard.new(assembly: create_exofdr_assembly, controller: recorder).call unless recorder.assembly
+    session = create_signal_session(user:, recorder:, flight:, started_at: time - 20.minutes)
     Signal::IngestBatch.new(signal_session: session, sequence: 0, payload: { samples: [
       { kind: "sensor", sensor_type: "IMU_QUALITY", recorded_at: identity_time.iso8601, readings: { deviceId: device, bootId: boot } },
       { kind: "sensor", sensor_type: "RADIO", recorded_at: time.iso8601, readings: { rssi: 133, remoteRssi: 114, noise: 38, remoteNoise: 38 } },

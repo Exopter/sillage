@@ -1590,3 +1590,7 @@ textarea {
 @media (max-width: 760px) {
   .signal-home-link { flex-wrap: wrap; }
 }
+
+.signal-assignment-fields { display: grid; grid-template-columns: 1fr; gap: var(--ex-space-3); margin: 12px 0 0; padding: 0; border: 0; }
+.signal-assignment-fields[hidden] { display: none; }
+.signal-home-link [hidden] { display: none; }

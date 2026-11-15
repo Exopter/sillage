@@ -15,7 +15,7 @@ assert.equal(readiness.snapshot(1000, true).state, "waiting", "USB, ground radio
 readiness.receive(frame(heartbeat), 1000)
 readiness.receive(frame(quality), 1100)
 assert.equal(readiness.snapshot(1100, true).label, `${quality.deviceId} connected`)
-const assignedWing = {deviceId: quality.deviceId, recorderLabel: "EXOFDR-V1-PCB-01", aircraftLabel: "Freak 6 Vincent · WS-F6-VD", registered: true}
+const assignedWing = {deviceId: quality.deviceId, recorderLabel: "EXOFDR-V1-PCB-01", aircraftLabel: "Freak 6 Vincent · WS-F6-VD", registered: true, assemblyId: 42, canAcquire: true}
 assert.equal(readiness.snapshot(1100, true, assignedWing).label, "Freak 6 Vincent · WS-F6-VD connected")
 assert.equal(readiness.snapshot(1100, true, assignedWing).detail, "Radio ready")
 assert.doesNotMatch(readiness.snapshot(1100, true, assignedWing).detail, /preflight/i)
@@ -106,6 +106,7 @@ let submitted = 0, finishRelease, closeCalls = 0
 const submitter = {}
 globalThis.HTMLFormElement = class {
   closest() {return true}
+  matches() {return false}
   requestSubmit(button) {assert.equal(button,submitter); submitted++}
 }
 const statusView = new RadioStatus()
@@ -125,7 +126,7 @@ console.log("Signal home acquisition form handoff test passed")
 // The same read-only registration endpoint owns the assembly-to-aircraft chain.
 const originalFetch = globalThis.fetch
 const registration = (deviceId, name = "Freak 6 Vincent · WS-F6-VD") => ({registered:true,
-  recorder:{device_id:deviceId,assembly:{serial_number:"EXOFDR-V1-PCB-01"}},aircraft:{display_name:name}})
+  recorder:{device_id:deviceId,assembly_id:42,acquisition_allowed:true,assembly:{serial_number:"EXOFDR-V1-PCB-01"}},aircraft:{display_name:name}})
 globalThis.fetch = async (url, options) => {
   assert.equal(url, `/api/v1/fdr-registration?device_id=${encodeURIComponent(quality.deviceId)}`)
   assert.equal(options.credentials,"same-origin"); assert.equal(options.cache,"no-store")
@@ -159,3 +160,35 @@ await thirdLookup
 assert.equal(statusView.identity.aircraftLabel,"Other wing · EXO-002","disconnected pages ignore pending identity lookups")
 globalThis.fetch = originalFetch
 console.log("Signal installed-aircraft identity, exact ECU matching and delayed-response tests passed")
+
+// Acquisition requires a fresh, exact ECU identity bound to a physical assembly.
+globalThis.HTMLFormElement = class {
+  closest() {return true}
+  matches() {return true}
+}
+const gate = new RadioStatus()
+gate.active = true
+gate.detailTarget = {textContent:""}
+gate.link = {generation:5, connected:true, error:"", readiness:{deviceId:quality.deviceId, snapshot:()=>({state:"connected"})}}
+gate.identityKey = `5/${quality.deviceId}`
+gate.identity = {...assignedWing, assemblyId:null, canAcquire:false}
+const blocked = {target:new HTMLFormElement(),preventDefault(){this.prevented=true}}
+gate.submit(blocked)
+assert.equal(blocked.prevented,true,"an unassigned recorder cannot submit an acquisition")
+assert.equal(gate.canAcquire(),false)
+gate.identity = assignedWing
+assert.equal(gate.canAcquire(),true)
+gate.link.generation++
+assert.equal(gate.canAcquire(),false,"a new radio connection must resolve its own identity")
+gate.link.generation--
+gate.link.readiness.snapshot = () => ({state:"stale"})
+assert.equal(gate.canAcquire(),false,"a lost radio link cannot start acquisition")
+gate.assignmentKey = `5/${quality.deviceId}`
+gate.assignmentDeviceTarget = {value:quality.deviceId}
+gate.assignmentFormTarget = {reportValidity:()=>true}
+gate.assignmentErrorTarget = {hidden:true,textContent:""}
+await gate.assignRecorder({preventDefault(){}})
+assert.equal(gate.assignmentErrorTarget.hidden,false)
+assert.match(gate.assignmentErrorTarget.textContent,/connection changed/)
+globalThis.HTMLFormElement = originalForm
+console.log("Signal unknown-recorder acquisition gate and stale-assignment confirmation tests passed")

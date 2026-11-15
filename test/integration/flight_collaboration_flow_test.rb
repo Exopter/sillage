@@ -118,7 +118,7 @@ class FlightCollaborationFlowTest < ActionDispatch::IntegrationTest
 
   test "administrators with flight access can acquire Signal sessions and revocation blocks the operator" do
     @flight.update!(status: "preparation")
-    session = Signal::StartSession.new(user: @collaborator, flight_id: @flight.id).call
+    session = Signal::StartSession.new(device_id: signal_recorder.device_id, user: @collaborator, flight_id: @flight.id).call
     get signal_path(session: session.uuid)
     assert_response :success
     post batches_api_v1_signal_session_path(session.uuid), params: { sequence: 0, samples: [] }, as: :json

@@ -2,7 +2,7 @@ require "test_helper"
 
 class SignalIngestBatchTest < ActiveSupport::TestCase
   test "rejects malformed batch envelopes without acknowledging or persisting them" do
-    session = Signal::StartSession.new(user: users(:julien)).call
+    session = Signal::StartSession.new(device_id: signal_recorder.device_id, user: users(:julien)).call
     [ nil, [], {}, { samples: {} } ].each do |payload|
       assert_no_difference [ -> { SignalBatch.count }, -> { TrackPoint.count }, -> { SensorSample.count } ] do
         assert_raises(Signal::IngestBatch::InvalidBatch) do
@@ -16,8 +16,8 @@ class SignalIngestBatchTest < ActiveSupport::TestCase
   test "increments stored counts across sessions without recounting or counting replay twice" do
     user = users(:julien)
     flight = user.flights.create!(name: "Live counters", status: "live")
-    first = user.signal_sessions.create!(flight:)
-    second = user.signal_sessions.create!(flight:)
+    first = create_signal_session(user: user, flight:)
+    second = create_signal_session(user: user, flight:)
     payload = { samples: [ { kind: "gps", latitude: 44, longitude: 1 }, { kind: "sensor", sensor_type: "BARO", readings: { pressure: 100000 } } ] }
     counts = []
     subscriber = lambda do |_name, _start, _finish, _id, event|

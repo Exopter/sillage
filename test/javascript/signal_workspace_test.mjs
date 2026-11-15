@@ -9,13 +9,15 @@ const healthURL = new URL("../../app/javascript/lib/imu_health.js", import.meta.
 const telemetryURL = new URL("../../app/javascript/lib/signal_telemetry.js", import.meta.url).href
 const instrumentsURL = new URL("../../app/javascript/lib/signal_instruments.js", import.meta.url).href
 const layoutURL = new URL("../../app/javascript/lib/signal_layout.js", import.meta.url).href
-const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountedReference} from "${mountURL}";\nimport {ImuHealth} from "${healthURL}";\nimport {SignalTelemetry, groundStationHeartbeat} from "${telemetryURL}";\nimport {instrumentStyle} from "${instrumentsURL}";\nimport {clamp, signalLayoutPreset, parseSignalLayout} from "${layoutURL}";\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString("base64")}`)
+const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountedReference} from "${mountURL}";\nimport {ImuHealth} from "${healthURL}";\nimport {SignalTelemetry, groundStationHeartbeat} from "${telemetryURL}";\nimport {instrumentStyle} from "${instrumentsURL}";\nimport {clamp, signalLayoutPreset, parseSignalLayout} from "${layoutURL}";\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\nconst resolveRadioIdentity = (...args) => globalThis.signalIdentityLookup(...args);\n${source}`).toString("base64")}`)
 const view = new Workspace()
 for (const name of ["qualityAttitude", "qualityHeading", "attitudeDetail", "headingDetail", "preflightDetail", "preflightStatus"]) view[`${name}Target`] = {textContent: "", dataset: {}}
 for (const name of ["radioStatus", "parserStatus", "dataStatus", "heading", "airspeed", "altitude", "verticalSpeed", "glide", "aircraftLabel"]) view[`${name}Target`] = {textContent: ""}
 view.sensorValueTargets = ["accel", "gyro", "mag", "pressure", "temperature", "gps", "gLoad"].map((sensor) => ({dataset: {sensor}, textContent: ""}))
 view.streamBadgeTargets = ["charts", "map", "instruments"].map((widget) => ({dataset: {}, textContent: "", closest: () => ({getAttribute: () => widget})}))
 view.port = {}
+view.acquisitionAuthorized = true
+view.recorderDeviceIdValue = "ECU-112233445566"
 view.drawAll = () => {}
 const originalNow = Date.now
 let now = 10_000
@@ -332,3 +334,45 @@ transmitter.ended = false
 transmitter.port.writable.getWriter = () => {throw new Error("device disconnected")}
 await transmitter.sendRadioHeartbeat()
 assert.equal(transmitter.radioWrite, null, "a failed diagnostic write does not break reception or retain an in-flight write")
+
+// Local capture stays closed until the received ECU and current assembly agree.
+const tick = () => new Promise(resolve => setImmediate(resolve))
+let lookupCount = 0, finishLookup
+const gate = new Workspace()
+gate.port = {}
+gate.recorderDeviceIdValue = "ECU-112233445566"
+gate.recorderAssemblyIdValue = 42
+gate.worker = {commands:[],postMessage(command){this.commands.push(command)}}
+gate.applyTelemetry = () => {gate.applied = (gate.applied || 0) + 1}
+gate.parserStatusTarget = {textContent:""}
+gate.showWarning = message => {gate.warning = message}
+gate.stopSerial = async () => {gate.port=null; gate.acquisitionAuthorized=false; gate.captureAuthorization=null}
+globalThis.signalIdentityLookup = () => {lookupCount++; return new Promise(resolve => {finishLookup=resolve})}
+gate.handleWorkerMessage(frame(radio))
+assert.equal(gate.pendingSamples.length,0)
+assert.equal(gate.worker.commands.length,0)
+const identity = frame({name:"imu_quality",deviceId:gate.recorderDeviceIdValue})
+gate.handleWorkerMessage(identity)
+gate.handleWorkerMessage(identity)
+assert.equal(lookupCount,1,"concurrent quality frames share a single assignment check")
+assert.equal(gate.worker.commands.length,0,"a pending identity check cannot open capture")
+finishLookup({canAcquire:true,assemblyId:42}); await tick()
+assert.equal(gate.acquisitionAuthorized,true)
+assert.equal(gate.worker.commands[0].type,"init-capture")
+assert.equal(gate.applied,1)
+gate.handleWorkerMessage(frame({name:"imu_quality",deviceId:"ECU-FFFFFFFFFFFF"}))
+assert.equal(gate.acquisitionAuthorized,false,"switching the selected ECU stops capture")
+assert.match(gate.warning,/does not match/)
+gate.port = {}; gate.mavlinkSystemId=null; gate.worker.commands=[]
+globalThis.signalIdentityLookup = async () => ({canAcquire:false,assemblyId:null})
+gate.handleWorkerMessage(identity); await tick()
+assert.equal(gate.worker.commands.length,0,"unassigned recorders cannot create a raw capture")
+assert.match(gate.warning,/no longer assigned/)
+gate.port = {}
+globalThis.signalIdentityLookup = () => new Promise(resolve => {finishLookup=resolve})
+gate.handleWorkerMessage(identity)
+gate.captureAuthorization=null; gate.port={}
+finishLookup({canAcquire:true,assemblyId:42}); await tick()
+assert.equal(gate.worker.commands.length,0,"a late identity response cannot authorize a different connection")
+delete globalThis.signalIdentityLookup
+console.log("Signal capture assignment, ECU switch and delayed authorization tests passed")

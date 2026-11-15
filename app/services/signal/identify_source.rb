@@ -35,6 +35,9 @@ module Signal
     end
 
     def resolve_aircraft
+      if (device_id = @signal_session.station_metadata["recorder_device_id"]).present?
+        return EmbeddedController.find_by(device_id:)&.aircraft
+      end
       aircraft = EmbeddedController
         .where(mavlink_system_id: @system_id)
         .filter_map(&:aircraft)
@@ -51,10 +54,15 @@ module Signal
 
       modules = assemblies.flat_map { |assembly| assembly.fdr_system? ? assembly.fdr_modules_at : [ assembly ] }
       devices = modules.filter_map(&:embedded_controller)
+      if (device_id = @signal_session.station_metadata["recorder_device_id"]).present?
+        devices = devices.select { |device| device.device_id == device_id }
+      end
       configured_matches = devices.select { |device| device.mavlink_system_id == @system_id }
       candidate = if configured_matches.one?
         configured_matches.first
-      elsif configured_matches.empty? && assemblies.one?
+      elsif @signal_session.station_metadata["recorder_device_id"].present? && devices.one? && devices.first.mavlink_system_id.nil?
+        devices.first
+      elsif @signal_session.station_metadata["recorder_device_id"].blank? && configured_matches.empty? && assemblies.one?
         unconfigured_source(assemblies.first)
       end
       return false unless candidate

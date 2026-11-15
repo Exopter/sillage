@@ -1,6 +1,6 @@
 import { SignalTelemetry, groundStationHeartbeat } from "signal_telemetry"
 
-/** @typedef {{deviceId: string, recorderLabel: string, aircraftLabel: string|null, registered: boolean}} RadioIdentity */
+/** @typedef {{deviceId: string, recorderLabel: string, aircraftLabel: string|null, registered: boolean, assemblyId: number|null, canAcquire: boolean}} RadioIdentity */
 
 /** Resolve the received full ECU identity through Sillage's current installation chain.
  * @param {string} deviceId @returns {Promise<RadioIdentity>} */
@@ -10,7 +10,7 @@ export async function resolveRadioIdentity(deviceId) {
   })
   if (!response.ok) throw new Error("Aircraft identity is unavailable")
   const payload = await response.json()
-  if (payload?.registered === false) return {deviceId, recorderLabel: deviceId, aircraftLabel: null, registered: false}
+  if (payload?.registered === false) return {deviceId, recorderLabel: deviceId, aircraftLabel: null, registered: false, assemblyId: null, canAcquire: false}
   if (payload?.registered !== true || payload.recorder?.device_id !== deviceId)
     throw new Error("Recorder identity does not match the radio")
   const recorderLabel = payload.recorder.assembly?.serial_number || payload.recorder.name || deviceId
@@ -18,7 +18,7 @@ export async function resolveRadioIdentity(deviceId) {
   if (typeof recorderLabel !== "string" || !recorderLabel.trim() ||
       (payload.aircraft != null && (typeof aircraftLabel !== "string" || !aircraftLabel.trim())))
     throw new Error("Invalid aircraft identity")
-  return {deviceId, recorderLabel, aircraftLabel, registered: true}
+  return {deviceId, recorderLabel, aircraftLabel, registered: true, assemblyId: Number.isInteger(payload.recorder.assembly_id) ? payload.recorder.assembly_id : null, canAcquire: payload.recorder.acquisition_allowed === true}
 }
 
 /** A USB connection or SiK report alone is not evidence of an aircraft. */
@@ -60,7 +60,7 @@ export class SignalRadioReadiness {
     const issues = this.measurements.moduleSnapshot(now).filter(module => module.role <= 3 && ["degraded", "stale"].includes(module.state))
     if (issues.length) return {state: "degraded", label: name ? `${name} · Needs attention` : "Recorder needs attention", detail: issues.map(module => `${module.name}: ${module.state === "stale" ? "link lost" : `${module.sensors} · ${module.storage}`}`).join("; ")}
     const detail = !this.deviceId ? "Radio ready · Waiting for recorder identity" : !resolved ? "Radio ready · Identifying aircraft…"
-      : !resolved.registered ? "Radio ready · Recorder not registered" : !resolved.aircraftLabel ? "Radio ready · No aircraft assigned" : "Radio ready"
+      : !resolved.registered ? "Radio ready · Recorder not registered" : !resolved.assemblyId ? "Radio ready · Assign to an assembly" : !resolved.canAcquire ? "Assembly unavailable for acquisition" : !resolved.aircraftLabel ? "Radio ready · No aircraft assigned" : "Radio ready"
     return {state: "connected", label: name ? `${name} connected` : "Identifying wing…", detail}
   }
 }

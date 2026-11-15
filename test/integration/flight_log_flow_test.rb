@@ -162,7 +162,8 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     get flight_path(flight)
     assert_select "a[href=?]", new_flight_import_path(flight_id: flight.id)
     assert_select "a[href=?]", signal_path(flight_id: flight.id)
-    session = Signal::StartSession.new(user: @owner, flight_id: flight.id).call
+    recorder = create_embedded_controller(assembly: fdr, device_id: "ECU-112233445566")
+    session = Signal::StartSession.new(device_id: recorder.device_id, user: @owner, flight_id: flight.id).call
     assert_equal flight, session.flight
     assert_equal Date.new(2026, 10, 18), flight.reload.flown_on
   end
@@ -173,7 +174,7 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     assert_select "dd", text: aircraft(:pilatus).display_name
     assert_select "a", text: /Start Signal|Import data|Run preflight/, count: 0
     assert_raises Signal::StartSession::InvalidFlight do
-      Signal::StartSession.new(user: @owner, flight_id: flight.id).call
+      Signal::StartSession.new(device_id: signal_recorder.device_id, user: @owner, flight_id: flight.id).call
     end
     assert_no_difference "FlightImport.count" do
       post flight_imports_path, params: { flight_import: { target_flight_id: flight.id, import_type: "flysight",

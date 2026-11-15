@@ -5,19 +5,19 @@ class SharedFlightDebriefTest < ActionDispatch::IntegrationTest
 
   test "starts one flight and lets another device request a confirmed stop" do
     assert_difference "Flight.count", 1 do
-      post api_v1_signal_sessions_path, params: { uuid: SecureRandom.uuid }, as: :json
+      post api_v1_signal_sessions_path, params: { device_id: signal_recorder.device_id, uuid: SecureRandom.uuid }, as: :json
       assert_response :created
     end
     uuid = response.parsed_body.fetch("uuid")
     assert_no_difference "SignalSession.count" do
-      post api_v1_signal_sessions_path, params: { uuid: SecureRandom.uuid }, as: :json
+      post api_v1_signal_sessions_path, params: { device_id: signal_recorder.device_id, uuid: SecureRandom.uuid }, as: :json
       assert_equal uuid, response.parsed_body.fetch("uuid")
     end
     get signal_path(session: uuid, join: 1)
     assert_response :success
     assert_select "[data-controller=shared-flight]", count: 1
     flight = SignalSession.find_by!(uuid:).flight
-    post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
+    post flight_debriefs_path(flight), params: { device_id: signal_recorder.device_id, uuid: SecureRandom.uuid }, as: :json
     assert_response :conflict
     token = SecureRandom.uuid
     post gateway_api_v1_signal_session_path(uuid), params: { token: }, as: :json
@@ -35,7 +35,7 @@ class SharedFlightDebriefTest < ActionDispatch::IntegrationTest
   end
 
   test "closing a disconnected flight retains late batches without reopening it" do
-    session = Signal::StartSession.new(user: users(:julien)).call
+    session = Signal::StartSession.new(device_id: signal_recorder.device_id, user: users(:julien)).call
     post close_disconnected_api_v1_signal_session_path(session.uuid), as: :json
     assert_response :success
     assert_equal "completed", session.reload.status
@@ -45,7 +45,7 @@ class SharedFlightDebriefTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal 1, session.signal_batches.count
     assert_not_equal "live", session.flight.reload.status
-    post api_v1_signal_sessions_path, params: { uuid: SecureRandom.uuid }, as: :json
+    post api_v1_signal_sessions_path, params: { device_id: signal_recorder.device_id, uuid: SecureRandom.uuid }, as: :json
     assert_response :created
     assert_not_equal session.uuid, response.parsed_body.fetch("uuid")
   end
@@ -66,7 +66,7 @@ class SharedFlightDebriefTest < ActionDispatch::IntegrationTest
 
   test "publishes a debrief once and retains the original audio" do
     flight = flights(:one)
-    post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
+    post flight_debriefs_path(flight), params: { device_id: signal_recorder.device_id, uuid: SecureRandom.uuid }, as: :json
     assert_response :success
     debrief = FlightDebrief.find(response.parsed_body.fetch("id"))
     debrief.audio.attach(io: StringIO.new("audio evidence"), filename: "original.webm", content_type: "audio/webm")
@@ -83,9 +83,9 @@ class SharedFlightDebriefTest < ActionDispatch::IntegrationTest
 
   test "refuses a second recorder and hides a private debrief" do
     flight = flights(:one)
-    post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
+    post flight_debriefs_path(flight), params: { device_id: signal_recorder.device_id, uuid: SecureRandom.uuid }, as: :json
     id = response.parsed_body.fetch("id")
-    post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
+    post flight_debriefs_path(flight), params: { device_id: signal_recorder.device_id, uuid: SecureRandom.uuid }, as: :json
     assert_response :conflict
     sign_in_as_admin(users(:operator))
     get flight_debrief_path(flight, id), as: :json
