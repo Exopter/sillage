@@ -1,6 +1,70 @@
 require "test_helper"
 
 class FlightTest < ActiveSupport::TestCase
+  test "a flight defaults its pilot to its creator and retains a different selected pilot" do
+    creator = users(:julien)
+    flight = creator.flights.create!(name: "Default pilot")
+    assert_equal creator, flight.pilot
+
+    flight.update!(pilot: users(:operator))
+    assert_equal users(:operator), flight.reload.pilot
+    assert_equal creator, flight.user
+    flight.update!(user: users(:member))
+    assert_equal users(:operator), flight.reload.pilot
+  end
+
+  test "queued recording creation preserves its creator after account deactivation" do
+    creator = users(:operator)
+    creator.update!(disabled_at: Time.current)
+    flight = creator.flights.create!(status: "processing")
+    assert_equal creator, flight.reload.pilot
+  end
+
+  test "a persisted flight cannot lose its pilot or reference an unknown user" do
+    flight = flights(:one)
+    assert_not flight.update(pilot: nil)
+    assert flight.errors.added?(:pilot, :blank)
+    assert_not flight.reload.update(pilot_id: User.maximum(:id) + 1)
+    assert flight.errors.added?(:pilot, :blank)
+
+    assert_raises(ActiveRecord::NotNullViolation) do
+      Flight.transaction(requires_new: true) { flight.reload.update_column(:pilot_id, nil) }
+    end
+    assert_raises(ActiveRecord::InvalidForeignKey) do
+      Flight.transaction(requires_new: true) { flight.reload.update_column(:pilot_id, User.maximum(:id) + 1) }
+    end
+  end
+
+  test "inactive and invited users cannot be assigned but historical pilots are preserved" do
+    flight = flights(:one)
+    assert_not flight.update(pilot: users(:invited))
+    assert_includes flight.errors[:pilot], "must be an active user with an accepted invitation"
+    pilot = users(:operator)
+    flight.reload.update!(pilot:)
+    pilot.update!(disabled_at: Time.current)
+    flight.update!(description: "Historical pilot retained")
+    assert_equal pilot, flight.reload.pilot
+    assert_not users(:julien).flights.new(pilot:).valid?
+  end
+
+  test "assigning a pilot does not grant access and prevents deleting their account" do
+    pilot = users(:member)
+    flight = flights(:one)
+    flight.update!(pilot:)
+    assert_not flight.visible_to?(pilot)
+    assert_not_includes Flight.visible_to(pilot), flight
+    assert_not pilot.destroy
+    assert_includes pilot.errors.full_messages.to_sentence, "piloted flights exist"
+    assert_equal flight, pilot.piloted_flights.sole
+  end
+
+  test "pilot display uses the full name with an email fallback" do
+    flight = flights(:one)
+    assert_equal users(:julien).email_address, flight.display_pilot
+    flight.pilot = users(:member)
+    assert_equal "Elias Okafor", flight.display_pilot
+  end
+
   test "new flights are private and unsupported visibility is rejected" do
     flight = users(:julien).flights.new(name: "Private flight")
     assert_equal "private", flight.visibility

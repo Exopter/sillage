@@ -79,10 +79,12 @@ class FlightCollaborationFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "an administrator imports into an accessible flight without changing its creator and deletion cleans both users' data" do
+    @flight.update!(pilot: users(:member))
     import_recording
     perform_enqueued_jobs only: FlySightImportJob
     assert @flight.reload.analysed?
     assert_equal @creator, @flight.user
+    assert_equal users(:member), @flight.pilot
     assert_equal @collaborator, @flight.flight_import.user
     assert_equal "MyString", @flight.description
     assert @flight.track_points.exists?

@@ -7,6 +7,7 @@ class Flight < ApplicationRecord
   EFFECTIVE_VISIBILITIES = %w[private public shared].freeze
 
   belongs_to :user
+  belongs_to :pilot, class_name: "User", inverse_of: :piloted_flights
   belongs_to :flight_import, optional: true, inverse_of: :flights
   belongs_to :aircraft, optional: true
   belongs_to :fdr, class_name: "Assembly", optional: true
@@ -25,6 +26,7 @@ class Flight < ApplicationRecord
   has_one_attached :video
 
   before_validation :assign_code
+  before_validation :assign_default_pilot, on: :create
   after_create :create_initial_comment
   validates :initial_comment, length: { maximum: FlightComment::MAX_LENGTH }, allow_blank: true
   validate :validate_initial_comment_images, if: :new_record?
@@ -32,6 +34,7 @@ class Flight < ApplicationRecord
   validates :code, presence: true
   validates :flown_on, :location, presence: true, if: -> { logged? || validation_context == :logbook }
   validate :fdr_must_be_recorder
+  validate :pilot_must_be_available, if: -> { new_record? || will_save_change_to_pilot_id? }
   validate :log_time_must_be_valid
   validates :code, uniqueness: true
   validates :status, inclusion: { in: STATUSES }
@@ -83,6 +86,10 @@ class Flight < ApplicationRecord
     aircraft&.display_name || "Not linked"
   end
 
+  def display_pilot
+    pilot.full_name || pilot.email_address
+  end
+
   def logbook_view?
     logged? || preparation? || ((review? || processing?) && !flight_import_id && sample_count.zero? && sensor_sample_count.zero?)
   end
@@ -129,6 +136,18 @@ class Flight < ApplicationRecord
   end
 
   private
+
+  def assign_default_pilot
+    self.pilot = user if pilot_id.nil?
+  end
+
+  def pilot_must_be_available
+    return unless pilot
+    return if new_record? && pilot_id == user_id
+    return if !pilot.disabled? && pilot.invitation_accepted_at.present?
+
+    errors.add(:pilot, "must be an active user with an accepted invitation")
+  end
 
   def create_initial_comment
     if @initial_comment_with_images

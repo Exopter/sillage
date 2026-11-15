@@ -28,7 +28,7 @@ class Signal::ReconcileRecordingTest < ActiveSupport::TestCase
     session = signal_session
     target = session.flight
     folder = @user.flight_folders.create!(name: "Flight campaign", visibility: "shared", color: "aqua")
-    target.update!(folder:, aircraft: aircraft(:exowing), notes: "Keep these notes", location: "Bouloc",
+    target.update!(pilot: users(:member), folder:, aircraft: aircraft(:exowing), notes: "Keep these notes", location: "Bouloc",
       configuration_snapshot: { "capture" => "original" })
     target.video.attach(io: StringIO.new("video"), filename: "flight.mp4", content_type: "video/mp4")
     event = session.operator_events.create!(uuid: SecureRandom.uuid, flight: target, event_type: "marker", occurred_at: @at, label: "Exit")
@@ -154,6 +154,23 @@ class Signal::ReconcileRecordingTest < ActiveSupport::TestCase
     end
     assert_nil import.reload.target_flight_id
     assert_equal "waiting_for_recording", session.flight.reload.status
+  end
+
+  test "a recording with an explicitly changed pilot is retained for manual review" do
+    session = signal_session(complete: false)
+    import = recording
+    ExoFdr::ImportService.new(import).call
+    source = import.flights.sole
+    source.update!(pilot: users(:member))
+    session.complete!(ended_at: @at + 20)
+
+    assert_no_difference "Flight.count" do
+      assert_raises(Flights::MergeRecording::InvalidMerge) do
+        Flights::MergeRecording.new(flight_import: import, target_flight: session.flight).call
+      end
+    end
+    assert_equal users(:member), source.reload.pilot
+    assert_nil import.reload.target_flight_id
   end
 
   private
