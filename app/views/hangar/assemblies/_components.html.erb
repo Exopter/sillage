@@ -11,7 +11,7 @@
       <% if @available_parts.any? %>
         <%= form_with url: install_part_hangar_assembly_path(@assembly), class: "workspace-inline-form" do |form| %>
           <%= form.collection_select :part_id, @available_parts, :id, ->(part) { "#{part.display_name} · #{part.serial_number.presence || part.internal_number} · #{part.function.name}" } %>
-          <%= form.submit "Install", class: "button-primary" %>
+          <%= form.submit "Install", class: "button-primary exds-btn exds-btn--primary" %>
         <% end %>
       <% else %><p class="workspace-muted">No available part.</p><% end %>
     </section>
@@ -23,7 +23,7 @@
       <% if @available_assemblies.any? %>
         <%= form_with url: attach_assembly_hangar_assembly_path(@assembly), class: "workspace-inline-form" do |form| %>
           <%= form.collection_select :child_id, @available_assemblies, :id, :selection_label %>
-          <%= form.submit "Attach", class: "button-primary" %>
+          <%= form.submit "Attach", class: "button-primary exds-btn exds-btn--primary" %>
         <% end %>
       <% else %><p class="workspace-muted">No root assembly available.</p><% end %>
     </section>
@@ -44,10 +44,10 @@
             <% if replacements.any? %>
               <%= form_with url: replace_part_hangar_assembly_path(@assembly, part_id: part.id), method: :patch, class: "workspace-compact-form" do |form| %>
                 <%= form.collection_select :replacement_part_id, replacements, :id, :internal_number %>
-                <%= form.submit "Replace", class: "button-secondary" %>
+                <%= form.submit "Replace", class: "button-secondary exds-btn exds-btn--secondary" %>
               <% end %>
             <% end %>
-            <%= button_to "Remove", remove_part_hangar_assembly_path(@assembly, part_id: part.id), method: :delete, class: "button-secondary" %>
+            <%= button_to "Remove", remove_part_hangar_assembly_path(@assembly, part_id: part.id), method: :delete, class: "button-secondary exds-btn exds-btn--secondary" %>
           </div>
         </div>
       <% end %>
@@ -61,7 +61,7 @@
     <h2>Direct subassemblies</h2>
     <div class="workspace-list">
       <% @assembly.children.ordered.each do |child| %>
-        <div class="workspace-list-row is-static"><span><strong><%= child.selection_label %></strong></span><%= button_to "Detach", detach_assembly_hangar_assembly_path(@assembly, child_id: child.id), method: :delete, class: "button-secondary" %></div>
+        <div class="workspace-list-row is-static"><span><strong><%= child.selection_label %></strong></span><%= button_to "Detach", detach_assembly_hangar_assembly_path(@assembly, child_id: child.id), method: :delete, class: "button-secondary exds-btn exds-btn--secondary" %></div>
       <% end %>
     </div>
   </section>

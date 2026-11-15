@@ -100,6 +100,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "strong", text: "Unassigned session"
     assert_select ".sillage-topbar [data-controller='signal-connection'] button", count: 1
+    assert_select ".exds-icon-select select[aria-label='Telemetry connection'] option[value='ground-radio'][selected]", text: "SiK radio"
     assert_select "select[aria-label='Telemetry connection'] option", count: 4
     assert_select "select[aria-label='Telemetry connection'] option[value='usb-c']", text: "USB-C"
     assert_select "select[aria-label='Telemetry connection'] option[value='ble']", text: "Bluetooth"

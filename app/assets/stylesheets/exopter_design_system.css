@@ -21,6 +21,11 @@
   --ex-vapor-150: #dce8e5;
   --ex-white: #ffffff;
 
+  --ex-khaki-600: #62664a;
+  --ex-khaki-700: #50543b;
+  --ex-khaki-300: #b5b99a;
+  --ex-khaki-200: #c8ccb0;
+
   --ex-sky-500: #2ea8ff;
   --ex-field-500: #4f7b4e;
   --ex-aqua-500: #2fd6c6;
@@ -76,17 +81,17 @@
   --ex-space-10: 40px;
   --ex-space-12: 48px;
 
-  /* Compact application density; touch controls retain larger targets. */
-  --ex-control-height: 34px; /* @kind spacing */
-  --ex-panel-padding: 16px; /* @kind spacing */
-  --ex-section-gap: 16px; /* @kind spacing */
-  --ex-list-row-height: 76px; /* @kind spacing */
+  /* Balanced application density; touch controls retain larger targets. */
+  --ex-control-height: 38px; /* @kind spacing */
+  --ex-panel-padding: 20px; /* @kind spacing */
+  --ex-section-gap: 20px; /* @kind spacing */
+  --ex-list-row-height: 84px; /* @kind spacing */
   --ex-shell-header-height: 48px; /* @kind spacing */
 
-  --ex-radius-instrument: 4px;
-  --ex-radius-surface: 8px;
-  --ex-shadow-raised: 0 18px 42px rgba(16, 24, 26, 0.12);
-  --ex-shadow-panel: 0 10px 28px rgba(16, 24, 26, 0.08);
+  --ex-radius-instrument: 2px;
+  --ex-radius-surface: 4px;
+  --ex-shadow-raised: 0 6px 18px rgba(7, 11, 13, 0.14);
+  --ex-shadow-panel: 0 1px 2px rgba(7, 11, 13, 0.06);
   --ex-page-width: min(1220px, calc(100vw - 36px)); /* @kind spacing */
   --ex-analysis-scene-expanded-height: clamp(360px, 55vh, 680px); /* @kind spacing */
 }

@@ -1,0 +1,3 @@
+<%= form_with url: hangar_assemblies_path, method: :get, data: { controller: "auto-submit" } do |form| %>
+  <label class="workspace-state-filter"><span class="sr-only">Filter by state</span><%= form.select :state, options_for_select([["Current assemblies", ""], ["All states", "all"], *Assembly::SERVICEABILITY_STATES.map { |state| [state.humanize, state] }], @state), {}, data: { action: "change->auto-submit#submit" } %></label>
+<% end %>

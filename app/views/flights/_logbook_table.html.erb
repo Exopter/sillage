@@ -15,10 +15,10 @@
         <%= form.search_field :q, value: local_assigns[:query], placeholder: "Search flight, aircraft, location", autocomplete: "off" %>
       </label>
     <% end %>
-    <%= link_to new_flight_import_path, class: "button-secondary" do %>
+    <%= link_to new_flight_import_path, class: "button-secondary exds-btn exds-btn--secondary" do %>
       <%= sillage_icon "upload", size: 17 %><span>Import data</span>
     <% end %>
-    <%= link_to new_flight_path(folder: @folder&.id), class: "button-primary" do %>
+    <%= link_to new_flight_path(folder: @folder&.id), class: "button-primary exds-btn exds-btn--primary" do %>
       <%= sillage_icon "plus", size: 17 %><span>New flight</span>
     <% end %>
   </header>
@@ -53,8 +53,8 @@
         <span>Folder</span>
         <%= form.select :folder, [["All folders", ""], ["Unfiled", "unfiled"]] + @folders.map { |folder| [folder.name, folder.id.to_s] }, { selected: @folder_filter }, id: "folder-filter" %>
       </label>
-      <%= form.submit "Apply", class: "button-secondary" %>
-      <%= link_to "New folder", new_flight_folder_path, class: "button-secondary" %>
+      <%= form.submit "Apply", class: "button-secondary exds-btn exds-btn--secondary" %>
+      <%= link_to "New folder", new_flight_folder_path, class: "button-secondary exds-btn exds-btn--secondary" %>
     <% end %>
   </div>
 
@@ -72,9 +72,9 @@
         <%= form.select :destination_folder_id, [["Choose folder", ""], ["Unfiled", "unfiled"]] + @folders.map { |folder| [folder.name, folder.id.to_s] }, {},
           data: { table_selection_target: "destination", action: "change->table-selection#update" } %>
       </label>
-      <button type="submit" name="operation" value="move" class="button-secondary" disabled data-table-selection-target="move">Move selected</button>
-      <button type="button" class="button-secondary" disabled data-table-selection-target="clear" data-action="table-selection#reset">Clear selection</button>
-      <button type="submit" name="operation" value="delete" class="button-danger" disabled data-table-selection-target="delete"><%= sillage_icon "trash", size: 16 %> Delete selected</button>
+      <button type="submit" name="operation" value="move" class="button-secondary exds-btn exds-btn--secondary" disabled data-table-selection-target="move">Move selected</button>
+      <button type="button" class="button-secondary exds-btn exds-btn--secondary" disabled data-table-selection-target="clear" data-action="table-selection#reset">Clear selection</button>
+      <button type="submit" name="operation" value="delete" class="button-danger exds-btn exds-btn--danger" disabled data-table-selection-target="delete"><%= sillage_icon "trash", size: 16 %> Delete selected</button>
     </div>
     <div class="flights-table-scroll">
     <table class="flights-table">

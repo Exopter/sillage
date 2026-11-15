@@ -9,9 +9,9 @@
   </div>
   <div class="workspace-actions">
     <% if @forge_assembly&.controlled_fdr? && @forge_assembly.serviceability_state != "retired" && @part.state != "retired" %>
-      <%= link_to "Open in Forge", forge_fdr_path(@forge_assembly.serial_number), class: "button-primary" %>
+      <%= link_to "Open in Forge", forge_fdr_path(@forge_assembly.serial_number), class: "button-primary exds-btn exds-btn--primary" %>
     <% end %>
-    <%= link_to "Edit", edit_hangar_part_path(@part), class: "button-secondary" %>
+    <%= link_to "Edit", edit_hangar_part_path(@part), class: "button-secondary exds-btn exds-btn--secondary" %>
   </div>
 </header>
 
@@ -50,6 +50,6 @@
   <h2 id="part-sensitive-zone">Sensitive zone</h2>
   <p>Retiring this part is recommended instead of deleting it: retirement preserves its identity and installation history for traceability. Remove it from its assembly or aircraft first, then ask an administrator to set its state to Retired.</p>
   <p>Deletion is permanent and cannot be undone. Parts with installation history or an embedded controller record cannot be deleted.</p>
-  <%= button_to "Delete part", hangar_part_path(@part), method: :delete, class: "button-danger",
+  <%= button_to "Delete part", hangar_part_path(@part), method: :delete, class: "button-danger exds-btn exds-btn--danger",
     form: { data: { turbo_confirm: "Delete #{@part.internal_number} permanently? This cannot be undone. Retire the part instead to preserve traceability." } } %>
 </section>

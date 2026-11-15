@@ -188,6 +188,8 @@ class FlightsController < ApplicationController
   end
 
   def load_form_options
+    @location_suggestions = Flight.visible_to(Current.user).where.not(location: [ nil, "" ])
+      .distinct.order(:location).pluck(:location).map(&:strip).reject(&:blank?).uniq
     @form_folders = FlightFolder.contributable_to(Current.user).ordered
     if @flight&.visible_to?(Current.user) && @flight.folder_id_in_database
       @form_folders = @form_folders.or(FlightFolder.where(id: @flight.folder_id_in_database).ordered)

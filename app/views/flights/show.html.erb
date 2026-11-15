@@ -47,7 +47,7 @@
     data-flight-viewer-video-exit-offset-value="<%= @flight.video_exit_offset_seconds %>"
   <% end %>>
   <header class="flight-replay-header">
-    <%= link_to flights_path, class: "kit-icon-button", title: "Back to flights", aria: { label: "Back to flights" } do %>
+    <%= link_to flights_path, class: "kit-icon-button exds-iconbtn exds-iconbtn--ghost", title: "Back to flights", aria: { label: "Back to flights" } do %>
       <%= sillage_icon "chevron-right", size: 18, class_name: "is-back-icon" %>
     <% end %>
     <div class="flight-replay-title">
@@ -264,13 +264,13 @@
 
         <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
           <%= form_with model: @flight, html: { multipart: true, class: "video-upload-form", data: { controller: "upload", turbo: false, action: "submit->upload#start", upload_failed_label_value: t("flights.video.upload_failed"), upload_processing_label_value: t("flights.video.uploading") } } do |form| %>
-            <label class="secondary-button video-upload-button">
+            <label class="secondary-button exds-btn exds-btn--secondary video-upload-button">
               <%= sillage_icon "upload", size: 18 %>
               <span><%= t(@flight.video.attached? ? "flights.video.replace" : "flights.video.upload") %></span>
               <%= form.file_field :video_upload, accept: "video/*,.avi,.m4v,.mkv,.mov,.mp4,.webm", data: { upload_target: "input", action: "change->upload#showFiles" } %>
             </label>
             <span class="file-summary" data-upload-target="summary"><%= t("flights.video.no_file") %></span>
-            <%= form.button class: "primary-button", data: { upload_target: "submit" } do %>
+            <%= form.button class: "primary-button exds-btn exds-btn--primary", data: { upload_target: "submit" } do %>
               <%= sillage_icon "settings", size: 18 %>
               <span><%= t("flights.video.process") %></span>
             <% end %>
@@ -292,7 +292,7 @@
           <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
             <%= form_with model: @flight, class: "video-exit-form" do |form| %>
               <%= form.hidden_field :video_exit_offset_seconds, value: @flight.video_exit_offset_seconds, data: { flight_viewer_target: "videoExitOffsetInput" } %>
-              <%= button_tag type: "button", class: "secondary-button", data: { action: "flight-viewer#markVideoExit" } do %>
+              <%= button_tag type: "button", class: "secondary-button exds-btn exds-btn--secondary", data: { action: "flight-viewer#markVideoExit" } do %>
                 <%= sillage_icon "crosshair", size: 18 %>
                 <span><%= t("flights.video.mark_exit") %></span>
               <% end %>
@@ -340,7 +340,7 @@
               <div><%= form.label :opening_at, t("flights.form.opening_at") %><%= form.datetime_field :opening_at, value: @flight.opening_at&.strftime("%Y-%m-%dT%H:%M:%S") %></div>
               <div><%= form.label :landing_at, t("flights.form.landing_at") %><%= form.datetime_field :landing_at, value: @flight.landing_at&.strftime("%Y-%m-%dT%H:%M:%S") %></div>
             </div>
-            <%= form.button class: "primary-button" do %>
+            <%= form.button class: "primary-button exds-btn exds-btn--primary" do %>
               <%= sillage_icon "check", size: 18 %>
               <span><%= t("flights.form.save") %></span>
             <% end %>
@@ -367,7 +367,7 @@
               <h2><%= t("flights.show.danger") %></h2>
             </div>
           </div>
-          <%= button_to @flight, method: :delete, class: "danger-button", form: { data: { turbo_confirm: t("flights.show.confirm_delete") } } do %>
+          <%= button_to @flight, method: :delete, class: "danger-button exds-btn exds-btn--danger", form: { data: { turbo_confirm: t("flights.show.confirm_delete") } } do %>
             <%= sillage_icon "octagon-x", size: 18 %>
             <span><%= t("flights.show.delete") %></span>
           <% end %>

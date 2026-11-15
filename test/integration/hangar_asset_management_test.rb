@@ -163,10 +163,15 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "a[href='#{edit_hangar_assembly_path(@assembly)}']", count: 0
     assert_select "a[href='#{hangar_assembly_path(@assembly)}']", text: "Open full record"
-    assert_delete_form hangar_assembly_path(@assembly)
+    assert_select "form[action='#{hangar_assembly_path(@assembly)}']", count: 0
 
     get hangar_assembly_path(@assembly)
     assert_select "a[href='#{edit_hangar_assembly_path(@assembly)}']", text: "Edit"
+    assert_assembly_sensitive_zone(@assembly)
+
+    recorder = create_exofdr_assembly
+    get hangar_assembly_path(recorder)
+    assert_assembly_sensitive_zone(recorder)
 
     get hangar_parts_path
 
@@ -222,6 +227,84 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
     assert_redirected_to hangar_aircraft_index_path
   end
 
+  test "unused ExoFDR assemblies can be deleted while their issued identifiers stay reserved" do
+    recorder = create_exofdr_assembly
+    number = recorder.internal_number
+    serial = recorder.serial_number
+    identifier = recorder.asset_identifier
+
+    assert_difference -> { Assembly.count }, -1 do
+      delete hangar_assembly_path(recorder)
+    end
+    assert_redirected_to hangar_assemblies_path
+    assert_equal "Assembly deleted.", flash[:notice]
+    assert AssetIdentifier.exists?(identifier.id)
+
+    replacement = create_exofdr_assembly
+    assert_not_equal number, replacement.internal_number
+    assert_not_equal serial, replacement.serial_number
+  end
+
+  test "an ExoFDR with a removed board keeps its identity and history" do
+    recorder = create_exofdr_assembly
+    board = create_embedded_controller(device_id: "ECU-112233445566")
+    binding = FdrBoardInstallation.create!(assembly: recorder, embedded_controller: board, installed_at: 1.hour.ago)
+    binding.update!(removed_at: Time.current)
+
+    assert_no_difference -> { Assembly.count } do
+      delete hangar_assembly_path(recorder)
+    end
+    assert_redirected_to hangar_assembly_path(recorder)
+    assert_match(/board installation history/, flash[:alert])
+    assert_not recorder.reload.destroy
+    assert FdrBoardInstallation.exists?(binding.id)
+  end
+
+  test "detached FDR modules and systems retain their membership history" do
+    configuration = create_fdr_functional_configuration(version: 2)
+    system = create_exofdr_assembly(fdr_functional_configuration: configuration, fdr_component_type: "SYSTEMS", assembly_method: nil)
+    mod = create_exofdr_assembly(fdr_functional_configuration: configuration, fdr_component_type: "MAIN", assembly_method: "PCB", parent: system)
+    mod.update!(parent: nil)
+
+    [ mod, system ].each do |assembly|
+      assert_no_difference -> { Assembly.count } do
+        delete hangar_assembly_path(assembly)
+      end
+      assert_redirected_to hangar_assembly_path(assembly)
+      assert_match(/system membership history/, flash[:alert])
+      assert_not assembly.reload.destroy
+    end
+  end
+
+  test "a nested generic assembly must be detached before deletion" do
+    child = Assembly.create!(name: "Nested assembly", parent: @assembly)
+
+    assert_no_difference -> { Assembly.count } do
+      delete hangar_assembly_path(child)
+    end
+    assert_redirected_to hangar_assembly_path(child)
+    assert_match(/a parent assembly/, flash[:alert])
+    assert_not child.reload.destroy
+
+    child.update!(parent: nil)
+    assert_difference -> { Assembly.count }, -1 do
+      delete hangar_assembly_path(child)
+    end
+  end
+
+  test "an ExoFDR selected for a flight cannot be deleted" do
+    recorder = create_exofdr_assembly
+    flights(:one).update!(fdr: recorder)
+
+    assert_no_difference -> { Assembly.count } do
+      delete hangar_assembly_path(recorder)
+    end
+    assert_redirected_to hangar_assembly_path(recorder)
+    assert_match(/flight history/, flash[:alert])
+    assert_not recorder.reload.destroy
+    assert_equal recorder, flights(:one).reload.fdr
+  end
+
   test "referenced assets are retained with an actionable explanation" do
     installed_part = create_installed_part(assembly: @assembly, function: @function, model: "Installed part")
     installation = Installation.create!(aircraft: @aircraft, installable: @assembly, installed_at: Time.current)
@@ -248,6 +331,19 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  def assert_assembly_sensitive_zone(assembly)
+    assert_select "header.workspace-header input[name='_method'][value='delete']", count: 0
+    assert_select "section:last-child.danger-panel" do
+      assert_select "h2", "Sensitive zone"
+      assert_select "p", text: /retirement preserves.*traceability/
+      confirmation = "Delete #{assembly.display_name} (#{assembly.internal_number}) permanently? This cannot be undone. Retire the assembly instead to preserve traceability."
+      assert_select "form[action='#{hangar_assembly_path(assembly)}'][data-turbo-confirm=?]", confirmation do
+        assert_select "input[name='_method'][value='delete']", count: 1
+        assert_select "button", "Delete assembly"
+      end
+    end
+  end
 
   def assert_delete_form(path)
     assert_select "form[action='#{path}']" do

@@ -2,11 +2,8 @@
 <%= render "hangar/tabs" %>
 <header class="hangar-section-head exds-hierarchy-heading">
   <div><h2>Assemblies</h2><p>Explore systems, their modules, and the parts inside.</p></div>
-  <%= link_to new_hangar_assembly_path, class: "button-primary" do %><%= sillage_icon "plus", size: 17 %><span>New assembly</span><% end %>
+  <%= link_to new_hangar_assembly_path, class: "button-primary exds-btn exds-btn--primary" do %><%= sillage_icon "plus", size: 17 %><span>New assembly</span><% end %>
 </header>
-<%= form_with url: hangar_assemblies_path, method: :get, class: "workspace-filterbar", data: { controller: "auto-submit" } do |form| %>
-  <label class="workspace-state-filter"><span class="sr-only">Filter by state</span><%= form.select :state, options_for_select([["Current assemblies", ""], ["All states", "all"], *Assembly::SERVICEABILITY_STATES.map { |state| [state.humanize, state] }], @state), {}, data: { action: "change->auto-submit#submit" } %></label>
-<% end %>
 <% if @selected_node %>
   <div data-controller="assembly-hierarchy" data-assembly-hierarchy-selected-value="<%= @selected_node.key %>" data-action="turbo:before-cache@document->assembly-hierarchy#beforeCache">
     <div class="exds-hierarchy-summary">
@@ -19,7 +16,7 @@
       <section class="hangar-panel exds-hierarchy-panel" aria-label="Assembly hierarchy">
         <div class="exds-hierarchy-tools">
           <label class="exds-hierarchy-search"><%= sillage_icon "search", size: 15 %><input type="search" placeholder="Search serial, module, or part..." aria-label="Search assemblies and parts" data-assembly-hierarchy-target="search" data-action="input->assembly-hierarchy#search"></label>
-          <button type="button" class="button-secondary is-compact" data-assembly-hierarchy-target="expand" data-action="assembly-hierarchy#expandAll">Expand all</button>
+          <button type="button" class="button-secondary exds-btn exds-btn--secondary is-compact" data-assembly-hierarchy-target="expand" data-action="assembly-hierarchy#expandAll">Expand all</button>
         </div>
         <div class="exds-hierarchy-filter-row">
           <div class="exds-hierarchy-filters" role="group" aria-label="Filter assemblies">
@@ -27,9 +24,10 @@
               <button type="button" class="<%= "is-active" if value == "all" %>" aria-pressed="<%= value == "all" %>" data-filter="<%= value %>" data-assembly-hierarchy-target="filter" data-action="assembly-hierarchy#filter"><%= label %></button>
             <% end %>
           </div>
+          <%= render "state_filter" %>
           <span class="exds-hierarchy-result-count" data-assembly-hierarchy-target="count" aria-live="polite"><%= pluralize @inventory.assemblies.size, "assembly" %></span>
         </div>
-        <div class="exds-hierarchy-columns"><span>Assembly / Part</span><span>Installed in</span></div>
+        <div class="exds-hierarchy-columns"><span>Assembly / Part</span><span>Aircraft</span></div>
         <% @inventory.groups.each do |label, description, roots, category| %>
           <% next if roots.empty? %>
           <section data-assembly-hierarchy-target="group" data-category="<%= category %>" aria-label="<%= label %>">
@@ -37,16 +35,17 @@
             <% roots.each do |node| %><%= render "inventory_node", node:, depth: 0, category: %><% end %>
           </section>
         <% end %>
-        <div class="exds-hierarchy-empty" data-assembly-hierarchy-target="empty" hidden><strong>No matching assemblies or parts</strong><p>Try a serial number, a role, or a part name.</p><button type="button" class="button-secondary is-compact" data-action="assembly-hierarchy#clearSearch">Clear search</button></div>
-        <footer class="hangar-detail-note exds-hierarchy-footer">Expand an assembly to see its contents. Select a name for details.</footer>
+        <div class="exds-hierarchy-empty" data-assembly-hierarchy-target="empty" hidden><strong>No matching assemblies or parts</strong><p>Try a serial number, a role, or a part name.</p><button type="button" class="button-secondary exds-btn exds-btn--secondary is-compact" data-action="assembly-hierarchy#clearSearch">Clear search</button></div>
+        <footer class="hangar-detail-note exds-hierarchy-footer">Expand an assembly to see its contents. Select a row for details.</footer>
       </section>
       <aside class="hangar-panel exds-hierarchy-details" data-assembly-hierarchy-target="desktop" aria-label="Selected assembly details"><%= render "inventory_details", node: @selected_node %></aside>
     </div>
     <dialog class="exds-hierarchy-dialog" aria-label="Assembly details" data-assembly-hierarchy-target="dialog" data-action="close->assembly-hierarchy#closeDialog">
-      <button type="button" class="button-secondary is-compact exds-hierarchy-close" data-action="assembly-hierarchy#close">Close details</button>
+      <button type="button" class="button-secondary exds-btn exds-btn--secondary is-compact exds-hierarchy-close" data-action="assembly-hierarchy#close">Close details</button>
       <div data-assembly-hierarchy-target="mobile"></div>
     </dialog>
   </div>
 <% else %>
+  <%= render "state_filter" %>
   <div class="workspace-empty">No assemblies match the selected filter.</div>
 <% end %>

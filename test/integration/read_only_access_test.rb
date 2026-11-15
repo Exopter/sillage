@@ -86,7 +86,7 @@ class ReadOnlyAccessTest < ActionDispatch::IntegrationTest
       [ :post, api_v1_fdr_syncs_path ], [ :post, api_v1_fdr_registration_path ], [ :post, api_v1_fdr_authentication_path ],
       [ :post, api_v1_fdr_recording_commands_path ], [ :post, api_v1_fdr_import_commands_path ], [ :post, api_v1_imu_checks_path ],
       [ :patch, api_v1_recorder_connections_path ], [ :post, api_v1_fdr_wifi_uploads_path ], [ :post, api_v1_fdr_sillage_heartbeat_path ],
-      [ :patch, hangar_assembly_path(@assembly) ], [ :delete, hangar_part_path(@recorder.part) ],
+      [ :patch, hangar_assembly_path(@assembly) ], [ :delete, hangar_assembly_path(@assembly) ], [ :delete, hangar_part_path(@recorder.part) ],
       [ :post, feedbacks_path ]
     ]
     requests.each do |method, destination|

@@ -38,7 +38,7 @@
   </fieldset>
   <p class="exds-browser-caption">Every flight in this folder inherits its visibility. Unfiled flights use their individual visibility.</p>
   <div class="exds-browser-dialog-actions">
-    <% if local_assigns[:dialog] %><button type="button" class="button-secondary" data-action="folder-sharing#close">Cancel</button><% else %><%= link_to "Cancel", flights_path(folder: folder.persisted? ? folder.id : nil), class: "button-secondary" %><% end %>
-    <%= form.submit folder.persisted? ? "Save folder" : "Create folder", class: "button-primary" %>
+    <% if local_assigns[:dialog] %><button type="button" class="button-secondary exds-btn exds-btn--secondary" data-action="folder-sharing#close">Cancel</button><% else %><%= link_to "Cancel", flights_path(folder: folder.persisted? ? folder.id : nil), class: "button-secondary exds-btn exds-btn--secondary" %><% end %>
+    <%= form.submit folder.persisted? ? "Save folder" : "Create folder", class: "button-primary exds-btn exds-btn--primary" %>
   </div>
 <% end %>

@@ -6,16 +6,16 @@
       <h1>Flight log</h1>
       <%= form_with url: flights_path, method: :get, class: "exds-browser-search" do |form| %>
         <%= render "flights/browser_filters", form: form %>
-        <label class="search-control"><%= sillage_icon "search", size: 18 %><span class="sr-only">Search flights and recordings</span><%= form.search_field :q, value: @query, placeholder: "Search flight, description, location", autocomplete: "off" %></label>
+        <label class="exds-input-wrap"><%= sillage_icon "search", size: 18 %><span class="sr-only">Search flights and recordings</span><%= form.search_field :q, class: "exds-input", value: @query, placeholder: "Search flight, description, location", autocomplete: "off" %></label>
       <% end %>
       <%= form_with url: flights_path, method: :get, data: { action: "change->flight-browser#filter" } do |form| %>
         <%= form.hidden_field :folder, value: @folder_filter, id: nil %><%= form.hidden_field :q, value: @query, id: nil %><%= form.hidden_field :filter, value: @filter, id: nil %>
-        <label class="exds-selection-field"><span class="sr-only">Visibility</span><%= form.select :visibility, [["Visibility: All", "all"], ["Private", "private"], ["Public", "public"], ["Shared", "shared"]], { selected: @visibility }, aria: { label: "Visibility" } %></label>
-        <noscript><%= form.submit "Apply", class: "button-secondary" %></noscript>
+        <label class="exds-select-wrap"><span class="sr-only">Visibility</span><%= form.select :visibility, [["Visibility: All", "all"], ["Private", "private"], ["Public", "public"], ["Shared", "shared"]], { selected: @visibility }, class: "exds-select", aria: { label: "Visibility" } %><span class="exds-select-wrap__chev"><%= sillage_icon "chevron-down", size: 16 %></span></label>
+        <noscript><%= form.submit "Apply", class: "button-secondary exds-btn exds-btn--secondary" %></noscript>
       <% end %>
       <% if can_manage_operations? %>
-      <%= link_to new_flight_import_path(**browser_context), class: "exds-browser-icon-button", title: "Import data", aria: { label: "Import data" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "upload" %><% end %>
-      <%= link_to new_flight_path(**browser_context), class: "button-primary", data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "plus", size: 17 %> New flight<% end %>
+      <%= link_to new_flight_import_path(**browser_context), class: "exds-iconbtn exds-iconbtn--outline", title: "Import data", aria: { label: "Import data" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "upload" %><% end %>
+      <%= link_to new_flight_path(**browser_context), class: "exds-btn exds-btn--primary", data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "plus", size: 17 %> New flight<% end %>
       <% end %>
     </header>
     <%= render "flights/recording_details" if @flight_import %>
@@ -95,9 +95,9 @@
             <label><input type="checkbox" data-table-selection-target="all" data-action="change->table-selection#toggleAll"><span class="sr-only">Select all entries on this page</span></label>
             <span role="status" aria-live="polite" data-table-selection-target="count">0 selected</span>
             <label class="exds-selection-field"><span class="sr-only">Move to</span><%= form.select :destination_folder_id, [["Move to…", ""], ["Unfiled", "unfiled"]] + @destination_folders.map { |folder| [folder.name, folder.id] }, {}, data: { table_selection_target: "destination", action: "change->table-selection#update" } %></label>
-            <button type="submit" name="operation" value="move" class="button-secondary" disabled data-table-selection-target="move">Move</button>
-            <button type="button" class="button-secondary" disabled data-table-selection-target="clear" data-action="table-selection#reset">Clear</button>
-            <button type="submit" name="operation" value="delete" class="button-danger" disabled data-table-selection-target="delete">Delete selected</button>
+            <button type="submit" name="operation" value="move" class="button-secondary exds-btn exds-btn--secondary" disabled data-table-selection-target="move">Move</button>
+            <button type="button" class="button-secondary exds-btn exds-btn--secondary" disabled data-table-selection-target="clear" data-action="table-selection#reset">Clear</button>
+            <button type="submit" name="operation" value="delete" class="button-danger exds-btn exds-btn--danger" disabled data-table-selection-target="delete">Delete selected</button>
           </div>
           <% end %>
         <% end %>
@@ -118,7 +118,7 @@
         <%= render "flights/browser_filters", form: form, include_query: true %><input type="hidden" name="entries[]" data-flight-browser-target="moveEntry"><input type="hidden" name="operation" value="move">
         <%= form.label :destination_folder_id, "Destination folder", for: "move-destination" %><%= form.select :destination_folder_id, [["Unfiled", "unfiled"]] + @destination_folders.map { |folder| [folder.name, folder.id] }, {}, id: "move-destination", data: { flight_browser_target: "moveDestination" } %>
         <p class="exds-browser-caption">The flight will use the destination folder's visibility.</p>
-        <div class="exds-browser-dialog-actions"><button type="button" class="button-secondary" data-action="flight-browser#closeMoveDialog">Cancel</button><%= form.submit "Move", class: "button-primary" %></div>
+        <div class="exds-browser-dialog-actions"><button type="button" class="button-secondary exds-btn exds-btn--secondary" data-action="flight-browser#closeMoveDialog">Cancel</button><%= form.submit "Move", class: "button-primary exds-btn exds-btn--primary" %></div>
       <% end %>
     </dialog>
     <dialog class="exds-browser-dialog" data-flight-browser-target="dialog" aria-labelledby="folder-dialog-title">
@@ -127,7 +127,7 @@
         <input type="hidden" name="return_to_browser" value="1">
         <input type="hidden" name="_method" value="post" data-flight-browser-target="folderMethod">
         <%= form.label :name, "Folder name", for: "browser-folder-name" %><%= form.text_field :name, required: true, maxlength: 100, id: "browser-folder-name", data: { flight_browser_target: "folderName" } %>
-        <div class="exds-browser-dialog-actions"><button type="button" class="button-secondary" data-action="flight-browser#closeDialog">Cancel</button><%= form.submit "Save folder", class: "button-primary" %></div>
+        <div class="exds-browser-dialog-actions"><button type="button" class="button-secondary exds-btn exds-btn--secondary" data-action="flight-browser#closeDialog">Cancel</button><%= form.submit "Save folder", class: "button-primary exds-btn exds-btn--primary" %></div>
       <% end %>
     </dialog>
     <% end %>

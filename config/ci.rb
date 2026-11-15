@@ -42,6 +42,7 @@ CI.run do
   step "Tests: Table selection", "node test/javascript/table_selection_test.mjs"
   step "Tests: Flight browser", "node test/javascript/flight_browser_test.mjs"
   step "Tests: Folder member search", "node test/javascript/folder_members_test.mjs"
+  step "Tests: Location suggestions", "node test/javascript/location_suggestions_test.mjs"
   step "Tests: Folder color saving", "node test/javascript/folder_color_test.mjs"
   step "Tests: Signal asynchronous lifecycle", "node test/javascript/signal_lifecycle_test.mjs"
   step "Tests: IMU quality and calibration", "node test/javascript/imu_health_test.mjs"

@@ -187,7 +187,7 @@ motion starts with a still frame. Run `node test/javascript/landing_scene_test.m
 to verify the vendor module graph, model and animation resource lifecycle.
 
 - Shared design assets: [Exopter/design-system](https://github.com/Exopter/design-system)
-- Canonical tokens: `../design-system/tokens/exopter-tokens.css`
+- Canonical tokens: `../design-system/tokens/exopter-tokens.css` (or `EXOPTER_DESIGN_SYSTEM_PATH`)
 - Rails consumer copy: `app/assets/stylesheets/exopter_design_system.css`
 
 Check or refresh the consumer copy from a sibling checkout. Canonical text is
@@ -199,7 +199,12 @@ ruby script/sync_design_system_tokens --check
 ruby script/sync_design_system_tokens --write
 ```
 
-- Shared application components: `app/assets/stylesheets/application.css`
+- Canonical semantic aliases: `app/assets/stylesheets/exopter_semantics.css`.
+  The synchronization command also exports all retained shared component styles.
+  Product interaction styles use the canonical accent, selection, focus and neutral
+  control roles; telemetry, status and chart series retain their signal colours.
+- Shared form primitives: `button.css`, `icon_button.css`, `input.css` and `select.css` in `app/assets/stylesheets/`, exported verbatim from the design system. The Flights header uses their public classes.
+- Every stylesheet is exported from the shared `templates/rails/stylesheets.json` manifest. Sillage has no independently authored stylesheet. Shared Rails templates retain screen composition and compatibility hooks; shared primitives own buttons and form controls. Edit the design-system source and synchronize exports; local validation rejects drift and unregistered stylesheets.
 
 Design decisions and governance live in the
 [Exopter Design System in Notion](https://app.notion.com/p/3abe497e504f81c8a557e1f1a26e09ae).

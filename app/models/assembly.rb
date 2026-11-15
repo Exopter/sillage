@@ -19,6 +19,7 @@ class Assembly < ApplicationRecord
   has_many :installations, as: :installable, dependent: :restrict_with_error
   has_many :fdr_board_installations, dependent: :restrict_with_error
   has_one :active_fdr_board_installation, -> { active }, class_name: "FdrBoardInstallation"
+  has_many :flights, foreign_key: :fdr_id, inverse_of: :fdr, dependent: :restrict_with_error
 
   normalizes :internal_number, with: ->(number) { number.to_s.strip.upcase.presence }
   normalizes :serial_number, with: ->(number) { number.to_s.strip.upcase.presence }
@@ -26,7 +27,7 @@ class Assembly < ApplicationRecord
   before_create :assign_exofdr_serial_number
   before_save :record_imu_mount_change
   after_save :synchronize_mounted_part_retirement, if: :saved_change_to_serviceability_state?
-  before_destroy :retain_exofdr_identity
+  before_destroy :prevent_deletion_with_references, prepend: true
 
   validates :name, presence: true, unless: :controlled_fdr?
   # Nil identifies pre-existing generic equipment, never offered for new Hangar assemblies.
@@ -162,10 +163,13 @@ class Assembly < ApplicationRecord
 
   def deletion_blockers
     [].tap do |blockers|
-      blockers << "a permanent ExoFDR identity; retire this assembly instead" if controlled_fdr?
+      blockers << "a parent assembly" if parent_id.present?
       blockers << "part installation history" if part_installations.exists?
       blockers << "subassemblies" if children.exists?
       blockers << "installation history" if installations.exists?
+      blockers << "board installation history" if fdr_board_installations.exists?
+      blockers << "system membership history" if system_memberships.exists? || module_memberships.exists?
+      blockers << "flight history" if flights.exists?
     end
   end
 
@@ -215,10 +219,11 @@ class Assembly < ApplicationRecord
     errors.add(:name, "is the generated serial number and cannot be changed") if controlled_fdr? && will_save_change_to_name?
   end
 
-  def retain_exofdr_identity
-    return unless controlled_fdr?
+  def prevent_deletion_with_references
+    blockers = deletion_blockers
+    return if blockers.empty?
 
-    errors.add(:base, "An ExoFDR identity must be retained. Retire the assembly instead.")
+    errors.add(:base, "Cannot delete this assembly because it has #{blockers.to_sentence}. Retire the assembly instead to preserve traceability.")
     throw(:abort)
   end
 

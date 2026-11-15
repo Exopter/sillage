@@ -56,6 +56,7 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
 
   test "used configuration and assembly parameters cannot be changed through requests" do
     assembly = create_exofdr_assembly
+    create_embedded_controller(assembly:, device_id: "ECU-A172E0")
     configuration = assembly.fdr_functional_configuration
     get edit_hangar_assembly_path(assembly)
     assert_response :success

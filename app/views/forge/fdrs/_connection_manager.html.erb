@@ -12,8 +12,8 @@
     <div class="exds-recorder-context">
       <div><%= sillage_icon "wifi", size: 24 %><span><strong data-forge-connection>Not connected</strong><small data-forge-identity><%= @assembly&.display_name || @fdr&.display_name %></small></span></div>
       <div><%= sillage_icon "pause", size: 20 %><span><strong data-forge-import-status>Waiting for recorder</strong><small data-forge-import-detail>Connect to view recordings.</small></span></div>
-      <button type="button" class="button-primary" data-forge-pause data-action="fdr-connectivity#pauseImports" hidden>Pause imports</button>
-      <button type="button" class="button-secondary" data-action="fdr-connectivity#toggleConnections"><%= sillage_icon "settings", size: 16 %> Connections</button>
+      <button type="button" class="button-primary exds-btn exds-btn--primary" data-forge-pause data-action="fdr-connectivity#pauseImports" hidden>Pause imports</button>
+      <button type="button" class="button-secondary exds-btn exds-btn--secondary" data-action="fdr-connectivity#toggleConnections"><%= sillage_icon "settings", size: 16 %> Connections</button>
     </div>
     <details class="exds-recorder-connections" data-forge-connections>
       <summary>Connection options</summary>
@@ -49,13 +49,13 @@
           </div>
         </div>
         <div class="signal-fdr-channel-actions">
-          <button type="button" class="signal-tool-button" hidden
+          <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" hidden
                   data-action="fdr-connectivity#interruptUsbSync"
                   data-fdr-connectivity-target="stopSyncButton">Stop transfer</button>
-          <button type="button" class="signal-tool-button is-danger" hidden
+          <button type="button" class="signal-tool-button exds-btn exds-btn--danger is-danger" hidden
                   data-action="fdr-connectivity#eraseSdRecordings"
                   data-fdr-connectivity-target="eraseSdButton">Erase recordings</button>
-          <button type="button" class="signal-tool-button"
+          <button type="button" class="signal-tool-button exds-btn exds-btn--secondary"
                   data-action="fdr-connectivity#connectUsb"
                   data-fdr-connectivity-target="usbButton">Connect USB-C</button>
         </div>
@@ -97,7 +97,7 @@
             <strong data-fdr-connectivity-target="bleStatus" data-state="disconnected">Not connected</strong>
           </div>
         </div>
-        <button type="button" class="signal-tool-button" data-action="fdr-connectivity#connectBle" data-fdr-connectivity-target="bleButton">Connect BLE</button>
+        <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" data-action="fdr-connectivity#connectBle" data-fdr-connectivity-target="bleButton">Connect BLE</button>
       </div>
       <div class="signal-fdr-transport-feedback">
         <div class="signal-fdr-device-row">
@@ -149,7 +149,7 @@
             <span class="sr-only" data-fdr-connectivity-target="wifiLinkLabel"><%= wifi_configuration_label %></span>
           <% end %>
           <button type="button"
-                  class="signal-tool-button signal-fdr-auto-label"
+                  class="signal-tool-button exds-btn exds-btn--secondary signal-fdr-auto-label"
                   data-fdr-connectivity-target="wifiAutoLabel"
                   aria-label="Automatic Wi-Fi connection: waiting for signed Sillage heartbeat"
                   title="Waiting for signed Sillage heartbeat"
@@ -203,7 +203,7 @@
         <strong data-fdr-connectivity-target="recorderOnboardingTitle">New recorder detected</strong>
         <small class="signal-fdr-wifi-status" data-fdr-connectivity-target="wifiRegistrationStatus" role="status"></small>
       </div>
-      <button type="button" class="signal-tool-button is-primary"
+      <button type="button" class="signal-tool-button exds-btn exds-btn--primary is-primary"
               data-action="fdr-connectivity#onboardRecorder"
               data-fdr-connectivity-target="wifiRegisterButton">
         <%= sillage_icon "shield", size: 15 %>

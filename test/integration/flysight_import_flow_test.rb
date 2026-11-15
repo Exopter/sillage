@@ -281,7 +281,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     get root_path
 
     assert_response :success
-    assert_select "link[rel='icon'][href='/icon.svg?v=exopter-ex-20261009'][type='image/svg+xml']"
+    assert_select "link[rel='icon'][href='/icon.svg?v=exopter-20261115'][type='image/svg+xml']"
     assert_select "h1", "Flight log"
     assert_sillage_header crumb: "Operations", title: "Flights"
     assert_select ".sillage-mode-switcher", count: 0

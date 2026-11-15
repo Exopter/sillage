@@ -21,7 +21,7 @@
           <span>Role</span>
           <%= form.select :role, User::ROLES.map { |role| [role.titleize, role] } %>
         </label>
-        <%= form.submit "Send invitation", class: "button-primary" %>
+        <%= form.submit "Send invitation", class: "button-primary exds-btn exds-btn--primary" %>
       <% end %>
     </section>
 
@@ -47,17 +47,17 @@
               <% end %>
             </div>
             <div class="core-user-actions">
-              <%= link_to "Edit", edit_core_user_path(user), class: "button-secondary" %>
+              <%= link_to "Edit", edit_core_user_path(user), class: "button-secondary exds-btn exds-btn--secondary" %>
               <% if user.invitation_pending? %>
-                <%= button_to "Resend", resend_invitation_core_user_path(user), method: :post, class: "button-secondary" %>
+                <%= button_to "Resend", resend_invitation_core_user_path(user), method: :post, class: "button-secondary exds-btn exds-btn--secondary" %>
               <% end %>
               <% if user.disabled? %>
-                <%= button_to "Enable", enable_core_user_path(user), method: :patch, class: "button-secondary" %>
+                <%= button_to "Enable", enable_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary" %>
               <% else %>
-                <%= button_to "Disable", disable_core_user_path(user), method: :patch, class: "button-secondary" %>
+                <%= button_to "Disable", disable_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary" %>
               <% end %>
               <% if user.totp_configured? %>
-                <%= button_to "Reset 2FA", reset_two_factor_core_user_path(user), method: :patch, class: "button-secondary" %>
+                <%= button_to "Reset 2FA", reset_two_factor_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary" %>
               <% end %>
             </div>
           </article>

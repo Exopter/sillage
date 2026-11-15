@@ -1,0 +1,14 @@
+/* Native Rails form controls follow the same contract as Input and Select. */
+:is(.workspace-form, .workspace-inline-form, .workspace-compact-form, .operations-form-grid, .details-form, .exds-browser-field, .authentication-panel) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):not([type="submit"]), select),
+.exds-selection-field select, .workspace-state-filter select {
+  box-sizing:border-box; min-height:var(--control-h); height:var(--control-h); padding-block:0;
+  border:1px solid var(--border-strong); border-radius:var(--radius-compact);
+  background:var(--surface-card); color:var(--text-body); font:400 var(--fs-sm)/1.4 var(--font-ui);
+}
+:is(.workspace-form, .operations-form-grid, .details-form, .exds-browser-field) textarea {
+  border:1px solid var(--border-strong); border-radius:var(--radius-compact);
+  background:var(--surface-card); color:var(--text-body); font:400 var(--fs-sm)/1.5 var(--font-ui);
+}
+:is(.workspace-form, .workspace-inline-form, .workspace-compact-form, .operations-form-grid, .details-form, .exds-browser-field, .authentication-panel) :is(input, select, textarea):focus-visible {
+  outline:2px solid var(--focus-ring); outline-offset:2px; border-color:var(--focus-ring);
+}

@@ -3,7 +3,7 @@
     <h2><%= @flight_import.source_filename %></h2>
     <div class="workspace-actions">
       <strong class="status <%= @flight_import.status %>"><%= t("imports.status.#{@flight_import.status}") %></strong>
-      <%= link_to "Close details", flights_path(filter: @filter, q: @query.presence, visibility: @visibility, page: @page), class: "button-secondary" %>
+      <%= link_to "Close details", flights_path(filter: @filter, q: @query.presence, visibility: @visibility, page: @page), class: "button-secondary exds-btn exds-btn--secondary" %>
     </div>
   </header>
 
@@ -37,19 +37,19 @@
   <div class="workspace-actions">
     <% if can_manage_operations? && @flight_import.import_type == "exofdr" && !@flight_import.source_missing? %>
       <% if @flight_import.imported? && !@flight_import.included_in_flights_at? && @flight_import.activity_classification != "moving" %>
-        <%= button_to "Include in flights", include_in_flights_flight_import_path(@flight_import), class: "button-primary" %>
+        <%= button_to "Include in flights", include_in_flights_flight_import_path(@flight_import), class: "button-primary exds-btn exds-btn--primary" %>
       <% elsif @flight_import.failed? && @flight_import.included_in_flights_at? && @recording_flights.empty? %>
-        <%= button_to "Retry import", include_in_flights_flight_import_path(@flight_import), class: "button-primary" %>
+        <%= button_to "Retry import", include_in_flights_flight_import_path(@flight_import), class: "button-primary exds-btn exds-btn--primary" %>
       <% end %>
     <% end %>
     <% unless @flight_import.source_missing? %>
       <% @flight_import.source_files.each do |source| %>
-        <%= link_to "Download #{source.filename}", attachment_path(source), class: "button-secondary" %>
+        <%= link_to "Download #{source.filename}", attachment_path(source), class: "button-secondary exds-btn exds-btn--secondary" %>
       <% end %>
     <% end %>
     <% if can_manage_operations? %>
     <%= button_to "Delete recording", flight_import_path(@flight_import), method: :delete,
-      class: "button-danger", form: { data: { turbo_confirm: "Permanently delete this recording and all its flight data, measurements, captures and videos?" } } %>
+      class: "button-danger exds-btn exds-btn--danger", form: { data: { turbo_confirm: "Permanently delete this recording and all its flight data, measurements, captures and videos?" } } %>
     <% end %>
   </div>
 </section>
