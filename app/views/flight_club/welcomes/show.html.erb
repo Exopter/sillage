@@ -6,7 +6,6 @@
 
   <section class="flight-club-prelude" aria-labelledby="flight-club-prelude-title">
     <span class="flight-club-emblem"><%= image_tag "logo-mark.svg", alt: "" %></span>
-    <span class="flight-club-micro">Your invitation becomes a belonging</span>
     <h1 id="flight-club-prelude-title"><%= founding ? "Welcome to the first chapter." : "Welcome to the Flight Club." %></h1>
     <p><%= @member.first_name %>, you are <%= @member.membership_rank_phrase %>.<br>Your place in the Flight Club starts here.</p>
     <button type="button" class="flight-club-action" data-action="membership-card#reveal">
