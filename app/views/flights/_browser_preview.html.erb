@@ -13,7 +13,7 @@
       </div>
     <% end %>
     <dl class="exds-browser-metadata">
-      <% if flight %><div><dt>Pilot</dt><dd><%= entry.display_pilot %></dd></div><% end %>
+      <% if flight %><div><dt>Pilot</dt><dd><%= render "flights/pilot", flight: entry %></dd></div><% end %>
       <% unless flight %><div><dt>Aircraft</dt><dd><%= logbook_value(entry.aircraft&.registration) %></dd></div><% end %>
       <div><dt>Date</dt><dd><%= logbook_date(entry) %></dd></div>
       <% if flight %><div><dt>Location</dt><dd><%= entry.display_location %></dd></div><% end %>

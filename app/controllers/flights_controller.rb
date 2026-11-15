@@ -8,7 +8,7 @@ class FlightsController < ApplicationController
   def index
     if params[:recording].present?
       @flight_import = FlightImport.accessible_to(Current.user).find(params[:recording])
-      @recording_flights = @flight_import.flights.recent
+      @recording_flights = @flight_import.flights.includes(pilot: :avatar_attachment).recent
       if @flight_import.imported? && !@flight_import.set_aside? && @recording_flights.one?
         redirect_to @recording_flights.first
         return
@@ -22,7 +22,7 @@ class FlightsController < ApplicationController
     @selected_entry = if params[:kind] == "import"
       FlightImport.accessible_to(Current.user).find(params[:id])
     else
-      Flight.visible_to(Current.user).includes(:pilot, :aircraft, :fdr, folder: :memberships).find(params[:id])
+      Flight.visible_to(Current.user).includes(:aircraft, :fdr, pilot: :avatar_attachment, folder: :memberships).find(params[:id])
     end
     @destination_folders = FlightFolder.contributable_to(Current.user).ordered
     @preview_points = Flights::RoutePreview.call(@selected_entry)
@@ -159,7 +159,7 @@ class FlightsController < ApplicationController
   end
 
   def set_flight
-    @flight = Flight.visible_to(Current.user).includes(:pilot, :aircraft, :fdr, folder: :memberships).find(params[:id])
+    @flight = Flight.visible_to(Current.user).includes(:aircraft, :fdr, pilot: :avatar_attachment, folder: :memberships).find(params[:id])
   end
 
   def disable_caching

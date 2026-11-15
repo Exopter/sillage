@@ -53,6 +53,7 @@
     <div class="flight-replay-title">
       <span><%= @flight.code %><% if @flight.description.present? %> · <%= @flight.description %><% end %></span>
     </div>
+    <%= render "flights/pilot", flight: @flight %>
     <span class="mode-badge is-neutral"><%= @flight.effective_visibility.capitalize %></span>
   </header>
 
@@ -349,7 +350,7 @@
           <% end %>
         <% else %>
           <dl class="details-grid">
-            <div><dt>Pilot</dt><dd><%= @flight.display_pilot %></dd></div>
+            <div><dt>Pilot</dt><dd><%= render "flights/pilot", flight: @flight %></dd></div>
             <div><dt>Description</dt><dd><%= @flight.description %></dd></div>
             <div><dt>Aircraft</dt><dd><%= @flight.display_aircraft %></dd></div>
             <div><dt>Location</dt><dd><%= @flight.display_location %></dd></div>

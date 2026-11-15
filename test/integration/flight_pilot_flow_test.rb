@@ -32,7 +32,7 @@ class FlightPilotFlowTest < ActionDispatch::IntegrationTest
       assert_equal @creator, flight.user
       get flight_path(flight)
       assert_select "dt", text: "Pilot"
-      assert_select "dd", text: "Elias Okafor"
+      assert_select ".flight-pilot-name", text: "Elias Okafor"
       get edit_flight_path(flight)
       assert_select "select[name='flight[pilot_id]'][required] option[selected][value=?]", @pilot.id.to_s
 
@@ -67,7 +67,7 @@ class FlightPilotFlowTest < ActionDispatch::IntegrationTest
     get preview_flights_path, params: { id: flight.id, kind: "flight" }
     assert_response :success
     assert_select "dt", text: "Pilot"
-    assert_select "dd", text: "Elias Okafor"
+    assert_select ".flight-pilot-name", text: "Elias Okafor"
   end
 
   test "a disabled historical pilot remains selected while other details are edited" do
@@ -80,6 +80,39 @@ class FlightPilotFlowTest < ActionDispatch::IntegrationTest
     patch flight_path(flight), params: { flight: { pilot_id: @pilot.id, description: "Keep historical attribution" } }, as: :json
     assert_response :success
     assert_equal @pilot, flight.reload.pilot
+  end
+
+  test "flight list preview and replay show the assigned pilot photo and rank rather than the creator" do
+    flight = flights(:one)
+    flight.update!(pilot: @pilot)
+    @pilot.avatar.attach(io: file_fixture("feedback.png").open, filename: "pilot.png", content_type: "image/png")
+    avatar_url = attachment_path(@pilot.avatar.attachment)
+
+    get flights_path
+    assert_response :success
+    assert_select "[data-entry='flight:#{flight.id}'] .flight-pilot" do
+      assert_select ".sillage-avatar-photo[src='#{avatar_url}']"
+      assert_select ".sillage-avatar-insignia[src*='insignia-explorer']"
+    end
+
+    get preview_flights_path(id: flight.id)
+    assert_response :success
+    assert_select ".flight-pilot-name", "Elias Okafor"
+    assert_select ".flight-pilot .sillage-avatar-photo[src='#{avatar_url}']"
+
+    get flight_path(flight)
+    assert_response :success
+    assert_select ".flight-replay-header .flight-pilot" do
+      assert_select ".sillage-avatar-photo[src='#{avatar_url}']"
+      assert_select ".sillage-avatar-insignia[src*='insignia-explorer']"
+      assert_select ".flight-pilot-name", "Elias Okafor"
+    end
+
+    @pilot.avatar.purge
+    get preview_flights_path(id: flight.id)
+    assert_response :success
+    assert_select ".flight-pilot .sillage-avatar-photo", count: 0
+    assert_select ".flight-pilot .sillage-avatar-insignia[src*='insignia-explorer']"
   end
 
   test "being named as pilot does not authorize viewing or editing a private flight" do
