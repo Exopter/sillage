@@ -37,6 +37,16 @@ module EmbeddedControllerTestHelper
     Part.create!(**attributes).tap { |part| part.install_in!(assembly) }
   end
 
+  def signal_recorder
+    @signal_recorder ||= create_embedded_controller(assembly: create_exofdr_assembly, device_id: "ECU-112233445566")
+  end
+
+  def create_signal_session(user: users(:julien), recorder: signal_recorder, **attributes)
+    metadata = attributes.delete(:station_metadata) || {}
+    user.signal_sessions.create!(**attributes, station_metadata: metadata.merge(
+      "recorder_device_id" => recorder.device_id, "recorder_assembly_id" => recorder.assembly.id))
+  end
+
   def create_embedded_controller(assembly: nil, part: nil, **attributes)
     if part.nil? && assembly
       part = assembly.controller_part

@@ -4,7 +4,7 @@ class SignalRadioHistoryTest < ActionDispatch::IntegrationTest
   setup do
     @at = Time.utc(2026, 10, 16, 9)
     @flight = users(:julien).flights.create!(name: "Radio campaign", status: "live", started_at: @at)
-    @session = users(:julien).signal_sessions.create!(flight: @flight, started_at: @at)
+    @session = create_signal_session(flight: @flight, started_at: @at)
     sign_in_as(users(:julien))
   end
 
@@ -87,11 +87,11 @@ class SignalRadioHistoryTest < ActionDispatch::IntegrationTest
   end
 
   test "flight radio projection combines only its retained sessions using absolute timestamps" do
-    other = users(:julien).signal_sessions.create!(flight: @flight, started_at: @at + 20)
+    other = create_signal_session(flight: @flight, started_at: @at + 20)
     [ [ @session, 1 ], [ other, 22 ] ].each do |session, seconds|
       Signal::IngestBatch.new(signal_session: session, sequence: 0, payload: { samples: [ radio(seconds) ] }).call
     end
-    unrelated = users(:julien).signal_sessions.create!(started_at: @at)
+    unrelated = create_signal_session(started_at: @at)
     Signal::IngestBatch.new(signal_session: unrelated, sequence: 0, payload: { samples: [ radio(9) ] }).call
     rows = Signal::RadioHistory.ground_signal_for(@flight)
     assert_equal [ 1, 22 ], rows.pluck(:t)
@@ -115,7 +115,7 @@ class SignalRadioHistoryTest < ActionDispatch::IntegrationTest
     @flight.update!(status: "analysed", started_at: @at + 10, ended_at: @at + 20)
     Signal::IngestBatch.new(signal_session: @session, sequence: 0, payload: { samples: [ radio(1), radio(15), radio(30) ] }).call
     @session.complete!(ended_at: @at + 40)
-    discarded = users(:julien).signal_sessions.create!(flight: @flight, started_at: @at, status: "discarded")
+    discarded = create_signal_session(flight: @flight, started_at: @at, status: "discarded")
     get flight_path(@flight)
     assert_response :success
     assert_select ".flight-statistics + section[aria-label='Signal radio history']", count: 1

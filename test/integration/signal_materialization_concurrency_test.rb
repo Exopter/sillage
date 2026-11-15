@@ -5,7 +5,9 @@ class SignalMaterializationConcurrencyTest < ActiveSupport::TestCase
   self.use_transactional_tests = false
 
   test "concurrent workers materialize each retained batch exactly once" do
-    session = users(:julien).signal_sessions.create!(started_at: Time.current)
+    configuration_existed = FdrFunctionalConfiguration.exists?(version: 0)
+    function_existed = Function.exists?(code: "CONTROLLER")
+    session = create_signal_session(started_at: Time.current)
     25.times do |i|
       Signal::IngestBatch.new(signal_session: session, sequence: i, payload: { samples: [
         { kind: "gps", latitude: 44, longitude: 1, elapsed_seconds: i },
@@ -37,5 +39,17 @@ class SignalMaterializationConcurrencyTest < ActiveSupport::TestCase
     flight = session&.reload&.flight
     session&.destroy!
     flight&.destroy!
+    if (recorder = @signal_recorder)
+      assembly = recorder.assembly
+      part = recorder.part
+      DeviceActivity.where(embedded_controller: recorder).delete_all
+      FdrBoardInstallation.where(embedded_controller: recorder).delete_all
+      recorder.destroy!
+      PartInstallation.where(part:).delete_all
+      part.reload.destroy!
+      assembly.reload.destroy!
+      FdrFunctionalConfiguration.find_by(version: 0)&.destroy! unless configuration_existed
+      Function.find_by(code: "CONTROLLER")&.destroy! unless function_existed
+    end
   end
 end

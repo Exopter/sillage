@@ -31,7 +31,15 @@ module Signal
         end
         raise SessionCompleted, "This Signal session is completed; start a new session to send new samples." if @signal_session.status == "completed"
 
+        RecorderAccess.for_session!(@signal_session, device_id: @payload["device_id"])
         validate_samples!
+        samples.each do |sample|
+          next unless sample["sensor_type"] == "IMU_QUALITY"
+          observed = sample.dig("readings", "deviceId") || sample.dig("readings", "device_id")
+          if observed.present? && observed != @signal_session.station_metadata["recorder_device_id"]
+            raise RecorderAccess::Denied, "Received telemetry belongs to a different recorder."
+          end
+        end
         batch = @signal_session.signal_batches.create!(
           sequence: @sequence,
           first_received_at: parse_time(@payload["first_received_at"], "first_received_at"),

@@ -4,4 +4,6 @@
     <div><strong data-signal-radio-status-target="label">No wing connected</strong><small data-signal-radio-status-target="detail">Connect the ground radio to check the wing.</small></div>
   </div>
   <button type="button" class="exds-btn exds-btn--secondary" data-signal-radio-status-target="button" data-action="signal-radio-status#toggle">Connect radio</button>
+  <button type="button" class="exds-btn exds-btn--secondary" data-signal-radio-status-target="assignButton" data-action="signal-radio-status#openAssignment" hidden>Assign to assembly</button>
+  <%= render "signal/recorder_assignment" %>
 </div>

@@ -7,6 +7,7 @@ module Api
       def create
         signal_session = Signal::StartSession.new(
           user: Current.user,
+          device_id: create_params[:device_id],
           flight_id: create_params[:flight_id],
           uuid: create_params[:uuid],
           started_at: parse_time(create_params[:started_at]),
@@ -15,7 +16,7 @@ module Api
           mavlink_component_id: create_params[:mavlink_component_id]
         ).call
         render json: session_payload(signal_session), status: :created
-      rescue Signal::StartSession::InvalidFlight => error
+      rescue Signal::StartSession::InvalidFlight, Signal::RecorderAccess::Denied => error
         render json: { error: error.message }, status: :unprocessable_entity
       end
 
@@ -29,6 +30,8 @@ module Api
           sequence: batch.sequence,
           acknowledged_sequence: @signal_session.reload.last_acknowledged_sequence
         }
+      rescue Signal::RecorderAccess::Denied => error
+        render json: { error: error.message, code: "recorder_assignment_required" }, status: :unprocessable_entity
       rescue Signal::IngestBatch::InvalidBatch => error
         render json: { error: error.message }, status: :unprocessable_entity
       rescue Signal::IngestBatch::SessionCompleted => error
@@ -80,6 +83,7 @@ module Api
       def create_params
         params.permit(
           :uuid,
+          :device_id,
           :flight_id,
           :mavlink_system_id,
           :mavlink_component_id,
@@ -90,6 +94,7 @@ module Api
 
       def batch_params
         params.permit(
+          :device_id,
           :first_received_at,
           :last_received_at,
           :mavlink_system_id,

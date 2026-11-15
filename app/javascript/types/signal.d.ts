@@ -36,6 +36,7 @@ export type SignalSample = { kind: "sensor"; sensor_type: string; recorded_at: s
       horizontal_accuracy_m?: number; vertical_accuracy_m?: number; horizontal_speed_mps?: number;
       heading_deg?: number; gps_fix?: number; satellite_count?: number }
 export interface BatchBody {
+  device_id?: string;
   sequence: number; first_received_at: string; last_received_at: string;
   mavlink_system_id?: string | null; mavlink_component_id?: string | null;
   position?: { longitude: number; latitude: number } | null; samples: SignalSample[];

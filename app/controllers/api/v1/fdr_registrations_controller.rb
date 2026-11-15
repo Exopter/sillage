@@ -69,6 +69,8 @@ module Api
           created: created,
           recorder: recorder.recorder_identity.merge(
             id: recorder.id,
+            assembly_id: recorder.assembly&.id,
+            acquisition_allowed: Signal::RecorderAccess.allowed?(recorder) == true,
             internal_number: recorder.assembly&.internal_number,
             serial_number: recorder.assembly&.serial_number,
             functional_configuration: recorder.assembly&.functional_configuration,

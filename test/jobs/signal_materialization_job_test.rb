@@ -7,7 +7,7 @@ class SignalMaterializationJobTest < ActiveSupport::TestCase
 
   setup do
     @at = Time.utc(2026, 10, 19)
-    @session = users(:julien).signal_sessions.create!(started_at: @at)
+    @session = create_signal_session(started_at: @at)
     23.times do |index|
       Signal::IngestBatch.new(signal_session: @session, sequence: index, payload: {
         samples: [

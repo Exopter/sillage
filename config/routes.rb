@@ -99,6 +99,7 @@ Rails.application.routes.draw do
     namespace :v1 do
       resource :recorder_connections, only: :update, controller: "recorder_connections", path: "recorder-connections"
       get "recorder-connections", to: "recorder_connections#index"
+      resource :signal_recorder_assignment, only: :create, path: "signal-recorder-assignment"
       resources :imu_checks, only: %i[index create], path: "imu-checks"
       resource :fdr_registration, only: %i[show create], path: "fdr-registration"
       resource :fdr_live_telemetry, controller: "fdr_live_telemetry", only: :create, path: "fdr-live-telemetry"

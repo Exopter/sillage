@@ -1,0 +1,26 @@
+<dialog class="workspace-dialog ex-dark" data-signal-radio-status-target="assignmentDialog" aria-labelledby="signal-assignment-title">
+  <div class="workspace-dialog-head">
+    <h3 id="signal-assignment-title">Assign recorder to an assembly</h3>
+    <button type="button" class="exds-iconbtn exds-iconbtn--ghost" aria-label="Close recorder assignment" data-action="signal-radio-status#closeAssignment"><%= sillage_icon "x", size: 16 %></button>
+  </div>
+  <form class="workspace-dialog-section" data-signal-radio-status-target="assignmentForm" data-action="submit->signal-radio-status#assignRecorder">
+    <p>Confirm which physical assembly contains this board. Occupied assemblies cannot be selected.</p>
+    <div class="operations-form-grid">
+      <label class="is-wide"><span>Connected recorder</span><input name="device_id" type="text" readonly data-signal-radio-status-target="assignmentDevice"></label>
+      <label class="is-wide"><span>Assignment</span><select name="assignment_mode" data-signal-radio-status-target="assignmentMode" data-action="change->signal-radio-status#changeAssignmentMode"><option value="existing">Use an existing assembly</option><option value="new">Create an assembly</option></select></label>
+    </div>
+    <fieldset data-signal-radio-status-target="existingAssembly" class="signal-assignment-fields operations-form-grid">
+      <label class="is-wide"><span>Free assembly</span><select name="assembly_id" required><option value="">Select an assembly</option><% @assignable_assemblies.each do |assembly| %><option value="<%= assembly.id %>"><%= assembly.selection_label %></option><% end %></select></label>
+      <% if @assignable_assemblies.empty? %><p class="operations-help">No free assembly is available. Choose Create an assembly.</p><% end %>
+      <button type="submit" class="exds-btn exds-btn--primary" data-signal-assignment-submit>Confirm assignment</button>
+    </fieldset>
+    <fieldset data-signal-radio-status-target="newAssembly" class="signal-assignment-fields operations-form-grid" data-controller="assembly-form" hidden disabled>
+      <label class="is-wide"><span>Functional configuration</span><%= select_tag :configuration_id, options_for_select(@assignment_configurations.map { |configuration| [configuration.label, configuration.id, { "data-version" => configuration.label }] }), include_blank: "Select a configuration", required: true, data: { assembly_form_target: "configurationSelect", action: "change->assembly-form#update" } %></label>
+      <label class="is-wide"><span>Assembly method</span><%= select_tag :assembly_method, options_for_select(Assembly::ASSEMBLY_METHODS.map { |code, label| [label, code] }), data: { assembly_form_target: "method", action: "change->assembly-form#update" } %></label>
+      <label class="is-wide"><span>Device type</span><%= select_tag :fdr_component_type, options_for_select(Assembly::FDR_COMPONENT_TYPES.except("SYSTEMS").map { |code, label| [label, code] }), include_blank: "Select a device type", data: { assembly_form_target: "component", action: "change->assembly-form#update" } %></label>
+      <p class="operations-help" data-assembly-form-target="preview">The assembly serial is generated on creation.</p>
+      <button type="submit" class="exds-btn exds-btn--primary" data-assembly-form-target="submit" data-signal-assignment-submit>Create assembly and assign</button>
+    </fieldset>
+    <p class="workspace-errors" role="alert" data-signal-radio-status-target="assignmentError" hidden></p>
+  </form>
+</dialog>

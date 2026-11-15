@@ -19,6 +19,11 @@ class SignalController < ApplicationController
       @read_only_sessions = SignalSession.accessible_to(Current.user).where.not(status: "discarded").includes(:flight).recent.limit(50)
       return render :read_only
     end
+    unless @active_session
+      @assignment_configurations = FdrFunctionalConfiguration.ordered
+      @assignable_assemblies = Assembly.not_retired.connectable_fdrs.includes(:fdr_functional_configuration,
+        active_fdr_board_installation: :embedded_controller).ordered.reject(&:embedded_controller)
+    end
     @imu_mount_profiles = EmbeddedController.where.not(device_id: nil).includes(part: :assembly).to_h { |controller| [ controller.device_id, controller.imu_mount_profile ] } if @active_session
   end
 end

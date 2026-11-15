@@ -1,7 +1,8 @@
 module FdrIdentity
   class BindBoard
-    def initialize(assembly:, controller:, actor: nil, replace: false, at: Time.current)
+    def initialize(assembly:, controller:, actor: nil, replace: false, at: Time.current, source: "forge")
       @assembly, @controller, @actor, @replace, @at = assembly, controller, actor, replace, at
+      @source = source
     end
 
     def call
@@ -26,7 +27,7 @@ module FdrIdentity
         installation = @assembly.fdr_board_installations.create!(embedded_controller: @controller, installed_at: @at)
         @controller.association(:active_fdr_board_installation).reset
         @assembly.association(:active_fdr_board_installation).reset
-        @controller.record_activity!(current ? "board_replaced" : "fdr_bound", source: "forge", actor: @actor,
+        @controller.record_activity!(current ? "board_replaced" : "fdr_bound", source: @source, actor: @actor,
           details: { serial_number: @assembly.serial_number, previous_controller_id: current&.embedded_controller_id }, occurred_at: @at)
         installation
       end
