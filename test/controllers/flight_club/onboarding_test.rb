@@ -33,6 +33,12 @@ class FlightClub::OnboardingTest < ActionDispatch::IntegrationTest
     get root_path
     assert_response :success
     assert_select ".sillage-account-action[href='#{flight_club_path}']", text: "Flight Club"
+    assert_select ".sillage-account-action[href='#{profile_path}']", text: "My profile"
+
+    get profile_path
+    assert_response :success
+    assert_select "#membership [data-membership-card-tier-value='pioneer']"
+    assert_select ".sillage-avatar-insignia[src*='insignia-pioneer']", count: 2
 
     assert_no_enqueued_emails do
       patch flight_club_welcome_path

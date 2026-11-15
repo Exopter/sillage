@@ -2,15 +2,15 @@
 <% mono = "font-family:'Aptos Mono','SF Mono',Menlo,Consolas,monospace;" %>
 <% founding = @user.membership_tier == "pioneer" %>
 <tr>
-  <td style="padding:44px 0 0;<%= mono %>font-size:11px;letter-spacing:1.6px;color:#767873;">A PERSONAL INVITATION</td>
+  <td style="padding:44px 0 0;<%= mono %>font-size:11px;letter-spacing:1.6px;color:#97a1a0;">A PERSONAL INVITATION</td>
 </tr>
 <tr>
-  <td style="padding:16px 0 0;font-family:'Aptos Display','Aptos','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:40px;line-height:44px;letter-spacing:-1.4px;color:#070b0d;">
+  <td style="padding:16px 0 0;font-family:'Aptos Display','Aptos','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:40px;line-height:44px;letter-spacing:-1.4px;color:#f5f8f6;">
     <%= @user.first_name %>, your place<br>in Flight Club is ready.
   </td>
 </tr>
 <tr>
-  <td style="padding:20px 0 26px;<%= sans %>font-size:16px;line-height:26px;color:#3d4347;">
+  <td style="padding:20px 0 26px;<%= sans %>font-size:16px;line-height:26px;color:#c7d0cd;">
     You are invited to join Flight Club as <%= @user.membership_rank_phrase %><%= ", among the founding members of the first chapter" if founding %>.
     Your membership card is ready, engraved with your name and your number.
   </td>
@@ -18,22 +18,22 @@
 <%= render "flight_club_card", user: @user, caption: "RESERVED FOR" %>
 <%= render "flight_club_button", label: "Accept my invitation", url: @invitation_url %>
 <tr>
-  <td align="center" style="padding:16px 0 0;<%= sans %>font-size:13px;line-height:20px;color:#767873;">
+  <td align="center" style="padding:16px 0 0;<%= sans %>font-size:13px;line-height:20px;color:#97a1a0;">
     This invitation is personal and valid until <%= long_date(@user.invitation_expires_at) %>.
   </td>
 </tr>
 <tr>
   <td style="padding:44px 0 0;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #ddddd5;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #243133;">
       <% [
         [ "01", "Secure your membership", "Choose a password. It takes a minute." ],
         [ "02", "Meet your card", "Your card is revealed, with your rank insignia and member number." ],
         [ "03", "Enter Sillage", "Your flights and live Signal sessions, in one place." ]
       ].each do |number, title, detail| %>
         <tr>
-          <td width="44" style="padding:18px 0;border-bottom:1px solid #ddddd5;vertical-align:top;<%= mono %>font-size:11px;line-height:22px;letter-spacing:1.2px;color:#767873;"><%= number %></td>
-          <td style="padding:18px 0;border-bottom:1px solid #ddddd5;<%= sans %>font-size:15px;line-height:22px;color:#070b0d;">
-            <%= title %><br><span style="font-size:13px;color:#767873;"><%= detail %></span>
+          <td width="44" style="padding:18px 0;border-bottom:1px solid #243133;vertical-align:top;<%= mono %>font-size:11px;line-height:22px;letter-spacing:1.2px;color:#97a1a0;"><%= number %></td>
+          <td style="padding:18px 0;border-bottom:1px solid #243133;<%= sans %>font-size:15px;line-height:22px;color:#f5f8f6;">
+            <%= title %><br><span style="font-size:13px;color:#97a1a0;"><%= detail %></span>
           </td>
         </tr>
       <% end %>
@@ -41,9 +41,9 @@
   </td>
 </tr>
 <tr>
-  <td style="padding:26px 0 34px;<%= sans %>font-size:12px;line-height:19px;color:#767873;">
+  <td style="padding:26px 0 34px;<%= sans %>font-size:12px;line-height:19px;color:#97a1a0;">
     If the button does not open, copy this address into your browser:<br>
-    <%= link_to @invitation_url, @invitation_url, style: "color:#767873;word-break:break-all;" %>
+    <%= link_to @invitation_url, @invitation_url, style: "color:#97a1a0;word-break:break-all;" %>
   </td>
 </tr>
 <% content_for :footer do %>

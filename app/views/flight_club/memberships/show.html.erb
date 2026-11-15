@@ -1,26 +1,4 @@
 <% content_for :title, "Flight Club" %>
+<% content_for :body_class, "ex-dark" %>
 
-<%= tag.section class: "flight-club-membership", data: flight_club_card_data(@member).merge(stage: "presented") do %>
-  <%= render "shared/flight_club_card", member: @member %>
-
-  <div class="flight-club-arrival">
-    <div class="flight-club-identity">
-      <span class="flight-club-micro">Flight Club membership</span>
-      <h2><%= @member.full_name %> <span class="flight-club-rank"><%= @member.membership_rank %></span></h2>
-      <p>
-        Member <%= @member.member_code %>
-        <% if @member.membership_started_at %>since <%= @member.membership_started_at.strftime("%B %Y") %><% end %>
-      </p>
-    </div>
-    <ul class="flight-club-benefits">
-      <li><strong>Flight + Signal</strong><span>Your entire flight world, in one place.</span></li>
-      <li><strong>Every flight, remembered.</strong><span>Recorded, replayed and kept for you.</span></li>
-    </ul>
-    <div class="flight-club-controls">
-      <button type="button" class="flight-club-link" data-action="membership-card#turn" data-membership-card-target="turnLabel">Turn card</button>
-      <%= link_to "Replay the welcome", flight_club_welcome_path, class: "flight-club-link" %>
-    </div>
-  </div>
-
-  <p class="flight-club-live" aria-live="polite" data-membership-card-target="announcement"></p>
-<% end %>
+<%= render "membership", member: @member %>

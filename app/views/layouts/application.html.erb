@@ -81,11 +81,12 @@
 
           <details class="sillage-account-menu">
             <summary aria-label="Open account menu">
-              <span class="sillage-avatar" aria-hidden="true"><%= sillage_user_initials(Current.user) %></span>
+              <%= render "shared/user_avatar", user: Current.user %>
             </summary>
             <div class="sillage-account-popover ex-dark" role="menu">
               <strong>Account</strong>
               <span><%= Current.user&.email_address %></span>
+              <%= link_to "My profile", profile_path, class: "sillage-account-action" %>
               <% if Current.user&.member? %>
                 <%= link_to "Flight Club", flight_club_path, class: "sillage-account-action" %>
               <% end %>

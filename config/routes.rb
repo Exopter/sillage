@@ -18,6 +18,7 @@ Rails.application.routes.draw do
   end
 
   resource :session, only: %i[new create destroy]
+  resource :profile, only: %i[show update]
   delete "logout" => "sessions#destroy", as: :logout
   resources :passwords, param: :token, only: %i[new create edit update]
   resources :invitations, param: :token, only: %i[edit update]

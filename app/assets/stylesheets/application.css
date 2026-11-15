@@ -533,6 +533,7 @@ body {
 }
 
 .sillage-avatar {
+  position: relative;
   display: grid;
   width: 30px;
   height: 30px;
@@ -540,11 +541,173 @@ body {
   margin-left: 4px;
   place-items: center;
   border-radius: 50%;
-  background: var(--ex-field-500);
-  color: var(--ex-white);
+  background: var(--accent);
+  color: var(--accent-contrast);
   font-family: var(--ex-font-mono);
   font-size: 12px;
   font-weight: 600;
+}
+
+.sillage-avatar-photo {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.sillage-avatar-insignia {
+  position: absolute;
+  right: -5px;
+  bottom: -4px;
+  width: 15px;
+  height: 19px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+
+.sillage-avatar--large {
+  width: 88px;
+  height: 88px;
+  margin: 0;
+  font-size: 28px;
+}
+
+.sillage-avatar--large .sillage-avatar-insignia {
+  right: -3px;
+  bottom: -2px;
+  width: 30px;
+  height: 38px;
+}
+
+.sillage-profile {
+  color: var(--text-body);
+  display: grid;
+  align-items: start;
+  gap: 28px;
+  width: min(100%, 1120px);
+  margin: 0 auto;
+}
+
+.sillage-profile-details {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: 32px 48px;
+}
+
+.sillage-profile-membership {
+  min-width: 0;
+}
+
+.sillage-profile-card {
+  --membership-card-surface: var(--surface-panel);
+  position: relative;
+  display: grid;
+  color: var(--text-body);
+}
+
+.sillage-profile-card .flight-club-stage {
+  grid-area: auto;
+  min-height: clamp(260px, 28vw, 340px);
+}
+
+.sillage-profile-card-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.sillage-profile-card-caption p {
+  margin: 0;
+}
+
+.sillage-profile-panel {
+  padding: clamp(20px, 4vw, 40px);
+  border: 1px solid var(--border-rule);
+  border-radius: var(--ds-radius);
+  background: var(--surface-panel);
+}
+
+.sillage-profile-heading {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  margin-bottom: 32px;
+}
+
+.sillage-profile-heading h1 {
+  margin: 4px 0 8px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+
+.sillage-profile-heading p {
+  margin: 5px 0;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.sillage-profile-eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-family: var(--ex-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sillage-profile-form {
+  display: grid;
+  gap: 20px;
+  max-width: 640px;
+}
+
+.sillage-profile-names {
+  display: grid;
+  gap: 20px;
+}
+
+.sillage-profile-form label {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.sillage-profile-form input[type="file"] {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+}
+
+.sillage-profile-form p {
+  margin: -8px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.sillage-profile-form .sillage-profile-remove {
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 800px) {
+  .sillage-profile-details {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .sillage-profile-heading {
+    align-items: flex-start;
+    gap: 20px;
+  }
 }
 
 .sillage-account-menu {
