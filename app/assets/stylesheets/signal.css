@@ -2,7 +2,7 @@
 .signal-radio-quality { display: flex; flex: none; align-items: center; gap: 22px; }
 .signal-radio-quality .exds-signal-strength { min-width: 174px; }
 @media (min-width: 921px) and (max-width: 1100px) {
-  .sillage-topbar:has(.signal-radio-quality) { gap: 12px; padding-inline: 12px 76px; }
+  .sillage-topbar:has(.signal-radio-quality) { gap: 12px; padding-inline: 12px 120px; }
   .sillage-topbar:has(.signal-radio-quality) .sillage-title-block { width: auto; min-width: 0; flex: 1; }
   .sillage-topbar:has(.signal-radio-quality) .sillage-topbar-spacer { display: none; }
   .signal-radio-quality { gap: 12px; }
@@ -495,14 +495,20 @@
 
 .signal-home {
   min-height: calc(100vh - var(--ex-shell-header-height));
-  padding: 18px;
+  padding: var(--sp-8);
   background: var(--ex-carbon-950);
   color: var(--ex-vapor-50);
 }
 
 .signal-home-inner {
-  width: min(920px, 100%);
+  width: min(1200px, 100%);
   margin: 0 auto;
+}
+
+@media (max-width: 920px) {
+  .signal-home {
+    padding: var(--sp-5) var(--sp-4);
+  }
 }
 
 .signal-home-head {
@@ -1301,7 +1307,10 @@
 .signal-home-head h1 {
   margin: 4px 0 5px;
   color: var(--ex-vapor-50);
-  font-size: 23px;
+  font-size: var(--fs-page);
+  font-weight: 600;
+  line-height: 1.17;
+  letter-spacing: var(--ls-tight);
 }
 
 .signal-home-head p,

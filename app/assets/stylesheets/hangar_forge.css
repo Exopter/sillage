@@ -1,5 +1,5 @@
-.hangar-page-heading {
-  margin-bottom: 12px;
+.hangar-tabs {
+  margin-bottom: var(--sp-5);
 }
 
 .workspace-navigation-groups {
@@ -34,19 +34,6 @@
 .workspace-form .workspace-radio-choice { display: flex; align-items: center; gap: 10px; cursor: pointer; }
 .workspace-choice-table tr:has(input:checked) { background: var(--surface-panel); }
 
-.hangar-page-heading h1 {
-  margin: 4px 0 4px;
-  color: var(--text-strong, #10181a);
-  font-size: 24px;
-  line-height: 1.1;
-}
-
-.hangar-page-heading p {
-  margin: 0;
-  color: var(--text-muted, #5f6c6b);
-  font-size: 13px;
-}
-
 .workspace-tabs {
   display: flex;
   gap: 6px;
@@ -67,8 +54,7 @@
   border-bottom-color: var(--selection-marker);
 }
 
-.workspace-segmented-tabs,
-.hangar-tabs {
+.workspace-segmented-tabs {
   width: max-content;
   max-width: 100%;
   gap: 4px;
@@ -1619,5 +1605,56 @@
   .assembly-tree-node li {
     grid-template-columns: 1fr;
     gap: 2px;
+  }
+}
+
+/* Phone: a stacked table keeps the identity, state and action of each row on screen. */
+@media (max-width: 620px) {
+  .workspace-table.is-stacked {
+    min-width: 0;
+  }
+
+  .workspace-table.is-stacked thead {
+    display: none;
+  }
+
+  .workspace-table.is-stacked tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--sp-1) var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    border-bottom: 1px solid var(--border-rule);
+  }
+
+  .workspace-table.is-stacked tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .workspace-panel.is-flush .workspace-table.is-stacked td {
+    display: block;
+    grid-column: 1;
+    padding: 0;
+    border: 0;
+  }
+
+  .workspace-table.is-stacked td[data-label] {
+    color: var(--text-muted);
+    font-size: var(--fs-caption);
+  }
+
+  .workspace-table.is-stacked td[data-label]::before {
+    content: attr(data-label) ": ";
+  }
+
+  .workspace-panel.is-flush .workspace-table.is-stacked td:nth-child(5) {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .workspace-panel.is-flush .workspace-table.is-stacked td.workspace-table-actions {
+    grid-column: 2;
+    grid-row: 2 / span 3;
+    align-self: end;
   }
 }

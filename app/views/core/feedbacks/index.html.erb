@@ -1,9 +1,6 @@
 <% content_for :title, "Feedback" %>
 <section class="core-users" data-controller="feedback-board" data-action="turbo:submit-end->feedback-board#submitted">
-  <%= render "core/navigation" %>
-  <div class="core-users-header">
-    <div><span class="section-eyebrow">Sillage Core</span><h1>Feedback</h1><p id="feedback-move-help">Drag a card to change its status. On touch screens, tap its heading, then a column. Use Left and Right on a focused heading to move with the keyboard.</p></div>
-  </div>
+  <%= render "core/navigation", title: "Feedback", lede_id: "feedback-move-help", lede: "Drag a card to change its status. On touch screens, tap its heading, then a column. Use Left and Right on a focused heading to move with the keyboard." %>
   <p class="exds-kanban-notice" role="status" data-board-announcement></p>
   <div class="exds-kanban" aria-label="Feedback by status">
     <% Feedback::STATUSES.each do |status| %>

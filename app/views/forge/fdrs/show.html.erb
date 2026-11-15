@@ -52,7 +52,7 @@
       <% end %>
     </section>
   <% elsif @assembly.controlled_fdr? %>
-    <details class="workspace-panel">
+    <details class="workspace-panel exds-disclosure">
       <summary><%= @fdr ? "Replace integrated board" : "Connect an integrated board" %></summary>
       <p>Connect and initialize the new board in Forge first. The FDR name and recording history stay with this FDR.</p>
       <% if @available_boards.any? %>

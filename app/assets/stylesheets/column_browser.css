@@ -69,7 +69,7 @@
 .exds-browser-entry-copy strong { display: block; font-size: 14px; line-height: 19px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .exds-browser-entry-copy small { display: block; margin: 0; color: var(--text-muted); font-size: 12px; line-height: 18px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .exds-browser-entry-heading { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
-.exds-browser-entry-heading strong { flex: 0 1 auto; }
+.exds-browser-entry-heading strong { flex: 0 0 auto; }
 .exds-browser-entry-heading .status-dot { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 11px/18px var(--ex-font-sans); letter-spacing: 0; text-transform: none; color: var(--text-muted); }
 .exds-browser-entry-heading .status-dot > span { flex-shrink: 0; width: 6px; height: 6px; }
 .exds-browser-entry-location { grid-column: 1; grid-row: 2; }
@@ -188,3 +188,13 @@
 .exds-browser-autocomplete-option:hover, .exds-browser-autocomplete-option[aria-selected="true"] { background: var(--surface-selected); color: var(--text-strong); }
 .exds-browser-field > .exds-browser-autocomplete-help { margin: 0; color: var(--text-muted); font: 400 12px/1.4 var(--ex-font-sans); }
 @media (pointer: coarse) { .exds-browser-autocomplete-option { min-height: 44px; } }
+/* Phone: the flight code is never truncated; status wraps under it and the date takes its own line. */
+@media (max-width: 560px) {
+  .exds-browser-entry-copy { grid-template-rows: auto; grid-auto-rows: auto; }
+  .exds-browser-entry-heading { grid-column: 1 / -1; flex-wrap: wrap; row-gap: 2px; }
+  .exds-browser-entry-heading strong { flex: none; overflow: visible; }
+  .exds-browser-entry-date { grid-column: 1 / -1; grid-row: 2; text-align: left; }
+  .exds-browser-entry-location { grid-row: 3; }
+  .exds-browser-entry-description { grid-row: 4; }
+  .exds-browser-entry-copy > .exds-browser-entry-duration { grid-row: 3; }
+}

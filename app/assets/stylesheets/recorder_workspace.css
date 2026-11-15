@@ -20,7 +20,7 @@
 .exds-recorder-content { min-width: 0; padding: var(--ex-space-8) var(--ex-space-10); }
 .exds-recorder-content > .fdr-connectivity { width: 100%; max-width: none; margin: 0; }
 .exds-recorder-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--ex-space-4); margin-bottom: var(--ex-space-6); }
-.exds-recorder-heading h1 { font-size: 32px; line-height: 1.2; letter-spacing: -.025em; margin: 0 0 var(--ex-space-2); }
+.exds-recorder-heading h1 { font-size: var(--fs-page); font-weight: 600; line-height: 1.17; letter-spacing: var(--ls-tight); margin: 0 0 var(--ex-space-2); }
 .exds-recorder-heading p { margin: 0; color: var(--text-muted); font-size: 15px; }
 .exds-recorder-heading .signal-fdr-recording-control { background: var(--surface-card); }
 .exds-recorder-manager { border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }

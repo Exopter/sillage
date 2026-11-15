@@ -53,7 +53,7 @@
         <% if can_manage_operations? && comment.owned_by?(Current.user) %>
           <div class="exds-comment-confirm" hidden role="group" aria-label="Confirm comment deletion">
             <strong>Delete this comment?</strong><p>It will be removed for everyone with access to this flight.</p>
-            <div class="exds-comment-edit-actions"><button type="button" class="button-secondary exds-btn exds-btn--secondary" data-action="flight-comments#cancelDelete">Cancel</button><%= button_to "Delete comment", flight_comment_path(flight, comment), method: :delete, class: "button-danger exds-btn exds-btn--danger" %></div>
+            <div class="exds-comment-edit-actions"><button type="button" class="button-secondary exds-btn exds-btn--secondary" data-action="flight-comments#cancelDelete">Cancel</button><%= button_to "Delete comment", flight_comment_path(flight, comment), method: :delete, class: "button-danger exds-btn exds-btn--danger-solid" %></div>
           </div>
         <% end %>
       </div>

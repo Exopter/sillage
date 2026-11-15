@@ -13,7 +13,7 @@
     <p class="operations-help" role="status" data-signal-workspace-target="exitStatus" hidden></p>
     <div class="operations-form-actions">
       <button type="button" class="button-primary exds-btn exds-btn--primary" data-action="signal-workspace#saveSession" data-signal-workspace-target="exitAction"><%= flight ? "Save and end session" : "Save as new flight" %></button>
-      <% unless flight %><button type="button" class="button-danger exds-btn exds-btn--danger" data-action="signal-workspace#discardSession" data-signal-workspace-target="exitAction">Discard data</button><% end %>
+      <% unless flight %><button type="button" class="button-danger exds-btn exds-btn--danger-solid" data-action="signal-workspace#discardSession" data-signal-workspace-target="exitAction">Discard data</button><% end %>
       <button type="button" class="button-secondary exds-btn exds-btn--secondary" data-action="signal-workspace#continueSession" data-signal-workspace-target="exitAction">Cancel</button>
     </div>
   </div>

@@ -7,7 +7,8 @@
   transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out);
 }
 .exds-btn:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px}
-.exds-btn[disabled]{cursor:not-allowed;opacity:.4;box-shadow:none}
+/* Disabled reads as unavailable on both surfaces instead of a dimmed primary. */
+.exds-btn[disabled],.exds-btn[aria-disabled="true"]{cursor:not-allowed;background:var(--surface-panel);color:var(--text-muted);border-color:var(--border-rule);box-shadow:none}
 .exds-btn--sm{min-height:var(--control-h-sm);padding:6px 12px;font-size:var(--fs-sm)}
 .exds-btn--lg{min-height:var(--control-h-lg);padding:12px 22px}
 .exds-btn--block{width:100%}
@@ -18,7 +19,10 @@
 .exds-btn--secondary:hover:not(:disabled){background:var(--surface-hover);border-color:var(--text-muted)}
 .exds-btn--ghost{background:transparent;color:var(--text-body)}
 .exds-btn--ghost:hover:not(:disabled){background:var(--surface-hover);border-color:var(--border-rule)}
-.exds-btn--danger{background:var(--control-danger);color:var(--ex-white);border-color:var(--control-danger)}
-.exds-btn--danger:hover:not(:disabled){background:var(--control-danger-hover);border-color:var(--control-danger-hover)}
+/* Destructive actions stay quiet until the confirmation step, which uses the solid variant. */
+.exds-btn--danger{background:var(--surface-card);color:var(--control-danger);border-color:var(--border-strong);box-shadow:0 1px 1px #070b0d08}
+.exds-btn--danger:hover:not(:disabled){background:var(--ex-red-100);border-color:var(--control-danger)}
+.exds-btn--danger-solid{background:var(--control-danger);color:var(--ex-white);border-color:var(--control-danger)}
+.exds-btn--danger-solid:hover:not(:disabled){background:var(--control-danger-hover);border-color:var(--control-danger-hover)}
 .exds-btn:active:not(:disabled){box-shadow:inset 0 2px 3px #070b0d33}
 @media(prefers-reduced-motion:reduce){.exds-btn{transition:none}}

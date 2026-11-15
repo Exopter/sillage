@@ -6,7 +6,7 @@
     <h2>Fleet</h2>
     <p>Aircraft are durable identities; installations record which equipment flew, and when.</p>
   </div>
-  <%= link_to new_hangar_aircraft_path, class: "button-secondary exds-btn exds-btn--secondary" do %>
+  <%= link_to new_hangar_aircraft_path, class: "button-primary exds-btn exds-btn--primary" do %>
     <%= sillage_icon "plus", size: 17 %><span>Register aircraft</span>
   <% end %>
 </header>
@@ -14,7 +14,7 @@
 <section class="hangar-summary" aria-label="Fleet summary">
   <article class="hangar-summary-card"><span class="section-eyebrow">Aircraft</span><strong><%= @aircraft.size %> registered</strong></article>
   <article class="hangar-summary-card"><span class="section-eyebrow">Installed configurations</span><strong><%= @active_installation_count %> active</strong></article>
-  <article class="hangar-summary-card is-attention"><span class="section-eyebrow">Attention</span><strong><%= pluralize @attention_count, "review item" %></strong></article>
+  <article class="hangar-summary-card<%= " is-attention" if @attention_count.positive? %>"><span class="section-eyebrow">Attention</span><strong><%= @attention_count.positive? ? pluralize(@attention_count, "review item") : "Nothing to review" %></strong></article>
 </section>
 
 <% if @selected_aircraft %>
