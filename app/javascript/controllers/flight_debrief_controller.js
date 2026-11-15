@@ -5,6 +5,8 @@ import { Controller } from "@hotwired/stimulus"
  * @property {string} urlValue
  * @property {string} keyValue
  * @property {HTMLElement} statusTarget
+ * @property {HTMLElement} durationTarget
+ * @property {HTMLMeterElement} levelTarget
  * @property {HTMLElement} transcriptTarget
  * @property {HTMLTextAreaElement} summaryTarget
  */
@@ -12,7 +14,7 @@ import { Controller } from "@hotwired/stimulus"
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 export default class extends TypedController {
   static values = { url: String, key: String }
-  static targets = ["status", "transcript", "summary"]
+  static targets = ["status", "transcript", "summary", "duration", "level"]
   /** @type {MediaRecorder | null} */
   recorder = null
   /** @type {MediaStream | null} */
@@ -35,6 +37,11 @@ export default class extends TypedController {
   writeQueue = Promise.resolve()
   pollTimer = 0
   commitTimer = 0
+  meterTimer = 0
+  /** @type {AudioContext | null} */
+  audioContext = null
+  /** @type {WakeLockSentinel | null} */
+  wakeLock = null
 
   async connect() {
     this.database = await new Promise((resolve, reject) => {
@@ -52,6 +59,9 @@ export default class extends TypedController {
     this.stream?.getTracks().forEach(track => track.stop())
     this.peer?.close()
     clearInterval(this.pollTimer)
+    clearInterval(this.meterTimer)
+    void this.audioContext?.close()
+    void this.wakeLock?.release()
     clearInterval(this.commitTimer)
   }
 
@@ -98,6 +108,23 @@ export default class extends TypedController {
       }
       this.recorder.onstop = () => { void this.finish() }
       this.recorder.start(2000)
+      this.audioContext = new AudioContext()
+      const analyser = this.audioContext.createAnalyser()
+      analyser.fftSize = 256
+      this.audioContext.createMediaStreamSource(this.stream).connect(analyser)
+      const values = new Uint8Array(analyser.frequencyBinCount)
+      let elapsed = 0
+      let lastTick = performance.now()
+      this.meterTimer = window.setInterval(() => {
+        const now = performance.now()
+        if (this.recorder?.state === "recording") elapsed += now - lastTick
+        lastTick = now
+        analyser.getByteTimeDomainData(values)
+        this.levelTarget.value = Math.min(1, Math.sqrt(values.reduce((sum, value) => sum + ((value - 128) / 128) ** 2, 0) / values.length) * 4)
+        const seconds = Math.floor(elapsed / 1000)
+        this.durationTarget.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
+      }, 200)
+      if (navigator.wakeLock) void navigator.wakeLock.request("screen").then(lock => { if (this.recorder?.state === "recording") this.wakeLock = lock; else void lock.release() }).catch(() => {})
       this.statusTarget.textContent = "Recording… Keep this screen open."
       try {
         const debrief = await this.api(this.urlValue, { uuid: this.saved.uuid })
@@ -142,11 +169,15 @@ export default class extends TypedController {
 
   async finish() {
     clearInterval(this.commitTimer)
+    clearInterval(this.meterTimer)
+    if (this.audioContext?.state !== "closed") await this.audioContext?.close()
+    await this.wakeLock?.release()
     this.stream?.getAudioTracks().forEach(track => { track.enabled = false })
     if (this.channel?.readyState === "open") {
+      const previousCount = this.committed.size
       this.channel.send(JSON.stringify({ type: "input_audio_buffer.commit" }))
       await new Promise(resolve => setTimeout(resolve, 2000))
-      this.liveComplete = !this.liveFailed && this.committed.size > 0 && [...this.committed].every(id => this.completed.has(id))
+      this.liveComplete = !this.liveFailed && this.committed.size > previousCount && [...this.committed].every(id => this.completed.has(id))
     }
     this.stream?.getTracks().forEach(track => track.stop())
     this.peer?.close()
@@ -164,7 +195,7 @@ export default class extends TypedController {
       await this.store("put", this.saved || undefined)
       if (debrief.status === "recording") {
         const form = new FormData()
-        form.append("audio", new Blob(this.saved.parts, { type: this.saved.type }), this.saved.type.includes("mp4") ? "debrief.mp4" : "debrief.webm")
+        form.append("audio", new Blob(this.saved.parts, { type: this.saved.type }), this.saved.type.includes("mp4") ? "debrief.mp4" : this.saved.type.includes("ogg") ? "debrief.ogg" : "debrief.webm")
         await this.api(`${debrief.url}/upload`, form)
       }
       await this.api(`${debrief.url}/process_audio`, { transcript: this.liveComplete ? [...this.committed].map(id => this.turns.get(id)).join("\n") : undefined })

@@ -13,6 +13,12 @@ class SharedFlightDebriefTest < ActionDispatch::IntegrationTest
       post api_v1_signal_sessions_path, params: { uuid: SecureRandom.uuid }, as: :json
       assert_equal uuid, response.parsed_body.fetch("uuid")
     end
+    get signal_path(session: uuid, join: 1)
+    assert_response :success
+    assert_select "[data-controller=shared-flight]", count: 1
+    flight = SignalSession.find_by!(uuid:).flight
+    post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
+    assert_response :conflict
     token = SecureRandom.uuid
     post gateway_api_v1_signal_session_path(uuid), params: { token: }, as: :json
     assert_response :success
@@ -26,6 +32,22 @@ class SharedFlightDebriefTest < ActionDispatch::IntegrationTest
     patch complete_api_v1_signal_session_path(uuid), params: { disposition: "save" }, headers: { "X-Signal-Gateway" => token }, as: :json
     assert_response :success
     assert_equal "completed", SignalSession.find_by!(uuid:).status
+  end
+
+  test "closing a disconnected flight retains late batches without reopening it" do
+    session = Signal::StartSession.new(user: users(:julien)).call
+    post close_disconnected_api_v1_signal_session_path(session.uuid), as: :json
+    assert_response :success
+    assert_equal "completed", session.reload.status
+    post batches_api_v1_signal_session_path(session.uuid), params: {
+      sequence: 0, samples: [ { kind: "gps", recorded_at: 1.minute.ago.iso8601, latitude: 44.2, longitude: 5.7 } ]
+    }, as: :json
+    assert_response :success
+    assert_equal 1, session.signal_batches.count
+    assert_not_equal "live", session.flight.reload.status
+    post api_v1_signal_sessions_path, params: { uuid: SecureRandom.uuid }, as: :json
+    assert_response :created
+    assert_not_equal session.uuid, response.parsed_body.fetch("uuid")
   end
 
   test "publishes a debrief once and retains the original audio" do

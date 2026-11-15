@@ -127,6 +127,7 @@ Rails.application.routes.draw do
           get :shared_state
           post :gateway
           post :request_stop
+          post :close_disconnected
         end
       end
     end

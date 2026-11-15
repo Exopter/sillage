@@ -341,6 +341,9 @@ are joined, subject to flight visibility. The acquisition browser claims a persi
 gateway token before opening its serial port. Remote stop requests are acknowledged
 only when that browser flushes its capture and completes the session. A disconnected
 gateway retains ownership so queued samples cannot collide with another producer.
+An explicit disconnected close ends the logical flight without claiming that the
+radio stopped. Late batches remain stored; samples before the closing timestamp
+can be materialized until an authoritative recording is attached.
 
 Join links use `?session=<uuid>&join=1`. Phone participants poll shared status every
 three seconds. Operation permissions remain administrator-only; flight visibility

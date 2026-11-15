@@ -1,9 +1,9 @@
 import { Controller } from "@hotwired/stimulus"
 
-/** @typedef {{urlValue: string, stopValue: string, statusTarget: HTMLElement, telemetryTarget: HTMLElement}} Bindings */
+/** @typedef {{urlValue: string, stopValue: string, closeValue: string, statusTarget: HTMLElement, telemetryTarget: HTMLElement}} Bindings */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 export default class extends TypedController {
-  static values = { url: String, stop: String }
+  static values = { url: String, stop: String, close: String }
   static targets = ["status", "telemetry"]
   connect() { this.refresh(); this.timer = setInterval(() => this.refresh(), 3000) }
   disconnect() { clearInterval(this.timer) }
@@ -19,6 +19,12 @@ Altitude: ${gps.altitude_m ?? "Unavailable"} m
 Received: ${gps.recorded_at}` : "Waiting for telemetry"
       this.statusTarget.textContent = state.status === "completed" ? "Session ended. You can record your debrief." : `${state.status} · ${state.gateway_connected ? "Gateway connected" : "Gateway disconnected"}${state.stop_requested ? " · Stop requested, awaiting gateway confirmation" : ""}`
     } catch { this.statusTarget.textContent = "Connection interrupted. Reconnecting…" }
+  }
+  async closeDisconnected() {
+    if (!window.confirm("Close this flight without gateway confirmation? This cannot stop the radio device. Late data will be retained when it reconnects.")) return
+    const response = await fetch(this.closeValue, { method: "POST", headers: { "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "", Accept: "application/json" } })
+    if (!response.ok) { this.statusTarget.textContent = "Could not close the session. Use End session while the gateway is connected."; return }
+    await this.refresh()
   }
   async stop() {
     const response = await fetch(this.stopValue, { method: "POST", headers: { "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "", Accept: "application/json" } })

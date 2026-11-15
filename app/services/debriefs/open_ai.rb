@@ -52,7 +52,7 @@ module Debriefs
       response = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 10, read_timeout: 120) { |http| http.request(req) }
       raise Error, "OpenAI request failed (#{response.code})" unless response.is_a?(Net::HTTPSuccess)
       JSON.parse(response.body)
-    rescue JSON::ParserError, Timeout::Error, SocketError, IOError => error
+    rescue JSON::ParserError, Timeout::Error, SocketError, IOError, SystemCallError, OpenSSL::SSL::SSLError => error
       raise Error, "OpenAI connection failed: #{error.class.name}"
     end
   end

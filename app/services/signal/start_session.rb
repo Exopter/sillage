@@ -22,6 +22,9 @@ module Signal
         SignalSession.connection.execute("SELECT pg_advisory_xact_lock(741253901)")
         active = SignalSession.where(status: %w[live syncing]).first
         if active
+          if @flight_id.present? && active.flight_id != @flight_id.to_i
+            raise InvalidFlight, "Another flight is already live. Join it or end it before starting this flight."
+          end
           raise InvalidFlight, "A flight is already live." unless SignalSession.accessible_to(@user).exists?(active.id)
           return active
         end

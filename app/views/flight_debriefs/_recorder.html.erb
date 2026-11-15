@@ -1,6 +1,8 @@
+<% unless flight.live? %>
 <section class="exds-browser-editor-section" data-controller="flight-debrief" data-flight-debrief-url-value="<%= flight_debriefs_path(flight) %>" data-flight-debrief-key-value="<%= Current.user.id %>:<%= flight.id %>">
   <h3>Pilot Log · Audio debrief</h3>
   <p data-flight-debrief-target="status" role="status">Record on this device. Keep this page open while speaking.</p>
+  <p><span data-flight-debrief-target="duration">0:00</span> <label>Microphone level <meter min="0" max="1" value="0" data-flight-debrief-target="level"></meter></label></p>
   <button type="button" class="exds-btn exds-btn--primary" data-action="flight-debrief#start">Record debrief</button>
   <button type="button" class="exds-btn exds-btn--secondary" data-action="flight-debrief#pause">Pause / resume</button>
   <button type="button" class="exds-btn exds-btn--secondary" data-action="flight-debrief#stop">Finish recording</button>
@@ -10,3 +12,6 @@
   <label class="exds-browser-field">Summary<textarea rows="5" maxlength="4000" data-flight-debrief-target="summary"></textarea></label>
   <button type="button" class="exds-btn exds-btn--primary" data-action="flight-debrief#publish">Publish to Pilot Log</button>
 </section>
+<% else %>
+<p>End the live session to record your audio debrief.</p>
+<% end %>

@@ -4,6 +4,7 @@ class FlightDebriefsController < ApplicationController
   before_action :set_debrief, except: :create
 
   def create
+    return render json: { error: "End the live session before recording a debrief." }, status: :conflict if @flight.live?
     uuid = params.require(:uuid).to_s
     return head :unprocessable_entity unless uuid.match?(/\A[0-9a-f-]{36}\z/)
     @flight.with_lock do

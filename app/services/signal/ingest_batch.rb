@@ -29,7 +29,7 @@ module Signal
           @signal_session.acknowledge!(@sequence)
           return existing
         end
-        raise SessionCompleted, "This Signal session is completed; start a new session to send new samples." if @signal_session.status == "completed"
+        raise SessionCompleted, "This Signal session is completed; start a new session to send new samples." if @signal_session.status == "completed" && !closed_without_gateway?
 
         validate_samples!
         batch = @signal_session.signal_batches.create!(
@@ -39,8 +39,12 @@ module Signal
           checksum: Digest::SHA256.hexdigest(@payload.to_json),
           payload: @payload
         )
-        materialize!
-        identify_flight_source
+        materialize!(update_counts: !closed_without_gateway?)
+        if closed_without_gateway? && !@signal_session.flight.flight_import_id
+          @signal_session.update!(materialization_status: "pending")
+          SignalMaterializationJob.perform_later(@signal_session)
+        end
+        identify_flight_source unless closed_without_gateway?
         @signal_session.acknowledge!(@sequence)
         broadcast(batch)
         batch
@@ -52,6 +56,10 @@ module Signal
       return unless @signal_session.flight
 
       validate_samples! unless @samples
+      if closed_without_gateway?
+        return if @signal_session.flight.flight_import_id
+        @samples = @samples.select { |sample| sample["recorded_at"] && sample["recorded_at"] <= @signal_session.ended_at }
+      end
       @writer = writer
       @written_at = Time.current
       insert_track_points
@@ -60,6 +68,10 @@ module Signal
     end
 
     private
+
+    def closed_without_gateway?
+      @signal_session.status == "completed" && @signal_session.station_metadata["closed_without_gateway"] == true
+    end
 
     def samples
       @samples

@@ -2,7 +2,7 @@ module Api
   module V1
     class SignalSessionsController < ApplicationController
       protect_from_forgery with: :exception
-      before_action :set_signal_session, only: %i[batches events complete shared_state gateway request_stop]
+      before_action :set_signal_session, only: %i[batches events complete shared_state gateway request_stop close_disconnected]
 
       def create
         signal_session = Signal::StartSession.new(
@@ -77,7 +77,7 @@ module Api
         render json: session_payload(@signal_session).merge(
           gateway_connected: @signal_session.gateway_seen_at && @signal_session.gateway_seen_at > 15.seconds.ago,
           stop_requested: @signal_session.stop_requested_at.present?,
-          flight_url: flight_path(@signal_session.flight),
+          flight_url: @signal_session.flight && flight_path(@signal_session.flight),
           latest_samples: @signal_session.signal_batches.order(sequence: :desc).first&.payload&.fetch("samples", [])&.last(20) || [])
       end
 
@@ -90,6 +90,20 @@ module Api
             return render json: { error: "Another device owns the radio gateway. Reconnect that device." }, status: :conflict
           end
           @signal_session.update!(gateway_token_digest: digest, gateway_seen_at: Time.current)
+        end
+        shared_state
+      end
+
+      def close_disconnected
+        @signal_session.with_lock do
+          if @signal_session.gateway_seen_at && @signal_session.gateway_seen_at > 15.seconds.ago
+            return render json: { error: "The gateway is connected. Request a normal stop." }, status: :conflict
+          end
+          unless @signal_session.status == "completed"
+            @signal_session.update!(stop_requested_at: Time.current,
+              station_metadata: @signal_session.station_metadata.merge("closed_without_gateway" => true))
+            Signal::CompleteSession.new(signal_session: @signal_session, disposition: "save").call
+          end
         end
         shared_state
       end
