@@ -580,33 +580,46 @@ body {
 
 .sillage-profile {
   display: grid;
-  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.5fr);
   align-items: start;
   gap: 28px;
   width: min(100%, 1120px);
   margin: 0 auto;
 }
 
+.sillage-profile-details {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: 32px 48px;
+}
+
 .sillage-profile-membership {
   min-width: 0;
 }
 
-.sillage-profile-membership .flight-club-membership {
-  min-height: 0;
-  padding: 20px;
+.sillage-profile-card {
+  position: relative;
+  display: grid;
+  color: var(--text-body);
 }
 
-.sillage-profile-membership .flight-club-stage {
-  min-height: clamp(260px, 32vw, 380px);
+.sillage-profile-card .flight-club-stage {
+  grid-area: auto;
+  min-height: clamp(260px, 28vw, 340px);
 }
 
-.sillage-profile-membership .flight-club-arrival {
-  grid-template-columns: 1fr;
-  gap: 20px;
+.sillage-profile-card-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
-.sillage-profile-membership .flight-club-controls {
-  justify-content: flex-start;
+.sillage-profile-card-caption p {
+  margin: 0;
 }
 
 .sillage-profile-panel {
@@ -623,8 +636,7 @@ body {
   margin-bottom: 32px;
 }
 
-.sillage-profile-heading h1,
-.sillage-profile-section-heading h2 {
+.sillage-profile-heading h1 {
   margin: 4px 0 8px;
   font-weight: 500;
   letter-spacing: -0.035em;
@@ -683,21 +695,8 @@ body {
   align-items: center;
 }
 
-.sillage-profile-section-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 16px;
-}
-
-.sillage-profile-section-heading > span {
-  color: var(--text-muted);
-  font: 12px var(--ex-font-mono);
-}
-
-@media (max-width: 1000px) {
-  .sillage-profile {
+@media (max-width: 800px) {
+  .sillage-profile-details {
     grid-template-columns: 1fr;
   }
 }
