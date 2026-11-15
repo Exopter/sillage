@@ -135,7 +135,6 @@
 .flight-club-prelude > :nth-child(2) { animation-delay: 0.6s; }
 .flight-club-prelude > :nth-child(3) { animation-delay: 0.8s; }
 .flight-club-prelude > :nth-child(4) { animation-delay: 1.05s; }
-.flight-club-prelude > :nth-child(n + 5) { animation-delay: 1.35s; }
 
 .flight-club-welcome:not([data-stage="invitation"]) .flight-club-prelude {
   visibility: hidden;
@@ -198,6 +197,14 @@
 
 .flight-club-action:hover {
   background: var(--accent-hover);
+}
+
+.flight-club-prelude .flight-club-action {
+  width: fit-content;
+  max-width: 100%;
+  justify-self: center;
+  justify-content: center;
+  gap: 20px;
 }
 
 .flight-club-action:focus-visible,
