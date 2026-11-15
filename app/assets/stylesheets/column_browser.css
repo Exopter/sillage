@@ -2,7 +2,7 @@
 .exds-browser { color: var(--text-body); font-family: var(--ex-font-sans); background: var(--surface-app); height: calc(100dvh - var(--ex-shell-header-height)); display: flex; flex-direction: column; }
 .exds-browser [hidden] { display: none !important; }
 .exds-browser-header { display: flex; align-items: center; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--border-rule); }
-.exds-browser-header h1 { margin: 0 auto 0 0; font-size: 23px; letter-spacing: -.025em; }
+.exds-browser-header h1 { margin: 0 auto 0 0; font-size: var(--fs-page); letter-spacing: -.025em; }
 .exds-browser-search { width: min(40%, 560px); }
 .exds-browser-create { position: relative; flex-shrink: 0; }
 .exds-browser-create > summary { list-style: none; cursor: pointer; }
@@ -21,11 +21,11 @@
 .exds-browser-folder-actions form { margin: 0; }
 .exds-browser-sidebar .exds-browser-folder-actions { padding: 0 24px 10px 62px; background: var(--surface-selected); }
 .exds-browser-folder { min-width: 0; }
-.exds-browser-folder-access { display: block; margin-top: 3px; font-size: 11px; font-weight: 400; }
-.exds-browser-explanation { margin: 0; padding: 0 24px 16px; color: var(--text-muted); font-size: 13px; line-height: 1.5; }
+.exds-browser-folder-access { display: block; margin-top: 3px; font-size: var(--fs-xs); font-weight: 400; }
+.exds-browser-explanation { margin: 0; padding: 0 24px 16px; color: var(--text-muted); font-size: var(--fs-sm); line-height: 1.5; }
 .exds-browser-body { display: grid; grid-template-columns: minmax(176px, 18%) minmax(300px, 34%) minmax(0, 1fr); flex: 1; min-height: 0; overflow: hidden; }
 .exds-browser-sidebar { padding: 12px 0; border-right: 1px solid var(--border-rule); overflow-y: auto; }
-.exds-browser-nav { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 20px; color: var(--text-body); border-left: 3px solid transparent; font-size: 14px; }
+.exds-browser-nav { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 20px; color: var(--text-body); border-left: 3px solid transparent; font-size: var(--fs-text); }
 .exds-browser-nav span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .exds-browser-nav small { color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .exds-browser-nav[aria-current="page"] { background: var(--surface-selected); border-left-color: var(--selection-marker); font-weight: 650; }
@@ -55,8 +55,8 @@
 .exds-browser-section-label a { text-transform: none; letter-spacing: 0; }
 .exds-browser-collection { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface-card); border-right: 1px solid var(--border-rule); }
 .exds-browser-collection-header { display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 12px 16px; }
-.exds-browser-collection-header h2, .exds-browser-preview h2 { margin: 0; font-size: 20px; line-height: 1.2; overflow-wrap: anywhere; }
-.exds-browser-caption { margin: 6px 0 0; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
+.exds-browser-collection-header h2, .exds-browser-preview h2 { margin: 0; font-size: var(--fs-section); line-height: 1.2; overflow-wrap: anywhere; }
+.exds-browser-caption { margin: 6px 0 0; font-size: var(--fs-sm); line-height: 1.5; color: var(--text-muted); }
 .exds-browser-selection { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; margin: 0; }
 .exds-browser-entries { flex: 1; min-height: 0; overflow-y: auto; }
 .exds-browser-entry { position: relative; display: flex; align-items: center; border-left: 3px solid transparent; border-bottom: 1px solid var(--surface-panel); }
@@ -66,8 +66,8 @@
 .exds-browser-entry input { accent-color: var(--selection-marker); width: 15px; height: 15px; }
 .exds-browser-entry-link { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; height: var(--ex-list-row-height); min-height: var(--ex-list-row-height); padding: 10px 16px 10px 10px; color: var(--text-body); }
 .exds-browser-entry-copy { display: grid; grid-template-columns: minmax(0, 1fr) max-content; grid-template-rows: 19px 18px 18px; column-gap: 20px; row-gap: 4px; flex: 1; min-width: 0; }
-.exds-browser-entry-copy strong { display: block; font-size: 14px; line-height: 19px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.exds-browser-entry-copy small { display: block; margin: 0; color: var(--text-muted); font-size: 12px; line-height: 18px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.exds-browser-entry-copy strong { display: block; font-size: var(--fs-text); line-height: 19px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.exds-browser-entry-copy small { display: block; margin: 0; color: var(--text-muted); font-size: var(--fs-caption); line-height: 18px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .exds-browser-entry-heading { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .exds-browser-entry-heading strong { flex: 0 0 auto; }
 .exds-browser-entry-heading .status-dot { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 11px/18px var(--ex-font-sans); letter-spacing: 0; text-transform: none; color: var(--text-muted); }
@@ -77,8 +77,8 @@
 .exds-browser-entry-description { grid-column: 1; grid-row: 3; }
 .exds-browser-entry-copy > .exds-browser-entry-duration { grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-variant-numeric: tabular-nums; }
 .exds-browser-entry-duration svg { flex-shrink: 0; }
-.exds-browser-selection .exds-selection-toolbar { border-radius: 0; box-shadow: none; padding: 12px; gap: 8px; flex-wrap: wrap; font-size: 12px; }
-.exds-browser-selection .exds-selection-toolbar button, .exds-browser-selection .exds-selection-toolbar select { font-size: 12px; }
+.exds-browser-selection .exds-selection-toolbar { border-radius: 0; box-shadow: none; padding: 12px; gap: 8px; flex-wrap: wrap; font-size: var(--fs-caption); }
+.exds-browser-selection .exds-selection-toolbar button, .exds-browser-selection .exds-selection-toolbar select { font-size: var(--fs-caption); }
 .exds-browser-pagination { padding: 12px 20px; }
 .exds-browser-preview { display: block; padding: 24px; background: var(--surface-card); min-width: 0; overflow-y: auto; }
 .exds-browser-preview[busy] { opacity: .55; }
@@ -87,7 +87,7 @@
 .exds-browser-editor-heading .exds-browser-icon-button { flex-shrink: 0; }
 .exds-browser-form { display: grid; gap: var(--ex-section-gap); margin: 0; }
 .exds-browser-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
-.exds-browser-field { display: grid; align-content: start; gap: 10px; min-width: 0; font-size: 13px; font-weight: 600; }
+.exds-browser-field { display: grid; align-content: start; gap: 10px; min-width: 0; font-size: var(--fs-sm); font-weight: 600; }
 .exds-browser-field.is-wide { grid-column: 1 / -1; }
 .exds-browser-field :is(input, select, textarea) { width: 100%; min-width: 0; min-height: var(--ex-control-height); padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--ex-radius-instrument); background: var(--surface-card); color: var(--text-body); font: 14px var(--ex-font-sans); }
 .exds-browser-field textarea { resize: vertical; }
@@ -97,7 +97,7 @@
 .exds-browser-form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; padding-top: 20px; border-top: 1px solid var(--border-rule); }
 .exds-browser-form-actions > :is(a, button, input) { flex: 0 1 auto; }
 .exds-browser-editor-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-rule); }
-.exds-browser-editor-section h3 { margin: 0; font-size: 17px; }
+.exds-browser-editor-section h3 { margin: 0; font-size: var(--fs-card); }
 .exds-browser-editor-section .workspace-actions { flex-wrap: wrap; margin-top: 16px; }
 .exds-browser-editor .upload-drop { min-width: 0; padding: 24px 16px; }
 .exds-browser-editor .upload-drop input { max-width: 100%; }
@@ -105,19 +105,19 @@
   .exds-browser-form-grid { grid-template-columns: minmax(0, 1fr); }
 }
 .exds-browser-preview-heading { display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-.exds-browser-preview-heading p { margin: 6px 0 0; font-size: 14px; }
+.exds-browser-preview-heading p { margin: 6px 0 0; font-size: var(--fs-text); }
 .exds-browser-preview-heading .exds-browser-caption { font-family: var(--ex-font-mono); letter-spacing: .04em; }
 .exds-browser-map { position: relative; height: clamp(220px, 32vh, 350px); background: var(--surface-panel); border-radius: var(--ex-radius-instrument); overflow: hidden; }
 .exds-browser-map-canvas { width: 100%; height: 100%; }
-.exds-browser-map-status { margin: 8px 0 0; color: var(--text-muted); font-size: 12px; }
-.exds-browser-empty { display: grid; align-content: center; justify-items: center; gap: 12px; min-height: 100px; padding: 16px; color: var(--text-muted); text-align: center; font-size: 14px; }
-.exds-browser-empty strong { color: var(--text-body); font-size: 16px; }
+.exds-browser-map-status { margin: 8px 0 0; color: var(--text-muted); font-size: var(--fs-caption); }
+.exds-browser-empty { display: grid; align-content: center; justify-items: center; gap: 12px; min-height: 100px; padding: 16px; color: var(--text-muted); text-align: center; font-size: var(--fs-text); }
+.exds-browser-empty strong { color: var(--text-body); font-size: var(--fs-card); }
 .exds-browser-metadata { margin: 12px 0; }
 .exds-browser-metadata > div { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; align-items: center; padding: 6px 0; }
 .exds-browser-metadata dt { font: 11px var(--ex-font-mono); color: var(--text-muted); text-transform: uppercase; }
-.exds-browser-metadata dd { margin: 0; font-size: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; overflow-wrap: anywhere; }
-.exds-browser-metadata dd > small { color: var(--text-muted); font-size: 12px; }
-.exds-browser-footer { display: flex; justify-content: space-between; gap: 16px; padding: 8px 16px; border-top: 1px solid var(--border-rule); font-size: 12px; color: var(--text-muted); }
+.exds-browser-metadata dd { margin: 0; font-size: var(--fs-text); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; overflow-wrap: anywhere; }
+.exds-browser-metadata dd > small { color: var(--text-muted); font-size: var(--fs-caption); }
+.exds-browser-footer { display: flex; justify-content: space-between; gap: 16px; padding: 8px 16px; border-top: 1px solid var(--border-rule); font-size: var(--fs-caption); color: var(--text-muted); }
 .exds-browser-dialog { width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow-y: auto; padding: 28px; border: 1px solid var(--border-rule); border-radius: var(--ex-radius-surface); box-shadow: var(--ex-shadow-raised); color: var(--text-body); }
 .exds-browser-dialog::backdrop { background: rgb(16 24 26 / .35); }
 .exds-browser-dialog form { display: grid; gap: 16px; }
@@ -137,7 +137,7 @@
 .exds-browser-member-avatar { display: grid; place-items: center; flex: 0 0 30px; height: 30px; border-radius: 50%; background: var(--surface-panel); color: var(--text-muted); font: 600 13px var(--ex-font-sans); }
 .exds-browser-member-email { flex: 1; min-width: 0; overflow-wrap: anywhere; font: 14px var(--ex-font-sans); }
 .exds-browser-member .exds-browser-icon-button { flex-shrink: 0; }
-.exds-browser-dialog h2 { margin: 0 0 20px; font-size: 22px; }
+.exds-browser-dialog h2 { margin: 0 0 20px; font-size: var(--fs-section); }
 .exds-browser-dialog-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .exds-browser :is(a, button, input, select, summary):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .exds-browser-mobile-back { display: none; }
@@ -150,7 +150,7 @@
   .exds-browser { height: auto; min-height: calc(100dvh - var(--ex-shell-header-height)); }
   .exds-browser-body { overflow: visible; }
   .exds-browser-header { flex-wrap: wrap; padding: 12px 16px; }
-  .exds-browser-header h1 { font-size: 20px; }
+  .exds-browser-header h1 { font-size: var(--fs-section); }
   .exds-browser-search { order: 5; width: 100%; }
   .exds-browser-body { grid-template-columns: 200px minmax(0, 1fr); min-height: 500px; }
   .exds-browser-preview { grid-column: 2; border-top: 1px solid var(--border-rule); }

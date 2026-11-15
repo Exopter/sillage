@@ -3,6 +3,7 @@
     <h1><%= title %></h1>
     <p<%= %( id="#{lede_id}").html_safe if local_assigns[:lede_id] %>><%= lede %></p>
   </div>
+  <%= local_assigns[:action] %>
 </header>
 <nav class="exds-tabs" aria-label="Core">
   <%= link_to "Users", core_users_path, class: "exds-tab", aria: { current: ("page" if controller_name == "users") } %>

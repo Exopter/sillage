@@ -14,14 +14,14 @@
 .flights-heading h1 {
   margin: 0;
   color: var(--text-strong);
-  font-size: 24px;
+  font-size: var(--fs-page);
   line-height: 1.15;
 }
 
 .flights-heading p {
   margin: 5px 0 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 .flights-search .search-control {
@@ -71,7 +71,7 @@
   padding: 11px 13px;
   border-top: 1px solid var(--border-rule);
   color: var(--text-body);
-  font-size: 12px;
+  font-size: var(--fs-caption);
   white-space: nowrap;
 }
 
@@ -140,7 +140,7 @@
   max-width: 36ch;
   margin: 4px 0 0;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
   white-space: normal;
 }
@@ -249,16 +249,16 @@
 .flight-debrief{padding:24px;border:1px solid var(--border-rule);border-radius:12px;background:var(--surface-card);margin:24px 0;display:grid;gap:16px}
 .flight-debrief [hidden]{display:none!important}
 .flight-debrief h3,.flight-debrief p{margin:0}
-.flight-debrief h3{font-size:1.25rem;margin-top:6px}
-.flight-debrief-eyebrow,.flight-debrief-note{font-size:.8rem;color:var(--text-muted)}
+.flight-debrief h3{font-size: var(--fs-section);margin-top:6px}
+.flight-debrief-eyebrow,.flight-debrief-note{font-size: var(--fs-sm);color:var(--text-muted)}
 .flight-debrief [role="status"]{color:var(--text-muted);line-height:1.6;max-width:60ch}
 .flight-debrief .exds-btn{min-height:44px}
 .flight-debrief-actions{display:flex;flex-wrap:wrap;gap:10px}
 .flight-debrief-meter{display:flex;align-items:center;gap:24px;font-variant-numeric:tabular-nums}
-.flight-debrief-meter>span{font-size:1.75rem;font-weight:600}
-.flight-debrief-meter label{display:flex;align-items:center;gap:12px;font-size:.85rem;color:var(--text-muted)}
+.flight-debrief-meter>span{font-size: var(--fs-page);font-weight:600}
+.flight-debrief-meter label{display:flex;align-items:center;gap:12px;font-size: var(--fs-text);color:var(--text-muted)}
 .flight-debrief details{border-top:1px solid var(--border-rule);padding-top:16px}
-.flight-debrief summary{cursor:pointer;font-size:.875rem}
+.flight-debrief summary{cursor:pointer;font-size: var(--fs-text)}
 .flight-debrief details p{margin-top:12px;white-space:pre-wrap;line-height:1.6}
 .flight-debrief-review{display:grid;gap:16px}
 .flight-debrief-review textarea{margin-top:8px;min-height:160px;line-height:1.6}

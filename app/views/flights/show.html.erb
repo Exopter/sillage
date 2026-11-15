@@ -57,7 +57,15 @@
     <span class="mode-badge is-neutral"><%= @flight.effective_visibility.capitalize %></span>
   </header>
 
+  <div data-controller="section-tabs">
+  <nav class="exds-tabs flight-record-tabs" aria-label="Flight sections">
+    <% [["analysis", "Analysis"], ["pilot-log", "Pilot log"], ["details", "Details"]].each_with_index do |(name, label), index| %>
+      <%= link_to label, "##{name}", class: "exds-tab", aria: { current: ("page" if index.zero?) }, data: { section_tabs_target: "tab", section_tabs_name_param: name, action: "section-tabs#select" } %>
+    <% end %>
+  </nav>
+
   <div class="flight-replay-content">
+    <div class="flight-record-panel" id="analysis" data-section-tabs-target="panel">
     <div class="flight-analysis-workspace">
     <% if @flight.waiting_for_recording? %>
       <section class="analysis-mode-banner" aria-label="Waiting for recording">
@@ -312,6 +320,15 @@
       <% end %>
     </section>
 
+    </div>
+
+    <div class="flight-record-panel" id="pilot-log" data-section-tabs-target="panel" hidden>
+      <div class="flight-instrument-panel">
+        <%= render "flight_comments/comments", flight: @flight %>
+      </div>
+    </div>
+
+    <div class="flight-record-panel" id="details" data-section-tabs-target="panel" hidden>
     <section class="flight-support-grid">
       <div class="flight-instrument-panel">
         <div class="flight-section-heading">
@@ -360,7 +377,6 @@
           </dl>
           <p class="operations-help">Administrator access is required to edit, move or delete this flight.</p>
         <% end %>
-        <%= render "flight_comments/comments", flight: @flight %>
       </div>
 
       <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
@@ -378,5 +394,7 @@
         </div>
       <% end %>
     </section>
+    </div>
+  </div>
   </div>
 </section>
