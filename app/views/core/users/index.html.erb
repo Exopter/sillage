@@ -62,17 +62,17 @@
               <% end %>
             </div>
             <div class="core-user-actions">
-              <%= link_to "Edit", edit_core_user_path(user), class: "button-secondary exds-btn exds-btn--secondary" %>
+              <%= link_to "Edit", edit_core_user_path(user), class: "button-secondary exds-btn exds-btn--secondary core-user-action-edit" %>
               <% if user.invitation_pending? %>
-                <%= button_to "Resend", resend_invitation_core_user_path(user), method: :post, class: "button-secondary exds-btn exds-btn--secondary" %>
+                <%= button_to "Resend", resend_invitation_core_user_path(user), method: :post, class: "button-secondary exds-btn exds-btn--secondary core-user-action-resend" %>
               <% end %>
               <% if user.disabled? %>
-                <%= button_to "Enable", enable_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary" %>
+                <%= button_to "Enable", enable_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary core-user-action-access" %>
               <% else %>
-                <%= button_to "Disable", disable_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary" %>
+                <%= button_to "Disable", disable_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary core-user-action-access" %>
               <% end %>
               <% if user.totp_configured? %>
-                <%= button_to "Reset 2FA", reset_two_factor_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary" %>
+                <%= button_to "Reset 2FA", reset_two_factor_core_user_path(user), method: :patch, class: "button-secondary exds-btn exds-btn--secondary core-user-action-security" %>
               <% end %>
             </div>
           </article>

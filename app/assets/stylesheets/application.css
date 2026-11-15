@@ -1349,12 +1349,14 @@ body {
 
 .core-user-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) repeat(4, max-content);
   gap: 10px;
 }
 
 .core-user-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) auto minmax(220px, auto);
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   gap: 14px;
   align-items: center;
   padding: 12px;
@@ -1363,12 +1365,13 @@ body {
   background: var(--surface-panel);
 }
 
-.core-user-row strong,
-.core-user-row span {
+.core-user-row > div:first-child strong,
+.core-user-row > div:first-child span {
   display: block;
+  overflow-wrap: anywhere;
 }
 
-.core-user-row span {
+.core-user-row > div:first-child span {
   color: var(--text-muted);
   font-size: var(--fs-sm);
 }
@@ -1378,12 +1381,24 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
   justify-content: flex-end;
 }
 
 .core-user-actions form {
   display: contents;
 }
+
+.core-user-row .core-user-actions {
+  display: grid;
+  grid-column: 3 / -1;
+  grid-template-columns: subgrid;
+}
+
+.core-user-action-edit { grid-column: 1; }
+.core-user-action-resend { grid-column: 2; }
+.core-user-action-access { grid-column: 3; }
+.core-user-action-security { grid-column: 4; }
 
 .status-pill {
   display: inline-flex;
@@ -2762,6 +2777,7 @@ body.flight-analysis-theme,
     grid-template-columns: 1fr;
   }
 
+  .core-user-list,
   .core-user-row {
     grid-template-columns: 1fr;
   }
@@ -2769,6 +2785,11 @@ body.flight-analysis-theme,
   .core-user-status,
   .core-user-actions {
     justify-content: flex-start;
+  }
+
+  .core-user-row .core-user-actions {
+    display: flex;
+    grid-column: auto;
   }
 
   .flight-card {
