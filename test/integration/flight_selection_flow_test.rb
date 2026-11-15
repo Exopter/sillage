@@ -92,7 +92,7 @@ class FlightSelectionFlowTest < ActionDispatch::IntegrationTest
       assert_select ".sr-only", text: "Data unavailable", count: 3
       assert_select "span[aria-hidden='true']", text: "—", count: 3
     end
-    assert_select ".exds-browser-entry[data-entry='import:#{zero.id}']", text: /00:00/
+    assert_select ".exds-browser-entry[data-entry='import:#{zero.id}']", text: /0s/
     [ "To complete", "Date unknown", "Not recorded", "No data yet" ].each { |text| assert_not_includes response.body, text }
     assert_select "button[type='submit'][disabled]", text: "Delete selected"
     assert_select "input[data-table-selection-target='all']"
