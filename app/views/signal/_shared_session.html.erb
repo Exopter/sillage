@@ -1,3 +1,4 @@
+<div class="signal-home ex-dark"><div class="signal-home-inner">
 <section class="signal-launch-card" data-controller="shared-flight" data-shared-flight-url-value="<%= shared_state_api_v1_signal_session_path(session.uuid) %>" data-shared-flight-close-value="<%= close_disconnected_api_v1_signal_session_path(session.uuid) %>" data-shared-flight-stop-value="<%= request_stop_api_v1_signal_session_path(session.uuid) %>">
   <div class="signal-launch-body">
     <h1><%= session.flight&.code || "Unassigned acquisition" %> · Shared flight</h1>
@@ -5,8 +6,12 @@
     <pre data-shared-flight-target="telemetry" aria-label="Latest telemetry"></pre>
     <button class="exds-btn exds-btn--danger" data-action="shared-flight#stop">End session</button>
     <button class="exds-btn exds-btn--secondary" data-action="shared-flight#closeDisconnected">Close disconnected session</button>
-    <%= link_to "Open flight and debrief", session.flight ? flight_path(session.flight) : "#", class: "exds-btn exds-btn--primary", hidden: !session.flight, data: { shared_flight_target: "flightLink" } %>
+    <span data-shared-flight-target="flightLink">
+      <% if session.flight %><%= link_to "Open flight and debrief", flight_path(session.flight), class: "exds-btn exds-btn--primary" %><% end %>
+    </span>
     <%= link_to "Open acquisition station", signal_path(session: session.uuid), class: "exds-btn exds-btn--secondary" %>
     <label>Join on another device<input class="exds-input" readonly value="<%= signal_url(session: session.uuid, join: 1) %>"></label>
   </div>
 </section>
+
+</div></div>

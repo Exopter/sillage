@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 
-/** @typedef {{urlValue: string, stopValue: string, closeValue: string, statusTarget: HTMLElement, telemetryTarget: HTMLElement, flightLinkTarget: HTMLAnchorElement}} Bindings */
+/** @typedef {{urlValue: string, stopValue: string, closeValue: string, statusTarget: HTMLElement, telemetryTarget: HTMLElement, flightLinkTarget: HTMLElement}} Bindings */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 export default class extends TypedController {
   static values = { url: String, stop: String, close: String }
@@ -12,7 +12,14 @@ export default class extends TypedController {
       const response = await fetch(this.urlValue, { headers: { Accept: "application/json" } })
       if (!response.ok) throw new Error("Session unavailable")
       const state = await response.json()
-      if (state.flight_url) { this.flightLinkTarget.href = state.flight_url; this.flightLinkTarget.hidden = false }
+      if (state.flight_url && this.flightLinkTarget.dataset.url !== state.flight_url) {
+        const link = document.createElement("a")
+        link.href = state.flight_url
+        link.textContent = "Open flight and debrief"
+        link.className = "exds-btn exds-btn--primary"
+        this.flightLinkTarget.replaceChildren(link)
+        this.flightLinkTarget.dataset.url = state.flight_url
+      }
       const gps = state.latest_samples?.findLast(/** @param {any} sample */ sample => sample.kind === "gps")
       this.telemetryTarget.textContent = gps ? `Latitude: ${gps.latitude ?? gps.lat}
 Longitude: ${gps.longitude ?? gps.lon}

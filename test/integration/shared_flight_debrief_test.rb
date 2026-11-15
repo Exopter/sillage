@@ -54,7 +54,7 @@ class SharedFlightDebriefTest < ActionDispatch::IntegrationTest
     session = users(:julien).signal_sessions.create!
     get signal_path(session: session.uuid, join: 1)
     assert_response :success
-    assert_select "[data-shared-flight-target=flightLink][hidden]"
+    assert_select "[data-shared-flight-target=flightLink] a", count: 0
     get shared_state_api_v1_signal_session_path(session.uuid), as: :json
     assert_response :success
     assert_nil response.parsed_body["flight_url"]

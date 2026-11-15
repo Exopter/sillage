@@ -162,7 +162,7 @@
       </header>
       <% if @live_session %>
         <section class="signal-launch-card"><div class="signal-launch-body">
-          <h2><%= @live_session.flight&.code %> · Live</h2>
+          <h2><%= @live_session.flight&.code || "Unassigned acquisition" %> · Live</h2>
           <%= link_to "Join live session", signal_path(session: @live_session.uuid, join: 1), class: "exds-btn exds-btn--primary" %>
         </div></section>
       <% end %>
