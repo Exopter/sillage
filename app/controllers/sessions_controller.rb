@@ -2,6 +2,8 @@ class SessionsController < ApplicationController
   layout "authentication"
   allow_unauthenticated_access only: %i[new create]
 
+  allow_unverified_two_factor_access only: :destroy
+
   def new
   end
 
@@ -18,6 +20,7 @@ class SessionsController < ApplicationController
 
   def destroy
     terminate_session
+    reset_session
     redirect_to new_session_path, notice: "Signed out.", status: :see_other
   end
 

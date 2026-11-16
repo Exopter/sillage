@@ -69,7 +69,7 @@ class RecorderConnectionsFlowTest < ActionDispatch::IntegrationTest
   test "observations require an authenticated operator" do
     delete session_path
     report([ observation ])
-    assert_response :redirect
+    assert_response :unauthorized
     assert_empty @recorder.reload.recorder_connections
   end
 
