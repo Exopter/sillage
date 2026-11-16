@@ -293,8 +293,20 @@
 .flight-debrief-summary strong { display: block; margin-bottom: 2px; color: var(--text-muted); font: 700 var(--fs-xs)/1.45 var(--font-mono); letter-spacing: var(--ls-label); text-transform: uppercase; }
 .flight-debrief-pending { display: flex; align-items: center; gap: var(--sp-3); margin: 0; padding: var(--sp-3) var(--sp-4); border-radius: var(--ex-radius-surface); background: var(--surface-app); color: var(--text-muted); font-size: var(--fs-text); line-height: 1.5; }
 .flight-debrief-pending .flight-debrief-spinner { width: 18px; height: 18px; flex: 0 0 auto; border-width: 2px; }
-.flight-debrief-checklist { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1px; margin: 0; overflow: hidden; border: 1px solid var(--border-rule); border-radius: var(--ex-radius-surface); background: var(--border-rule); }
-.flight-debrief-checklist div { padding: var(--sp-2) var(--sp-3); background: var(--surface-card); }
+.flight-debrief-checklist { container-type: inline-size; display: flex; flex-wrap: wrap; gap: 1px; margin: 0; overflow: hidden; border: 1px solid var(--border-rule); border-radius: var(--ex-radius-surface); background: var(--border-rule); }
+/* Cells split into balanced rows: the cell count and the list width pick the cells per row, and a shorter row stretches. */
+@container (width < 480px) {
+  .flight-debrief-checklist:has(> div:nth-child(4)):not(:has(> div:nth-child(5))) > div { --per-row: 2; }
+  .flight-debrief-checklist:has(> div:nth-child(7)) > div:nth-child(n+4) { --per-row: 2; }
+}
+@container (480px <= width < 840px) {
+  .flight-debrief-checklist > div { --per-row: 4; }
+  .flight-debrief-checklist:has(> div:nth-child(5)):not(:has(> div:nth-child(7))) > div { --per-row: 3; }
+}
+@container (width >= 840px) {
+  .flight-debrief-checklist > div { --per-row: 7; }
+}
+.flight-debrief-checklist div { flex: 1 1 calc(100% / var(--per-row, 3) - 1px); padding: var(--sp-2) var(--sp-3); background: var(--surface-card); }
 .flight-debrief-checklist dt { color: var(--text-muted); font: 700 var(--fs-xs)/1.45 var(--font-mono); letter-spacing: var(--ls-label); text-transform: uppercase; }
 .flight-debrief-checklist dd { margin: 0; color: var(--text-strong); font: 700 var(--fs-text)/1.43 var(--font-mono); }
 .flight-debrief-audio { width: 100%; height: 44px; }
