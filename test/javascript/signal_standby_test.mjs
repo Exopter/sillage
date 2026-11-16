@@ -60,7 +60,7 @@ console.log("Signal link parking, expiry and re-readable polling link tests pass
 const workspaceSource = strip(await read("controllers/signal_workspace_controller.js"))
 const {default: Workspace} = await load(`import {NATIVE_MOUNT, BELLY_MOUNT, interpretImu} from "${url("lib/imu_mount.js")}";
 import {ImuHealth} from "${url("lib/imu_health.js")}";
-import {SignalTelemetry, groundStationHeartbeat} from "${url("lib/signal_telemetry.js")}";
+import {SignalTelemetry, groundStationHeartbeat, seatModeCommand} from "${url("lib/signal_telemetry.js")}";
 import {observeRecorderConnection} from "${url("lib/aircraft_connection.js")}";
 import {parkTelemetryLink, claimTelemetryLink, closeTelemetryLink} from "${transportURL}";
 const resolveRadioIdentity = (...args) => globalThis.signalIdentityLookup(...args);
@@ -82,6 +82,7 @@ const standbyView = () => {
   Object.assign(view, {sessionValue: "", connectionGeneration: Symbol("standby"), db: {},
     aircraftStatusTarget: text(), standbyAircraftTarget: text(), startHintTarget: text(), startButtonTarget: {disabled: true},
     radioStatusTarget: text(), recorderStatusTarget: text(), parserStatusTarget: text(),
+    modeButtonTargets: [{hidden: true, disabled: false}, {hidden: true, disabled: false}],
     startDeviceTarget: {value: ""}, startTransportTarget: {value: ""},
     startFlightTarget: {value: "", options: [{value: ""}], add(option) { this.options.push(option) }},
     startFormTarget: {submitted: 0, requestSubmit() { this.submitted++ }}})
@@ -139,6 +140,34 @@ view.refreshIdentity()
 view.renderStandby(true, now)
 await tick()
 assert.equal(lookups, 2, "Hangar changes are read again on request")
+
+// The Seat mode buttons appear only for an initialized module, and the signed command goes out on the open link.
+assert.equal(view.modeButtonTargets.every(button => button.hidden), true, "a recorder without mode control shows no mode button")
+const seat = standbyView()
+seat.handleWorkerMessage(frame(quality))
+seat.standbyIdentity = {deviceId: quality.deviceId, recorderLabel: "Seat", aircraftLabel: null, registered: true, assemblyId: 42, canAcquire: true, modeControl: true}
+seat.identityKey = quality.deviceId; seat.identityAt = now
+seat.port = {}
+seat.renderStandby(true, now)
+assert.equal(seat.modeButtonTargets.every(button => !button.hidden), true)
+seat.renderStandby(false, now)
+assert.equal(seat.modeButtonTargets.every(button => button.hidden), true, "a lost link hides the mode buttons")
+await assert.rejects(seat.sendMode("ground"), /Wait for the aircraft telemetry/, "a link that cannot transmit sends no mode change")
+const written = []
+seat.port = {writable: {getWriter: () => ({write: async bytes => { written.push(bytes) }, releaseLock() {}})}}
+const realFetch = globalThis.fetch
+let modeRequest
+globalThis.fetch = async (target, options) => { modeRequest = [target, JSON.parse(options.body)]; return Response.json({payload: "01" + "01000000" + "ab".repeat(32)}) }
+Object.defineProperty(globalThis, "document", {value: {querySelector: () => null}, configurable: true})
+const realTimeout = window.setTimeout
+window.setTimeout = (callback) => { callback(); return 0 }
+assert.equal(await seat.sendMode("ground"), 1, "the command is bound to the boot heard on the link")
+window.setTimeout = realTimeout
+globalThis.fetch = realFetch
+assert.deepEqual(modeRequest, ["/api/v1/fdr-mode-commands", {device_id: quality.deviceId, boot_id: 1, mode: "ground"}])
+assert.equal(written.length, 3, "the lossy link carries the idempotent command three times")
+assert.equal(written[0][0], 0xfd)
+assert.equal(seat.radioWrite, null)
 
 // Start flight keeps the link open and hands it to the recording screen.
 const portState = {closed: 0, cancelled: 0}

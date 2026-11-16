@@ -76,6 +76,9 @@
           <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" aria-label="Mark event" data-action="signal-workspace#markEvent"><%= sillage_icon "plus", size: 14 %><span>Mark event</span></button>
           <button type="button" class="signal-tool-button exds-btn exds-btn--danger is-danger" data-action="signal-workspace#endSession">End flight</button>
         <% else %>
+          <%# A distributed Seat changes mode only on a command signed with its Sillage key. %>
+          <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" data-signal-workspace-target="modeButton" data-action="signal-workspace#changeMode" data-mode="ground" hidden><%= sillage_icon "wifi", size: 14 %><span>Ground mode (Wi-Fi)</span></button>
+          <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" data-signal-workspace-target="modeButton" data-action="signal-workspace#changeMode" data-mode="flight" hidden><%= sillage_icon "plane", size: 14 %><span>Flight mode</span></button>
           <%= render "signal/remote_switch" %>
           <%= form_with url: signal_sessions_path, class: "signal-start", data: { signal_workspace_target: "startForm" } do |form| %>
             <%= form.hidden_field :device_id, value: "", id: nil, data: { signal_workspace_target: "startDevice" } %>

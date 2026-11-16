@@ -3,7 +3,7 @@ import {readFile} from "node:fs/promises"
 const source = await readFile(new URL("../../app/javascript/lib/signal_radio_link.js", import.meta.url), "utf8")
 const {resolveRadioIdentity} = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`)
 const deviceId = "ECU-441BF685BEC8"
-const assignedWing = {deviceId, recorderLabel: "EXOFDR-V1-PCB-01", aircraftLabel: "Freak 6 Vincent · WS-F6-VD", registered: true, assemblyId: 42, canAcquire: true}
+const assignedWing = {deviceId, recorderLabel: "EXOFDR-V1-PCB-01", aircraftLabel: "Freak 6 Vincent · WS-F6-VD", registered: true, assemblyId: 42, canAcquire: true, modeControl: false}
 
 // The same read-only registration endpoint owns the assembly-to-aircraft chain.
 const originalFetch = globalThis.fetch

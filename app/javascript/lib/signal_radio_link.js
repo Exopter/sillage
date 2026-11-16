@@ -1,4 +1,4 @@
-/** @typedef {{deviceId: string, recorderLabel: string, aircraftLabel: string|null, registered: boolean, assemblyId: number|null, canAcquire: boolean}} RadioIdentity */
+/** @typedef {{deviceId: string, recorderLabel: string, aircraftLabel: string|null, registered: boolean, assemblyId: number|null, canAcquire: boolean, modeControl?: boolean}} RadioIdentity */
 
 /** Resolve the received full ECU identity through Sillage's current installation chain.
  * @param {string} deviceId @returns {Promise<RadioIdentity>} */
@@ -16,5 +16,6 @@ export async function resolveRadioIdentity(deviceId) {
   if (typeof recorderLabel !== "string" || !recorderLabel.trim() ||
       (payload.aircraft != null && (typeof aircraftLabel !== "string" || !aircraftLabel.trim())))
     throw new Error("Invalid aircraft identity")
-  return {deviceId, recorderLabel, aircraftLabel, registered: true, assemblyId: Number.isInteger(payload.recorder.assembly_id) ? payload.recorder.assembly_id : null, canAcquire: payload.recorder.acquisition_allowed === true}
+  return {deviceId, recorderLabel, aircraftLabel, registered: true, assemblyId: Number.isInteger(payload.recorder.assembly_id) ? payload.recorder.assembly_id : null, canAcquire: payload.recorder.acquisition_allowed === true,
+    modeControl: payload.recorder.mode_control === true}
 }

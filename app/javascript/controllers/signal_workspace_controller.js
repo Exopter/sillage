@@ -4,7 +4,7 @@ import { AircraftConnectionTransport, setAircraftConnection, observeRecorderConn
 import { clamp, signalLayoutPreset, parseSignalLayout } from "signal_layout"
 import { ImuHealth } from "imu_health"
 import { BELLY_MOUNT, NATIVE_MOUNT, interpretImu } from "imu_mount"
-import { SignalTelemetry, groundStationHeartbeat } from "signal_telemetry"
+import { SignalTelemetry, groundStationHeartbeat, seatModeCommand } from "signal_telemetry"
 import { directTelemetryPort, parkTelemetryLink, claimTelemetryLink, closeTelemetryLink } from "signal_transport"
 import { resolveRadioIdentity } from "signal_radio_link"
 import { SignalMap } from "signal_map"
@@ -82,6 +82,7 @@ const CHART_WINDOW_MS = 30_000
  * @property {HTMLSelectElement} startFlightTarget
  * @property {HTMLButtonElement} startButtonTarget
  * @property {HTMLElement} startHintTarget
+ * @property {HTMLButtonElement[]} modeButtonTargets
  */
 const LINK_TYPE_KEY = "signal-link-type"
 const LINK_TYPES = ["ground-radio", "usb-c", "ble", "wifi"]
@@ -179,6 +180,8 @@ export default class extends TypedController {
   standbySignature = ""
   standbyAt = 0
   starting = false
+  modeChanging = false
+  modeNotice = ""
 
   /** Standby: the link is open and telemetry is shown, but no flight exists and nothing is stored. */
   get standby() { return !this.sessionValue }
@@ -229,7 +232,7 @@ export default class extends TypedController {
     "qualityAttitude", "qualityHeading", "attitudeDetail", "headingDetail", "preflightDetail", "preflightStatus",
     "exitDialog", "exitError", "exitStatus", "flightName", "exitAction",
     "parserStatus", "aircraftMarker", "aircraftLabel", "latestEvent", "sensorValue", "streamBadge", "mountLabel", "sensorAxes",
-    "aircraftStatus", "standbyAircraft", "startForm", "startDevice", "startTransport", "startFlight", "startButton", "startHint"
+    "aircraftStatus", "standbyAircraft", "startForm", "startDevice", "startTransport", "startFlight", "startButton", "startHint", "modeButton"
   ]
 
   static values = {
@@ -1212,8 +1215,11 @@ export default class extends TypedController {
       : [name, "Ready. What you see is live and not saved: Start flight records from that moment."]
     this.aircraftStatusTarget.textContent = aircraft
     this.standbyAircraftTarget.textContent = live && deviceId ? name : "No aircraft heard"
-    this.startHintTarget.textContent = hint
+    this.startHintTarget.textContent = this.modeNotice || hint
     this.startButtonTarget.disabled = !ready
+    // Only an initialized module holds the key that makes a mode change acceptable.
+    const modeAvailable = live && identity?.modeControl === true && !this.starting
+    for (const button of this.modeButtonTargets) { button.hidden = !modeAvailable; button.disabled = this.modeChanging }
     const detail = {connected, live, ready, deviceId, label: name, identified: Boolean(identity),
       registered: identity?.registered === true, assemblyId: identity?.assemblyId ?? null}
     const signature = JSON.stringify(detail)
@@ -1233,6 +1239,64 @@ export default class extends TypedController {
       if (this.identityKey === deviceId) this.standbyIdentity = identity
     } catch { if (this.identityKey === deviceId) this.standbyIdentity = null }
     finally { this.identityAt = Date.now(); this.identityLoading = false }
+  }
+
+  /** Asks the Seat to restart into a ground session (Wi-Fi and BLE, no recording) or back into flight mode.
+   * @param {Event} event */
+  async changeMode(event) {
+    const button = event.currentTarget
+    if (!(button instanceof HTMLButtonElement) || this.modeChanging || !this.standby) return
+    const ground = button.dataset.mode === "ground"
+    if (ground && !window.confirm("Restart the Seat into ground mode? It stops recording, leaves the module group and connects to Wi-Fi to synchronize with Sillage. It returns to flight mode on request, or by itself after 3 minutes without a connection.")) return
+    const generation = this.connectionGeneration
+    const current = () => generation === this.connectionGeneration
+    this.modeChanging = true
+    this.modeNotice = ""
+    try {
+      const bootId = await this.sendMode(ground ? "ground" : "flight")
+      this.modeNotice = `${ground ? "Ground" : "Flight"} mode requested. Waiting for the Seat to restart…`
+      // The restart shows as a new boot on the link; without it the request did not take effect.
+      const deadline = Date.now() + 25_000
+      while (current() && Date.now() < deadline && (this.imuHealth.quality?.bootId ?? bootId) === bootId) await new Promise(resolve => window.setTimeout(resolve, 500))
+      if (!current()) return
+      this.modeNotice = (this.imuHealth.quality?.bootId ?? bootId) === bootId
+        ? "The Seat did not restart. It may be out of range, on firmware without this command, or not initialized with its Sillage key."
+        : `The Seat restarted${ground ? " into ground mode" : ""}.`
+    } catch (error) {
+      this.modeNotice = error instanceof Error ? error.message : String(error)
+    } finally {
+      this.modeChanging = false
+      window.setTimeout(() => { if (current()) this.modeNotice = "" }, 12_000)
+    }
+  }
+
+  /** Sillage signs the request for the module's current boot; the link only carries it.
+   * @param {"ground"|"flight"} mode @returns {Promise<number>} */
+  async sendMode(mode) {
+    const deviceId = this.imuHealth.quality?.deviceId, bootId = this.imuHealth.quality?.bootId
+    if (!this.port?.writable || !deviceId || !bootId) throw new Error("Wait for the aircraft telemetry on the radio before changing its mode.")
+    const response = await fetch("/api/v1/fdr-mode-commands", {method: "POST", credentials: "same-origin", cache: "no-store",
+      signal: AbortSignal.timeout(10000), headers: {"Content-Type": "application/json", Accept: "application/json",
+        "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || ""},
+      body: JSON.stringify({device_id: deviceId, boot_id: bootId, mode})})
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok || typeof result.payload !== "string" || !/^[0-9a-f]{74}$/.test(result.payload)) throw new Error(result.error || "Sillage could not sign the mode change.")
+    const payload = Uint8Array.from(result.payload.match(/../g) || [], byte => Number.parseInt(byte, 16))
+    await this.radioWrite
+    const writable = this.port?.writable
+    if (!writable) throw new Error("The link closed before the mode change was sent.")
+    // The link is lossy and the command is idempotent for one boot: send it three times.
+    this.radioWrite = (async () => {
+      const writer = this.radioWriter = writable.getWriter()
+      try {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          await writer.write(seatModeCommand(this.radioHeartbeatSequence++, payload))
+          await new Promise(resolve => window.setTimeout(resolve, 150))
+        }
+      } finally { writer.releaseLock(); this.radioWriter = null }
+    })()
+    try { await this.radioWrite } finally { this.radioWrite = null }
+    return bootId
   }
 
   /** Hangar changed what it knows about the heard recorder. */

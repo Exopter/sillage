@@ -188,6 +188,26 @@ export function sikDbm(raw) {
   return Number.isInteger(raw) && raw >= 0 && raw < 255 ? raw / 1.9 - 127 : null
 }
 
+/** MAVLink 2 frame for the signed Seat mode command (message 42002).
+ * @param {number} sequence @param {Uint8Array} payload Mode, boot ID and proof, as signed by Sillage.
+ */
+export function seatModeCommand(sequence, payload) {
+  let length = payload.length
+  while (length > 1 && payload[length - 1] === 0) length--
+  const frame = new Uint8Array(12 + length)
+  frame.set([0xfd, length, 0, 0, sequence & 255, 255, 190, 42002 & 255, (42002 >> 8) & 255, 0])
+  frame.set(payload.subarray(0, length), 10)
+  let crc = 0xffff
+  for (const value of [...frame.subarray(1, 10 + length), 77]) {
+    let temporary = value ^ (crc & 0xff)
+    temporary ^= (temporary << 4) & 0xff
+    crc = ((crc >> 8) ^ (temporary << 8) ^ (temporary << 3) ^ (temporary >> 4)) & 0xffff
+  }
+  frame[10 + length] = crc & 255
+  frame[11 + length] = crc >> 8
+  return frame
+}
+
 /** GCS presence enables SiK RADIO_STATUS reporting without changing its settings.
  * @param {number} sequence
  */
