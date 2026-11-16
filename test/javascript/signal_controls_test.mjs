@@ -46,6 +46,8 @@ Object.assign(connection, {element: button(), buttonTarget: button(), labelTarge
 window.addEventListener("sillage:ground-radio-state", event => connection.update(event))
 const dependencies = ["imu_health", "signal_telemetry"].map(name => new URL(`../../app/javascript/lib/${name}.js`, import.meta.url).href)
 const Workspace = await controller("signal_workspace", `import {ImuHealth} from '${dependencies[0]}'; import {SignalTelemetry} from '${dependencies[1]}';\n`)
+// These cases cover a recording; standby has its own test file.
+Workspace.prototype.sessionValue = "session"
 const workspace = new Workspace()
 workspace.db = {}
 workspace.connectionGeneration = Symbol("active session")

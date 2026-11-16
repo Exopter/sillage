@@ -100,13 +100,13 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_nil session.flight
     get signal_path(session: uuid)
     assert_response :success
-    assert_select "strong", text: "Unassigned session"
+    assert_select ".signal-aircraft-label strong", text: "Flight"
     assert_select ".sillage-topbar [data-controller='signal-connection'] button", count: 1
-    assert_select ".exds-icon-select select[aria-label='Telemetry connection'] option[value='ground-radio'][selected]", text: "SiK radio"
-    assert_select "select[aria-label='Telemetry connection'] option", count: 4
-    assert_select "select[aria-label='Telemetry connection'] option[value='usb-c']", text: "USB-C"
-    assert_select "select[aria-label='Telemetry connection'] option[value='ble']", text: "Bluetooth"
-    assert_select "select[aria-label='Telemetry connection'] option[value='wifi']", text: "Wi-Fi via Sillage"
+    assert_select ".exds-icon-select select[aria-label='Link type'] option[value='ground-radio'][selected]", text: "SiK radio"
+    assert_select "select[aria-label='Link type'] option", count: 4
+    assert_select "select[aria-label='Link type'] option[value='usb-c']", text: "USB-C"
+    assert_select "select[aria-label='Link type'] option[value='ble']", text: "Bluetooth"
+    assert_select "select[aria-label='Link type'] option[value='wifi']", text: "Wi-Fi via Sillage"
     assert_select ".signal-command-actions button", count: 2
     assert_select "button[aria-controls='sillage-room-rail']", count: 1
     assert_select "button[aria-controls='signal-telemetry-readings']", count: 1
@@ -201,19 +201,39 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_redirected_to signal_path(view: "home")
   end
 
-  test "drafts can be created from Signal without an aircraft" do
-    assert_difference "Flight.count", 1 do
-      post draft_signal_sessions_path
-      assert_redirected_to signal_path(view: "home")
-    end
-    flight = users(:julien).flights.order(:id).last
-    assert_equal "preparation", flight.status
-    assert_equal users(:julien), flight.pilot
-    assert_nil flight.aircraft
-    get signal_path(view: "home")
-    assert_select "a[href=?]", edit_flight_path(flight), text: "Edit draft"
-    post signal_sessions_path(flight_id: flight.id), params: { device_id: signal_recorder.device_id }
-    assert_equal flight, users(:julien).signal_sessions.order(:id).last.flight
+  test "standby offers a new flight or a prepared one, and records on the computer that started it" do
+    flight = users(:julien).flights.create!(name: "Prepared flight", status: "preparation")
+    get signal_path
+    assert_response :success
+    assert_select "[data-controller='signal-workspace'][data-signal-workspace-session-value]", count: 0
+    assert_select ".signal-command-bar[data-signal-state='standby']", text: /Standby · Not recording/
+    assert_select "form[action=?] select[name='flight_id'] option", signal_sessions_path, text: "New flight"
+    assert_select "select[name='flight_id'] option[value='#{flight.id}']", text: /#{flight.code}/
+    assert_select "button[data-signal-workspace-target='startButton'][disabled]", text: /Start flight/
+    assert_select "#signal-start-hint[role='status']", text: /Connect the link/
+    assert_select "[data-controller='signal-station'] button[aria-pressed='false']", text: /Phone remote off/
+    assert_select "img.signal-remote-qr[src^='data:image/svg+xml;base64,']"
+
+    post signal_sessions_path, params: { device_id: signal_recorder.device_id, flight_id: flight.id, transport: "ground-radio" }
+    session = users(:julien).signal_sessions.order(:id).last
+    assert_equal flight, session.flight
+    assert_equal "ground-radio", session.station_metadata["transport"]
+    assert_redirected_to signal_path(session: session.uuid)
+
+    # The computer that started the flight comes back to its recording.
+    get signal_path
+    assert_select "[data-controller='signal-workspace'][data-signal-workspace-session-value=?]", session.uuid
+    assert_select ".signal-command-bar[data-signal-state='recording']", text: /Recording · #{flight.code}/
+    assert_select "button", text: "End flight"
+
+    # Any other device watches it instead of trying to record it.
+    reset!
+    sign_in_as users(:julien)
+    get signal_path
+    assert_response :success
+    assert_select "[data-controller='signal-workspace']", count: 0
+    assert_select "[data-controller='signal-watch'] h1", text: /#{flight.code}/
+    assert_select "[data-controller='signal-watch'] button", text: "End flight"
   end
 
   test "recovery is owner scoped and excludes discarded acquisitions" do
@@ -222,7 +242,7 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     discarded = create_signal_session(status: "discarded")
     get signal_path(view: "home")
     assert_response :success
-    assert_select "a[href=?]", signal_path(session: session.uuid, review: 1), text: "Review session"
+    assert_select "a[href=?]", signal_path(session: session.uuid, review: 1), text: "Review"
     assert_select "a[href=?]", signal_path(session: other.uuid, review: 1), count: 0
     assert_select "a[href=?]", signal_path(session: discarded.uuid, review: 1), count: 0
     patch complete_api_v1_signal_session_path(other.uuid), params: { disposition: "discard" }, as: :json
@@ -584,8 +604,9 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
 
     get signal_path(view: "home")
     assert_response :success
-    assert_select "h1", text: "Start live acquisition"
-    assert_select "[data-controller='signal-workspace']", count: 0
+    assert_select ".signal-command-bar[data-signal-state='standby']"
+    assert_select "[data-controller='signal-workspace'][data-signal-workspace-session-value]", count: 0
+    assert_select ".signal-standby-notice a[href=?]", signal_path(session: session.uuid, watch: 1), text: "Watch live"
 
     get signal_path(session: session.uuid)
     assert_response :success
@@ -598,14 +619,15 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     get signal_path
 
     assert_response :success
-    assert_select ".sillage-topbar .aircraft-connection-pill", count: 0
-    assert_select ".signal-home #sillage-fdr-connectivity", count: 0
+    # The link is chosen once in the top bar, before any flight exists.
+    assert_select ".sillage-topbar [data-controller='signal-connection'] .aircraft-connection-pill", count: 1
+    assert_select ".sillage-topbar select[aria-label='Link type'] option", count: 4
+    assert_select ".signal-root #sillage-fdr-connectivity", count: 0
     assert_select "[data-recorder-session-host][hidden] #sillage-fdr-connectivity[data-turbo-permanent]", count: 1
     assert_select "#signal-development-status", count: 0
-    assert_select ".signal-home button", minimum: 1
-    assert_select ".signal-home [data-signal-acquisition][disabled]", count: 2
-    assert_select ".signal-prep-row button[disabled]", text: "Open session", count: 1
-    assert_select ".signal-start-direct[disabled]", text: /Start live flight/, count: 1
+    assert_select "select[name='flight_id'] option[value='#{flights(:one).id}']", count: 1
+    assert_select "button[data-signal-workspace-target='startButton'][disabled]", count: 1
+    assert_select "[data-controller='signal-recorder-assignment'] [data-signal-recorder-assignment-target='notice'][hidden]", count: 1
   end
 
   test "keeps recorder connections hidden outside Forge" do

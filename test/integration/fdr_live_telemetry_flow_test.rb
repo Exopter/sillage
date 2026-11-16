@@ -34,6 +34,17 @@ class FdrLiveTelemetryFlowTest < ActionDispatch::IntegrationTest
     assert_not FdrLiveTelemetry.wanted?(@recorder)
   end
 
+  test "an operator in standby previews Wi-Fi telemetry before any flight exists, a read-only account cannot" do
+    sign_in_as users(:julien)
+    publish
+    post api_v1_fdr_live_telemetry_path, params: { device_id: @recorder.device_id }, as: :json
+    assert_response :success
+    assert_equal @packet, response.parsed_body.dig("telemetry", "packet")
+    sign_in_as users(:member)
+    post api_v1_fdr_live_telemetry_path, params: { device_id: @recorder.device_id }, as: :json
+    assert_response :forbidden
+  end
+
   test "invalid signatures and malformed packets cannot reach the live mailbox" do
     publish(signature: "0" * 64)
     assert_response :unauthorized

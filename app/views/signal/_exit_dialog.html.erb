@@ -1,18 +1,18 @@
 <dialog class="workspace-dialog ex-dark" data-signal-workspace-target="exitDialog" aria-labelledby="signal-exit-title" data-action="cancel->signal-workspace#continueSession">
   <div class="workspace-dialog-head">
-    <div><span class="section-eyebrow">Signal acquisition</span><h3 id="signal-exit-title"><%= flight ? "End session" : "Save this acquisition?" %></h3></div>
-    <button type="button" class="button-secondary exds-btn exds-btn--secondary" aria-label="Cancel and continue session" data-action="signal-workspace#continueSession" data-signal-workspace-target="exitAction"><%= sillage_icon "x", size: 16 %></button>
+    <div><span class="section-eyebrow">Signal</span><h3 id="signal-exit-title"><%= flight ? "End flight" : "Save this recording?" %></h3></div>
+    <button type="button" class="button-secondary exds-btn exds-btn--secondary" aria-label="Cancel and keep recording" data-action="signal-workspace#continueSession" data-signal-workspace-target="exitAction"><%= sillage_icon "x", size: 16 %></button>
   </div>
   <div class="workspace-dialog-section">
-    <p><%= flight ? "Save the final telemetry to #{flight.code} and end this session." : "Save the telemetry and event markers as a new flight, or discard this acquisition." %></p>
+    <p><%= flight ? "Save the final telemetry to #{flight.code}. The link stays open for the next flight." : "Save the telemetry and event markers as a new flight, or discard this recording." %></p>
     <% unless flight %>
       <div class="operations-form-grid"><label class="is-wide"><span>Description (optional)</span><input type="text" value="" maxlength="160" data-signal-workspace-target="flightName" aria-label="Description (optional)"></label></div>
-      <p class="operations-help">Discard permanently deletes this session's telemetry and local capture. Onboard microSD recordings are unchanged.</p>
+      <p class="operations-help">Discard permanently deletes this recording's telemetry and local capture. Onboard microSD recordings are unchanged.</p>
     <% end %>
     <p class="workspace-errors" role="alert" data-signal-workspace-target="exitError" hidden></p>
     <p class="operations-help" role="status" data-signal-workspace-target="exitStatus" hidden></p>
     <div class="operations-form-actions">
-      <button type="button" class="button-primary exds-btn exds-btn--primary" data-action="signal-workspace#saveSession" data-signal-workspace-target="exitAction"><%= flight ? "Save and end session" : "Save as new flight" %></button>
+      <button type="button" class="button-primary exds-btn exds-btn--primary" data-action="signal-workspace#saveSession" data-signal-workspace-target="exitAction"><%= flight ? "Save and end flight" : "Save as new flight" %></button>
       <% unless flight %><button type="button" class="button-danger exds-btn exds-btn--danger-solid" data-action="signal-workspace#discardSession" data-signal-workspace-target="exitAction">Discard data</button><% end %>
       <button type="button" class="button-secondary exds-btn exds-btn--secondary" data-action="signal-workspace#continueSession" data-signal-workspace-target="exitAction">Cancel</button>
     </div>

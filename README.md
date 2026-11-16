@@ -110,19 +110,38 @@ buildings load independently when configured; unavailable map data leaves the
 
 ## Signal ground radio
 
-Open `/signal` in desktop Chrome or Edge. The home header can check the ground
-radio and live wing telemetry before any session is created. It reads the same
-MAVLink stream without writing a local capture or sending session batches. A
-connected USB radio or SiK report alone never marks the wing connected; received
-FDR traffic expires after 1.5 seconds. The preview releases its serial lock before
-starting an acquisition. `Radio ready` describes the link only. The current
+Open `/signal` in desktop Chrome or Edge. Signal is one screen with three states.
+
+- **Standby.** Choose the link in the top bar (SiK radio, USB-C, Bluetooth or
+  Wi-Fi via Sillage) and select **Connect**; the choice is remembered on that
+  computer and an authorized radio reopens by itself. The dashboard shows the
+  received telemetry without creating a flight, a local capture or a batch. A
+  connected USB radio or SiK report alone never marks the aircraft as heard;
+  received FDR traffic expires after 1.5 seconds. The line under the command bar
+  states why **Start flight** is or is not available. A recorder Hangar does not
+  know can be recorded; a notice offers to add it and never blocks the flight.
+- **Recording.** **Start flight** records a new flight or a prepared one. The
+  link stays open across the change of state: the open port and its cross-tab
+  lock are handed to the next screen through a Turbo visit, and a hand-off nobody
+  claims within 15 seconds is closed. A full page reload falls back to reopening
+  the remembered radio. **End flight** saves and returns to standby the same way.
+- **Watch live.** The computer that started a flight is the only one recording
+  it (signed `signal_station_flight` cookie). Any other device opening `/signal`
+  follows the flight, can end it, and can close it if that computer stops
+  answering.
+
+For the SiK radio, choose the Holybro USB radio, not the recorder's USB port.
+Web Serial uses 57,600 baud and requires HTTPS or localhost. Both radios must
+already share the same SiK configuration. The current
 recorder-to-assembly-to-aircraft installation chain determines the displayed
 aircraft name and registration.
 
-Start a session, then select
-**Connect radio** in the header. Choose the Holybro USB radio, not the recorder's USB
-port. Web Serial uses 57,600 baud and requires HTTPS or localhost. Both radios
-must already share the same SiK configuration.
+The **Phone remote** switch in standby makes the computer start and end flights
+asked from `/remote`; its dialog shows a QR code opening the remote. A computer
+in standby checks in every two seconds (`POST /remote/station`, table
+`signal_stations`, fresh for 10 seconds) with what it hears, so the phone states
+before a flight whether a ground station will record it. A start request is
+handed only to a station whose switch is on and that hears an aircraft.
 
 Saving an unassigned session commits its flight and a Solid Queue job together.
 The imports worker materializes retained batches using bounded bulk inserts and

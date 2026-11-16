@@ -3,7 +3,8 @@ import { Controller } from "@hotwired/stimulus"
 /**
  * @typedef {{id: number, code: string, pilot: string, aircraft: string, aircraft_id: number | null, pilot_id: number, destination?: string, started_at: string | null, recording: boolean, debrief_url: string, cancel_url: string, end_url: string}} RemoteFlight
  * @typedef {{gateway_connected: boolean, stop_requested: boolean, close_url: string}} RemoteSession
- * @typedef {{phase: string, flights_today: number, server_time?: number, flight?: RemoteFlight, session?: RemoteSession | null, error?: string}} RemoteState
+ * @typedef {{state: "ready" | "waiting" | "remote_off" | "offline", aircraft?: string | null}} RemoteStation
+ * @typedef {{phase: string, flights_today: number, server_time?: number, station?: RemoteStation, flight?: RemoteFlight, session?: RemoteSession | null, error?: string}} RemoteState
  * @typedef {Object} Bindings
  * @property {string} stateUrlValue
  * @property {string} flightsUrlValue
@@ -24,6 +25,7 @@ import { Controller } from "@hotwired/stimulus"
  * @property {HTMLSelectElement} aircraftTarget
  * @property {HTMLSelectElement} pilotTarget
  * @property {HTMLSelectElement} destinationTarget
+ * @property {HTMLElement} stationTarget
  */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 const DONE_KEY = "sillage-remote-done"
@@ -34,7 +36,7 @@ const DONE_KEY = "sillage-remote-done"
 // offered as soon as the debrief is handed off.
 export default class extends TypedController {
   static values = { stateUrl: String, flightsUrl: String, initial: Object }
-  static targets = ["title", "link", "count", "saved", "savedText", "cancel", "pilotName", "aircraftName", "clock", "flightStatus", "error", "forceClose", "debriefs", "aircraft", "pilot", "destination"]
+  static targets = ["title", "link", "count", "saved", "savedText", "cancel", "pilotName", "aircraftName", "clock", "flightStatus", "error", "forceClose", "debriefs", "aircraft", "pilot", "destination", "station"]
   /** @type {RemoteState} */
   state = { phase: "ready", flights_today: 0 }
   endedFlight = 0
@@ -119,8 +121,20 @@ export default class extends TypedController {
       this.cancelTarget.hidden = flight.recording
       this.forceCloseTarget.hidden = !(session && session.gateway_connected === false && session.stop_requested)
     }
+    this.renderStation()
     this.renderLink()
     this.renderClock()
+  }
+
+  // Said before the flight starts: what, if anything, will record it.
+  renderStation() {
+    const station = this.state.station
+    const state = station?.state || "offline"
+    this.stationTarget.dataset.state = state
+    this.stationTarget.textContent = state === "ready" ? `Ground station ready${station?.aircraft ? ` \u00b7 ${station.aircraft} heard` : ""}. It records when you start.`
+      : state === "waiting" ? "Ground station on, but it hears no aircraft. The flight would only be timed."
+      : state === "remote_off" ? "Ground station on with its phone remote switched off. Turn it on in Signal to record."
+      : "No ground station. The flight will be timed on this phone so you can still debrief."
   }
 
   renderLink() {
@@ -131,7 +145,7 @@ export default class extends TypedController {
     const [state, label] = offline ? ["down", "No connection"]
       : phase === "flight" ? (flight?.recording && session?.gateway_connected !== false ? ["live", "Recording"] : ["wait", "Not recording"])
       : phase === "debrief" ? ["live", "Debrief"]
-      : ["idle", "Ready"]
+      : this.state.station?.state === "ready" ? ["idle", "Station ready"] : ["wait", "No recording"]
     this.linkTarget.dataset.state = state
     this.linkTarget.textContent = label
   }

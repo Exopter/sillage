@@ -9,6 +9,7 @@ import {ImuHealth} from "../../app/javascript/lib/imu_health.js"
 import {SignalTelemetry} from "../../app/javascript/lib/signal_telemetry.js"
 globalThis.window = { dispatchEvent() {}, location: {href: "https://example.com/signal"} }
 globalThis.history = {state: null}
+globalThis.localStorage = {getItem: () => null}
 const requests = []
 const metadata = []
 const writes = []
@@ -18,9 +19,11 @@ globalThis.signalLifecycleDependencies = {
   readMetadata: () => new Promise((resolve) => metadata.push(resolve)),
   writeMetadata: async (_database, key, value) => writes.push({key, value}),
   registerUsbPageRelease: () => () => {},
-  SignalMap: class { start() {} }
+  SignalMap: class { start() {} },
+  // No link was left open by a previous screen: the remembered radio is reopened.
+  claimTelemetryLink: () => null, closeTelemetryLink: async () => {}
 }
-const prelude = "const {ImuHealth, SignalTelemetry, openDatabase, readMetadata, writeMetadata, registerUsbPageRelease, SignalMap} = globalThis.signalLifecycleDependencies;\n"
+const prelude = "const {ImuHealth, SignalTelemetry, openDatabase, readMetadata, writeMetadata, registerUsbPageRelease, SignalMap, claimTelemetryLink, closeTelemetryLink} = globalThis.signalLifecycleDependencies;\n"
 const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountedReference} from "${mountURL}";\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n` + prelude + source).toString("base64")}`)
 const tick = () => new Promise((resolve) => setImmediate(resolve))
 let closed = 0

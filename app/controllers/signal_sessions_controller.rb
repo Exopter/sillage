@@ -1,13 +1,8 @@
 class SignalSessionsController < ApplicationController
-  def draft
-    flight = Current.user.flights.create!(name: "Draft flight", status: "preparation")
-    redirect_to signal_path(view: "home"), notice: "Draft #{flight.code} created."
-  end
-
   def retry_processing
     session = SignalSession.accessible_to(Current.user).find_by!(uuid: params[:id])
     unless session.status == "completed" && session.flight && session.materialization_status != "complete"
-      redirect_to signal_path(view: "home"), alert: "This session does not need processing."
+      redirect_to signal_path(view: "home"), alert: "This flight does not need processing."
       return
     end
 
@@ -20,10 +15,12 @@ class SignalSessionsController < ApplicationController
       user: Current.user,
       device_id: params[:device_id],
       flight_id: params[:flight_id],
-      station_metadata: { "source" => "web_serial" }
+      station_metadata: { "source" => "web_serial", "transport" => params[:transport].to_s.presence }.compact
     ).call
-    redirect_to signal_path(session: signal_session.uuid, station: params[:station].presence), notice: "Signal session started."
+    # This computer records the flight; every other device opening Signal watches it.
+    cookies.signed[SignalController::STATION_COOKIE] = { value: signal_session.uuid, httponly: true, same_site: :lax, expires: 2.days }
+    redirect_to signal_path(session: signal_session.uuid), status: :see_other
   rescue Signal::StartSession::InvalidFlight, Signal::RecorderAccess::Denied => error
-    redirect_to signal_path(view: "home", station: params[:station].presence), alert: error.message
+    redirect_to signal_path(view: "home"), alert: error.message, status: :see_other
   end
 end
