@@ -1,8 +1,8 @@
 <% unless flight.live? %>
-<section id="<%= dom_id(flight, :debrief) %>" class="exds-browser-editor-section flight-debrief" aria-labelledby="<%= dom_id(flight, :debrief_title) %>" data-controller="flight-debrief" data-flight-debrief-url-value="<%= flight_debriefs_path(flight) %>" data-flight-debrief-key-value="<%= Current.user.id %>:<%= flight.id %>">
+<section id="<%= dom_id(flight, :debrief) %>" class="exds-browser-editor-section flight-debrief" aria-labelledby="<%= dom_id(flight, :debrief_title) %>" data-controller="flight-debrief" data-flight-debrief-url-value="<%= flight_debriefs_path(flight) %>" data-flight-debrief-key-value="<%= Current.user.id %>:<%= flight.id %>" data-flight-debrief-comments-url-value="<%= flight_comments_path(flight) %>">
   <header class="flight-debrief-head">
     <div><span class="flight-debrief-eyebrow">Pilot log</span><h3 id="<%= dom_id(flight, :debrief_title) %>">Debrief your flight</h3></div>
-    <ol class="flight-debrief-steps" aria-label="Debrief steps"><li>Record</li><li>Review</li><li>Publish</li></ol>
+    <ol class="flight-debrief-steps" aria-label="Debrief steps"><li>Record</li><li>Save</li><li>Pilot log</li></ol>
   </header>
 
   <div class="flight-debrief-stage">
@@ -13,7 +13,7 @@
       <label class="sr-only">Microphone level <meter min="0" max="1" value="0" data-flight-debrief-target="level"></meter></label>
     </div>
     <span class="flight-debrief-spinner" data-debrief-states="busy" hidden aria-hidden="true"></span>
-    <p class="flight-debrief-status" data-flight-debrief-target="status" role="status">Tap the microphone and talk. Your words become a summary you review before publishing.</p>
+    <p class="flight-debrief-status" data-flight-debrief-target="status" role="status">Tap the microphone and talk. When you finish, the debrief goes straight to the Pilot Log and its summary follows.</p>
   </div>
 
   <ul class="flight-debrief-prompts" data-debrief-states="idle recording paused" aria-label="What to cover">
@@ -28,15 +28,10 @@
   <button type="button" class="exds-btn exds-btn--primary exds-btn--lg" data-debrief-states="recovery" hidden data-action="flight-debrief#recover">Recover saved recording</button>
   </div>
 
-  <details class="exds-disclosure flight-debrief-transcript" data-debrief-states="recording paused ready" hidden><summary>Transcript</summary><p data-flight-debrief-target="transcript" aria-live="polite"></p></details>
-
-  <div class="flight-debrief-review" data-debrief-states="ready" hidden>
-  <label class="exds-browser-field">Review your summary<textarea rows="6" maxlength="4000" data-flight-debrief-target="summary"></textarea></label>
-  <button type="button" class="exds-btn exds-btn--primary exds-btn--lg" data-action="flight-debrief#publish">Publish to Pilot Log</button>
-  </div>
+  <details class="exds-disclosure flight-debrief-transcript" data-debrief-states="recording paused" hidden><summary>Transcript</summary><p data-flight-debrief-target="transcript" aria-live="polite"></p></details>
 
   <div class="flight-debrief-actions">
-  <button type="button" class="exds-btn exds-btn--danger" data-debrief-states="recovery ready" hidden data-action="flight-debrief#discard">Discard draft</button>
+  <button type="button" class="exds-btn exds-btn--danger" data-debrief-states="recovery" hidden data-action="flight-debrief#discard">Discard draft</button>
   </div>
 
   <p class="flight-debrief-note"><%= sillage_icon "lock-keyhole", size: 14 %><span>Audio is saved on this device first, so a lost connection does not lose it. The original stays attached to the Pilot Log entry.</span></p>

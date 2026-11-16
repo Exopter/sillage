@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_15_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_16_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -270,6 +270,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_15_180000) do
     t.text "error_message"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "checklist", default: {}, null: false
     t.index ["flight_comment_id"], name: "index_flight_debriefs_on_flight_comment_id", unique: true
     t.index ["flight_id"], name: "index_flight_debriefs_on_flight_id"
     t.index ["user_id"], name: "index_flight_debriefs_on_user_id"
@@ -368,6 +369,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_15_180000) do
     t.string "video_processing_status", default: "empty", null: false
     t.string "visibility", default: "private", null: false
     t.bigint "pilot_id", null: false
+    t.datetime "remote_start_requested_at"
     t.index ["aircraft_id"], name: "index_flights_on_aircraft_id"
     t.index ["code"], name: "index_flights_on_code", unique: true
     t.index ["exit_at"], name: "index_flights_on_exit_at"

@@ -1603,3 +1603,8 @@ textarea {
 .signal-assignment-fields { display: grid; grid-template-columns: 1fr; gap: var(--ex-space-3); margin: 12px 0 0; padding: 0; border: 0; }
 .signal-assignment-fields[hidden] { display: none; }
 .signal-home-link [hidden] { display: none; }
+
+/* Tunnel station: the computer that follows the phone remote. */
+.signal-station[data-state="armed"] { border-color: var(--state-ready); }
+.signal-station[data-state="blocked"] { border-color: var(--state-caution); }
+.signal-station-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }

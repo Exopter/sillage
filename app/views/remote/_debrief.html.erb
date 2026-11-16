@@ -1,0 +1,34 @@
+<section class="remote-debrief flight-debrief" data-controller="flight-debrief debrief-checklist"
+  data-flight-debrief-url-value="<%= flight_debriefs_path(flight) %>" data-flight-debrief-key-value="<%= Current.user.id %>:<%= flight.id %>"
+  data-flight-debrief-autostart-value="true" data-debrief-checklist-pilot-value="<%= flight.display_pilot %>"
+  data-flight-id="<%= flight.id %>" aria-label="Debrief of <%= flight.code %>">
+  <div class="remote-body">
+    <div class="remote-recorder">
+      <span class="remote-mic" aria-hidden="true"><%= sillage_icon "mic", size: 28 %></span>
+      <div class="remote-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <label class="sr-only">Microphone level <meter min="0" max="1" value="0" data-flight-debrief-target="level"></meter></label>
+      <output class="remote-clock is-small" data-flight-debrief-target="duration">0:00</output>
+    </div>
+    <p class="remote-hint" role="status" data-flight-debrief-target="status">Starting the microphone…</p>
+    <div class="remote-list-head"><span class="remote-eyebrow">Say each point</span><span class="remote-count" data-debrief-checklist-target="count">0 of <%= DebriefChecklist::ITEMS.size %></span></div>
+    <ol class="remote-list" aria-label="Debrief checklist">
+      <% DebriefChecklist::ITEMS.each do |item| %>
+        <li><button type="button" class="remote-item" data-debrief-checklist-target="item" data-key="<%= item[:key] %>" data-action="debrief-checklist#toggle" aria-pressed="false">
+          <span class="remote-box" aria-hidden="true"><%= sillage_icon "check", size: 16, stroke_width: 3 %></span>
+          <span class="remote-item-label"><%= item[:label] %></span>
+          <span class="remote-item-value" data-value></span>
+        </button></li>
+      <% end %>
+    </ol>
+    <p class="sr-only" data-flight-debrief-target="transcript" aria-hidden="true"></p>
+  </div>
+  <footer class="remote-foot">
+    <button type="button" class="remote-big" data-debrief-states="recording paused" hidden data-action="flight-debrief#stop remote#next">Save and next flight</button>
+    <button type="button" class="remote-big" data-debrief-states="idle" hidden data-action="flight-debrief#start">Record debrief</button>
+    <button type="button" class="remote-big" data-debrief-states="recovery" hidden data-action="flight-debrief#recover">Send saved debrief</button>
+    <div class="remote-foot-row">
+      <button type="button" class="remote-text" data-debrief-states="recording paused" hidden data-action="flight-debrief#pause">Pause</button>
+      <button type="button" class="remote-text is-danger" data-action="flight-debrief#abandon">Skip debrief</button>
+    </div>
+  </footer>
+</section>

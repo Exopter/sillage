@@ -19,6 +19,25 @@ class FlightDebriefJobTest < ActiveSupport::TestCase
     assert_equal "Stable flight.", record.summary
   end
 
+  test "fills the published Pilot log entry and keeps an entry its author rewrote" do
+    client = Object.new
+    client.define_singleton_method(:summarize) { |_| "I held a steady glide." }
+    client.define_singleton_method(:transcribe) { |_| "Spoken words." }
+    records = 2.times.map do
+      record = FlightDebrief.create!(flight: flights(:one), user: users(:julien), uuid: SecureRandom.uuid, status: "uploaded")
+      record.publish_entry!(users(:julien))
+      record
+    end
+    records.last.flight_comment.update!(body: "My own notes.")
+    replace_method(Debriefs::OpenAi, :new, -> { client }) { records.each { |record| FlightDebriefJob.perform_now(record.id) } }
+
+    assert_equal %w[published published], records.map { |record| record.reload.status }
+    assert_equal "I held a steady glide.", records.first.flight_comment.reload.body
+    assert_nil records.first.flight_comment.edited_at
+    assert_equal "My own notes.", records.last.flight_comment.reload.body
+    assert_equal "I held a steady glide.", records.last.summary
+  end
+
   test "retains the transcript when summarization fails" do
     record = FlightDebrief.create!(flight: flights(:one), user: users(:julien), uuid: SecureRandom.uuid, status: "uploaded")
     client = Object.new

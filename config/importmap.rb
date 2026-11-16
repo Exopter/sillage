@@ -42,3 +42,4 @@ pin "signal_transport", to: "lib/signal_transport.js"
 pin "membership_card", to: "lib/membership_card.js", preload: false
 
 pin "signal_radio_link", to: "lib/signal_radio_link.js"
+pin "debrief_checklist", to: "lib/debrief_checklist.js"

@@ -97,6 +97,7 @@
       "signal_transport": [
         "./app/javascript/lib/signal_transport.js"
       ],
+      "debrief_checklist": ["./app/javascript/lib/debrief_checklist.js"],
       "membership_card": [
         "./app/javascript/lib/membership_card.js"
       ]

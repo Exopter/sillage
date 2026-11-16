@@ -64,6 +64,32 @@ class SharedFlightDebriefTest < ActionDispatch::IntegrationTest
     assert response.parsed_body["flight_url"].present?
   end
 
+  test "adds the Pilot log entry as soon as the audio is stored, before the summary exists" do
+    flight = flights(:one)
+    post flight_debriefs_path(flight), params: { device_id: signal_recorder.device_id, uuid: SecureRandom.uuid }, as: :json
+    assert_response :success
+    debrief = FlightDebrief.find(response.parsed_body.fetch("id"))
+    debrief.audio.attach(io: StringIO.new("audio evidence"), filename: "original.webm", content_type: "audio/webm")
+    debrief.update!(status: "uploaded")
+
+    assert_difference "FlightComment.count", 1 do
+      assert_enqueued_with(job: FlightDebriefJob) do
+        2.times do
+          post process_audio_flight_debrief_path(flight, debrief), as: :json
+          assert_response :success
+        end
+      end
+    end
+    assert response.parsed_body.fetch("published")
+    assert_equal FlightDebrief::PENDING_SUMMARY, debrief.reload.flight_comment.body
+
+    get flight_comments_path(flight)
+    assert_response :success
+    assert_select ".flight-debrief-entry .flight-debrief-pending[data-controller='debrief-summary']", text: /Writing the summary/
+    assert_select ".flight-debrief-entry audio"
+    assert_select ".flight-debrief-summary", count: 0
+  end
+
   test "publishes a debrief once and retains the original audio" do
     flight = flights(:one)
     post flight_debriefs_path(flight), params: { device_id: signal_recorder.device_id, uuid: SecureRandom.uuid }, as: :json

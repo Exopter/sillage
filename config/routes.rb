@@ -37,6 +37,12 @@ Rails.application.routes.draw do
   resources :feedbacks, only: %i[new create]
   get "hangar" => "hangar/aircraft#index", as: :hangar
   get "signal" => "signal#index", as: :signal
+  get "remote" => "remote#show", as: :remote
+  get "remote/state" => "remote#state", as: :remote_state
+  get "remote/pending" => "remote#pending", as: :remote_pending
+  post "remote/flights" => "remote#create", as: :remote_flights
+  delete "remote/flights/:id" => "remote#cancel", as: :remote_flight
+  get "remote/flights/:id/debrief" => "remote#debrief", as: :debrief_remote_flight
   get "forge" => "forge/fdrs#index", as: :forge
   get "core" => "core/users#index", as: :core
 
