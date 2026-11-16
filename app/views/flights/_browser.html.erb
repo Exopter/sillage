@@ -73,7 +73,7 @@
                       <% end %>
                     </span>
                     <small class="exds-browser-entry-location" title="<%= entry.location if entry.is_a?(Flight) %>"><%= entry.location if entry.is_a?(Flight) %></small>
-                    <small class="exds-browser-entry-date" title="<%= entry.is_a?(Flight) && entry.started_at.nil? && !entry.flown_on ? "Creation date and time (UTC)" : "Flight date and time" %>"><%= browser_date(entry).delete_prefix("Created ") %></small>
+                    <small class="exds-browser-entry-date" title="<%= entry.is_a?(Flight) && entry.started_at.nil? && !entry.flown_on ? "Creation date and time" : "Flight date and time" %>"><%= browser_date(entry) %></small>
                     <% description = entry.is_a?(Flight) ? entry.description : (entry.failed? ? entry.error_message : entry.import_type.upcase) %>
                     <% description = nil if entry.is_a?(Flight) && description.in?(["Draft flight", "Prepared flight"]) %>
                     <% description = "FlySight recording" if description&.match?(/\AFlySight \d{4}-\d{2}-\d{2} \d{2}:\d{2}\z/) %>
@@ -81,7 +81,7 @@
                     <% if (duration_label = browser_duration_label(entry)) %>
                       <small class="exds-browser-entry-duration" aria-label="Duration: <%= duration_label %>" title="Recorded duration"><%= sillage_icon "clock", size: 12 %><%= duration_label %></small>
                     <% elsif entry.is_a?(Flight) && entry.started_at.nil? && !entry.flown_on %>
-                      <small class="exds-browser-entry-duration">Created · UTC</small>
+                      <small class="exds-browser-entry-duration">Created</small>
                     <% end %>
                   </span>
                   <span title="<%= browser_visibility(entry).capitalize %>"><%= sillage_icon(browser_visibility(entry) == "private" ? "lock-keyhole" : "users", size: 17) %><span class="sr-only"><%= browser_visibility(entry).capitalize %></span></span>

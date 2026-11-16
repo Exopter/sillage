@@ -1,8 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["timestamp"]
-
   /** @type {Map<HTMLInputElement, string[]>} */
   previewUrls = new Map()
 
@@ -37,12 +35,6 @@ export default class extends Controller {
     }
     this.previewUrls.set(input, urls)
     preview.hidden = !preview.childElementCount
-  }
-
-  /** @param {HTMLTimeElement} element */
-  timestampTargetConnected(element) {
-    const format = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
-    element.textContent = format.format(new Date(element.dateTime))
   }
 
   /** @param {Event} event */

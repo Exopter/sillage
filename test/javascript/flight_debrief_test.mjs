@@ -45,6 +45,52 @@ assert.equal(refreshed, 1)
 first.database.close(); reopened.database.close(); other.database.close()
 console.log("Audio recovery, account isolation, failed upload preservation and automatic publication passed")
 
+// The live connection opens with the screen. The microphone stays muted until the
+// tap, and a connection that is never used gives its reservation back.
+const tracks = [{ enabled: true, stopped: false, stop() { this.stopped = true } }]
+Object.defineProperty(globalThis, "navigator", { configurable: true, value: { mediaDevices: { getUserMedia: async () => ({ getAudioTracks: () => tracks, getTracks: () => tracks }) } } })
+const early = recorder("early:flight")
+early.prewarmValue = true
+early.urlValue = "/debriefs"
+const requests = []
+early.api = async (url, _body, method = "POST") => { requests.push(`${method} ${url}`); return { uuid: "reserved", url: "/debriefs/1" } }
+let connected = 0
+early.live = async () => { connected += 1; early.peer = { connectionState: "connected", close() {} } }
+await early.connect()
+await early.preparation
+assert.equal(early.warm, true)
+assert.equal(connected, 1)
+assert.equal(tracks[0].enabled, false, "nothing is sent before the operator records")
+assert.equal(early.element.dataset.state, "idle")
+assert.deepEqual(requests, ["POST /debriefs"])
+assert.equal((await early.store("get")).uuid, "reserved")
+early.element.dispatchEvent = () => true
+await early.dropSaved()
+assert.equal(early.warm, false)
+assert.equal(tracks[0].stopped, true)
+assert.deepEqual(requests, ["POST /debriefs", "DELETE /debriefs/1"])
+assert.equal(await early.store("get"), undefined)
+// A reservation left by a closed page is released when the screen opens again.
+await early.store("put", { uuid: "left-behind", parts: [], type: "", url: "/debriefs/2" })
+const returning = recorder("early:flight")
+returning.api = early.api
+await returning.connect()
+assert.equal(returning.element.dataset.state, "idle")
+assert.equal(requests.at(-1), "DELETE /debriefs/2")
+// Without microphone access the screen stays ready and the reservation is given back.
+globalThis.navigator.mediaDevices.getUserMedia = async () => { throw new DOMException("denied", "NotAllowedError") }
+const refused = recorder("refused:flight")
+refused.prewarmValue = true
+refused.urlValue = "/debriefs"
+refused.api = early.api
+await refused.connect()
+await refused.preparation
+assert.equal(refused.warm, false)
+assert.equal(refused.saved, null)
+assert.equal(requests.at(-1), "DELETE /debriefs/1")
+early.database.close(); returning.database.close(); refused.database.close()
+console.log("Early live connection, muted microphone and reservation release passed")
+
 const controls = ["idle", "recording paused", "recovery", "busy"].map(states => ({ dataset: { debriefStates: states }, hidden: false }))
 const pauseButton = { textContent: "" }
 const ui = recorder("ui")

@@ -15,7 +15,7 @@
             <button type="button" class="exds-kanban-handle" draggable="true" aria-label="Move feedback #<%= feedback.id %>" aria-describedby="feedback-move-help" aria-pressed="false" data-action="dragstart->feedback-board#start dragend->feedback-board#end click->feedback-board#select keydown->feedback-board#key">
               <strong><%= Feedback::CATEGORIES.fetch(feedback.category) %></strong><small>#<%= feedback.id %></small>
             </button>
-            <div><small><%= feedback.user.email_address %></small><small><%= feedback.created_at.utc.strftime("%d %b %Y, %H:%M UTC") %></small></div>
+            <div><small><%= feedback.user.email_address %></small><small><%= local_time feedback.created_at %></small></div>
             <%= simple_format(feedback.description) %>
             <% if feedback.page_path.present? %><p>Related page: <%= feedback.page_path %></p><% end %>
             <% if feedback.screenshot.attached? %>

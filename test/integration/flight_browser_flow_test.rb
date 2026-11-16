@@ -23,7 +23,8 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     get flights_path(folder: @folder.id)
     assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
       assert_select ".exds-browser-entry-heading .status-dot", text: "Preparation"
-      assert_select ".exds-browser-entry-duration", text: "Created · UTC"
+      assert_select ".exds-browser-entry-duration", text: "Created"
+      assert_select ".exds-browser-entry-date time[data-local-time='list'][datetime]", minimum: 1
       assert_select ".exds-browser-entry-description", text: ""
     end
   end

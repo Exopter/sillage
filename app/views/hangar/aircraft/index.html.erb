@@ -56,7 +56,7 @@
               <div class="workspace-list-row is-static">
                 <span>
                   <strong><%= hangar_asset_code(installation.installable) %> · <%= hangar_asset_name(installation.installable) %></strong>
-                  <small><%= hangar_asset_kind(installation.installable) %> · <%= l installation.installed_at, format: :short %> → <%= installation.removed_at ? l(installation.removed_at, format: :short) : "Active" %></small>
+                  <small><%= hangar_asset_kind(installation.installable) %> · <%= local_time(installation.installed_at, :long) %> → <%= installation.removed_at ? local_time(installation.removed_at, :long) : "Active" %></small>
                 </span>
               </div>
             <% end %>

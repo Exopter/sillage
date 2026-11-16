@@ -18,7 +18,7 @@
     <div class="hangar-table-wrap"><table class="hangar-table">
       <thead><tr><th>System</th><th>Module</th><th>Attached</th><th>Detached</th></tr></thead>
       <tbody><% memberships.each do |membership| %>
-        <tr><td><%= link_to membership.system_assembly.serial_number, hangar_assembly_path(membership.system_assembly) %></td><td><%= link_to membership.module_assembly.serial_number, forge_fdr_path(membership.module_assembly.serial_number) %></td><td><%= membership.installed_at.iso8601 %></td><td><%= membership.removed_at&.iso8601 || "Current" %></td></tr>
+        <tr><td><%= link_to membership.system_assembly.serial_number, hangar_assembly_path(membership.system_assembly) %></td><td><%= link_to membership.module_assembly.serial_number, forge_fdr_path(membership.module_assembly.serial_number) %></td><td><%= local_time membership.installed_at %></td><td><%= membership.removed_at ? local_time(membership.removed_at) : "Current" %></td></tr>
       <% end %></tbody>
     </table></div>
   </section>

@@ -97,6 +97,8 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".remote-debrief .remote-item", count: DebriefChecklist::ITEMS.size
     assert_select ".remote-debrief[data-flight-debrief-autostart-value]", count: 0
+    # The live connection opens with the screen; recording still waits for the tap.
+    assert_select ".remote-debrief[data-flight-debrief-prewarm-value='true']", count: 1
     assert_select "button.remote-mic[data-action='flight-debrief#start']"
     assert_select ".remote-big", text: /Record debrief/
     assert_select ".remote-big", text: "Save and next flight"
@@ -142,18 +144,37 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "a reservation opened early and never used does not block the next recording" do
+    flight = flights(:one)
+    stale = flight.flight_debriefs.create!(uuid: SecureRandom.uuid, user: users(:julien))
+    fresh = SecureRandom.uuid
+    post flight_debriefs_path(flight), params: { uuid: fresh }, as: :json
+    assert_response :conflict
+
+    stale.update_columns(updated_at: 31.minutes.ago)
+    post flight_debriefs_path(flight), params: { uuid: fresh }, as: :json
+    assert_response :success
+    assert_not FlightDebrief.exists?(stale.id)
+
+    delete flight_debrief_path(flight, FlightDebrief.find_by!(uuid: fresh))
+    assert_response :no_content
+  end
+
   test "reads the checklist from a live transcript through the model" do
     flight = flights(:one)
     post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
     debrief = FlightDebrief.find(response.parsed_body.fetch("id"))
     client = Object.new
-    client.define_singleton_method(:checklist) { |text| { "glide_ratio" => "3", "feelings" => "IDK 9" } if text.include?("kiff") }
+    efforts = []
+    client.define_singleton_method(:checklist) { |text, effort: "low"| efforts << effort; { "glide_ratio" => "3", "feelings" => "IDK 9" } if text.include?("kiff") }
 
     replace_method(Debriefs::OpenAi, :new, -> { client }) do
       post checklist_flight_debrief_path(flight, debrief), params: { transcript: "on glissait a trois, le kiff etait a neuf" }, as: :json
     end
     assert_response :success
     assert_equal({ "glide_ratio" => "3", "feelings" => "IDK 9" }, response.parsed_body["checklist"])
+    # The live reading asks the model for speed, not depth.
+    assert_equal [ "none" ], efforts
 
     post checklist_flight_debrief_path(flight, debrief), params: { transcript: "ok" }, as: :json
     assert_empty response.parsed_body["checklist"]

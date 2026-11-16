@@ -14,6 +14,8 @@ class FlightDebriefsController < ApplicationController
     @flight.with_lock do
       @debrief = @flight.flight_debriefs.find_by(uuid:)
       unless @debrief
+        # A reservation opened ahead of a recording that never came must not block the next one.
+        @flight.flight_debriefs.where(status: "recording").where(updated_at: ...30.minutes.ago).find_each { |stale| stale.destroy! unless stale.audio.attached? }
         if @flight.flight_debriefs.where(status: "recording").exists?
           return render json: { error: "A debrief is already recording on another device." }, status: :conflict
         end
@@ -90,7 +92,8 @@ class FlightDebriefsController < ApplicationController
     transcript = params[:transcript].to_s
     return render json: { checklist: {} } if transcript.strip.length < 8
 
-    render json: { checklist: Debriefs::OpenAi.new.checklist(transcript) }
+    # Live reading favours speed; the final pass over the whole recording reasons more.
+    render json: { checklist: Debriefs::OpenAi.new.checklist(transcript, effort: "none") }
   rescue Debriefs::OpenAi::Error => error
     render json: { error: error.message }, status: :service_unavailable
   end

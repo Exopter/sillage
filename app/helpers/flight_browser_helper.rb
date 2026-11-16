@@ -35,8 +35,7 @@ module FlightBrowserHelper
     timestamp = entry.is_a?(FlightImport) ? entry.log_started_at : entry.display_started_at
     return "Date not recorded" unless timestamp
 
-    prefix = entry.is_a?(Flight) && entry.started_at.nil? ? "Created " : ""
-    "#{prefix}#{timestamp.strftime('%d %b %Y · %H:%M')}"
+    local_time(timestamp, :list)
   end
 
   def browser_duration_label(entry)

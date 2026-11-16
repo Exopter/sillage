@@ -70,6 +70,19 @@ module ApplicationHelper
     "menu" => '<path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/>'
   }.freeze
 
+  LOCAL_TIME_FORMATS = { long: "%d %b %Y, %H:%M", seconds: "%d %b %Y, %H:%M:%S", list: "%d %b %Y \u00b7 %H:%M", short: "%d %b \u00b7 %H:%M",
+    time: "%H:%M:%S", date: "%d %b %Y" }.freeze
+
+  # An instant shown in the viewer's time zone. The UTC text is the fallback until
+  # the page script replaces it, and stays available as the tooltip.
+  def local_time(time, format = :long, tag: :time, **options)
+    return "\u2014" unless time
+
+    stamp = time.utc
+    attributes = tag == :time ? { datetime: stamp.iso8601 } : { data: { at: stamp.iso8601 } }
+    content_tag(tag, stamp.strftime(LOCAL_TIME_FORMATS.fetch(format)), **attributes.deep_merge(data: { local_time: format }), **options)
+  end
+
   def sillage_icon(name, size: 18, class_name: "sillage-icon", stroke_width: 2)
     path = SILLAGE_ICON_PATHS[name.to_s]
     return "".html_safe unless path

@@ -1,6 +1,6 @@
 <% presentation = imu_event_presentation(event) %>
 <li class="exds-history__event">
-  <time class="exds-history__time" datetime="<%= event.occurred_at.iso8601 %>"><%= event.occurred_at.utc.strftime("%H:%M:%S") %><small><%= event.occurred_at.utc.strftime("%d %b %Y %Z") %></small></time>
+  <time class="exds-history__time" datetime="<%= event.occurred_at.iso8601 %>"><%= local_time event.occurred_at, :time, tag: :span %><small><%= local_time event.occurred_at, :date, tag: :span %></small></time>
   <div class="exds-history__event-body <%= "exds-history__event-body--caution" if presentation[:tone] == "caution" %>">
     <strong class="exds-history__event-title"><%= presentation[:title] %></strong>
     <% if presentation[:detail].present? %><p><%= presentation[:detail] %></p><% end %>

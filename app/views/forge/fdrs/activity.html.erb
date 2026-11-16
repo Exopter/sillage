@@ -18,7 +18,7 @@
               <small><%= activity.recorder_label %></small>
             </span>
             <span class="device-activity-meta">
-              <strong><%= l activity.occurred_at, format: :long %></strong>
+              <strong><%= local_time(activity.occurred_at, :seconds) %></strong>
               <small><%= activity.actor&.email_address || activity.source.titleize %> · <%= activity.source.titleize %></small>
             </span>
           </div>

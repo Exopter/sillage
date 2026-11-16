@@ -4,7 +4,7 @@
   <div class="hangar-table-wrap"><table class="hangar-table">
     <thead><tr><th>Time</th><th>Check</th><th>Outcome at check</th><th>Roll / pitch</th><th>Recorder / boot</th></tr></thead>
     <tbody><% checks.each do |check| %><tr>
-      <td><%= l check.created_at, format: :short %></td><td><%= check.kind.humanize %></td>
+      <td><%= local_time(check.created_at, :long) %></td><td><%= check.kind.humanize %></td>
       <td><%= check.outcome.capitalize %><%= " with warning" if check.summary["warnings"].present? %><%= " · Recheck required" if check.invalidated_at %><small class="workspace-muted"> · <%= check.summary["reason"] %></small><% Array(check.summary["warnings"]).each do |warning| %><small class="workspace-muted"><%= warning %></small><% end %></td>
       <td><%= check.summary["roll_mean"]&.round(2) %>° / <%= check.summary["pitch_mean"]&.round(2) %>°</td>
       <td class="workspace-mono"><%= check.evidence.dig("configuration", "assembly", "serial_number").presence || "Historical FDR identity unavailable" %> / <%= check.boot_id %><small class="workspace-muted"> · <%= check.firmware %></small></td>
