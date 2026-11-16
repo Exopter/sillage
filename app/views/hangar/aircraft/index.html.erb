@@ -4,6 +4,10 @@
 <% if @selected_aircraft %>
   <% aircraft_tone, aircraft_label = hangar_aircraft_status(@selected_aircraft) %>
   <% back = hangar_aircraft_path(@selected_aircraft) %>
+  <%= form_with url: hangar_aircraft_index_path, method: :get, class: "hangar-fleet-select", data: { controller: "auto-submit" } do %>
+    <label><span class="sr-only">Aircraft</span><%= select_tag :aircraft_id, options_for_select(@fleet.map { |aircraft| [ "#{aircraft.registration} \u00b7 #{aircraft.name}", aircraft.id ] }, @selected_aircraft.id), id: nil, data: { action: "change->auto-submit#submit" } %></label>
+    <%= link_to new_hangar_aircraft_path, class: "exds-iconbtn exds-iconbtn--outline", title: "Register aircraft", aria: { label: "Register aircraft" } do %><%= sillage_icon "plus", size: 18 %><% end %>
+  <% end %>
   <div class="hangar-fleet-layout">
     <aside class="hangar-panel" aria-label="Fleet aircraft">
       <% @fleet.each do |aircraft| %>

@@ -28,6 +28,10 @@ export default class extends TypedController {
   database = null
   /** @type {Blob[]} */
   parts = []
+  floor = 1
+  spokeAt = 0
+  pending = 0
+  sentAt = 0
   turns = new Map()
   liveComplete = false
   committed = new Set()
@@ -109,7 +113,7 @@ export default class extends TypedController {
       this.element.dataset.debriefUrl = reservation.url
       await this.store("put", this.saved)
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      this.parts = []; this.turns.clear(); this.committed.clear(); this.completed.clear(); this.liveFailed = false; this.liveComplete = false
+      this.parts = []; this.turns.clear(); this.committed.clear(); this.completed.clear(); this.liveFailed = false; this.liveComplete = false; this.floor = 1; this.spokeAt = 0; this.pending = 0; this.sentAt = 0
       await this.store("put", this.saved || undefined)
       const type = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"].find(value => MediaRecorder.isTypeSupported(value))
       this.recorder = new MediaRecorder(this.stream, type ? { mimeType: type } : {})
@@ -138,6 +142,7 @@ export default class extends TypedController {
         lastTick = now
         analyser.getByteTimeDomainData(values)
         this.levelTarget.value = Math.min(1, Math.sqrt(values.reduce((sum, value) => sum + ((value - 128) / 128) ** 2, 0) / values.length) * 4)
+        this.phrase(this.levelTarget.value, now)
         this.element.style.setProperty("--debrief-level", this.levelTarget.value.toFixed(2))
         const seconds = Math.floor(elapsed / 1000)
         this.durationTarget.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
@@ -145,8 +150,7 @@ export default class extends TypedController {
       if (navigator.wakeLock) void navigator.wakeLock.request("screen").then(lock => { if (this.recorder?.state === "recording") this.wakeLock = lock; else void lock.release() }).catch(() => {})
       this.statusTarget.textContent = "Recording… Keep this screen open."
       try {
-        const debrief = await this.api(this.urlValue, { uuid: this.saved.uuid })
-        this.saved.url = debrief.url
+        // Straight to the live connection: every round trip here is speech the live transcript misses.
         await this.live()
       } catch { this.statusTarget.textContent = "Recording locally. Transcription will run after upload." }
     } catch (error) {
@@ -185,7 +189,23 @@ export default class extends TypedController {
     const response = await fetch("https://api.openai.com/v1/realtime/calls", { method: "POST", headers: { Authorization: `Bearer ${secret.value}`, "Content-Type": "application/sdp" }, body: offer.sdp })
     if (!response.ok) throw new Error("Live transcription unavailable")
     await this.peer.setRemoteDescription({ type: "answer", sdp: await response.text() })
-    this.commitTimer = window.setInterval(() => { if (this.channel?.readyState === "open" && this.recorder?.state === "recording") this.channel.send(JSON.stringify({ type: "input_audio_buffer.commit" })) }, 10000)
+  }
+
+  // Sends what was just said for transcription as soon as the pilot pauses, and at
+  // the latest four seconds after the previous send (it was ten). The noise floor
+  // follows the room, so a loud tunnel hall still shows pauses; if it ever hides
+  // them, the four-second send still applies.
+  /** @param {number} level @param {number} now */
+  phrase(level, now) {
+    if (this.channel?.readyState !== "open" || this.recorder?.state !== "recording") return
+    this.floor = Math.min(level, this.floor * 0.995 + level * 0.005 + 0.001)
+    this.sentAt ||= now
+    if (level > this.floor * 1.6 + 0.04) { this.spokeAt = now; this.pending ||= now }
+    const paused = this.pending > 0 && now - this.spokeAt >= 400 && now - this.pending >= 700
+    if (!paused && now - this.sentAt < 4000) return
+    this.channel.send(JSON.stringify({ type: "input_audio_buffer.commit" }))
+    this.pending = 0
+    this.sentAt = now
   }
 
   pause() {

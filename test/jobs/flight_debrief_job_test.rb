@@ -45,12 +45,33 @@ class FlightDebriefJobTest < ActiveSupport::TestCase
     client.define_singleton_method(:checklist) { |_| { "glide_ratio" => "3", "speed" => "165 km/h" } }
     understood = FlightDebrief.create!(flight: flights(:one), user: users(:julien), uuid: SecureRandom.uuid, status: "uploaded", checklist: { "pilot" => "Julien", "speed" => "170 km/h" })
     replace_method(Debriefs::OpenAi, :new, -> { client }) { FlightDebriefJob.perform_now(understood.id) }
-    assert_equal({ "pilot" => "Julien", "speed" => "170 km/h", "glide_ratio" => "3" }, understood.reload.checklist)
+    # The reading of the whole recording wins; the phone keeps what only it knows.
+    assert_equal({ "pilot" => "Julien", "speed" => "165 km/h", "glide_ratio" => "3" }, understood.reload.checklist)
 
     client.define_singleton_method(:checklist) { |_| raise Debriefs::OpenAi::Error, "Temporarily unavailable" }
     fallback = FlightDebrief.create!(flight: flights(:one), user: users(:julien), uuid: SecureRandom.uuid, status: "uploaded", checklist: { "pilot" => "Julien" })
     replace_method(Debriefs::OpenAi, :new, -> { client }) { FlightDebriefJob.perform_now(fallback.id) }
     assert_equal({ "pilot" => "Julien", "speed" => "165 km/h" }, fallback.reload.checklist)
+  end
+
+  test "transcribes the stored recording even when a live transcript exists, and falls back to it" do
+    client = Object.new
+    client.define_singleton_method(:summarize) { |text| text }
+    client.define_singleton_method(:transcribe) { |_| "Glide ratio 4.0, speed 150." }
+    build = lambda do
+      record = FlightDebrief.create!(flight: flights(:one), user: users(:julien), uuid: SecureRandom.uuid, status: "uploaded", transcript: "Three 4.0 speed one five zero")
+      record.audio.attach(io: StringIO.new("audio"), filename: "debrief.webm", content_type: "audio/webm")
+      record
+    end
+    full = build.call
+    replace_method(Debriefs::OpenAi, :new, -> { client }) { FlightDebriefJob.perform_now(full.id) }
+    assert_equal "Glide ratio 4.0, speed 150.", full.reload.transcript
+
+    client.define_singleton_method(:transcribe) { |_| raise Debriefs::OpenAi::Error, "Temporarily unavailable" }
+    live = build.call
+    replace_method(Debriefs::OpenAi, :new, -> { client }) { FlightDebriefJob.perform_now(live.id) }
+    assert_equal "Three 4.0 speed one five zero", live.reload.transcript
+    assert_equal "ready", live.status
   end
 
   test "retains the transcript when summarization fails" do

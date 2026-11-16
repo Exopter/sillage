@@ -1,0 +1,77 @@
+[
+  {
+    "flight": "FLT-2026-031",
+    "transcript": "Three 4.0 4.0 speed one five zero CG  3.5 no angle of attack\nSetting the feeling is good  more sensitive than I remembered. I have, I go slightly\nWe left constantly but I can correct to the right easily. Overfeeling good\nYes, entreprise comment tu te sens? First flight since April. Padding is excellent, very comfortable\nI will try to maybe loosen a little bit the chest strap on the next flight.",
+    "expected": {
+      "glide_ratio": "4.0",
+      "speed": "150 km/h",
+      "cg": "3.5",
+      "aoa": "none",
+      "feelings": "good"
+    }
+  },
+  {
+    "flight": "FLT-2026-032",
+    "transcript": "Special  4.0 speed  one five zero same CG 3.5 no angle of attack CT\nFeeling still turning left constantly. I have to correct to the right. Now we are changing the cameraman\nPosition at the entrance of the tunnel to see if it was his influence. I have good up and down control\nSteel a bit of perturbation movement but getting better glide ratio 4.0\n",
+    "expected": {
+      "glide_ratio": "4.0",
+      "speed": "150 km/h",
+      "cg": "3.5",
+      "aoa": "none",
+      "feelings": "turning left"
+    }
+  },
+  {
+    "flight": "FLT-2026-033",
+    "transcript": "Glide ratio  4.0 speed one five zero CG setting 3.5\nNo angle of attack setting. We changed the cameraman position to the right of the tunnel. The wing goes\nMore straight. It does not go to the right, but it's, it's not going to the left anymore. I am\nI believe I am too high on the seat. The seat is low on my thighs which maybe makes the wing more\nReactive so need to set a either to reset the my position or change the CG\n",
+    "expected": {
+      "glide_ratio": "4.0",
+      "speed": "150 km/h",
+      "cg": "3.5",
+      "aoa": "none"
+    }
+  },
+  {
+    "flight": "FLT-2026-034",
+    "transcript": "Glide ratio 4.0, speed 150. We changed the CG—not the CG, sorry, but we... the CG is still 3.5, CG 3.5, but we moved up the wing on my back. We reset the wing position higher, and the straps. So it means it's like we have lowered the CG, and it feels more stable, more stable with a lower CG. So no angle of attack, and the feeling is better, much better. I did a lot of handle check. Handle checks are good, left and right, a good control in all directions. Folding the legs does not change anything in flight. I confirm speed 150, speed 150, CG. Super. Cool.",
+    "expected": {
+      "glide_ratio": "4.0",
+      "speed": "150 km/h",
+      "cg": "3.5",
+      "aoa": "none",
+      "feelings": "more stable"
+    }
+  },
+  {
+    "flight": "FLT-2026-036",
+    "transcript": "So glide ratio 3.5 speed 140 CG 3.5\nNo angle of attack setting. Feeling is good. The wing is more soft. It's\nIt's a it's like the second flight, second flight regime. It's flying soft, soft and mold.\nUm, still get still half power to go up down. And I flew at the end of the flight one five zero kilometers\nJust the hour, still good feeling.",
+    "expected": {
+      "glide_ratio": "3.5",
+      "speed": "140 km/h",
+      "cg": "3.5",
+      "aoa": "none",
+      "feelings": "good"
+    }
+  },
+  {
+    "flight": "FLT-2026-037",
+    "transcript": "So  3.2 speed one three zero CG 3.5 zero\nIo lowatak oui were very close to the stall point. I even stalled the wing at some point. It's very\nSymmetrical in the flight. It's still very mold but it's it flies, it's predictable. Very good\nAnd of the flight we ramped, we raised the speed, we raised the speed to one four zero then one five zero. Still at speed angle. Very\nPas de change la balle OK good good feeling\nI think",
+    "expected": {
+      "glide_ratio": "3.2",
+      "speed": "130 km/h",
+      "cg": "3.5",
+      "feelings": "good"
+    }
+  },
+  {
+    "flight": "FLT-2026-038",
+    "transcript": "Two point eight speed one three zero CG three point five\nZero angle of attack. The feeling is good. Can fly the wing all the way to the stall symmetrically. Good behavior\nYeah Then we raise the up the speed one four zero and one five zero kilometers per hour. And I still can maintain the flight at\nThis angle easily so it's good. The wing can fly comfortably between at even 2.8 glide ratio.\nShow sustainable",
+    "expected": {
+      "glide_ratio": "2.8",
+      "speed": "130 km/h",
+      "cg": "3.5",
+      "aoa": "0",
+      "feelings": "good"
+    }
+  }
+]

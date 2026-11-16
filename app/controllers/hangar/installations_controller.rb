@@ -3,11 +3,11 @@ module Hangar
     def create
       aircraft = Aircraft.find(params[:aircraft_id])
       installable = installable_class.find(params.require(:installation).fetch(:installable_id))
-      installation = aircraft.installations.create!(
-        installable:,
-        installed_at: params.require(:installation)[:installed_at].presence || Time.current,
-        notes: params.require(:installation)[:notes]
-      )
+      installed_at = params.require(:installation)[:installed_at].presence || Time.current
+      installation = Installation.transaction do
+        release(installable, at: installed_at)
+        aircraft.installations.create!(installable:, installed_at:, notes: params.require(:installation)[:notes])
+      end
       record_fdr_activity(
         installation,
         "installed_in_aircraft",
@@ -32,6 +32,15 @@ module Hangar
     end
 
     private
+
+    # Installing equipment that is somewhere else moves it: the picker says so before the choice is confirmed.
+    def release(installable, at:)
+      Installation.active.where(installable:).find_each do |previous|
+        previous.remove!(at:)
+        record_fdr_activity(previous, "removed_from_aircraft", aircraft_registration: previous.aircraft.registration, removed_at: previous.removed_at.iso8601)
+      end
+      installable.remove_from_assembly!(at:) if installable.is_a?(Part) && installable.assembly
+    end
 
     def installable_class
       case params.require(:installation).fetch(:installable_type)

@@ -11,6 +11,8 @@ class RemoteController < ApplicationController
     @aircraft = Aircraft.active.ordered
     @pilots = User.available_as_pilot.order(:first_name, :email_address)
     @last_flight = remote_flights.order(:id).last
+    @folders = FlightFolder.contributable_to(Current.user).ordered
+    @destination = destination_of(@last_flight, @folders)
     @state = state_payload
   end
 
@@ -21,8 +23,12 @@ class RemoteController < ApplicationController
   def create
     return render json: { error: "A flight is already in progress." }, status: :conflict if current_remote_flight&.then { |flight| flight.preparation? || flight.live? }
 
+    destination = params[:destination].to_s
+    folder = FlightFolder.contributable_to(Current.user).find_by(id: destination.delete_prefix("folder:")) if destination.start_with?("folder:")
     flight = Current.user.flights.create!(
       name: "Tunnel flight", status: "preparation",
+      # A tunnel flight is team work: it is shared unless the operator asks to keep it private.
+      folder:, visibility: destination == "private" ? "private" : "team",
       aircraft: Aircraft.active.find_by(id: params[:aircraft_id]),
       pilot: User.available_as_pilot.find_by(id: params[:pilot_id]) || Current.user,
       remote_start_requested_at: Time.current
@@ -80,6 +86,14 @@ class RemoteController < ApplicationController
     remote_flights.where(remote_start_requested_at: 12.hours.ago..).order(:id).last
   end
 
+  # Where the next flight goes by default: where the last one went.
+  def destination_of(flight, folders)
+    return "team" unless flight
+    return "folder:#{flight.folder_id}" if flight.folder_id && folders.any? { |folder| folder.id == flight.folder_id }
+
+    flight.visibility == "private" ? "private" : "team"
+  end
+
   def state_payload(flight = current_remote_flight)
     today = remote_flights.where(remote_start_requested_at: Time.current.beginning_of_day..)
     # The phone times the flight against this clock, never its own, which can be minutes off.
@@ -98,6 +112,7 @@ class RemoteController < ApplicationController
       phase:,
       flight: {
         id: flight.id, code: flight.code, pilot: flight.display_pilot, aircraft: flight.aircraft&.display_name || "No aircraft",
+        destination: flight.folder&.name || (flight.visibility == "team" ? "Public" : "Private"),
         aircraft_id: flight.aircraft_id, pilot_id: flight.pilot_id,
         started_at: flight.remote_start_requested_at.iso8601, recording: flight.live?,
         debrief_url: debrief_remote_flight_path(flight), cancel_url: remote_flight_path(flight),

@@ -62,21 +62,25 @@ module Hangar
       @replacement_parts = Part.available.includes(:function).ordered.group_by(&:function_id)
     end
 
-    # Everything that could go on the aircraft, with where it is now. Equipment
-    # on another aircraft is listed but must be removed there first.
+    # Everything that could go on the aircraft, with where it is now. Choosing
+    # equipment that is on another aircraft or inside an assembly moves it.
     def install_options
       elsewhere = Installation.active.where.not(aircraft: @selected_aircraft).includes(:aircraft, :installable)
         .index_by { |installation| [ installation.installable_type, installation.installable_id ] }
       here = @active_installations.map { |installation| [ installation.installable_type, installation.installable_id ] }.to_set
-      assemblies = Assembly.not_retired.roots.ordered.reject { |assembly| here.include?([ "Assembly", assembly.id ]) }
-      parts = Part.available.includes(:function).ordered.to_a + elsewhere.values.map(&:installable).grep(Part)
+      assemblies = Assembly.not_retired.roots.ordered.to_a
+      nested = Part.where(state: "installed").joins(:active_part_installation).includes(:function, active_part_installation: :assembly)
+        .where.not(id: EmbeddedController.where.not(part_id: nil).select(:part_id)).ordered.to_a
+      parts = Part.available.includes(:function).ordered.to_a + elsewhere.values.map(&:installable).grep(Part) + nested
       (assemblies + parts.uniq).reject { |asset| here.include?([ asset.class.name, asset.id ]) }.map do |asset|
-        other = elsewhere[[ asset.class.name, asset.id ]]&.aircraft
         part = asset.is_a?(Part)
-        { label: part ? asset.display_name : asset.selection_label,
+        other = elsewhere[[ asset.class.name, asset.id ]]&.aircraft
+        holder = asset.assembly if part
+        { label: part ? asset.display_name : asset.selection_label, kind: part ? "part" : "assembly",
           meta: part ? [ asset.function.name, ("S/N #{asset.serial_number}" if asset.serial_number.present?), asset.internal_number ].compact.join(" \u00b7 ") : "Assembly \u00b7 #{helpers.pluralize(asset.snapshot_part_numbers.size, "part")}",
-          icon: part ? "settings" : "layers", where: other ? "On #{other.registration}" : "In stock",
-          note: ("Remove it there first" if other), disabled: other.present?,
+          icon: part ? "settings" : "layers",
+          where: other ? "On #{other.registration}" : holder ? "In #{holder.identity_label}" : "In stock",
+          note: ("Installing here moves it" if other || holder),
           fields: { "installation[installable_type]" => asset.class.name, "installation[installable_id]" => asset.id } }
       end
     end

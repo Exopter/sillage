@@ -48,6 +48,19 @@
         <% if node.assembly? && asset.controlled_fdr? && !asset.fdr_system? && asset.serviceability_state != "retired" %><%= link_to "Open in Forge", forge_fdr_path(asset.serial_number), class: "button-secondary exds-btn exds-btn--secondary is-compact", data: { turbo_frame: "_top" } %><% end %>
       </div>
     </div>
+    <% unless node.assembly? %>
+      <% history = asset.part_installations.includes(:assembly).recent.to_a %>
+      <details class="exds-disclosure hangar-fold">
+        <summary><span>History</span><small><%= pluralize history.size, "installation" %></small></summary>
+        <% if history.any? %>
+          <div class="workspace-list">
+            <% history.each do |installation| %>
+              <div class="workspace-list-row is-static"><span><strong><%= installation.assembly.identity_label %></strong><small><%= l installation.installed_at, format: :short %> → <%= installation.removed_at ? l(installation.removed_at, format: :short) : "Active" %></small></span></div>
+            <% end %>
+          </div>
+        <% else %><p class="workspace-muted">Never installed in an assembly.</p><% end %>
+      </details>
+    <% end %>
     <footer class="hangar-detail-note"><%= node.kind == "system" ? "A logical SYSTEMS assembly groups physical modules. Each module keeps its own serial number." : "Parts and nested Assemblies can be moved while their installation history remains traceable." %></footer>
   <% else %><p class="workspace-empty"><%= params[:node].present? || params[:assembly_id].present? ? "This item is no longer in the assembly inventory." : "Select an assembly or part to view its details." %></p><% end %>
 <% end %>

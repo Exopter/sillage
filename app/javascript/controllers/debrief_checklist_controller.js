@@ -49,7 +49,8 @@ export default class extends TypedController {
     this.heard = { ...this.heard, ...extractChecklist(text) }
     this.render()
     clearTimeout(this.timer)
-    this.timer = window.setTimeout(() => { void this.understand() }, 1200)
+    // Word patterns tick at once; the model is asked right after for what they missed.
+    if (Object.keys(this.values()).length < this.itemTargets.length) this.timer = window.setTimeout(() => { void this.understand() }, 350)
   }
 
   async understand() {
@@ -68,7 +69,7 @@ export default class extends TypedController {
       }
     } catch { /* Offline: the patterns keep working and the server reads the full transcript later. */ } finally {
       this.asking = false
-      if (this.transcript !== text) this.timer = window.setTimeout(() => { void this.understand() }, 1200)
+      if (this.transcript !== text) this.timer = window.setTimeout(() => { void this.understand() }, 350)
     }
   }
 

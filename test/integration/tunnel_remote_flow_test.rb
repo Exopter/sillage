@@ -6,6 +6,40 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
 
   setup { sign_in_as users(:julien) }
 
+  test "the operator chooses where the flight is saved and the choice carries to the next flight" do
+    folder = FlightFolder.create!(user: users(:julien), name: "Tunnel campaign", visibility: "shared")
+    foreign = FlightFolder.create!(user: users(:member), name: "Not mine", visibility: "private")
+
+    get remote_path
+    assert_select "select[name='destination'] option[selected][value='team']", text: /Public/
+    assert_select "select[name='destination'] option[value='folder:#{folder.id}']", "Tunnel campaign"
+    assert_select "select[name='destination'] option[value='folder:#{foreign.id}']", count: 0
+
+    post remote_flights_path, params: { destination: "folder:#{folder.id}" }, as: :json
+    assert_response :created
+    flight = Flight.find(response.parsed_body.dig("flight", "id"))
+    assert_equal folder, flight.folder
+    assert_equal "Tunnel campaign", response.parsed_body.dig("flight", "destination")
+    post end_remote_flight_path(flight), as: :json
+    flight.flight_debriefs.create!(uuid: SecureRandom.uuid, user: users(:julien), status: "published")
+
+    get remote_path
+    assert_select "select[name='destination'] option[selected][value='folder:#{folder.id}']", count: 1
+
+    post remote_flights_path, params: { destination: "private" }, as: :json
+    private_flight = Flight.find(response.parsed_body.dig("flight", "id"))
+    assert_nil private_flight.folder
+    assert_equal "private", private_flight.visibility
+    delete remote_flight_path(private_flight), as: :json
+
+    # A folder the operator cannot contribute to is ignored; the flight stays visible to the team.
+    post remote_flights_path, params: { destination: "folder:#{foreign.id}" }, as: :json
+    shared = Flight.find(response.parsed_body.dig("flight", "id"))
+    assert_nil shared.folder
+    assert_equal "team", shared.visibility
+    assert_equal "Public", response.parsed_body.dig("flight", "destination")
+  end
+
   test "starts a flight from the phone, lets the ground station pick it up and withdraws it on cancel" do
     get remote_path
     assert_response :success
