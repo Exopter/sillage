@@ -496,6 +496,19 @@ body {
   font-weight: 600;
 }
 
+.sillage-avatar[data-tone] {
+  color: var(--ex-white);
+}
+
+.sillage-avatar[data-tone="1"] { background: var(--avatar-tone-1); }
+.sillage-avatar[data-tone="2"] { background: var(--avatar-tone-2); }
+.sillage-avatar[data-tone="3"] { background: var(--avatar-tone-3); }
+.sillage-avatar[data-tone="4"] { background: var(--avatar-tone-4); }
+.sillage-avatar[data-tone="5"] { background: var(--avatar-tone-5); }
+.sillage-avatar[data-tone="6"] { background: var(--avatar-tone-6); }
+.sillage-avatar[data-tone="7"] { background: var(--avatar-tone-7); }
+.sillage-avatar[data-tone="8"] { background: var(--avatar-tone-8); }
+
 .sillage-avatar-photo {
   width: 100%;
   height: 100%;

@@ -132,6 +132,15 @@
 
   --state-ready:   var(--ex-field-500);
   --state-live:    var(--ex-khaki-600);
+  /* Avatar tones: one per person, so a list of flights reads by who flew. All carry white initials at 4.5:1 or better. */
+  --avatar-tone-1: #62664a; /* @kind color */
+  --avatar-tone-2: #2f6f9f; /* @kind color */
+  --avatar-tone-3: #8a5a12; /* @kind color */
+  --avatar-tone-4: #6658c7; /* @kind color */
+  --avatar-tone-5: #3f7a4d; /* @kind color */
+  --avatar-tone-6: #a8443c; /* @kind color */
+  --avatar-tone-7: #7d4f86; /* @kind color */
+  --avatar-tone-8: #4f5d6b; /* @kind color */
   --state-pending: var(--ex-amber-500);
   --state-caution: var(--ex-amber-500);
   --state-fault:   var(--ex-red-600);
