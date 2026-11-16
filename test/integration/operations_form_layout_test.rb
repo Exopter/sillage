@@ -61,7 +61,8 @@ class OperationsFormLayoutTest < ActionDispatch::IntegrationTest
       assert_select "input[type='datetime-local'][name='installation[installed_at]']", count: 1
       assert_select "button[role='option']:not([disabled]) strong", text: part.display_name
       assert_select "button[role='option']:not([disabled]) strong", text: assembly.selection_label
-      assert_select "button[role='option'][disabled]", text: /Busy part.*On #{aircraft(:pilatus).registration}.*Remove it there first/m
+      assert_select "button[role='option']:not([disabled])[data-kind='part']", text: /Busy part.*On #{aircraft(:pilatus).registration}.*Installing here moves it/m
+      assert_select "button[data-equipment-picker-target='kind']", count: 3
       assert_select "input[type='submit'][value='Install'][disabled]", count: 1
     end
     assert_select "aside form.workspace-form", count: 0
@@ -81,6 +82,53 @@ class OperationsFormLayoutTest < ActionDispatch::IntegrationTest
     delete hangar_installation_path(installation), params: { return_to: "https://example.org/hangar" }
     assert_redirected_to hangar_aircraft_path(exowing)
     assert_not installation.reload.active?
+  end
+
+  test "installing equipment that is elsewhere moves it" do
+    function = Function.create!(name: "Moving function")
+    part = Part.create!(function:, model: "Travelling part")
+    nested = Part.create!(function:, model: "Nested part")
+    holder = Assembly.create!(name: "Holder")
+    nested.install_in!(holder)
+    exowing, pilatus = aircraft(:exowing), aircraft(:pilatus)
+    previous = Installation.create!(aircraft: pilatus, installable: part, installed_at: 1.hour.ago)
+
+    post hangar_aircraft_installations_path(exowing), params: { installation: { installable_type: "Part", installable_id: part.id } }
+    assert_redirected_to hangar_aircraft_path(exowing)
+    assert_not previous.reload.active?
+    assert_equal exowing, Installation.active.find_by!(installable: part).aircraft
+    assert_equal "installed", part.reload.state
+
+    post hangar_aircraft_installations_path(exowing), params: { installation: { installable_type: "Part", installable_id: nested.id } }
+    assert_redirected_to hangar_aircraft_path(exowing)
+    assert_nil nested.reload.assembly
+    assert_predicate nested.part_installations.sole.removed_at, :present?
+    assert_equal exowing, Installation.active.find_by!(installable: nested).aircraft
+
+    get hangar_aircraft_path(exowing)
+    assert_select ".hangar-fleet-select select[name='aircraft_id'] option[selected][value='#{exowing.id}']", count: 1
+  end
+
+  test "a part can be installed while it is registered" do
+    function = Function.create!(name: "Registration function")
+    holder = Assembly.create!(name: "Registration holder")
+    get new_hangar_part_path
+    assert_select "select[name='part[assembly_id]'] option", text: "Leave in stock"
+
+    assert_difference "Part.count", 1 do
+      post hangar_parts_path, params: { part: { function_id: function.id, model: "Fresh part", assembly_id: holder.id } }
+    end
+    part = Part.find_by!(model: "Fresh part")
+    assert_redirected_to hangar_part_path(part)
+    assert_equal holder, part.assembly
+
+    assert_no_difference "Part.count" do
+      post hangar_parts_path, params: { part: { function_id: function.id, model: "Lost part", assembly_id: 0 } }
+    end
+    assert_response :unprocessable_entity
+
+    get hangar_assemblies_path(node: "part-#{part.id}")
+    assert_select ".hangar-fold summary", text: /History.*1 installation/m
   end
 
   test "aircraft installation history identifies assets without exposing database ids" do

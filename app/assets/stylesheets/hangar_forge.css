@@ -1594,8 +1594,9 @@ a.hangar-tree-primary {
   animation: hangar-picker-in var(--dur) var(--ease-out);
 }
 
+/* Movement only: a stalled animation must never leave the dialog invisible. */
 @keyframes hangar-picker-in {
-  from { opacity: 0; transform: translateY(8px); }
+  from { transform: translateY(8px); }
 }
 
 .hangar-picker-form {
@@ -1785,6 +1786,36 @@ a.hangar-tree-primary {
   font: inherit;
 }
 
+.hangar-picker-kinds {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin: 0 var(--sp-5) var(--sp-1);
+}
+
+/* On a phone the aircraft is chosen from one row; the open aircraft fills the screen. */
+.hangar-fleet-select {
+  display: none;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.hangar-fleet-select label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.hangar-fleet-select select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--ds-radius);
+  background: var(--surface-card);
+  color: var(--text-strong);
+  font: 700 var(--fs-body)/1.2 var(--ex-font-mono, ui-monospace, monospace);
+}
+
 /* Inventory: one head for the tree and the flat parts list. */
 .hangar-inventory-head {
   align-items: center;
@@ -1924,9 +1955,12 @@ a.hangar-tree-primary {
     grid-template-columns: 1fr;
   }
 
-  /* On a narrow screen the open aircraft comes first; the other aircraft follow it. */
+  .hangar-fleet-select {
+    display: flex;
+  }
+
   .hangar-fleet-layout > aside {
-    order: 2;
+    display: none;
   }
 
   .hangar-asset-head {

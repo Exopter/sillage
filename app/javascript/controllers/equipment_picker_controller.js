@@ -1,15 +1,17 @@
 import { Controller } from "@hotwired/stimulus"
 
-/** @typedef {{dialogTarget: HTMLDialogElement, searchTarget: HTMLInputElement, optionTargets: HTMLButtonElement[], fieldsTarget: HTMLElement, submitTarget: HTMLButtonElement, emptyTarget: HTMLElement, countTarget: HTMLElement}} Bindings */
+/** @typedef {{dialogTarget: HTMLDialogElement, searchTarget: HTMLInputElement, optionTargets: HTMLButtonElement[], fieldsTarget: HTMLElement, submitTarget: HTMLButtonElement, emptyTarget: HTMLElement, countTarget: HTMLElement, kindTargets: HTMLButtonElement[]}} Bindings */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 
 // One way to choose equipment everywhere in Hangar: type a few letters of a
 // name, serial or asset ID, pick a row, confirm.
 export default class extends TypedController {
-  static targets = ["dialog", "search", "option", "fields", "submit", "empty", "count"]
+  static targets = ["dialog", "search", "option", "fields", "submit", "empty", "count", "kind"]
+  wanted = ""
 
   open() {
     this.searchTarget.value = ""
+    this.wanted = ""
     this.pick(null)
     this.filter()
     this.dialogTarget.showModal()
@@ -21,12 +23,23 @@ export default class extends TypedController {
   /** @param {MouseEvent} event */
   backdrop(event) { if (event.target === this.dialogTarget) this.close() }
 
+  /** @param {Event} event */
+  kind(event) {
+    this.wanted = /** @type {HTMLElement} */ (event.currentTarget).dataset.kind || ""
+    this.filter()
+  }
+
   filter() {
+    for (const button of this.kindTargets) {
+      const active = (button.dataset.kind || "") === this.wanted
+      button.classList.toggle("is-active", active)
+      button.setAttribute("aria-pressed", String(active))
+    }
     const words = this.searchTarget.value.toLowerCase().split(/\s+/).filter(Boolean)
     let shown = 0
     for (const option of this.optionTargets) {
       const text = option.dataset.search || ""
-      option.hidden = !words.every(word => text.includes(word))
+      option.hidden = !words.every(word => text.includes(word)) || (this.wanted !== "" && option.dataset.kind !== this.wanted)
       if (!option.hidden) shown += 1
     }
     this.emptyTarget.hidden = shown > 0

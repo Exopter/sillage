@@ -31,12 +31,21 @@ module Hangar
 
     def create
       @part = Part.new(part_params)
-      if @part.save
-        redirect_to hangar_part_path(@part), notice: "Part created."
-      else
-        load_form_options
-        render :new, status: :unprocessable_entity
+      Part.transaction do
+        @part.save!
+        # Registering and installing in one step saves a second visit to the record.
+        if (assembly_id = params[:part][:assembly_id]).present?
+          @part.install_in!(Assembly.not_retired.find(assembly_id))
+        end
       end
+      redirect_to hangar_part_path(@part), notice: @part.assembly ? "Part created and installed in #{@part.assembly.identity_label}." : "Part created."
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => error
+      attributes = part_params
+      @part = Part.new(attributes)
+      @part.valid?
+      @part.errors.add(:base, error.message) if @part.errors.empty?
+      load_form_options
+      render :new, status: :unprocessable_entity
     end
 
     def edit
@@ -78,6 +87,8 @@ module Hangar
 
     def load_form_options
       @functions = Function.ordered
+      @assemblies = Assembly.not_retired.ordered unless @part.persisted?
+      @selected_assembly_id = params.dig(:part, :assembly_id) unless @part.persisted?
       if @part.persisted?
         @assemblies = Assembly.not_retired.or(Assembly.where(id: @part.assembly&.id)).ordered
         @selected_assembly_id = if params[:part]&.key?(:assembly_id)

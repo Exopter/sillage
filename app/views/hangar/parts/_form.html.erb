@@ -32,6 +32,12 @@
     <% end %>
   </div>
 
+  <% unless part.persisted? %>
+    <label>
+      <span>Install it now (optional)</span>
+      <%= form.collection_select :assembly_id, @assemblies, :id, :selection_label, { include_blank: "Leave in stock", selected: @selected_assembly_id } %>
+    </label>
+  <% end %>
   <% if part.persisted? %>
     <label>
       <span>Assembly</span>

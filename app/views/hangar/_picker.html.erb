@@ -17,11 +17,18 @@
         <label class="search-control"><%= sillage_icon "search", size: 16 %><input type="search" autocomplete="off" placeholder="Name, serial or asset ID" aria-label="Search equipment" data-equipment-picker-target="search" data-action="input->equipment-picker#filter keydown->equipment-picker#enter"></label>
         <span class="hangar-picker-count" aria-live="polite" data-equipment-picker-target="count"><%= pluralize options.size, "match" %></span>
       </div>
+      <% if options.map { |option| option[:kind] }.compact.uniq.size > 1 %>
+        <div class="exds-hierarchy-filters hangar-picker-kinds" role="group" aria-label="Kind of equipment">
+          <% { "" => "All", "assembly" => "Assemblies", "part" => "Parts" }.each do |kind, label| %>
+            <button type="button" class="<%= "is-active" if kind.empty? %>" aria-pressed="<%= kind.empty? %>" data-kind="<%= kind %>" data-equipment-picker-target="kind" data-action="equipment-picker#kind"><%= label %></button>
+          <% end %>
+        </div>
+      <% end %>
       <div class="hangar-picker-list" role="listbox" aria-label="<%= title %>">
         <% options.each do |option| %>
           <button type="button" role="option" class="hangar-picker-option" aria-selected="false"<%= " disabled" if option[:disabled] %>
             data-equipment-picker-target="option" data-action="equipment-picker#choose"
-            data-search="<%= [ option[:label], option[:meta], option[:where] ].join(" ").downcase %>" data-fields="<%= option.fetch(:fields, {}).to_json %>">
+            data-kind="<%= option[:kind] %>" data-search="<%= [ option[:label], option[:meta], option[:where] ].join(" ").downcase %>" data-fields="<%= option.fetch(:fields, {}).to_json %>">
             <span class="hangar-tree-icon"><%= sillage_icon option.fetch(:icon, "settings"), size: 15 %></span>
             <span class="hangar-picker-copy"><strong><%= option[:label] %></strong><small><%= option[:meta] %></small></span>
             <span class="hangar-picker-where"><strong><%= option[:where] %></strong><% if option[:note] %><small><%= option[:note] %></small><% end %></span>
