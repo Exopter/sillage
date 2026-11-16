@@ -131,7 +131,7 @@
   --selection-marker: var(--ex-khaki-600); /* @kind color */
 
   --state-ready:   var(--ex-field-500);
-  --state-live:    var(--ex-aqua-500);
+  --state-live:    var(--ex-khaki-600);
   --state-pending: var(--ex-amber-500);
   --state-caution: var(--ex-amber-500);
   --state-fault:   var(--ex-red-600);
@@ -167,7 +167,7 @@
   --border-strong: var(--ex-graphite-600);
 
   --status-ready-text: var(--ex-hud-green); /* @kind color */
-  --status-live-text: var(--ex-aqua-500); /* @kind color */
+  --status-live-text: var(--ex-khaki-300); /* @kind color */
   --status-caution-text: var(--ex-amber-500); /* @kind color */
   --status-fault-text: #ff8b83; /* @kind color */
   --status-info-text: #91cfff; /* @kind color */
@@ -175,6 +175,7 @@
   --surface-selected: rgba(181, 185, 154, 0.10);
   --selection-marker: var(--ex-khaki-300); /* @kind color */
   --state-ready: var(--ex-hud-green);
+  --state-live: var(--ex-khaki-300);
   --link: var(--ex-khaki-300);
   --focus-ring: var(--ex-khaki-300);
   --control-error: #ff8b83;

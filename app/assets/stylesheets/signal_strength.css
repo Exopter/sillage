@@ -2,7 +2,7 @@
   display: grid;
   flex: none;
   gap: 2px;
-  color: var(--ex-aqua-500);
+  color: var(--state-live);
   font-family: var(--ex-font-mono);
   font-variant-numeric: tabular-nums;
 }

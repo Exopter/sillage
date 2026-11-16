@@ -13,7 +13,7 @@ export function instrumentStyle(canvas) {
     background: token("--ex-carbon-950"), surface: token("--ex-carbon-900"),
     sky: token("--ex-instrument-sky"), ground: token("--ex-instrument-ground"),
     line: token("--ex-instrument-line"), muted: token("--ex-instrument-muted"),
-    text: token("--ex-vapor-50"), reference: token("--ex-aqua-500"),
+    text: token("--ex-vapor-50"), reference: token("--ex-khaki-300"),
     caution: token("--ex-amber-500"), font: token("--ex-font-mono")
   }
   styles.set(canvas, style)

@@ -66,7 +66,7 @@ class Core::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ "Noor Vance", "trailblazer" ], [ member.full_name, member.membership_tier ]
     assert member.member_number
     get core_users_path
-    assert_select ".status-pill", text: "Trailblazer #{member.member_code}"
+    assert_select ".status-pill", text: "Trailblazer"
   end
 
   test "a membership without a name is refused" do

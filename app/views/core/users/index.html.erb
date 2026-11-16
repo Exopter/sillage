@@ -17,7 +17,7 @@
                 </div>
               </td>
               <td data-label="Role"><%= user.role.titleize %></td>
-              <td data-label="Flight Club"><% if user.member? %><span class="status-pill"><%= user.membership_rank %> <%= user.member_code %></span><% else %>Not a member<% end %></td>
+              <td data-label="Flight Club"><% if user.member? %><span class="status-pill"><%= user.membership_rank %></span><% else %>Not a member<% end %></td>
               <td data-label="Two-factor"><%= user.admin? ? (user.totp_configured? ? "Enabled" : "Setup required") : "Not required" %></td>
               <td>
                 <% if user.disabled? %>

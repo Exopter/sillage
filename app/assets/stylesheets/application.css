@@ -786,7 +786,7 @@ body {
 }
 
 .status-dot.is-live span {
-  background: var(--ex-aqua-500);
+  background: var(--state-live);
 }
 
 .status-dot.is-pending span {
@@ -931,7 +931,7 @@ body {
   width: 0;
   height: 100%;
   border-radius: inherit;
-  background: var(--ds-aqua);
+  background: var(--accent);
   transition: width 120ms ease;
 }
 
@@ -1550,7 +1550,7 @@ body {
   display: block;
   width: 100%;
   margin: 0;
-  accent-color: var(--ds-aqua);
+  accent-color: var(--accent);
 }
 
 .video-sync {
@@ -2973,7 +2973,7 @@ button.aircraft-connection-pill:disabled { cursor: default; opacity: .55; }
 @media (pointer: coarse) {
 }
 
-.aircraft-connection-pill[data-aircraft-connection-state="connected"] { border-color: var(--ex-aqua-500); color: var(--ex-aqua-500); }
+.aircraft-connection-pill[data-aircraft-connection-state="connected"] { border-color: var(--state-live); color: var(--state-live); }
 
 /* Page template: one title, one line of context, actions on the right, underlined tabs. */
 .exds-page-header {
