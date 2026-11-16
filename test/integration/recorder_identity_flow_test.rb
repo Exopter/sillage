@@ -16,10 +16,7 @@ class RecorderIdentityFlowTest < ActionDispatch::IntegrationTest
     assert_select "main", text: /#{@ecu.device_id}/, count: 0
     get files_forge_fdr_path(@assembly.serial_number)
     assert_response :success
-    assert_select ".exds-recorder-switcher a strong", text: label
-    # Each entry says what the recorder is and whether it is reachable now.
-    assert_select ".exds-recorder-switcher a small", text: /Perfboard|PCB|Seat|Central/
-    assert_select ".exds-recorder-switcher a .status-dot", minimum: 1
+    assert_select ".exds-recorder-sidebar a.exds-back-link[href='#{forge_path}']", count: 1
     assert_select "small", text: @ecu.device_id, count: 0
 
     [ forge_fdr_path(@ecu), connectivity_forge_fdr_path(@ecu), activity_forge_fdr_path(@ecu) ].each do |path|

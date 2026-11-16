@@ -5,8 +5,6 @@ module Forge
     before_action :set_fdr, only: %i[show update parts files connectivity activity calibration]
     before_action :load_fdr_context, only: %i[show parts files connectivity activity calibration]
 
-    before_action :load_workspace
-
     def index
       @assemblies = Assembly.not_retired.connectable_fdrs.includes(:fdr_functional_configuration, :parent,
         active_fdr_board_installation: { embedded_controller: [ :signal_presence, :recorder_connections ] }).ordered
@@ -88,11 +86,6 @@ module Forge
     def load_fdr_context
       @aircraft = @fdr&.aircraft
       @controller_part = @fdr&.part
-    end
-
-    def load_workspace
-      @workspace_recorders = Assembly.not_retired.connectable_fdrs.includes(:fdr_functional_configuration, active_fdr_board_installation: :embedded_controller).ordered
-      session[:forge_recorder] = @assembly.serial_number if @assembly
     end
 
     def load_setup_options
