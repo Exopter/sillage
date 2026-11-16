@@ -162,7 +162,8 @@ export default class extends TypedController {
   }
 
   render() {
-    if (!this.active) return
+    // Closing the preview clears readiness; preserve the authorized form until navigation.
+    if (!this.active || this.submitting) return
     const now = Date.now(), deviceId = this.link.readiness.deviceId
     const key = `${this.link.generation}/${deviceId}`
     if (this.link.connected && deviceId && (key !== this.identityKey || (!this.identityRequest && now - this.identityCheckedAt > 30000)))
