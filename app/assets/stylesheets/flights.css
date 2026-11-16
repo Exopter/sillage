@@ -279,9 +279,6 @@
 .flight-debrief-spinner { width: 44px; height: 44px; border: 3px solid var(--border-rule); border-top-color: var(--text-strong); border-radius: 50%; animation: flight-debrief-spin 0.9s linear infinite; }
 @keyframes flight-debrief-spin { to { transform: rotate(360deg); } }
 .flight-debrief-status { max-width: 44ch; color: var(--text-muted); font-size: var(--fs-text); line-height: 1.5; }
-.flight-debrief-prompts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
-.flight-debrief-prompts li { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3); border: 1px solid var(--border-rule); border-radius: var(--ex-radius-surface); color: var(--text-body); font-size: var(--fs-sm); line-height: 1.3; }
-.flight-debrief-prompts svg { flex: 0 0 auto; color: var(--accent); }
 .flight-debrief-actions { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
 .flight-debrief-actions:not(:has(> :not([hidden]))) { display: none; }
 .flight-debrief-actions .exds-btn--lg { flex: 1 1 180px; }
@@ -307,7 +304,6 @@
   .flight-debrief { gap: var(--sp-4); padding: 0; border: 0; }
   .flight-debrief-stage { padding: var(--sp-6) var(--sp-3); }
   .flight-debrief-record { width: 112px; height: 112px; }
-  .flight-debrief-prompts { grid-template-columns: 1fr; }
   .flight-debrief-actions .exds-btn--lg { min-height: 56px; flex-basis: 100%; width: 100%; font-size: var(--fs-card); }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -97,7 +97,7 @@ class RemoteController < ApplicationController
     base.merge(
       phase:,
       flight: {
-        id: flight.id, code: flight.code, pilot: flight.display_pilot, aircraft: flight.aircraft&.display_name || "No wing",
+        id: flight.id, code: flight.code, pilot: flight.display_pilot, aircraft: flight.aircraft&.display_name || "No aircraft",
         aircraft_id: flight.aircraft_id, pilot_id: flight.pilot_id,
         started_at: flight.remote_start_requested_at.iso8601, recording: flight.live?,
         debrief_url: debrief_remote_flight_path(flight), cancel_url: remote_flight_path(flight),
