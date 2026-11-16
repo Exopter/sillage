@@ -210,3 +210,15 @@ console.log("Signal independent module status, faults, unknowns and freshness te
 modules.apply({...status, role: 3, timeBootMs: 8000, validity: 4, flags: 23}, 18000)
 assert.equal(modules.snapshot(18000).modules[2].state, "degraded", "a mounted card does not mean a full leaf cache can record")
 assert.equal(modules.snapshot(18000).modules[2].storage, "Cache full · live only")
+
+// The Seat mode command is an unsigned MAVLink 2 frame for message 42002; trailing zero bytes are
+// dropped as MAVLink 2 requires. The firmware parser accepted these exact bytes on 2026-11-16.
+{
+  const {seatModeCommand} = await import("../../app/javascript/lib/signal_telemetry.js")
+  const payload = Uint8Array.from([1, 0xd2, 4, 0, 0, ...new Array(32).fill(0xab)])
+  const frame = seatModeCommand(7, payload)
+  assert.equal(Buffer.from(frame).toString("hex"), "fd25000007ffbe12a40001d2040000" + "ab".repeat(32) + "7533")
+  const trimmed = seatModeCommand(7, Uint8Array.from([0, 0xd2, 4, 0, 0, ...new Array(30).fill(0xcd), 0, 0]))
+  assert.equal(trimmed[1], 35)
+  assert.equal(trimmed.length, 47)
+}

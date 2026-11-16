@@ -15,7 +15,7 @@ assert.equal(readiness.snapshot(1000, true).state, "waiting", "USB, ground radio
 readiness.receive(frame(heartbeat), 1000)
 readiness.receive(frame(quality), 1100)
 assert.equal(readiness.snapshot(1100, true).label, `${quality.deviceId} connected`)
-const assignedWing = {deviceId: quality.deviceId, recorderLabel: "EXOFDR-V1-PCB-01", aircraftLabel: "Freak 6 Vincent · WS-F6-VD", registered: true, assemblyId: 42, canAcquire: true}
+const assignedWing = {deviceId: quality.deviceId, recorderLabel: "EXOFDR-V1-PCB-01", aircraftLabel: "Freak 6 Vincent · WS-F6-VD", registered: true, assemblyId: 42, canAcquire: true, modeControl: false}
 assert.equal(readiness.snapshot(1100, true, assignedWing).label, "Freak 6 Vincent · WS-F6-VD connected")
 assert.equal(readiness.snapshot(1100, true, assignedWing).detail, "Radio ready")
 assert.doesNotMatch(readiness.snapshot(1100, true, assignedWing).detail, /preflight/i)

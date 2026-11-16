@@ -115,6 +115,7 @@ Rails.application.routes.draw do
       resources :fdr_sillage_heartbeats, only: :index, path: "fdr-sillage-heartbeats"
       resources :fdr_import_commands, only: %i[index create], path: "fdr-import-commands"
       resources :fdr_recording_commands, only: :create, path: "fdr-recording-commands"
+      resources :fdr_mode_commands, only: :create, path: "fdr-mode-commands"
       resources :fdr_wifi_uploads, only: :create, param: :token, path: "fdr-wifi-uploads" do
         member do
           patch :chunk

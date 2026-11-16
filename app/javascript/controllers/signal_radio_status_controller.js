@@ -2,14 +2,14 @@ import { Controller } from "@hotwired/stimulus"
 import { SignalRadioLink, resolveRadioIdentity } from "signal_radio_link"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
 
-/** @typedef {{buttonTarget: HTMLButtonElement, labelTarget: HTMLElement, detailTarget: HTMLElement,
+/** @typedef {{buttonTarget: HTMLButtonElement, labelTarget: HTMLElement, detailTarget: HTMLElement, modeButtonTargets: HTMLButtonElement[],
  * assignButtonTarget: HTMLButtonElement, assignmentDialogTarget: HTMLDialogElement, assignmentFormTarget: HTMLFormElement,
  * assignmentDeviceTarget: HTMLInputElement, assignmentModeTarget: HTMLSelectElement,
  * existingAssemblyTarget: HTMLFieldSetElement, newAssemblyTarget: HTMLFieldSetElement, assignmentErrorTarget: HTMLElement}} Bindings */
 const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 
 export default class extends TypedController {
-  static targets = ["button", "label", "detail", "assignButton", "assignmentDialog", "assignmentForm", "assignmentDevice", "assignmentMode", "existingAssembly", "newAssembly", "assignmentError"]
+  static targets = ["button", "label", "detail", "modeButton", "assignButton", "assignmentDialog", "assignmentForm", "assignmentDevice", "assignmentMode", "existingAssembly", "newAssembly", "assignmentError"]
   link = new SignalRadioLink(() => this.render())
   /** @type {number|undefined} */ timer = undefined
   /** @type {(() => void)|null} */ unregister = null
@@ -21,6 +21,8 @@ export default class extends TypedController {
   resubmitting = false
   submitting = false
   assigning = false
+  modeChanging = false
+  modeNotice = ""
   assignmentKey = ""
   connectedRadio = () => { if (this.active) void this.link.connect() }
   pageHide = () => { void this.link.close() }
@@ -135,6 +137,34 @@ export default class extends TypedController {
     }
   }
 
+  /** @param {Event} event */
+  async changeMode(event) {
+    const button = event.currentTarget
+    if (!(button instanceof HTMLButtonElement) || this.modeChanging) return
+    const ground = button.dataset.mode === "ground"
+    if (ground && !window.confirm("Restart the Seat into ground mode? It stops recording, leaves the module group and connects to Wi-Fi to synchronize with Sillage. It returns to flight mode on request, or by itself after 3 minutes without a connection.")) return
+    this.modeChanging = true
+    this.modeNotice = ""
+    this.render()
+    try {
+      const bootId = await this.link.sendMode(ground ? "ground" : "flight")
+      this.modeNotice = `${ground ? "Ground" : "Flight"} mode requested. Waiting for the Seat to restart…`
+      // The restart shows as a new boot on the radio; without it the request did not take effect.
+      const deadline = Date.now() + 25000
+      while (this.active && Date.now() < deadline && this.link.readiness.bootId === bootId) await new Promise(resolve => window.setTimeout(resolve, 500))
+      if (!this.active) return
+      this.modeNotice = this.link.readiness.bootId === bootId
+        ? "The Seat did not restart. It may be out of range, on firmware without this command, or not initialized with its Sillage key."
+        : `The Seat restarted${ground ? " into ground mode" : ""}.`
+    } catch (error) {
+      this.modeNotice = error instanceof Error ? error.message : String(error)
+    } finally {
+      this.modeChanging = false
+      this.render()
+      window.setTimeout(() => { this.modeNotice = ""; this.render() }, 12000)
+    }
+  }
+
   toggle() {
     if (this.link.connected) void this.link.close()
     else void this.link.connect(true)
@@ -173,7 +203,11 @@ export default class extends TypedController {
     this.labelTarget.textContent = this.link.error === "Radio in use in another tab" ? "Radio in use" : this.link.error ? "Radio unavailable" : status.label
     this.labelTarget.title = this.labelTarget.textContent
     this.detailTarget.textContent = this.link.error || (status.state === "connected" && deviceId && !this.identity && !this.identityRequest ? "Radio ready · Aircraft identity unavailable" : status.detail)
+    if (this.modeNotice) this.detailTarget.textContent = this.modeNotice
     this.detailTarget.title = this.detailTarget.textContent
+    // Only an initialized module holds the key that makes a mode change acceptable.
+    const modeAvailable = ["connected", "degraded"].includes(status.state) && this.identity?.modeControl === true
+    for (const button of this.modeButtonTargets) { button.hidden = !modeAvailable; button.disabled = this.modeChanging }
     this.buttonTarget.disabled = this.link.busy || !navigator.serial
     this.buttonTarget.textContent = this.link.closing ? "Disconnecting…" : this.link.busy ? "Connecting…" : this.link.connected ? "Disconnect radio" : "Connect radio"
     this.buttonTarget.setAttribute("aria-busy", String(this.link.busy))

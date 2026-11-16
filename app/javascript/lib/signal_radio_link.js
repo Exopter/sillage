@@ -1,6 +1,6 @@
-import { SignalTelemetry, groundStationHeartbeat } from "signal_telemetry"
+import { SignalTelemetry, groundStationHeartbeat, seatModeCommand } from "signal_telemetry"
 
-/** @typedef {{deviceId: string, recorderLabel: string, aircraftLabel: string|null, registered: boolean, assemblyId: number|null, canAcquire: boolean}} RadioIdentity */
+/** @typedef {{deviceId: string, recorderLabel: string, aircraftLabel: string|null, registered: boolean, assemblyId: number|null, canAcquire: boolean, modeControl?: boolean}} RadioIdentity */
 
 /** Resolve the received full ECU identity through Sillage's current installation chain.
  * @param {string} deviceId @returns {Promise<RadioIdentity>} */
@@ -18,7 +18,8 @@ export async function resolveRadioIdentity(deviceId) {
   if (typeof recorderLabel !== "string" || !recorderLabel.trim() ||
       (payload.aircraft != null && (typeof aircraftLabel !== "string" || !aircraftLabel.trim())))
     throw new Error("Invalid aircraft identity")
-  return {deviceId, recorderLabel, aircraftLabel, registered: true, assemblyId: Number.isInteger(payload.recorder.assembly_id) ? payload.recorder.assembly_id : null, canAcquire: payload.recorder.acquisition_allowed === true}
+  return {deviceId, recorderLabel, aircraftLabel, registered: true, assemblyId: Number.isInteger(payload.recorder.assembly_id) ? payload.recorder.assembly_id : null, canAcquire: payload.recorder.acquisition_allowed === true,
+    modeControl: payload.recorder.mode_control === true}
 }
 
 /** A USB connection or SiK report alone is not evidence of an aircraft. */
@@ -168,6 +169,36 @@ export class SignalRadioLink {
       finally { this.writer?.releaseLock(); this.writer = null }
     })()
     try { await this.writing } finally { this.writing = null }
+  }
+
+  /** Asks the Seat to restart into a ground session (Wi-Fi and BLE, no recording) or back into flight mode.
+   * Sillage signs the request for the module's current boot; the radio only carries it.
+   * @param {"ground"|"flight"} mode */
+  async sendMode(mode) {
+    const {deviceId, bootId} = this.readiness
+    if (!this.connected || !this.port?.writable || !deviceId || !bootId) throw new Error("Wait for the aircraft telemetry before changing its mode.")
+    const response = await fetch("/api/v1/fdr-mode-commands", {method: "POST", credentials: "same-origin", cache: "no-store",
+      signal: AbortSignal.timeout(10000), headers: {"Content-Type": "application/json", Accept: "application/json",
+        "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || ""},
+      body: JSON.stringify({device_id: deviceId, boot_id: bootId, mode})})
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok || typeof result.payload !== "string" || !/^[0-9a-f]{74}$/.test(result.payload)) throw new Error(result.error || "Sillage could not sign the mode change.")
+    const payload = Uint8Array.from(result.payload.match(/../g) || [], byte => Number.parseInt(byte, 16))
+    await this.writing
+    const writable = this.port?.writable
+    if (!this.connected || !writable) throw new Error("The radio disconnected before the mode change was sent.")
+    // The link is lossy and the command is idempotent for one boot: send it three times.
+    this.writing = (async () => {
+      const writer = this.writer = writable.getWriter()
+      try {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          await writer.write(seatModeCommand(this.sequence++, payload))
+          await new Promise(resolve => window.setTimeout(resolve, 150))
+        }
+      } finally { writer.releaseLock(); this.writer = null }
+    })()
+    try { await this.writing } finally { this.writing = null }
+    return bootId
   }
 
   close() {

@@ -71,6 +71,8 @@ module Api
             id: recorder.id,
             assembly_id: recorder.assembly&.id,
             acquisition_allowed: Signal::RecorderAccess.allowed?(recorder) == true,
+            # A distributed Seat changes mode only on a command signed with its key.
+            mode_control: recorder.initialized? && recorder.assembly&.fdr_component_type == "SEAT",
             internal_number: recorder.assembly&.internal_number,
             serial_number: recorder.assembly&.serial_number,
             functional_configuration: recorder.assembly&.functional_configuration,
