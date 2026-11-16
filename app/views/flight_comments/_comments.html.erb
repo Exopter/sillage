@@ -54,7 +54,7 @@
                 <%= debrief_summary(comment.body) %>
               <% end %>
               <% if debrief.audio.attached? %>
-                <audio class="flight-debrief-audio" controls preload="metadata" src="<%= attachment_path(debrief.audio.attachment) %>"></audio>
+                <audio class="flight-debrief-audio" controls preload="metadata" data-controller="audio-duration" src="<%= attachment_path(debrief.audio.attachment) %>"></audio>
                 <%= link_to attachment_path(debrief.audio.attachment), download: true, class: "flight-debrief-download" do %><%= sillage_icon "download", size: 15 %><span>Download original audio</span><% end %>
               <% end %>
               <% if debrief.transcript.present? %>
