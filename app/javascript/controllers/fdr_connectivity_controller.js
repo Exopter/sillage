@@ -14,6 +14,7 @@ import {
   USB_CHUNK_SIZE,
   USB_CONNECTION_ATTEMPTS,
   USB_CONNECTION_RETRY_DELAY_MS,
+  USB_FDR_PORT_FILTERS,
   UsbCapability,
   UsbErrorCode,
   UsbFdrClient,
@@ -346,9 +347,9 @@ export default class extends TypedController {
     if (this.usbClient) return this.disconnectUsb()
     if (!navigator.serial) return this.showUsbConnectionError("Web Serial is not available in this browser.")
     try {
-      const port = await navigator.serial.requestPort()
+      const port = await navigator.serial.requestPort({ filters: [...USB_FDR_PORT_FILTERS] })
       this.rememberUsbPort(port)
-      await this.synchronizeUsb(port)
+      await this.synchronizeUsb(port, { chosenByOperator: true })
     } catch (caught) {
       const error = protocolError(caught)
       if (error.name !== "NotFoundError") this.showUsbConnectionError(error)
@@ -397,6 +398,18 @@ export default class extends TypedController {
     }
   }
 
+  /** Where a recorder lives in Forge: its own page once registered, the setup page otherwise.
+   * @param {string} deviceId @returns {Promise<string|null>} */
+  async recorderPage(deviceId) {
+    try {
+      const response = await fetch(`${this.registrationUrlValue}?device_id=${encodeURIComponent(deviceId)}`, { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" }, signal: AbortSignal.timeout(5000) })
+      if (!response.ok) return null
+      const payload = await response.json()
+      const serial = payload?.registered === true ? payload.recorder?.serial_number : null
+      return typeof serial === "string" && serial ? `/forge/fdrs/${encodeURIComponent(serial)}/files` : "/forge?connect=1"
+    } catch { return null }
+  }
+
   /** @param {Event & {port?:SerialPort}} event */
   async handleSerialConnect(event) {
     const saved = JSON.parse(window.localStorage.getItem(USB_PORT_STORAGE_KEY) || "null")
@@ -410,10 +423,11 @@ export default class extends TypedController {
     if (port === this.usbPort) void this.disconnectUsb()
   }
 
-  /** @param {SerialPort} port @param {{skipFileSynchronization?:boolean,transferRecoveryAttempt?:number}} [options] */
+  /** @param {SerialPort} port @param {{skipFileSynchronization?:boolean,transferRecoveryAttempt?:number,chosenByOperator?:boolean}} [options] */
   async synchronizeUsb(port, {
     skipFileSynchronization = false,
-    transferRecoveryAttempt = 0
+    transferRecoveryAttempt = 0,
+    chosenByOperator = false
   } = {}) {
     if (this.usbBusy || this.usbClient) return
     const session = Symbol("usb-session")
@@ -446,7 +460,17 @@ export default class extends TypedController {
     try {
       const device = await this.connectUsbClient(port, session, client)
       if (!device) return
-      if (this.expectedDeviceIdValue && device.deviceId !== this.expectedDeviceIdValue) throw new Error("This recorder belongs to another FDR. Open its page in Forge.")
+      if (this.expectedDeviceIdValue && device.deviceId !== this.expectedDeviceIdValue) {
+        // The operator plugged in and chose another recorder: take them to its page, where it reconnects by itself.
+        const page = chosenByOperator ? await this.recorderPage(device.deviceId) : null
+        if (!page) throw new Error("This recorder belongs to another FDR. Open its page in Forge.")
+        this.usbClient = null
+        this.usbPort = null
+        await client.close()
+        this.showUsbConnectionNotice("This is another recorder. Opening its page…", { label: "Recorder recognised" })
+        window.location.assign(page)
+        return
+      }
       if (!this.usbClient) return
       client = this.usbClient
       if (!this.usbSessionActive(session, client)) return
@@ -1924,6 +1948,9 @@ export default class extends TypedController {
     if (!connection) return
     const transports = [this.usbIdentity && "USB-C", this.bleIdentity && "Bluetooth", this.wifiIdentity && "Wi-Fi"].filter(Boolean)
     connection.textContent = !this.recorderStatusTarget.hidden ? this.recorderStatusTarget.textContent : transports.length ? `Connected via ${transports.join(" + ")}` : "Not connected"
+    // One click to connect from the page itself; the full options stay behind Connections.
+    const quick = this.element.querySelector("[data-forge-quick-connect]")
+    if (quick instanceof HTMLButtonElement) { quick.hidden = Boolean(this.usbIdentity) || !navigator.serial; quick.disabled = Boolean(this.usbBusy) }
     const storage = this.element.querySelector("[data-forge-storage]")
     if (storage) storage.textContent = transports.length ? this.storageTarget.textContent : ""
     if (!this.importQueue?.client && !this.importQueue?.wifiReady) {

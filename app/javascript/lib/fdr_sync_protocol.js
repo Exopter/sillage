@@ -24,6 +24,11 @@ export {
 export const USB_CONNECTION_TIMEOUT_MS = 10_000
 export const USB_CONNECTION_ATTEMPTS = 2
 export const USB_CONNECTION_RETRY_DELAY_MS = 250
+// A recorder that is still starting misses the first greeting: repeat it on the
+// open port until it answers, so it connects the moment it is ready.
+export const USB_HELLO_RESEND_MS = 800
+// ExoFDR boards enumerate under Espressif or Seeed. The port chooser lists only these.
+export const USB_FDR_PORT_FILTERS = Object.freeze([{ usbVendorId: 0x303a }, { usbVendorId: 0x2886 }])
 export const USB_SERIAL_BUFFER_SIZE = 64 * 1024
 export const USB_REQUEST_TIMEOUT_MS = 30_000
 export const USB_FILE_PREPARATION_TIMEOUT_MS = 120_000
@@ -252,7 +257,7 @@ export class UsbFdrClient {
   }
 
   async hello() {
-    const frame = await this.request(UsbMessage.HELLO, new Uint8Array(), [UsbMessage.DEVICE_INFO])
+    const frame = await this.request(UsbMessage.HELLO, new Uint8Array(), [UsbMessage.DEVICE_INFO], { resendMs: USB_HELLO_RESEND_MS })
     const device = parseDeviceInfo(frame.payload)
     this.capabilities = device.capabilities
     return device
@@ -437,11 +442,11 @@ export class UsbFdrClient {
    * @param {number} type
    * @param {Uint8Array} payload
    * @param {number[]} expectedTypes
-   * @param {{ timeoutMs?: number }} [options]
+   * @param {{ timeoutMs?: number, resendMs?: number }} [options]
    * @returns {Promise<UsbFrame>}
    */
-  request(type, payload, expectedTypes, { timeoutMs = USB_REQUEST_TIMEOUT_MS } = {}) {
-    const operation = this.requestTail.then(() => this.performRequest(type, payload, expectedTypes, { timeoutMs }))
+  request(type, payload, expectedTypes, { timeoutMs = USB_REQUEST_TIMEOUT_MS, resendMs = 0 } = {}) {
+    const operation = this.requestTail.then(() => this.performRequest(type, payload, expectedTypes, { timeoutMs, resendMs }))
     this.requestTail = operation.catch(() => {})
     return operation
   }
@@ -450,14 +455,14 @@ export class UsbFdrClient {
    * @param {number} type
    * @param {Uint8Array} payload
    * @param {number[]} expectedTypes
-   * @param {{ timeoutMs: number }} options
+   * @param {{ timeoutMs: number, resendMs?: number }} options
    * @returns {Promise<UsbFrame>}
    */
-  async performRequest(type, payload, expectedTypes, { timeoutMs }) {
+  async performRequest(type, payload, expectedTypes, { timeoutMs, resendMs = 0 }) {
     if (!this.writer || !this.frameReader) throw usbConnectionError()
 
     let timeoutId
-    const exchange = this.exchangeFrame(type, payload, expectedTypes)
+    const exchange = this.exchangeFrame(type, payload, expectedTypes, resendMs)
     const timeout = new Promise((_, reject) => {
       timeoutId = globalThis.setTimeout(() => {
         reject(usbRequestTimeoutError(type, timeoutMs))
@@ -483,16 +488,20 @@ export class UsbFdrClient {
    * @param {number} type
    * @param {Uint8Array} payload
    * @param {number[]} expectedTypes
+   * @param {number} [resendMs] Repeat the same frame at this interval until it is answered. Replies to the repeats carry the same sequence and are skipped by later requests.
    * @returns {Promise<UsbFrame>}
    */
-  async exchangeFrame(type, payload, expectedTypes) {
+  async exchangeFrame(type, payload, expectedTypes, resendMs = 0) {
     const writer = this.writer
     const frameReader = this.frameReader
     if (!writer || !frameReader) throw usbConnectionError()
 
     const sequence = this.sequence++ >>> 0
+    const frameBytes = encodeFrame(type, sequence, payload)
+    let resend
     try {
-      await writer.write(encodeFrame(type, sequence, payload))
+      await writer.write(frameBytes)
+      if (resendMs > 0) resend = globalThis.setInterval(() => { if (this.writer === writer) void writer.write(frameBytes).catch(() => {}) }, resendMs)
       while (true) {
         const frame = await frameReader.read()
         if (frame.sequence !== sequence) continue
@@ -504,6 +513,8 @@ export class UsbFdrClient {
       const error = protocolError(caught)
       if (!this.writer || !this.frameReader || isUsbTransportError(error)) throw usbConnectionError()
       throw error
+    } finally {
+      globalThis.clearInterval(resend)
     }
   }
 
