@@ -81,6 +81,7 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     get remote_state_path, as: :json
     assert_equal "ready", response.parsed_body["phase"]
     assert_equal 1, response.parsed_body["flights_today"]
+    assert_in_delta Time.current.to_f * 1000, response.parsed_body["server_time"], 5_000
     get flight_comments_path(flight)
     assert_select ".flight-debrief-checklist dd", text: "165 km/h"
 

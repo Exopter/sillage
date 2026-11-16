@@ -82,7 +82,8 @@ class RemoteController < ApplicationController
 
   def state_payload(flight = current_remote_flight)
     today = remote_flights.where(remote_start_requested_at: Time.current.beginning_of_day..)
-    base = { flights_today: today.where.not(status: "preparation").count }
+    # The phone times the flight against this clock, never its own, which can be minutes off.
+    base = { flights_today: today.where.not(status: "preparation").count, server_time: (Time.current.to_f * 1000).round }
     return base.merge(phase: "ready") unless flight
 
     session = flight.signal_sessions.order(:id).last
