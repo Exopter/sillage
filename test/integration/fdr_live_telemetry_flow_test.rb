@@ -15,7 +15,7 @@ class FdrLiveTelemetryFlowTest < ActionDispatch::IntegrationTest
 
   test "signed Wi-Fi telemetry is transient and available only through an active operator session" do
     post api_v1_fdr_live_telemetry_path, params: { device_id: @recorder.device_id, session_uuid: @session.uuid }, as: :json
-    assert_redirected_to new_session_path
+    assert_response :unauthorized
     assert_not FdrLiveTelemetry.wanted?(@recorder)
     sign_in_as users(:julien)
     poll

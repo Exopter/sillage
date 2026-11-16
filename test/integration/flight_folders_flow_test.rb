@@ -242,7 +242,7 @@ class FlightFoldersFlowTest < ActionDispatch::IntegrationTest
   test "folder management requires authentication" do
     delete logout_path
     patch color_flight_folder_path(@folder), params: { flight_folder: { color: "sky" } }, as: :json
-    assert_redirected_to new_session_path
+    assert_response :unauthorized
     assert_equal "graphite", @folder.reload.color
     get flight_folders_path
     assert_redirected_to new_session_path

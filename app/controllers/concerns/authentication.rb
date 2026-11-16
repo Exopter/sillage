@@ -43,6 +43,8 @@ module Authentication
   end
 
   def request_authentication
+    return head :unauthorized if authentication_api_request?
+
     store_authentication_return_path
     redirect_to new_session_path
   end
@@ -51,26 +53,41 @@ module Authentication
     return unless Current.user&.totp_required?
     return if Current.session&.otp_verified?
 
+    return head :forbidden if authentication_api_request?
+
     store_two_factor_return_path
     redirect_to(Current.user.totp_configured? ? new_two_factor_challenge_path : new_two_factor_setup_path)
   end
 
   def store_authentication_return_path
-    session[:return_to_after_authenticating] = request.fullpath if request.get? || request.head?
+    session[:return_to_after_authenticating] = request.fullpath if authentication_navigation?
   end
 
   def store_two_factor_return_path
-    session[:return_to_after_two_factor] = request.fullpath if request.get? || request.head?
+    session[:return_to_after_two_factor] = request.fullpath if authentication_navigation?
+  end
+
+  def authentication_api_request?
+    controller_path.start_with?("api/") || request.format.json?
+  end
+
+  def authentication_navigation?
+    (request.get? || request.head?) && request.format.html? && !request.xhr? && !authentication_api_request?
+  end
+
+  def authentication_return_path?(path)
+    path.is_a?(String) && path.start_with?("/") && !path.start_with?("//") &&
+      !path.split("?", 2).first.match?(%r{\A/api(?:/|\z)})
   end
 
   def after_authentication_url
-    session.delete(:return_to_after_authenticating) || root_path
+    path = session.delete(:return_to_after_authenticating)
+    authentication_return_path?(path) ? path : root_path
   end
 
   def after_two_factor_url
-    session.delete(:return_to_after_two_factor) ||
-      session.delete(:return_to_after_authenticating) ||
-      root_path
+    paths = [ session.delete(:return_to_after_two_factor), session.delete(:return_to_after_authenticating) ]
+    paths.find { |path| authentication_return_path?(path) } || root_path
   end
 
   def start_new_session_for(user)
