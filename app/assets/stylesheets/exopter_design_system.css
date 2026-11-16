@@ -41,7 +41,7 @@
   --ex-instrument-ground: #151f20;
   --ex-instrument-line: #53676d;
   --ex-instrument-muted: #95a6aa;
-  --ex-telemetry-live: var(--ex-aqua-500);
+  --ex-telemetry-live: var(--ex-khaki-300);
   --ex-telemetry-no-data: var(--ex-amber-500);
 
   --ex-flight-violet: #9256e8;
@@ -65,8 +65,8 @@
 
   --ex-state-ready-bg: rgba(140, 255, 77, 0.18);
   --ex-state-ready-text: #315a26;
-  --ex-state-live-bg: rgba(47, 214, 198, 0.14);
-  --ex-state-live-text: #00615b;
+  --ex-state-live-bg: rgba(98, 102, 74, 0.12);
+  --ex-state-live-text: #50543b;
   --ex-state-pending-bg: #e5ece9;
   --ex-state-pending-text: #5f6c6b;
   --ex-state-caution-bg: rgba(242, 162, 58, 0.16);

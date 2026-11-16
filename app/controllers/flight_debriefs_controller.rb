@@ -1,5 +1,6 @@
 class FlightDebriefsController < ApplicationController
   rate_limit to: 10, within: 1.minute, only: :realtime
+  rate_limit to: 40, within: 1.minute, only: :checklist
   before_action :set_flight
   before_action :set_debrief, except: :create
 
@@ -78,6 +79,17 @@ class FlightDebriefsController < ApplicationController
   def realtime
     return head :conflict unless @debrief.status == "recording"
     render json: Debriefs::OpenAi.new.realtime
+  rescue Debriefs::OpenAi::Error => error
+    render json: { error: error.message }, status: :service_unavailable
+  end
+
+  # Live reading of the checklist while the pilot is still talking.
+  def checklist
+    return head :conflict unless @debrief.status == "recording"
+    transcript = params[:transcript].to_s
+    return render json: { checklist: {} } if transcript.strip.length < 8
+
+    render json: { checklist: Debriefs::OpenAi.new.checklist(transcript) }
   rescue Debriefs::OpenAi::Error => error
     render json: { error: error.message }, status: :service_unavailable
   end

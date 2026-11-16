@@ -12,9 +12,16 @@ class FlightDebriefJob < ApplicationJob
     transcript = debrief.transcript.presence || client.transcribe(debrief.audio)
     debrief.update!(transcript:)
     summary = client.summarize(transcript)
+    understood = if debrief.checklist.present?
+      begin
+        DebriefChecklist.extract(transcript).merge(client.checklist(transcript))
+      rescue Debriefs::OpenAi::Error
+        DebriefChecklist.extract(transcript)
+      end
+    end
     debrief.with_lock do
       # Points ticked on the phone win; the full transcript fills the ones it missed.
-      debrief.checklist = DebriefChecklist.extract(transcript).merge(debrief.checklist) if debrief.checklist.present?
+      debrief.checklist = understood.merge(debrief.checklist) if debrief.checklist.present?
       comment = debrief.flight_comment
       if comment
         # Fill the entry published at upload time, unless its author has already rewritten it.

@@ -92,7 +92,7 @@
 }
 
 .signal-quality-stack > div { grid-template-columns: 66px minmax(0, 1fr); }
-.signal-quality-stack strong { color: var(--ex-aqua-500); }
+.signal-quality-stack strong { color: var(--state-live); }
 .signal-quality-stack [data-state="degraded"],
 .signal-quality-stack [data-state="warning"] { color: var(--ex-amber-500); }
 .signal-quality-stack [data-state="unknown"] { color: var(--ex-graphite-400); }
@@ -160,7 +160,7 @@
 }
 
 .signal-widget.is-dragging {
-  border-color: var(--ex-aqua-500);
+  border-color: var(--state-live);
 }
 
 .signal-widget.is-dragging {
@@ -216,7 +216,7 @@
 
 .signal-head-icon {
   display: flex;
-  color: var(--ex-aqua-500);
+  color: var(--state-live);
 }
 
 .signal-widget-head > strong {
@@ -239,9 +239,9 @@
 .signal-live-badge {
   margin-left: auto;
   padding: 4px 7px;
-  border: 1px solid var(--ex-aqua-500);
+  border: 1px solid var(--state-live);
   border-radius: var(--ex-radius-surface);
-  color: var(--ex-aqua-500);
+  color: var(--state-live);
   font: 600 var(--fs-micro)/1 var(--font-mono);
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -328,8 +328,8 @@
 }
 
 .signal-map-follow[aria-pressed="true"] {
-  color: var(--ex-aqua-500);
-  border-color: var(--ex-aqua-500);
+  color: var(--state-live);
+  border-color: var(--state-live);
 }
 
 .signal-map-body > canvas,

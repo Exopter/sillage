@@ -9,50 +9,48 @@
   <header class="remote-top">
     <%= link_to root_path, class: "remote-exit", aria: { label: "Leave the remote" }, title: "Leave the remote" do %><%= sillage_icon "x", size: 20 %><% end %>
     <strong data-remote-target="title">Tunnel session</strong>
-    <span class="remote-link" data-remote-target="link" data-state="idle">Ground station</span>
+    <span class="remote-link" data-remote-target="link" data-state="idle">Ready</span>
   </header>
 
   <%# 1. Next flight %>
   <section class="remote-screen" data-remote-phases="ready" aria-label="Next flight">
     <div class="remote-body">
-      <div><span class="remote-eyebrow">Next flight</span><p class="remote-code" data-remote-target="count">Flight 1</p></div>
+      <p class="remote-saved" role="status" data-remote-target="saved" hidden><%= sillage_icon "circle-check", size: 20 %><span data-remote-target="savedText"></span></p>
+      <div class="remote-next">
+        <span class="remote-eyebrow">Next flight</span>
+        <p class="remote-code" data-remote-target="count">Flight 1</p>
+      </div>
       <label class="remote-pick"><span>Wing</span>
         <%= select_tag :aircraft_id, options_from_collection_for_select(@aircraft, :id, :display_name, default_aircraft), include_blank: "No wing", data: { remote_target: "aircraft" } %>
       </label>
       <label class="remote-pick"><span>Pilot</span>
         <%= select_tag :pilot_id, options_for_select(@pilots.map { |pilot| [ pilot.full_name || pilot.email_address, pilot.id ] }, default_pilot), data: { remote_target: "pilot" } %>
       </label>
-      <p class="remote-hint">Wing and pilot stay as they were on the last flight. Change them only when they change.</p>
+      <p class="remote-hint">Wing and pilot stay as they were on the last flight.</p>
       <p class="remote-error" role="alert" data-remote-target="error" hidden></p>
     </div>
     <footer class="remote-foot">
-      <button type="button" class="remote-big" data-action="remote#start"><%= sillage_icon "play", size: 26 %><span>Start flight</span></button>
+      <button type="button" class="remote-big" data-action="remote#start"><span class="remote-big-icon"><%= sillage_icon "play", size: 22 %></span><span>Start flight</span></button>
     </footer>
   </section>
 
-  <%# 1b. Waiting for the ground station %>
-  <section class="remote-screen" data-remote-phases="starting" hidden aria-label="Starting">
-    <div class="remote-body is-centered">
-      <span class="remote-spinner" aria-hidden="true"></span>
-      <p class="remote-code" data-remote-target="code">Flight</p>
-      <p class="remote-hint" role="status">Waiting for the ground station to start recording. It must be open on Signal in tunnel station mode with the radio connected.</p>
-    </div>
-    <footer class="remote-foot">
-      <button type="button" class="remote-mid" data-action="remote#cancel">Cancel this start</button>
-    </footer>
-  </section>
-
-  <%# 2. Flight in progress %>
+  <%# 2. Flight in progress, recorded by the ground station or running on the phone alone %>
   <section class="remote-screen" data-remote-phases="flight" hidden aria-label="Flight in progress">
     <div class="remote-body">
       <div><p class="remote-name" data-remote-target="pilotName">Pilot</p><span class="remote-eyebrow" data-remote-target="aircraftName">Wing</span></div>
-      <div class="remote-time"><span class="remote-eyebrow">Flight time</span><output class="remote-clock" data-remote-target="clock">00:00</output></div>
-      <p class="remote-hint" role="status" data-remote-target="flightStatus">Recording on the ground station.</p>
+      <div class="remote-time">
+        <span class="remote-eyebrow">Flight time</span>
+        <output class="remote-clock" data-remote-target="clock">00:00</output>
+        <svg class="remote-trace" viewBox="0 0 300 24" preserveAspectRatio="none" aria-hidden="true"><path d="M0 12 C 50 2, 100 22, 150 12 S 250 2, 300 12"/></svg>
+      </div>
+      <p class="remote-status" role="status" data-remote-target="flightStatus">Waiting for the ground station.</p>
     </div>
     <footer class="remote-foot">
       <button type="button" class="remote-big is-stop" data-action="remote#end"><span class="remote-stop-icon" aria-hidden="true"></span><span>End flight</span></button>
-      <button type="button" class="remote-mid" data-remote-target="forceClose" data-action="remote#forceClose" hidden>Close without the ground station</button>
-      <p class="remote-hint is-centered">Stops the recording and starts the debrief.</p>
+      <div class="remote-foot-row">
+        <button type="button" class="remote-text" data-remote-target="forceClose" data-action="remote#forceClose" hidden>Close without the ground station</button>
+        <button type="button" class="remote-text is-danger" data-remote-target="cancel" data-action="remote#cancel" hidden>Cancel this flight</button>
+      </div>
     </footer>
   </section>
 

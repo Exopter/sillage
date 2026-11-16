@@ -1,8 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 
 /**
- * @typedef {{id: number, code: string, pilot: string, aircraft: string, aircraft_id: number | null, pilot_id: number, started_at: string | null, debrief_url: string, cancel_url: string}} RemoteFlight
- * @typedef {{gateway_connected: boolean, stop_requested: boolean, stop_url: string, close_url: string}} RemoteSession
+ * @typedef {{id: number, code: string, pilot: string, aircraft: string, aircraft_id: number | null, pilot_id: number, started_at: string | null, recording: boolean, debrief_url: string, cancel_url: string, end_url: string}} RemoteFlight
+ * @typedef {{gateway_connected: boolean, stop_requested: boolean, close_url: string}} RemoteSession
  * @typedef {{phase: string, flights_today: number, flight?: RemoteFlight, session?: RemoteSession | null, error?: string}} RemoteState
  * @typedef {Object} Bindings
  * @property {string} stateUrlValue
@@ -11,7 +11,9 @@ import { Controller } from "@hotwired/stimulus"
  * @property {HTMLElement} titleTarget
  * @property {HTMLElement} linkTarget
  * @property {HTMLElement} countTarget
- * @property {HTMLElement} codeTarget
+ * @property {HTMLElement} savedTarget
+ * @property {HTMLElement} savedTextTarget
+ * @property {HTMLButtonElement} cancelTarget
  * @property {HTMLElement} pilotNameTarget
  * @property {HTMLElement} aircraftNameTarget
  * @property {HTMLElement} clockTarget
@@ -31,12 +33,13 @@ const DONE_KEY = "sillage-remote-done"
 // offered as soon as the debrief is handed off.
 export default class extends TypedController {
   static values = { stateUrl: String, flightsUrl: String, initial: Object }
-  static targets = ["title", "link", "count", "code", "pilotName", "aircraftName", "clock", "flightStatus", "error", "forceClose", "debriefs", "aircraft", "pilot"]
+  static targets = ["title", "link", "count", "saved", "savedText", "cancel", "pilotName", "aircraftName", "clock", "flightStatus", "error", "forceClose", "debriefs", "aircraft", "pilot"]
   /** @type {RemoteState} */
   state = { phase: "ready", flights_today: 0 }
   endedFlight = 0
   pollTimer = 0
   clockTimer = 0
+  savedTimer = 0
   busy = false
 
   connect() {
@@ -48,6 +51,7 @@ export default class extends TypedController {
   disconnect() {
     clearInterval(this.pollTimer)
     clearInterval(this.clockTimer)
+    clearTimeout(this.savedTimer)
   }
 
   /** @param {string} url @param {string} [method] @param {Record<string, unknown>} [body] @returns {Promise<{ok: boolean, status: number, data: any}>} */
@@ -97,15 +101,19 @@ export default class extends TypedController {
     this.countTarget.textContent = `Flight ${state.flights_today + 1}`
     this.titleTarget.textContent = phase === "ready" || !flight ? "Tunnel session" : flight.code
     if (flight) {
-      this.codeTarget.textContent = flight.code
       this.pilotNameTarget.textContent = flight.pilot
       this.aircraftNameTarget.textContent = flight.aircraft
     }
     if (phase === "debrief" && flight) void this.openDebrief(flight)
-    if (phase === "flight") {
-      const connected = state.session?.gateway_connected
-      this.flightStatusTarget.textContent = connected ? "Recording on the ground station." : "The ground station is not answering. The flight stays open until it reconnects."
-      this.forceCloseTarget.hidden = connected !== false || !state.session?.stop_requested
+    if (phase === "flight" && flight) {
+      const session = state.session
+      const waited = flight.started_at ? Date.now() - Date.parse(flight.started_at) : 0
+      this.element.dataset.recording = String(flight.recording && session?.gateway_connected !== false)
+      this.flightStatusTarget.textContent = flight.recording
+        ? (session?.gateway_connected === false ? "The ground station stopped answering. Keep going: you can still debrief." : "Recording on the ground station.")
+        : (waited < 8000 ? "Waiting for the ground station." : "No ground recording. The flight runs on this phone so you can still debrief.")
+      this.cancelTarget.hidden = flight.recording
+      this.forceCloseTarget.hidden = !(session && session.gateway_connected === false && session.stop_requested)
     }
     this.renderLink()
     this.renderClock()
@@ -115,10 +123,10 @@ export default class extends TypedController {
     const phase = this.element.dataset.phase
     const session = this.state.session
     const offline = this.linkTarget.dataset.offline === "true"
+    const flight = this.state.flight
     const [state, label] = offline ? ["down", "No connection"]
-      : phase === "flight" ? (session?.gateway_connected ? ["live", "Recording"] : ["down", "Ground silent"])
+      : phase === "flight" ? (flight?.recording && session?.gateway_connected !== false ? ["live", "Recording"] : ["wait", "Not recording"])
       : phase === "debrief" ? ["live", "Debrief"]
-      : phase === "starting" ? ["wait", "Starting"]
       : ["idle", "Ready"]
     this.linkTarget.dataset.state = state
     this.linkTarget.textContent = label
@@ -157,7 +165,7 @@ export default class extends TypedController {
 
   async cancel() {
     const flight = this.state.flight
-    if (!flight || this.busy) return
+    if (!flight || this.busy || !window.confirm("Cancel this flight? Nothing is kept.")) return
     this.busy = true
     try {
       const result = await this.call(flight.cancel_url, "DELETE")
@@ -167,12 +175,14 @@ export default class extends TypedController {
 
   async end() {
     const flight = this.state.flight
-    const session = this.state.session
-    if (!flight || !session) return
-    // Open the debrief at once; the ground station finishes saving in the background.
+    if (!flight) return
+    // Open the debrief at once; the ground station, if any, finishes saving in the background.
     this.endedFlight = flight.id
     this.apply(this.state)
-    try { await this.call(session.stop_url, "POST") } catch { /* The next refresh retries through the state. */ }
+    try {
+      const result = await this.call(flight.end_url, "POST")
+      if (result.ok) this.apply(result.data)
+    } catch { /* The next refresh retries through the state. */ }
   }
 
   async forceClose() {
@@ -200,8 +210,17 @@ export default class extends TypedController {
     const flight = this.state.flight
     if (!flight) return
     localStorage.setItem(DONE_KEY, String(flight.id))
+    this.announce(`${flight.code} handed to the Pilot Log`)
     for (const node of this.debriefsTarget.children) /** @type {HTMLElement} */ (node).hidden = true
     this.apply(this.state)
+  }
+
+  /** @param {string} message */
+  announce(message) {
+    this.savedTextTarget.textContent = message
+    this.savedTarget.hidden = false
+    clearTimeout(this.savedTimer)
+    this.savedTimer = window.setTimeout(() => { this.savedTarget.hidden = true }, 5000)
   }
 
   /** @param {Event} event */
@@ -216,5 +235,6 @@ export default class extends TypedController {
     const node = event.target
     if (node instanceof HTMLElement) node.remove()
     this.next()
+    this.announce("Debrief skipped")
   }
 }

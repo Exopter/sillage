@@ -1312,7 +1312,7 @@
 
 .workspace-status.is-installed {
   color: var(--ex-state-live-text, #00615b);
-  background: var(--ex-state-live-bg, rgba(47, 214, 198, 0.14));
+  background: var(--ex-state-live-bg);
 }
 
 .workspace-status.is-quarantined,

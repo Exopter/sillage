@@ -32,7 +32,20 @@ class RemoteController < ApplicationController
     render json: { error: error.record.errors.full_messages.to_sentence }, status: :unprocessable_entity
   end
 
-  # Withdraws a start request the ground station has not picked up yet.
+  # Ends the flight from the phone. With a live acquisition the ground station is
+  # asked to stop; without one the flight simply closes, so it can still be debriefed.
+  def finish
+    flight = remote_flights.find(params[:id])
+    session = flight.signal_sessions.where(status: %w[live syncing]).order(:id).last
+    if session
+      session.with_lock { session.update!(stop_requested_at: Time.current) unless session.stop_requested_at }
+    elsif flight.preparation?
+      flight.update!(status: "waiting_for_recording", started_at: flight.remote_start_requested_at, ended_at: Time.current)
+    end
+    render json: state_payload(flight)
+  end
+
+  # Withdraws a flight the ground station has not picked up yet.
   def cancel
     flight = remote_flights.find(params[:id])
     return render json: { error: "The flight has already started." }, status: :conflict unless flight.preparation?
@@ -74,23 +87,24 @@ class RemoteController < ApplicationController
 
     session = flight.signal_sessions.order(:id).last
     debriefed = flight.flight_debriefs.where.not(status: "recording").exists?
-    phase = if flight.preparation? then "starting"
-    elsif flight.live? then "flight"
+    # The flight runs on the phone as soon as it is started: the ground station
+    # joins when it can, and a flight it never joined can still be debriefed.
+    phase = if flight.preparation? || flight.live? then "flight"
     elsif debriefed then "ready"
     else "debrief"
     end
     base.merge(
       phase:,
       flight: {
-        id: flight.id, code: flight.code, pilot: flight.display_pilot, aircraft: flight.display_aircraft,
+        id: flight.id, code: flight.code, pilot: flight.display_pilot, aircraft: flight.aircraft&.display_name || "No wing",
         aircraft_id: flight.aircraft_id, pilot_id: flight.pilot_id,
-        started_at: (session&.started_at || flight.started_at)&.iso8601,
-        debrief_url: debrief_remote_flight_path(flight), cancel_url: remote_flight_path(flight)
+        started_at: flight.remote_start_requested_at.iso8601, recording: flight.live?,
+        debrief_url: debrief_remote_flight_path(flight), cancel_url: remote_flight_path(flight),
+        end_url: end_remote_flight_path(flight)
       },
       session: session && {
         gateway_connected: session.gateway_seen_at.present? && session.gateway_seen_at > 15.seconds.ago,
         stop_requested: session.stop_requested_at.present?,
-        stop_url: request_stop_api_v1_signal_session_path(session.uuid),
         close_url: close_disconnected_api_v1_signal_session_path(session.uuid)
       }
     )

@@ -64,7 +64,7 @@ export class ImuTutorial {
     this.motionScale = 1
     const style = getComputedStyle(container)
     const color = (/** @type {string} */ token, /** @type {string} */ fallback) => new THREE.Color(style.getPropertyValue(token).trim() || fallback)
-    this.accent = color("--ex-aqua-500", "#2fd6c6")
+    this.accent = color("--ex-khaki-300", "#b5b99a")
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
     this.renderer.setClearColor(0, 0)

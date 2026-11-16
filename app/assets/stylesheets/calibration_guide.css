@@ -5,19 +5,19 @@
 .calibration-legend { display: flex; gap: 18px; letter-spacing: 0; }
 .calibration-legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .calibration-legend span::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--ex-line-300); }
-.calibration-legend [data-kind="target"]::before { border: 1px dashed var(--ex-aqua-500); background: var(--ex-state-live-bg); }
+.calibration-legend [data-kind="target"]::before { border: 1px dashed var(--state-live); background: var(--ex-state-live-bg); }
 .calibration-scene { position: absolute; inset: 42px 0 156px; }
 .calibration-scene canvas { width: 100%; height: 100%; display: block; }
 .calibration-visual[data-motion="figure-eight"] .calibration-scene { inset: 42px 0 132px; }
-.calibration-visual[data-motion="figure-eight"] .calibration-countdown { color: var(--ex-aqua-500); }
+.calibration-visual[data-motion="figure-eight"] .calibration-countdown { color: var(--state-live); }
 .calibration-hold { position: absolute; width: 76px; height: 76px; bottom: 89px; left: calc(50% - 38px); }
 .calibration-hold svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
 .calibration-hold circle { fill: none; stroke-width: 2; }
 .calibration-ring-track { stroke: var(--ex-carbon-700); }
-.calibration-ring-fill { stroke: var(--ex-aqua-500); stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset .12s linear; }
+.calibration-ring-fill { stroke: var(--state-live); stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset .12s linear; }
 .calibration-countdown { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 3px; font: 400 25px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ex-instrument-muted); transition: color .2s; }
 .calibration-countdown span { font-size: 11px; align-self: center; }
-.calibration-visual[data-state="holding"] .calibration-countdown, .calibration-visual[data-state="complete"] .calibration-countdown { color: var(--ex-aqua-500); }
+.calibration-visual[data-state="holding"] .calibration-countdown, .calibration-visual[data-state="complete"] .calibration-countdown { color: var(--state-live); }
 .calibration-visual[data-state="complete"] .calibration-hold { animation: calibration-confirm .65s ease-out; }
 .calibration-scene-label { position: absolute; inset: auto 24px 26px; display: grid; gap: 6px; text-align: center; pointer-events: none; }
 .calibration-scene-label strong { font: 500 20px/1.2 var(--ex-font-sans); letter-spacing: -.02em; color: var(--ex-vapor-50); }
@@ -26,15 +26,15 @@
 .calibration-controls h2, .calibration-controls p { margin: 0; }
 .calibration-controls h2 { font-size: 28px; line-height: 1.12; letter-spacing: -.025em; }
 .calibration-controls p { color: var(--text-muted); line-height: 1.6; }
-.calibration-progress { width: 100%; height: 3px; accent-color: var(--ex-aqua-500); }
+.calibration-progress { width: 100%; height: 3px; accent-color: var(--state-live); }
 .calibration-faces { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
 .calibration-face { display: grid; justify-items: center; gap: 7px; padding: 10px 4px; border: 1px solid transparent; border-radius: var(--radius); font: 11px var(--font-mono); color: var(--text-muted); transition: background .25s, color .25s, border-color .25s; }
 .calibration-face-mark { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid var(--border-rule); border-radius: 50%; font-size: 10px; transition: background .25s, border-color .25s; }
 .calibration-face[data-active="true"] { border-color: var(--border-rule); background: var(--ex-vapor-50); color: var(--text-body); }
 .calibration-face[data-complete="true"] { color: var(--ex-state-live-text); }
-.calibration-face[data-complete="true"] .calibration-face-mark { background: var(--ex-state-live-bg); border-color: var(--ex-aqua-500); animation: calibration-confirm .45s ease-out; }
+.calibration-face[data-complete="true"] .calibration-face-mark { background: var(--ex-state-live-bg); border-color: var(--state-live); animation: calibration-confirm .45s ease-out; }
 .calibration-quality { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; padding: 12px 18px; border-bottom: 1px solid var(--border-rule); font: 12px/1.5 var(--font-mono); }
-.calibration-quality strong { color: var(--ex-aqua-500); }
+.calibration-quality strong { color: var(--state-live); }
 .calibration-quality [data-state="degraded"], .calibration-quality [data-state="warning"] { color: var(--ex-amber-500); }
 .calibration-quality [data-state="unknown"] { color: var(--text-muted); }
 .calibration-quality small { flex: 1; min-width: 200px; color: var(--text-muted); }
