@@ -31,12 +31,25 @@ module DebriefChecklist
     found
   end
 
-  # Maps the model's answer onto the checklist; the two scores live on the feelings line.
+  UNIT = %r{km/h|kmh|mph|m/s|kts?|knots|\u00b0|deg(?:rees)?|%|mm|cm}i
+
+  # Maps the model's answer onto the checklist. The remote shows the value beside
+  # the tick, so each one is cut to the figure or a couple of words. The two
+  # scores live on the feelings line and replace its wording when given.
   def from_model(answer)
-    values = answer.to_h.transform_values { |value| value.to_s.strip.presence }.compact
+    values = answer.to_h.transform_values { |value| brief(value) }.compact
     scores = [ ("IDK #{values["idk"]}" if values["idk"]), ("IDP #{values["idp"]}" if values["idp"]) ].compact
-    feelings = [ values["feelings"], *scores ].compact.join(" \u00b7 ")
+    feelings = scores.any? ? scores.join(" \u00b7 ") : values["feelings"]
     sanitize(values.slice("glide_ratio", "speed", "cg", "aoa", "special").merge("feelings" => feelings))
+  end
+
+  # "Position 3, a bit forward" becomes "3"; "really smooth and stable" becomes "really smooth".
+  def brief(value)
+    text = value.to_s.strip
+    figure = text[/#{NUMBER}(?:\s?(?:#{UNIT})(?![[:alpha:]]))?/]
+    return figure.tr(",", ".") if figure
+
+    text.split.first(2).join(" ").delete_suffix(",").first(18).presence
   end
 
   # Keeps only known keys and short text values, whatever the client sent.

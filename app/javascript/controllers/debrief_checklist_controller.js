@@ -16,6 +16,10 @@ export default class extends TypedController {
   understood = {}
   /** @type {Record<string, string | null>} */
   manual = {}
+  /** @type {HTMLElement[]} */
+  rows = []
+  /** @type {string[]} */
+  ticked = []
   /** @type {MutationObserver | null} */
   observer = null
   transcript = ""
@@ -25,6 +29,7 @@ export default class extends TypedController {
 
   connect() {
     if (this.pilotValue) this.heard.pilot = this.pilotValue
+    this.rows = this.itemTargets.map((item) => /** @type {HTMLElement} */ (item.parentElement))
     const transcript = this.element.querySelector('[data-flight-debrief-target="transcript"]')
     if (transcript) {
       this.observer = new MutationObserver(() => this.listen(transcript.textContent || ""))
@@ -86,6 +91,25 @@ export default class extends TypedController {
     return merged
   }
 
+  // Ticked points sink below the ones still to cover, in the order they were ticked.
+  /** @param {Record<string, string>} values */
+  arrange(values) {
+    const list = this.rows[0]?.parentElement
+    if (!list) return
+    const key = (/** @type {HTMLElement} */ row) => /** @type {HTMLElement} */ (row.firstElementChild).dataset.key || ""
+    this.ticked = [...this.ticked.filter((name) => values[name]), ...this.rows.map(key).filter((name) => values[name] && !this.ticked.includes(name))]
+    const wanted = [...this.rows.filter((row) => !values[key(row)]), ...this.ticked.map((name) => this.rows.find((row) => key(row) === name))].filter((row) => row !== undefined)
+    if (wanted.every((row, index) => list.children[index] === row)) return
+    const before = new Map(wanted.map((row) => [row, row.getBoundingClientRect().top]))
+    list.append(...wanted)
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    for (const row of wanted) {
+      const shift = (before.get(row) || 0) - row.getBoundingClientRect().top
+      // The short delay lets the tick land before the row leaves.
+      if (shift) row.animate([{ transform: `translateY(${shift}px)` }, { transform: "none" }], { duration: 360, delay: 240, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)", fill: "backwards" })
+    }
+  }
+
   render() {
     const values = this.values()
     let fresh = false
@@ -98,6 +122,7 @@ export default class extends TypedController {
       const slot = item.querySelector("[data-value]")
       if (slot) slot.textContent = value && value !== "Noted" ? value : ""
     }
+    this.arrange(values)
     const done = Object.keys(values).length
     this.countTarget.textContent = `${done} of ${this.itemTargets.length}`
     this.countTarget.dataset.complete = String(done >= this.itemTargets.length)

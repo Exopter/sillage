@@ -10,8 +10,11 @@ class DebriefChecklistTest < ActiveSupport::TestCase
   end
 
   test "maps a model answer onto the checklist and folds the scores into the feelings line" do
-    assert_equal({ "glide_ratio" => "3", "speed" => "170 km/h", "feelings" => "Very smooth \u00b7 IDK 9 \u00b7 IDP 7" },
+    assert_equal({ "glide_ratio" => "3", "speed" => "170 km/h", "feelings" => "IDK 9 \u00b7 IDP 7" },
       DebriefChecklist.from_model("glide_ratio" => "3", "speed" => "170 km/h", "cg" => nil, "feelings" => "Very smooth", "idk" => 9, "idp" => "7", "other" => "x"))
+    assert_equal({ "glide_ratio" => "2.8", "speed" => "165 km/h", "cg" => "3", "aoa" => "+2\u00b0", "feelings" => "really smooth", "special" => "none" },
+      DebriefChecklist.from_model("glide_ratio" => "about 2,8 on the last run", "speed" => "165 km/h in the tunnel", "cg" => "Position 3, a bit forward",
+        "aoa" => "+2\u00b0 nose up", "feelings" => "really smooth and stable", "special" => "none"))
     assert_equal({ "feelings" => "IDK 8" }, DebriefChecklist.from_model("idk" => "8", "special" => " "))
     assert_empty DebriefChecklist.from_model({})
   end
