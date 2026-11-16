@@ -51,8 +51,33 @@ export class PollingTelemetryPort {
   closed = false
   /** @type {Promise<Uint8Array>|null} */ pending = null
   /** @type {null|(() => Promise<void>)} */ cleanup = null
+  /** @type {{poll: () => Promise<Uint8Array>, close: () => Promise<void>}|null} */ connection = null
+  packets = new LivePacketReader()
   /** @param {() => Promise<{poll: () => Promise<Uint8Array>, close: () => Promise<void>}>} setup */
   constructor(setup) { this.setup = setup }
+
+  /** Like a serial port, a cancelled reader leaves the link open and a fresh stream to read:
+   * the same link carries on from standby into a recording.
+   * @returns {ReadableStream<Uint8Array>} */
+  stream() {
+    /** @type {ReadableStream<Uint8Array>} */
+    const stream = new ReadableStream({
+      pull: async (controller) => {
+        try {
+          while (!this.closed && this.readable === stream && this.connection) {
+            this.pending = deadline(this.connection.poll(), 5000)
+            const bytes = this.packets.decode(await this.pending)
+            if (this.closed || this.readable !== stream) return
+            await new Promise(resolve => setTimeout(resolve, 75))
+            if (bytes.length) { controller.enqueue(bytes); return }
+          }
+        } catch (error) { if (!this.closed && this.readable === stream) controller.error(error) }
+        finally { this.pending = null }
+      },
+      cancel: () => { if (!this.closed && this.readable === stream) this.readable = this.stream() }
+    })
+    return stream
+  }
   getInfo() { return {} }
   async open() {
     try {
@@ -63,22 +88,8 @@ export class PollingTelemetryPort {
       try { connection = await deadline(setup, 15000) }
       catch (error) { abandoned = true; throw error }
       this.cleanup = connection.close
-      const packets = new LivePacketReader()
-      this.readable = new ReadableStream({
-        pull: async (controller) => {
-          try {
-            while (!this.closed) {
-              this.pending = deadline(connection.poll(), 5000)
-              const bytes = packets.decode(await this.pending)
-              if (this.closed) return
-              await new Promise(resolve => setTimeout(resolve, 75))
-              if (bytes.length) { controller.enqueue(bytes); return }
-            }
-          } catch (error) { if (!this.closed) controller.error(error) }
-          finally { this.pending = null }
-        },
-        cancel: () => { this.closed = true }
-      })
+      this.connection = connection
+      this.readable = this.stream()
     } catch (error) { await this.cleanup?.(); throw error }
   }
   async close() {
@@ -87,6 +98,37 @@ export class PollingTelemetryPort {
     await this.cleanup?.()
     this.readable = null
   }
+}
+
+/** An open link and what holds it: its transport and the release of its cross-tab lock.
+ * @typedef {{port: SerialPort, kind: "ground-radio"|"usb-c"|"ble"|"wifi", release: (() => void)|null}} TelemetryLink */
+
+/** @type {{link: TelemetryLink, timer: ReturnType<typeof setTimeout>}|null} */
+let parked = null
+
+/** @param {TelemetryLink} link */
+export async function closeTelemetryLink(link) {
+  try { await link.port.close() } catch (_) { /* The port may already be gone. */ }
+  link.release?.()
+}
+
+/** Keeps a link open across one page change, so starting or ending a flight never
+ * reconnects it. A link nobody claims is closed.
+ * @param {TelemetryLink} link @param {number} [ttlMs] */
+export function parkTelemetryLink(link, ttlMs = 15000) {
+  const previous = claimTelemetryLink()
+  if (previous) void closeTelemetryLink(previous)
+  const timer = setTimeout(() => { if (parked?.link === link) { parked = null; void closeTelemetryLink(link) } }, ttlMs)
+  parked = {link, timer}
+}
+
+/** @returns {TelemetryLink|null} */
+export function claimTelemetryLink() {
+  const entry = parked
+  parked = null
+  if (!entry) return null
+  clearTimeout(entry.timer)
+  return entry.link
 }
 
 /** @param {"usb-c"|"ble"|"wifi"} kind @param {{deviceId: string, sessionUuid: string}} options @returns {Promise<SerialPort>} */
@@ -130,7 +172,8 @@ export async function directTelemetryPort(kind, options) {
   return asSerialPort(new PollingTelemetryPort(async () => ({
     poll: async () => {
       const requestedAt = performance.now()
-      const result = await post("/api/v1/fdr-live-telemetry", {device_id: options.deviceId, session_uuid: options.sessionUuid})
+      // Without a flight this is the standby preview; nothing is stored.
+      const result = await post("/api/v1/fdr-live-telemetry", {device_id: options.deviceId, ...(options.sessionUuid ? {session_uuid: options.sessionUuid} : {})})
       const packet = result.telemetry?.packet
       if (packet == null) return new Uint8Array()
       if (typeof packet !== "string" || !/^(?:[a-f0-9]{2}){8,512}$/.test(packet)) throw new Error("Invalid Wi-Fi telemetry packet.")

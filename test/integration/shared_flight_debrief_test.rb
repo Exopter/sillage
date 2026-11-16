@@ -15,7 +15,7 @@ class SharedFlightDebriefTest < ActionDispatch::IntegrationTest
     end
     get signal_path(session: uuid, join: 1)
     assert_response :success
-    assert_select "[data-controller=shared-flight]", count: 1
+    assert_select "[data-controller=signal-watch]", count: 1
     flight = SignalSession.find_by!(uuid:).flight
     post flight_debriefs_path(flight), params: { device_id: signal_recorder.device_id, uuid: SecureRandom.uuid }, as: :json
     assert_response :conflict

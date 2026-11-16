@@ -1,0 +1,26 @@
+<%# The link choice is made once, before anything else, and remembered on this computer. %>
+<div class="signal-transport-control" data-controller="signal-connection"
+     data-action="sillage:ground-radio-state@window->signal-connection#update">
+  <div class="exds-selection-field" hidden>
+    <select aria-label="Wi-Fi recorder" data-signal-connection-target="recorder" data-action="change->signal-connection#select" hidden>
+      <option value="">Select recorder</option>
+      <% @live_recorders.each do |recorder| %>
+        <option value="<%= recorder.device_id %>"><%= recorder.device_id %></option>
+      <% end %>
+    </select>
+  </div>
+  <button type="button" class="aircraft-connection-pill" data-signal-connection-target="button"
+          data-action="signal-connection#toggle" data-aircraft-connection-state="disconnected"
+          aria-label="Preparing telemetry" disabled>
+    <%= sillage_icon "radio", size: 15 %><strong data-signal-connection-target="label">Preparing</strong>
+  </button>
+  <span class="exds-icon-select">
+    <select aria-label="Link type" title="Link type: SiK radio" data-signal-connection-target="transport" data-action="change->signal-connection#select">
+      <option value="ground-radio" selected>SiK radio</option>
+      <option value="usb-c">USB-C</option>
+      <option value="ble">Bluetooth</option>
+      <option value="wifi">Wi-Fi via Sillage</option>
+    </select>
+    <%= sillage_icon "chevron-down", size: 12 %>
+  </span>
+</div>

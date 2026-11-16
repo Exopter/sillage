@@ -1,0 +1,35 @@
+<% session = @active_session %>
+<% content_for :title, session.flight&.code || "Flight" %>
+<%# Any device other than the recording computer follows the flight from here. %>
+<div class="signal-watch ex-dark" data-controller="signal-watch"
+     data-signal-watch-url-value="<%= shared_state_api_v1_signal_session_path(session.uuid) %>"
+     data-signal-watch-close-value="<%= close_disconnected_api_v1_signal_session_path(session.uuid) %>"
+     data-signal-watch-stop-value="<%= request_stop_api_v1_signal_session_path(session.uuid) %>"
+     data-signal-watch-started-value="<%= session.started_at.iso8601 %>">
+  <header class="signal-watch-head">
+    <div>
+      <span class="signal-k">Watch live</span>
+      <h1><%= session.flight&.code || "Flight" %><% if session.flight&.display_aircraft.present? %> · <%= session.flight.display_aircraft %><% end %></h1>
+      <p role="status" data-signal-watch-target="status">Connecting…</p>
+    </div>
+    <div class="signal-command-actions">
+      <span data-signal-watch-target="flightLink"><% if session.flight %><%= link_to "Open flight", flight_path(session.flight), class: "signal-tool-button exds-btn exds-btn--secondary" %><% end %></span>
+      <button type="button" class="signal-tool-button exds-btn exds-btn--danger is-danger" data-signal-watch-target="stop" data-action="signal-watch#stop">End flight</button>
+    </div>
+  </header>
+  <div class="signal-telemetry-strip" aria-label="Latest telemetry">
+    <div><span>Flight time</span><strong data-signal-watch-target="clock">--:--</strong><small>min:s</small></div>
+    <div><span>GPS altitude</span><strong data-signal-watch-target="value" data-reading="altitude">---</strong><small>m AMSL</small></div>
+    <div><span>Ground speed</span><strong data-signal-watch-target="value" data-reading="speed">---</strong><small>km/h</small></div>
+    <div><span>Track</span><strong data-signal-watch-target="value" data-reading="heading">---</strong><small>deg</small></div>
+    <div><span>GPS</span><strong data-signal-watch-target="value" data-reading="fix">---</strong><small>Fix / satellites</small></div>
+    <div><span>Position</span><strong data-signal-watch-target="value" data-reading="position">---</strong><small>Lat, lon</small></div>
+    <div class="signal-telemetry-health"><span>Data</span><strong data-signal-watch-target="value" data-reading="age">Waiting for telemetry</strong><small>From the recording computer</small></div>
+  </div>
+  <p class="signal-standby-notice" data-signal-watch-target="recovery" hidden>
+    <span>The recording computer stopped answering.</span>
+    <button type="button" class="workspace-strong-link" data-action="signal-watch#closeDisconnected">Close the flight without it</button>
+    <%= link_to "Record on this computer", signal_path(session: session.uuid), class: "workspace-strong-link" %>
+  </p>
+  <p class="operations-help">Share this view: <span class="signal-watch-url"><%= signal_url(session: session.uuid, watch: 1) %></span></p>
+</div>

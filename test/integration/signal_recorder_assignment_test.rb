@@ -144,7 +144,7 @@ class SignalRecorderAssignmentTest < ActionDispatch::IntegrationTest
     assert_equal signal_recorder.device_id, session.reload.station_metadata["recorder_device_id"]
     get signal_path(session: session.uuid, join: 1)
     assert_response :success
-    assert_select "[data-controller=shared-flight]", count: 1
+    assert_select "[data-controller=signal-watch]", count: 1
   end
 
   test "read-only accounts cannot assign recorders" do

@@ -5,7 +5,7 @@ import { clamp, signalLayoutPreset, parseSignalLayout } from "signal_layout"
 import { ImuHealth } from "imu_health"
 import { BELLY_MOUNT, NATIVE_MOUNT, interpretImu } from "imu_mount"
 import { SignalTelemetry, groundStationHeartbeat } from "signal_telemetry"
-import { directTelemetryPort } from "signal_transport"
+import { directTelemetryPort, parkTelemetryLink, claimTelemetryLink, closeTelemetryLink } from "signal_transport"
 import { resolveRadioIdentity } from "signal_radio_link"
 import { SignalMap } from "signal_map"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
@@ -74,7 +74,17 @@ const CHART_WINDOW_MS = 30_000
  * @property {boolean} reviewValue
  * @property {string} homeUrlValue
  * @property {string} completeUrlValue
+ * @property {HTMLElement} aircraftStatusTarget
+ * @property {HTMLElement} standbyAircraftTarget
+ * @property {HTMLFormElement} startFormTarget
+ * @property {HTMLInputElement} startDeviceTarget
+ * @property {HTMLInputElement} startTransportTarget
+ * @property {HTMLSelectElement} startFlightTarget
+ * @property {HTMLButtonElement} startButtonTarget
+ * @property {HTMLElement} startHintTarget
  */
+const LINK_TYPE_KEY = "signal-link-type"
+const LINK_TYPES = ["ground-radio", "usb-c", "ble", "wifi"]
 const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller & StimulusBindings} */ (/** @type {unknown} */ (Controller))
 
 export default class extends TypedController {
@@ -159,6 +169,19 @@ export default class extends TypedController {
   miniSizes = new Map()
   /** @type {Record<string,string>} */
   mountProfileOverrides = {}
+  /** An open link set aside while a flight starts or ends, so it is never reconnected.
+   * @type {import("signal_transport").TelemetryLink|null} */
+  parkedLink = null
+  /** @type {import("signal_radio_link").RadioIdentity|null} */ standbyIdentity = null
+  identityKey = ""
+  identityAt = 0
+  identityLoading = false
+  standbySignature = ""
+  standbyAt = 0
+  starting = false
+
+  /** Standby: the link is open and telemetry is shown, but no flight exists and nothing is stored. */
+  get standby() { return !this.sessionValue }
 
   boundOnline = () => { this.flushOutbox() }
   boundOffline = () => { this.refreshCloudStatus() }
@@ -205,7 +228,8 @@ export default class extends TypedController {
     "heading", "airspeed", "altitude", "verticalSpeed", "glide", "dataStatus",
     "qualityAttitude", "qualityHeading", "attitudeDetail", "headingDetail", "preflightDetail", "preflightStatus",
     "exitDialog", "exitError", "exitStatus", "flightName", "exitAction",
-    "parserStatus", "aircraftMarker", "aircraftLabel", "latestEvent", "sensorValue", "streamBadge", "mountLabel", "sensorAxes"
+    "parserStatus", "aircraftMarker", "aircraftLabel", "latestEvent", "sensorValue", "streamBadge", "mountLabel", "sensorAxes",
+    "aircraftStatus", "standbyAircraft", "startForm", "startDevice", "startTransport", "startFlight", "startButton", "startHint"
   ]
 
   static values = {
@@ -254,12 +278,19 @@ export default class extends TypedController {
     this.ending = false
     this.batchWrite = Promise.resolve()
     this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.releaseCapture())
-    this.layoutStorageKey = `signal-layout:${this.sessionValue}`
+    // One layout for the station: it stays put from standby into a recording and back.
+    this.layoutStorageKey = "signal-layout:station"
+    this.parkedLink = null
+    this.standbyIdentity = null; this.identityKey = ""; this.identityAt = 0; this.identityLoading = false
+    this.standbySignature = ""
+    this.starting = false
+    const linkType = readLinkType()
+    if (linkType) this.connectionKind = linkType
     const review = this.reviewValue && new URL(this.pageUrl).searchParams.get("review") === "1"
     try {
       const database = await openDatabase()
       if (generation !== this.connectionGeneration) { database.close(); return }
-      const [nextSequence, endedAt, recovery] = await Promise.all([
+      const [nextSequence, endedAt, recovery] = this.standby ? [0, null, null] : await Promise.all([
         readMetadata(database, `${this.sessionValue}:next-sequence`),
         readMetadata(database, `${this.sessionValue}:ended-at`),
         readMetadata(database, `${this.sessionValue}:recovery`)
@@ -271,7 +302,7 @@ export default class extends TypedController {
       if (recovery && typeof recovery === "object") {
         if ("disposition" in recovery && (recovery.disposition === "save" || recovery.disposition === "discard")) this.completionDisposition = recovery.disposition
       }
-      await writeMetadata(database, `${this.sessionValue}:recovery`, {active: !this.ended, disposition: this.completionDisposition})
+      if (!this.standby) await writeMetadata(database, `${this.sessionValue}:recovery`, {active: !this.ended, disposition: this.completionDisposition})
       if (generation !== this.connectionGeneration) { database.close(); return }
     } catch (caught) {
       if (generation !== this.connectionGeneration) return
@@ -282,15 +313,18 @@ export default class extends TypedController {
     }
     window.addEventListener("online", this.boundOnline)
     window.addEventListener("offline", this.boundOffline)
-    window.addEventListener("beforeunload", this.boundBeforeUnload)
     window.addEventListener("resize", this.boundResize)
     window.addEventListener("sillage:ground-radio-toggle", this.boundRadioToggle)
-    document.addEventListener("click", this.boundLinkClick, true)
-    document.addEventListener("submit", this.boundSubmit, true)
-    document.addEventListener("turbo:before-visit", this.boundVisit)
+    // Nothing is at stake in standby: leaving the page needs no confirmation.
+    if (!this.standby) {
+      window.addEventListener("beforeunload", this.boundBeforeUnload)
+      document.addEventListener("click", this.boundLinkClick, true)
+      document.addEventListener("submit", this.boundSubmit, true)
+      document.addEventListener("turbo:before-visit", this.boundVisit)
+      window.addEventListener("popstate", this.boundPopState, true)
+    }
     document.addEventListener("visibilitychange", this.boundVisibility)
     window.addEventListener("pagehide", this.boundPageHide)
-    window.addEventListener("popstate", this.boundPopState, true)
     navigator.serial?.addEventListener("connect", this.boundSerialConnect)
     navigator.serial?.addEventListener("disconnect", this.boundSerialDisconnect)
     this.restoreLayout()
@@ -298,11 +332,15 @@ export default class extends TypedController {
       status: this.mapStatusTarget, followButton: this.mapFollowTarget,
       baseUrl: this.cesiumBaseUrlValue, token: this.cesiumTokenValue, label: this.flightCodeValue })
     this.map3d.start()
-    this.batchTimer = window.setInterval(() => {
+    if (!this.standby) this.batchTimer = window.setInterval(() => {
       if (!this.ending) this.queuePendingBatch().then(() => this.flushOutbox()).catch((error) => this.showWarning(`Local storage failed: ${error.message}. Keep this page open and free disk space.`))
     }, BATCH_INTERVAL_MS)
     this.renderTimer = window.setInterval(() => this.refreshTelemetry(), 100)
     this.refreshTelemetry()
+    if (this.standby) {
+      await this.resumeLink()
+      return
+    }
     await this.prepareLocalStorage()
     await this.flushOutbox()
     if (generation === this.connectionGeneration) {
@@ -313,7 +351,7 @@ export default class extends TypedController {
         history.replaceState(this.pageHistoryState, "", this.pageUrl)
       }
       if (review || this.completionDisposition || (this.ended && !this.flightIdValue)) this.requestExit()
-      else await this.autoReconnect()
+      else await this.resumeLink()
     }
   }
 
@@ -354,9 +392,30 @@ export default class extends TypedController {
     }
   }
 
+  /** Carries on with the link the previous screen left open; opens the remembered radio otherwise.
+   * @returns {Promise<void>} */
+  async resumeLink() {
+    const link = this.parkedLink || claimTelemetryLink()
+    this.parkedLink = null
+    if (!link) return this.autoReconnect()
+    if (!this.connectionGeneration || this.port || this.openingPort || this.ending || this.ended) { await closeTelemetryLink(link); return }
+    this.connectionKind = link.kind
+    this.openingPort = true
+    this.releasePortLock = link.release
+    this.renderRadioControl()
+    try {
+      await this.openSerial(link.port, true)
+    } catch (caught) {
+      this.showWarning(`Telemetry connection failed: ${caught instanceof Error ? caught.message : String(caught)}`)
+      await this.stopSerial()
+    }
+  }
+
+  /** @returns {Promise<void>} */
   async autoReconnect() {
     const generation = this.connectionGeneration
-    if (this.connectionKind !== "ground-radio" || !navigator.serial || this.ended || this.ending || this.exitDialogTarget?.open || !generation) return
+    if (this.parkedLink) return this.resumeLink()
+    if (this.connectionKind !== "ground-radio" || !navigator.serial || this.ended || this.ending || (this.hasExitDialogTarget && this.exitDialogTarget.open) || !generation) return
     const ports = (await navigator.serial.getPorts()).filter(isGroundRadio)
     const lastPort = await readMetadata(this.database, "last-authorized-port")
     const port = ports.find((candidate) => samePort(candidate.getInfo(), lastPort)) || (ports.length === 1 ? ports[0] : null)
@@ -424,38 +483,23 @@ export default class extends TypedController {
     })
   }
 
-  /** @param {SerialPort} port */
-  async openSerial(port) {
-    if (!this.recorderDeviceIdValue) throw new Error("Connect a recorder and start a new acquisition.")
-    const tokenKey = `signal-gateway:${this.sessionValue}`
-    let token = localStorage.getItem(tokenKey)
-    if (!token) { token = crypto.randomUUID(); localStorage.setItem(tokenKey, token) }
-    const gatewayUrl = `/api/v1/signal_sessions/${this.sessionValue}/gateway`
-    const heartbeat = async () => {
-      const response = await fetch(gatewayUrl, { method: "POST", headers: { "X-Signal-Gateway": localStorage.getItem(`signal-gateway:${this.sessionValue}`) || "", "Content-Type": "application/json", "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "" }, body: JSON.stringify({ token }) })
-      if (!response.ok) throw new Error("Another device owns this session, or access was revoked.")
-      const state = await response.json()
-      if (state.stop_requested && !this.ending && !this.ended) {
-        // In tunnel station mode the computer goes back to waiting for the next remote start.
-        if (this.homeUrlValue.includes("station=1")) this.exitDestination = this.homeUrlValue
-        await this.finishSession("save")
-      }
-    }
-    await heartbeat()
+  /** @param {SerialPort} port @param {boolean} [adopted] The port is already open: it was kept from the previous screen. */
+  async openSerial(port, adopted = false) {
+    if (!this.standby) await this.joinGateway()
     if (this.ended || this.ending) return
-    const timer = window.setInterval(() => { if (this.port && !this.ended) void heartbeat().catch(() => this.showWarning("Gateway connection interrupted. Remote commands are unavailable.")); else window.clearInterval(timer) }, 3000)
-
     const generation = this.connectionGeneration
     this.acquisitionAuthorized = false
     this.port = port
-    this.portOpening = port.open({ baudRate: 57_600, bufferSize: 65_536 })
-    try {
-      await this.portOpening
-    } finally {
-      this.portOpening = null
+    if (!adopted) {
+      this.portOpening = port.open({ baudRate: 57_600, bufferSize: 65_536 })
+      try {
+        await this.portOpening
+      } finally {
+        this.portOpening = null
+      }
     }
     if (generation !== this.connectionGeneration || this.ending || this.ended) return
-    if (this.connectionKind === "ground-radio") await writeMetadata(this.database, "last-authorized-port", port.getInfo())
+    if (this.connectionKind === "ground-radio" && !adopted) await writeMetadata(this.database, "last-authorized-port", port.getInfo())
     if (generation !== this.connectionGeneration || this.ending || this.ended) return
     this.openingPort = false
     this.connectedAt = new Date()
@@ -468,16 +512,38 @@ export default class extends TypedController {
     this.mavlinkComponentId = null
     this.worker = new Worker("/signal_serial_worker.js?v=module-status-42002")
     this.worker.onmessage = ({ data }) => this.handleWorkerMessage(data)
-    this.worker.onerror = () => this.showWarning("Telemetry decoding stopped. Reconnect the recorder.")
-    this.recorderStatusTarget.textContent = "Checking recorder assignment"
+    this.worker.onerror = () => this.showWarning("Telemetry decoding stopped. Reconnect the link.")
+    if (!this.standby) this.recorderStatusTarget.textContent = "Checking the recorder"
     this.renderRadioControl()
-    this.radioStatusTarget.textContent = "Connected · waiting for MAVLink"
+    this.radioStatusTarget.textContent = "Connected · waiting for telemetry"
     this.updateGroundRadioState("connected")
     await this.acquireWakeLock()
     if (generation !== this.connectionGeneration || this.port !== port || this.stopSerialPromise || this.ending || this.ended) return
     this.readSerial()
     this.radioTimer = window.setInterval(() => this.sendRadioHeartbeat(), 1_000)
     void this.sendRadioHeartbeat()
+  }
+
+  /** Declares this computer as the one recording the flight, and listens for a stop asked from a phone. */
+  async joinGateway() {
+    if (!this.recorderDeviceIdValue) throw new Error("This flight has no recorder. Start a new flight.")
+    const tokenKey = `signal-gateway:${this.sessionValue}`
+    let token = localStorage.getItem(tokenKey)
+    if (!token) { token = crypto.randomUUID(); localStorage.setItem(tokenKey, token) }
+    const gatewayUrl = `/api/v1/signal_sessions/${this.sessionValue}/gateway`
+    const heartbeat = async () => {
+      const response = await fetch(gatewayUrl, { method: "POST", headers: { "X-Signal-Gateway": localStorage.getItem(`signal-gateway:${this.sessionValue}`) || "", "Content-Type": "application/json", "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "" }, body: JSON.stringify({ token }) })
+      if (!response.ok) throw new Error("Another device is recording this flight, or access was revoked.")
+      const state = await response.json()
+      if (state.stop_requested && !this.ending && !this.ended) {
+        // Back to standby, link open, ready for the next start from the phone.
+        this.exitDestination = this.homeUrlValue
+        await this.finishSession("save")
+      }
+    }
+    await heartbeat()
+    if (this.ended || this.ending) return
+    const timer = window.setInterval(() => { if (this.port && !this.ended) void heartbeat().catch(() => this.showWarning("Connection to Sillage interrupted. The phone remote cannot end this flight for now.")); else window.clearInterval(timer) }, 3000)
   }
 
   async sendRadioHeartbeat() {
@@ -516,15 +582,17 @@ export default class extends TypedController {
     if (!this.ended && this.port) await this.stopSerial()
   }
 
-  async releaseCapture() {
-    await this.stopSerial()
-    await this.queuePendingBatch()
+  /** @param {boolean} [park] */
+  async releaseCapture(park = false) {
+    await this.stopSerial(park)
+    if (!this.standby) await this.queuePendingBatch()
   }
 
-  async stopSerial() {
+  /** @param {boolean} [park] Stop reading but keep the link open for the next screen. */
+  async stopSerial(park = false) {
     if (this.stopSerialPromise) return this.stopSerialPromise
 
-    this.stopSerialPromise = this.performStopSerial()
+    this.stopSerialPromise = this.performStopSerial(park)
     this.renderRadioControl()
     try {
       await this.stopSerialPromise
@@ -534,7 +602,8 @@ export default class extends TypedController {
     }
   }
 
-  async performStopSerial() {
+  /** @param {boolean} park */
+  async performStopSerial(park) {
     this.acquisitionAuthorized = false
     this.captureAuthorization = null
     window.clearInterval(this.radioTimer)
@@ -548,12 +617,22 @@ export default class extends TypedController {
       this.worker.terminate()
     }
     this.worker = null
-    if (this.port) {
-      try { await this.port.close() } catch (_) { /* Port may already be closed. */ }
+    const previous = this.parkedLink
+    this.parkedLink = null
+    if (this.port && park) {
+      this.parkedLink = {port: this.port, kind: this.connectionKind, release: this.releasePortLock}
+    } else {
+      if (this.port) {
+        try { await this.port.close() } catch (_) { /* Port may already be closed. */ }
+      }
+      this.releasePortLock?.()
+    }
+    if (previous && !this.parkedLink) {
+      if (park) this.parkedLink = previous
+      else await closeTelemetryLink(previous)
     }
     this.port = null
     this.openingPort = false
-    this.releasePortLock?.()
     this.releasePortLock = null
     this.renderRadioControl()
     this.radioStatusTarget.textContent = "Not connected"
@@ -592,6 +671,7 @@ export default class extends TypedController {
 
   /** @param {import("../types/signal").CaptureMessage} message */
   handleWorkerMessage(message) {
+    if (this.standby && message.type !== "frame") return
     if (message.type === "capture-ready") {
       this.recorderStatusTarget.textContent = "Recording locally"
       return
@@ -606,13 +686,13 @@ export default class extends TypedController {
       return
     }
     if (message.type !== "frame") return
-    if (message.decoded.name === "imu_quality" && message.decoded.deviceId !== this.recorderDeviceIdValue &&
+    if (!this.standby && message.decoded.name === "imu_quality" && message.decoded.deviceId !== this.recorderDeviceIdValue &&
         (this.mavlinkSystemId == null || (String(message.systemId) === this.mavlinkSystemId && String(message.componentId) === this.mavlinkComponentId))) {
-      this.showWarning("The connected recorder does not match this acquisition. Start a new session with the assigned board.")
+      this.showWarning("The connected recorder is not the one this flight started with. End this flight and start a new one.")
       void this.stopSerial()
       return
     }
-    if (!this.acquisitionAuthorized) {
+    if (!this.standby && !this.acquisitionAuthorized) {
       if (message.decoded.name === "imu_quality" && message.decoded.deviceId === this.recorderDeviceIdValue) void this.authorizeCapture(message)
       return
     }
@@ -643,6 +723,7 @@ export default class extends TypedController {
     if (this.imuHealth.generation !== generation) this.measurements = new SignalTelemetry()
     this.measurements.apply(interpretImu(decoded, this.activeMountProfile), now)
     this.telemetry = this.measurements.snapshot(now)
+    if (this.standby) return
     const recordedAt = new Date(Number(BigInt(frame.receivedAtUs) / 1000n)).toISOString()
     if (decoded.name === "unknown") return
     if (decoded.name === "radio") {
@@ -682,11 +763,12 @@ export default class extends TypedController {
     if (this.port) {
       this.radioStatusTarget.textContent = live
         ? `Live · ${this.mavlinkSystemId}/${this.mavlinkComponentId} · ${this.frameTimes.length} frames/s`
-        : this.lastFrameAt ? "No telemetry · link lost" : "Connected · waiting for MAVLink"
+        : this.lastFrameAt ? "No telemetry · link lost" : "Connected · waiting for telemetry"
     }
+    if (this.standby) this.renderStandby(live, now)
     this.renderModules()
     this.renderRadioMetrics(live, now)
-    this.dataStatusTarget.textContent = this.ended ? "Session ended locally" : live ? "Receiving telemetry" : this.lastFrameAt ? "Telemetry stale" : "Waiting for telemetry"
+    this.dataStatusTarget.textContent = this.ended ? "Flight ended locally" : live ? "Receiving telemetry" : this.lastFrameAt ? "Telemetry stale" : "Waiting for telemetry"
     this.pushHistory(live, now)
     this.renderValues()
     this.drawAll()
@@ -703,10 +785,10 @@ export default class extends TypedController {
     const busy = Boolean(this.choosingPort || this.openingPort || this.stopSerialPromise)
     const available = Boolean(this.db && this.connectionGeneration && !this.ended && !this.ending)
     const live = Boolean(connected && this.lastFrameAt && Date.now() - this.lastFrameAt < 1_500)
-    const label = this.ended ? "Session ended" : this.stopSerialPromise ? "Disconnecting" : busy ? "Connecting" : connected ? "Connected" : "Connect"
+    const label = this.ended ? "Flight ended" : this.stopSerialPromise ? "Disconnecting" : busy ? "Connecting" : connected ? "Connected" : "Connect"
     const description = connected
       ? `Disconnect ${this.connectionKind}. ${live ? "Receiving telemetry." : "No telemetry received."}`
-      : this.ended ? "Session ended" : "Connect telemetry"
+      : this.ended ? "Flight ended" : "Connect the link"
     window.dispatchEvent(new CustomEvent("sillage:ground-radio-state", {detail: {connected, busy, available, label, description}}))
   }
 
@@ -832,7 +914,7 @@ export default class extends TypedController {
     this.preflightStatusTarget.dataset.state = !check ? "unknown" : check.invalidated_at || this.preflightInvalidated || !sameBoot || check.outcome !== "passed" ? "degraded" : hasWarning ? "warning" : "consistent"
     let preflightDetail
     if (!check) {
-      preflightDetail = !this.flightIdValue ? "No flight is assigned to this session. A preflight check belongs to a flight."
+      preflightDetail = !this.flightIdValue ? "A preflight check belongs to a flight. Start one, or open a prepared flight."
         : this.qualityContextLoading ? "Loading the flight preflight check."
         : "No preflight check is available for this flight and recorder. Select the status to run a check."
     } else if (check.invalidated_at || this.preflightInvalidated || !sameBoot) {
@@ -856,7 +938,7 @@ export default class extends TypedController {
       if (target.textContent !== detail) target.textContent = detail
     }
     const signature = `${key}:${status.issues.join(",")}:${warnings.join(",")}:${this.preflightInvalidated}`
-    if (signature !== this.qualitySignature && q && this.db && !this.ended && !this.ending) {
+    if (signature !== this.qualitySignature && q && this.db && !this.standby && !this.ended && !this.ending) {
       this.qualitySignature = signature
       void this.recordQualityEvent(status.reason, status.issues, this.preflightInvalidated ? check?.id : undefined, warnings)
     }
@@ -991,10 +1073,11 @@ export default class extends TypedController {
     this.setExitBusy(true)
     if (this.hasExitDialogTarget) {
       this.exitStatusTarget.hidden = false
-      this.exitStatusTarget.textContent = disposition === "save" ? "Saving acquisition…" : "Discarding acquisition…"
+      this.exitStatusTarget.textContent = disposition === "save" ? "Saving the flight…" : "Discarding the recording…"
     }
     try {
-      await this.releaseCapture()
+      // The link stays open: standby takes it over once the flight is saved.
+      await this.releaseCapture(true)
       const id = `${this.sessionValue}:complete`
       const endedAt = new Date().toISOString()
       const body = { ended_at: endedAt, disposition, flight_name: this.hasFlightNameTarget ? this.flightNameTarget.value.trim() : undefined }
@@ -1008,14 +1091,14 @@ export default class extends TypedController {
       this.returnHomeAfterSync = true
       this.renderRadioControl()
       await this.flushOutbox()
-      this.dataStatusTarget.textContent = "Session ended locally"
+      this.dataStatusTarget.textContent = "Flight ended locally"
     } catch (caught) {
       const error = caught instanceof Error ? caught : new Error(String(caught))
       if (this.hasExitDialogTarget) {
         this.exitErrorTarget.hidden = false
-        this.exitErrorTarget.textContent = `The session could not be finalized: ${error.message}. Retry without closing this page.`
+        this.exitErrorTarget.textContent = `The flight could not be finalized: ${error.message}. Retry without closing this page.`
         this.setExitBusy(false)
-      } else this.showWarning(`The session could not be saved: ${error.message}`)
+      } else this.showWarning(`The flight could not be saved: ${error.message}`)
     } finally {
       this.ending = false
     }
@@ -1033,15 +1116,23 @@ export default class extends TypedController {
       await writeMetadata(this.database, `${this.sessionValue}:recovery`, {active: false})
       this.returnHomeAfterSync = false
       this.completionDisposition = null
+      const destination = this.exitDestination || (this.flightIdValue ? `/flights/${this.flightIdValue}` : this.homeUrlValue)
+      const link = this.parkedLink
       if (this.exitForm) this.exitForm.form.requestSubmit(this.exitForm.submitter || undefined)
-      else window.location.assign(this.exitDestination || (this.flightIdValue ? `/flights/${this.flightIdValue}` : this.homeUrlValue))
+      else if (link && window.Turbo && new URL(destination, window.location.href).href === new URL(this.homeUrlValue, window.location.href).href) {
+        // Back to standby without a reload: the open link is handed to the next screen.
+        this.parkedLink = null
+        parkTelemetryLink(link)
+        window.Turbo.visit(destination)
+      } else window.location.assign(destination)
     } catch (error) {
       this.leaving = false
-      this.showWarning(`Session finalized; local cleanup failed: ${error instanceof Error ? error.message : String(error)}. Keep this page open to retry.`)
+      this.showWarning(`Flight saved; local cleanup failed: ${error instanceof Error ? error.message : String(error)}. Keep this page open to retry.`)
     }
   }
 
   async flushOutbox() {
+    if (this.standby) return
     if (!navigator.onLine || this.syncing || !this.db) {
       this.refreshCloudStatus()
       return
@@ -1079,9 +1170,10 @@ export default class extends TypedController {
   }
 
   async refreshCloudStatus() {
+    if (this.standby) return
     const oldest = this.db ? await oldestOutbox(this.db, this.sessionValue) : null
     if (this.hasExitDialogTarget && this.exitDialogTarget.open && this.completionDisposition) {
-      this.exitStatusTarget.textContent = !navigator.onLine ? "Saved locally. Waiting for an Internet connection to finalize." : this.cloudError ? `Synchronization blocked: ${this.cloudError}. Retrying automatically.` : "Finalizing acquisition…"
+      this.exitStatusTarget.textContent = !navigator.onLine ? "Saved locally. Waiting for an Internet connection to finalize." : this.cloudError ? `Synchronization blocked: ${this.cloudError}. Retrying automatically.` : "Finalizing the flight…"
     }
     const age = oldest ? Math.max(1, Math.round((Date.now() - oldest.queuedAt) / 1000)) : 0
     if (!navigator.onLine) {
@@ -1097,6 +1189,81 @@ export default class extends TypedController {
         await this.leaveAfterSync()
       }
     }
+  }
+
+  /** Standby status: what the link hears, and why Start flight is or is not available.
+   * @param {boolean} live @param {number} now */
+  renderStandby(live, now) {
+    const deviceId = this.imuHealth.quality?.deviceId || ""
+    if (live && deviceId && !this.identityLoading && (deviceId !== this.identityKey || now - this.identityAt > 30_000)) void this.loadStandbyIdentity(deviceId)
+    const identity = this.standbyIdentity?.deviceId === deviceId ? this.standbyIdentity : null
+    const name = identity?.aircraftLabel || identity?.recorderLabel || deviceId
+    const connected = Boolean(this.port && !this.openingPort)
+    // The recording checks the same identity before it stores anything: do not start a flight it would refuse.
+    const ready = live && identity?.canAcquire === true && !this.starting
+    const [aircraft, hint] = this.starting ? [name || "Starting", "Starting the flight."]
+      : !connected ? ["Waiting for the link", this.connectionKind === "ground-radio" && !navigator.serial
+        ? "The radio needs Chrome or Edge on desktop." : "Connect the link in the top bar to hear the aircraft."]
+      : !this.lastFrameAt ? ["Listening", "Link open, no telemetry yet. Power the recorder and check that both radios share the same settings."]
+      : !live ? ["Link lost", "No recent telemetry. Check the aircraft and the link."]
+      : !deviceId ? ["Identifying", "Telemetry received. Waiting for the recorder identity."]
+      : !identity ? [name, "Aircraft heard. Checking the recorder with Sillage."]
+      : !identity.canAcquire ? [name, "This recorder cannot be recorded. Check its assembly in Hangar."]
+      : [name, "Ready. What you see is live and not saved: Start flight records from that moment."]
+    this.aircraftStatusTarget.textContent = aircraft
+    this.standbyAircraftTarget.textContent = live && deviceId ? name : "No aircraft heard"
+    this.startHintTarget.textContent = hint
+    this.startButtonTarget.disabled = !ready
+    const detail = {connected, live, ready, deviceId, label: name, identified: Boolean(identity),
+      registered: identity?.registered === true, assemblyId: identity?.assemblyId ?? null}
+    const signature = JSON.stringify(detail)
+    // Repeated every second: listeners load lazily and must not miss the state.
+    if (signature === this.standbySignature && now - this.standbyAt < 1_000) return
+    this.standbySignature = signature
+    this.standbyAt = now
+    window.dispatchEvent(new CustomEvent("sillage:signal-standby", {detail}))
+  }
+
+  /** @param {string} deviceId */
+  async loadStandbyIdentity(deviceId) {
+    this.identityLoading = true
+    this.identityKey = deviceId
+    try {
+      const identity = await resolveRadioIdentity(deviceId)
+      if (this.identityKey === deviceId) this.standbyIdentity = identity
+    } catch { if (this.identityKey === deviceId) this.standbyIdentity = null }
+    finally { this.identityAt = Date.now(); this.identityLoading = false }
+  }
+
+  /** Hangar changed what it knows about the heard recorder. */
+  refreshIdentity() { this.identityKey = "" }
+
+  /** Starts recording: by the button, or for a flight a phone remote asked for.
+   * The link is kept open and handed to the recording screen.
+   * @param {Event} [event] */
+  async startFlight(event) {
+    const deviceId = this.imuHealth.quality?.deviceId
+    const live = Boolean(this.port && this.lastFrameAt && Date.now() - this.lastFrameAt < 1_500)
+    if (!this.standby || this.starting || !deviceId || !live || this.standbyIdentity?.deviceId !== deviceId || !this.standbyIdentity.canAcquire) return
+    const requested = event instanceof CustomEvent ? Number(event.detail?.flightId) || 0 : 0
+    if (requested) {
+      if (!Array.from(this.startFlightTarget.options).some(option => option.value === String(requested))) this.startFlightTarget.add(new Option(event instanceof CustomEvent && event.detail?.code || "Remote flight", String(requested)))
+      this.startFlightTarget.value = String(requested)
+    }
+    this.starting = true
+    this.startDeviceTarget.value = deviceId
+    this.startTransportTarget.value = this.connectionKind
+    const generation = this.connectionGeneration
+    await this.stopSerial(true)
+    if (generation !== this.connectionGeneration) return
+    if (this.parkedLink) { parkTelemetryLink(this.parkedLink); this.parkedLink = null }
+    this.startFormTarget.requestSubmit()
+    // The server did not answer: take the link back and stay in standby.
+    window.setTimeout(() => {
+      if (generation !== this.connectionGeneration) return
+      this.starting = false
+      void this.resumeLink()
+    }, 10_000)
   }
 
   async acquireWakeLock() {
@@ -1486,6 +1653,15 @@ function formatNumber(value, precision = 0, padding = 0) {
   if (!Number.isFinite(value)) return "---"
   const formatted = Number(value).toFixed(precision)
   return padding ? formatted.padStart(padding, "0") : formatted
+}
+
+/** @param {SerialPort} port */
+/** @returns {"ground-radio"|"usb-c"|"ble"|"wifi"|null} */
+function readLinkType() {
+  try {
+    const stored = localStorage.getItem(LINK_TYPE_KEY)
+    return stored && LINK_TYPES.includes(stored) ? /** @type {"ground-radio"|"usb-c"|"ble"|"wifi"} */ (stored) : null
+  } catch (_) { return null }
 }
 
 /** @param {SerialPort} port */

@@ -65,10 +65,17 @@ class RemoteController < ApplicationController
     render partial: "remote/debrief", locals: { flight: @flight }
   end
 
-  # Polled by the ground station: the oldest start request still waiting.
-  def pending
-    flight = Flight.visible_to(Current.user).where(status: "preparation")
-      .where(remote_start_requested_at: START_REQUEST_VALIDITY.ago..).order(:remote_start_requested_at).first
+  # Check-in of a ground computer in standby. It reports what it hears, and is
+  # handed the oldest start request still waiting when it follows the remote
+  # and can record.
+  def station
+    key = params[:key].to_s
+    return head :unprocessable_entity unless key.match?(SignalStation::KEY_FORMAT)
+
+    cast = ActiveModel::Type::Boolean.new
+    station = SignalStation.check_in!(user: Current.user, key:, remote_enabled: cast.cast(params[:remote]) == true,
+      ready: cast.cast(params[:ready]) == true, device_id: params[:device_id], aircraft_label: params[:aircraft])
+    flight = pending_flight if station.remote_enabled && station.ready
     render json: flight ? { flight_id: flight.id, code: flight.code, pilot: flight.display_pilot, aircraft: flight.display_aircraft } : {}
   end
 
@@ -76,6 +83,19 @@ class RemoteController < ApplicationController
 
   def require_operations
     head :forbidden unless can_manage_operations?
+  end
+
+  def pending_flight
+    Flight.visible_to(Current.user).where(status: "preparation")
+      .where(remote_start_requested_at: START_REQUEST_VALIDITY.ago..).order(:remote_start_requested_at).first
+  end
+
+  # What the phone can count on before it starts a flight.
+  def station_payload
+    station = SignalStation.for_remote(Current.user)
+    return { state: "offline" } unless station
+
+    { state: station.remote_state, aircraft: station.aircraft_label }
   end
 
   def remote_flights
@@ -97,7 +117,8 @@ class RemoteController < ApplicationController
   def state_payload(flight = current_remote_flight)
     today = remote_flights.where(remote_start_requested_at: Time.current.beginning_of_day..)
     # The phone times the flight against this clock, never its own, which can be minutes off.
-    base = { flights_today: today.where.not(status: "preparation").count, server_time: (Time.current.to_f * 1000).round }
+    base = { flights_today: today.where.not(status: "preparation").count, server_time: (Time.current.to_f * 1000).round,
+      station: station_payload }
     return base.merge(phase: "ready") unless flight
 
     session = flight.signal_sessions.order(:id).last

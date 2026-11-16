@@ -39,7 +39,7 @@ Rails.application.routes.draw do
   get "signal" => "signal#index", as: :signal
   get "remote" => "remote#show", as: :remote
   get "remote/state" => "remote#state", as: :remote_state
-  get "remote/pending" => "remote#pending", as: :remote_pending
+  post "remote/station" => "remote#station", as: :remote_station
   post "remote/flights" => "remote#create", as: :remote_flights
   delete "remote/flights/:id" => "remote#cancel", as: :remote_flight
   post "remote/flights/:id/end" => "remote#finish", as: :end_remote_flight
@@ -68,7 +68,6 @@ Rails.application.routes.draw do
 
   resources :signal_sessions, only: :create do
     post :retry_processing, on: :member
-    post :draft, on: :collection
     resource :radio_history, only: :show, path: "radio", controller: "signal_radio_histories"
   end
   resources :flights, only: [] do

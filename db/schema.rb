@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_16_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -579,6 +579,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
     t.check_constraint "materialization_status::text = ANY (ARRAY['pending'::character varying::text, 'complete'::character varying::text, 'failed'::character varying::text])", name: "signal_materialization_status"
   end
 
+  create_table "signal_stations", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "key", null: false
+    t.boolean "remote_enabled", default: false, null: false
+    t.boolean "ready", default: false, null: false
+    t.string "device_id"
+    t.string "aircraft_label"
+    t.datetime "seen_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_signal_stations_on_key", unique: true
+    t.index ["seen_at"], name: "index_signal_stations_on_seen_at"
+    t.index ["user_id"], name: "index_signal_stations_on_user_id"
+  end
+
   create_table "solid_cable_messages", force: :cascade do |t|
     t.binary "channel", null: false
     t.bigint "channel_hash", null: false
@@ -851,6 +866,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
   add_foreign_key "signal_presences", "embedded_controllers"
   add_foreign_key "signal_sessions", "flights"
   add_foreign_key "signal_sessions", "users"
+  add_foreign_key "signal_stations", "users"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

@@ -1,0 +1,65 @@
+<div class="signal-storage-warning" data-signal-workspace-target="warning" hidden></div>
+
+<main class="signal-dashboard" data-signal-workspace-target="board" aria-label="Movable live Signal widgets">
+  <section class="signal-widget" data-signal-workspace-target="widget" data-widget="map" data-mode="large">
+    <header class="signal-widget-head">
+      <button type="button" class="signal-drag-handle" aria-label="Move GPS track" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget"><%= sillage_icon "menu", size: 13 %></button>
+      <span class="signal-head-icon"><%= sillage_icon "map", size: 15 %></span><strong>GPS track</strong><span class="signal-widget-subtitle">3D satellite · live position</span>
+      <span class="signal-live-badge" data-signal-workspace-target="streamBadge" data-state="waiting">Waiting</span>
+      <span class="signal-mode-buttons"><%= render "signal/widget_modes" %></span>
+    </header>
+    <div class="signal-widget-body signal-map-body">
+      <div class="signal-map-scene" data-signal-workspace-target="mapScene" aria-label="Live GPS position on the 3D satellite map"></div>
+      <canvas data-signal-workspace-target="mapCanvas" aria-label="GPS track from received positions"></canvas>
+      <div class="signal-aircraft" data-signal-workspace-target="aircraftMarker" hidden><span class="signal-heading-ray"></span><span class="signal-aircraft-icon"><%= sillage_icon "plane", size: 23, stroke_width: 1.8 %></span><span class="signal-aircraft-label"><strong><%= code %></strong><small data-signal-workspace-target="aircraftLabel">Waiting for telemetry</small></span></div>
+      <div class="signal-map-cache" data-signal-workspace-target="mapStatus">Loading 3D map</div>
+      <button type="button" class="signal-tool-button exds-btn exds-btn--secondary signal-map-follow" data-signal-workspace-target="mapFollow" data-action="signal-workspace#toggleMapFollow" aria-pressed="true" disabled>Following GPS</button>
+      <div class="signal-map-event" data-signal-workspace-target="latestEvent" hidden></div>
+    </div>
+  </section>
+
+  <section class="signal-widget" data-signal-workspace-target="widget" data-widget="instruments" data-mode="mini">
+    <header class="signal-widget-head">
+      <button type="button" class="signal-drag-handle" aria-label="Move Instruments" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget"><%= sillage_icon "menu", size: 13 %></button>
+      <span class="signal-head-icon"><%= sillage_icon "gauge", size: 15 %></span><strong>Instruments</strong><span class="signal-widget-subtitle">Measured attitude</span>
+      <span class="signal-live-badge" data-signal-workspace-target="streamBadge" data-state="waiting">Waiting</span>
+      <span class="signal-mode-buttons"><%= render "signal/widget_modes" %></span>
+    </header>
+    <div class="signal-widget-body"><canvas class="signal-instrument-canvas" data-signal-workspace-target="instrumentCanvas" aria-label="Ground reconstructed instruments"></canvas></div>
+  </section>
+
+  <section class="signal-widget" data-signal-workspace-target="widget" data-widget="charts" data-mode="mini">
+    <header class="signal-widget-head">
+      <button type="button" class="signal-drag-handle" aria-label="Move Charts" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget"><%= sillage_icon "menu", size: 13 %></button>
+      <span class="signal-head-icon"><%= sillage_icon "activity", size: 15 %></span><strong>Charts</strong><span class="signal-widget-subtitle">Aligned telemetry and stream validity</span>
+      <span class="signal-live-badge" data-signal-workspace-target="streamBadge" data-state="waiting">Waiting</span>
+      <span class="signal-mode-buttons"><%= render "signal/widget_modes" %></span>
+    </header>
+    <div class="signal-widget-body"><canvas class="signal-chart-canvas" data-signal-workspace-target="chartCanvas" aria-label="Aligned telemetry charts"></canvas></div>
+  </section>
+</main>
+
+<section class="signal-telemetry-panel" aria-label="Raw telemetry">
+  <button type="button" class="signal-telemetry-toggle panel-disclosure" aria-controls="signal-telemetry-readings" aria-expanded="true" aria-label="Hide raw telemetry"
+          data-controller="panel-disclosure" data-action="panel-disclosure#toggle"
+          data-panel-disclosure-storage-key-value="signal-telemetry" data-panel-disclosure-expand-label-value="Show raw telemetry" data-panel-disclosure-collapse-label-value="Hide raw telemetry">
+    <span>Raw telemetry</span><%= sillage_icon "chevron-up", size: 14 %>
+  </button>
+  <div id="signal-telemetry-readings">
+    <div class="signal-telemetry-strip signal-sensor-strip" aria-label="Live sensor measurements">
+      <% [["accel", "Acceleration", "m/s²"], ["gyro", "Gyroscope", "rad/s"], ["mag", "Magnetometer", "µT"], ["pressure", "Pitot differential", "Pa"], ["temperature", "Pitot temperature", "°C"], ["gps", "GPS", "Fix / satellites"]].each do |key, label, unit| %>
+        <div><span><%= label %><% if %w[accel gyro mag].include?(key) %> <span data-signal-workspace-target="sensorAxes" title="F/R/D: forward, right, down. X/Y/Z: native sensor axes.">X/Y/Z</span><% end %></span><strong data-signal-workspace-target="sensorValue" data-sensor="<%= key %>">---</strong><small><%= unit %></small></div>
+      <% end %>
+    </div>
+    <footer class="signal-telemetry-strip" aria-label="Shared live telemetry">
+      <div><span>Heading</span><strong data-signal-workspace-target="heading">---</strong><small>deg</small></div>
+      <div><span title="Estimated from pitot pressure using standard air density (1.225 kg/m³); sensor calibration is not corrected.">IAS estimate</span><strong data-signal-workspace-target="airspeed">---</strong><small>km/h</small></div>
+      <div><span title="Total accelerometer magnitude across all three axes. Approximately 1 g at rest, regardless of orientation.">G load</span><strong data-signal-workspace-target="sensorValue" data-sensor="gLoad">---</strong><small>g</small></div>
+      <div><span>GPS altitude</span><strong data-signal-workspace-target="altitude">---</strong><small>m AMSL</small></div>
+      <div><span>GPS vertical speed</span><strong data-signal-workspace-target="verticalSpeed">---</strong><small>m/s</small></div>
+      <div><span>GPS glide ratio</span><strong data-signal-workspace-target="glide">---</strong><small>L/D</small></div>
+      <div class="signal-telemetry-health"><span>Data</span><strong data-signal-workspace-target="dataStatus">Waiting for telemetry</strong><small data-signal-workspace-target="parserStatus">No valid MAVLink frames</small></div>
+    </footer>
+  </div>
+</section>
+<div data-signal-workspace-target="mapCredits" hidden></div>

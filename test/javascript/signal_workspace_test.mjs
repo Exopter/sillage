@@ -10,6 +10,8 @@ const telemetryURL = new URL("../../app/javascript/lib/signal_telemetry.js", imp
 const instrumentsURL = new URL("../../app/javascript/lib/signal_instruments.js", import.meta.url).href
 const layoutURL = new URL("../../app/javascript/lib/signal_layout.js", import.meta.url).href
 const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountedReference} from "${mountURL}";\nimport {ImuHealth} from "${healthURL}";\nimport {SignalTelemetry, groundStationHeartbeat} from "${telemetryURL}";\nimport {instrumentStyle} from "${instrumentsURL}";\nimport {clamp, signalLayoutPreset, parseSignalLayout} from "${layoutURL}";\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\nconst resolveRadioIdentity = (...args) => globalThis.signalIdentityLookup(...args);\n${source}`).toString("base64")}`)
+// These cases cover a recording; standby has its own test file.
+Workspace.prototype.sessionValue = "session"
 const view = new Workspace()
 for (const name of ["qualityAttitude", "qualityHeading", "attitudeDetail", "headingDetail", "preflightDetail", "preflightStatus"]) view[`${name}Target`] = {textContent: "", dataset: {}}
 for (const name of ["radioStatus", "parserStatus", "dataStatus", "heading", "airspeed", "altitude", "verticalSpeed", "glide", "aircraftLabel"]) view[`${name}Target`] = {textContent: ""}
@@ -296,7 +298,7 @@ assert.equal(view.preflightInvalidated,true,"unavailable gyro still invalidates 
 view.preflight = null
 view.flightIdValue = ""
 view.renderQuality()
-assert.match(view.preflightDetailTarget.textContent, /No flight is assigned/)
+assert.match(view.preflightDetailTarget.textContent, /A preflight check belongs to a flight/)
 now += 3000
 view.renderQuality()
 assert.match(view.attitudeDetailTarget.textContent, /Quality telemetry lost/)
@@ -362,7 +364,7 @@ assert.equal(gate.worker.commands[0].type,"init-capture")
 assert.equal(gate.applied,1)
 gate.handleWorkerMessage(frame({name:"imu_quality",deviceId:"ECU-FFFFFFFFFFFF"}))
 assert.equal(gate.acquisitionAuthorized,false,"switching the selected ECU stops capture")
-assert.match(gate.warning,/does not match/)
+assert.match(gate.warning,/not the one this flight started with/)
 gate.port = {}; gate.mavlinkSystemId=null; gate.worker.commands=[]
 globalThis.signalIdentityLookup = async () => ({canAcquire:false,assemblyId:null})
 gate.handleWorkerMessage(identity); await tick()

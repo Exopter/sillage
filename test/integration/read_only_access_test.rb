@@ -51,10 +51,10 @@ class ReadOnlyAccessTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "Read-only access"
     assert_select "main form, [data-controller='signal-workspace'], [data-controller='signal-connection']", count: 0
-    assert_select "a[href='#{signal_path(session: @signal_session.uuid)}']", text: "View session"
+    assert_select "a[href='#{signal_path(session: @signal_session.uuid)}']", text: "View"
     get signal_path(session: @signal_session.uuid)
     assert_response :success
-    assert_select "section[aria-label='Selected Signal session']"
+    assert_select "section[aria-label='Selected flight']"
     assert_select "a[href='#{flight_path(@flight)}']", text: "Open flight"
     get signal_session_radio_history_path(@signal_session.uuid, format: :csv)
     assert_response :success
@@ -108,7 +108,7 @@ class ReadOnlyAccessTest < ActionDispatch::IntegrationTest
     get signal_path(view: "home")
     assert_response :success
     assert_select ".sillage-room-nav a[href='#{signal_path}']"
-    assert_select "button", text: "Create draft flight"
+    assert_select "button", text: "Start flight"
   end
 
   test "direct URLs cannot open admin rooms or write forms" do
@@ -131,7 +131,7 @@ class ReadOnlyAccessTest < ActionDispatch::IntegrationTest
       [ :post, flight_imports_path ], [ :delete, flight_import_path(@import) ], [ :post, include_in_flights_flight_import_path(@import) ],
       [ :post, flight_folders_path ], [ :patch, flight_folder_path(@folder) ], [ :patch, color_flight_folder_path(@folder) ], [ :delete, flight_folder_path(@folder) ],
       [ :post, flight_comments_path(@flight) ], [ :patch, flight_comment_path(@flight, @comment) ], [ :delete, flight_comment_path(@flight, @comment) ],
-      [ :post, signal_sessions_path ], [ :post, draft_signal_sessions_path ], [ :post, retry_processing_signal_session_path(@signal_session.uuid) ],
+      [ :post, signal_sessions_path ], [ :post, remote_station_path ], [ :post, retry_processing_signal_session_path(@signal_session.uuid) ],
       [ :post, api_v1_signal_sessions_path ], [ :post, batches_api_v1_signal_session_path(@signal_session.uuid) ],
       [ :post, events_api_v1_signal_session_path(@signal_session.uuid) ], [ :patch, complete_api_v1_signal_session_path(@signal_session.uuid) ],
       [ :post, api_v1_fdr_syncs_path ], [ :post, api_v1_fdr_registration_path ], [ :post, api_v1_fdr_authentication_path ],
@@ -179,7 +179,7 @@ class ReadOnlyAccessTest < ActionDispatch::IntegrationTest
     assert_response :redirect
     assert_equal "Administrator update", @flight.reload.description
     get signal_path(view: "home")
-    assert_select "button", text: "Create draft flight"
+    assert_select "button", text: "Start flight"
     assert_select "#sillage-fdr-connectivity"
   end
 

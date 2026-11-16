@@ -154,6 +154,19 @@
   text-align: center;
 }
 
+/* Before a flight: what, if anything, will record it. */
+.remote-station {
+  margin: 0;
+  padding: var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--status-caution-text);
+  font-size: var(--fs-text);
+  line-height: 1.43;
+}
+
+.remote-station[data-state="ready"] { color: var(--status-live-text); }
+
 .remote-error {
   margin: 0;
   padding: var(--sp-3) var(--sp-4);

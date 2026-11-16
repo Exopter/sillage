@@ -1,0 +1,21 @@
+<% if @live_elsewhere %>
+  <p class="signal-standby-notice" role="status">
+    <span><%= @live_elsewhere.flight&.code || "A flight" %> is being recorded on another device.</span>
+    <%= link_to "Watch live", signal_path(session: @live_elsewhere.uuid, watch: 1), class: "workspace-strong-link" %>
+  </p>
+<% end %>
+<% @interrupted_sessions.each do |session| %>
+  <p class="signal-standby-notice" role="status">
+    <span>Interrupted recording from <%= local_time(session.started_at, :long) %> to review.</span>
+    <%= link_to "Review", signal_path(session: session.uuid, review: 1), class: "workspace-strong-link" %>
+    <%= link_to "Radio history", signal_session_radio_history_path(session.uuid), class: "workspace-strong-link" %>
+  </p>
+<% end %>
+<%# Hangar describes the flight when it knows the recorder; it never blocks a recording. %>
+<div data-controller="signal-recorder-assignment" data-action="sillage:signal-standby@window->signal-recorder-assignment#standby">
+  <p class="signal-standby-notice" role="status" data-signal-recorder-assignment-target="notice" hidden>
+    <span data-signal-recorder-assignment-target="text"></span>
+    <button type="button" class="workspace-strong-link" data-action="signal-recorder-assignment#open">Add to Hangar</button>
+  </p>
+  <%= render "signal/recorder_assignment" %>
+</div>
