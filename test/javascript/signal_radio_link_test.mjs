@@ -120,6 +120,12 @@ assert.equal(submitted,0)
 assert.equal(closeCalls,1,"a double click cannot submit a second acquisition during cleanup")
 finishRelease(); await tick()
 assert.equal(submitted,1,"the selected form starts only after serial cleanup")
+// Serial cleanup must not render an empty recorder identity into the pending form.
+const handoffView = new RadioStatus()
+handoffView.active = true
+handoffView.submitting = true
+handoffView.link = {readiness: {get deviceId() {throw new Error("Readiness was cleared during handoff")}}}
+assert.doesNotThrow(() => handoffView.render(), "pending submissions preserve their authorized identity during radio cleanup")
 globalThis.HTMLFormElement = originalForm
 console.log("Signal home acquisition form handoff test passed")
 
