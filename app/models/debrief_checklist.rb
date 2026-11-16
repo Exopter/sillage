@@ -7,7 +7,7 @@ module DebriefChecklist
     { key: "pilot", label: "Pilot" },
     { key: "cg", label: "CG setting" },
     { key: "aoa", label: "AoA setting" },
-    { key: "feelings", label: "Feelings \u00b7 IDK / IDP" },
+    { key: "feelings", label: "Feelings", hint: "IDK \u00b7 IDP" },
     { key: "special", label: "Special features" }
   ].freeze
   KEYS = ITEMS.map { |item| item[:key] }.freeze
@@ -29,6 +29,14 @@ module DebriefChecklist
     found["feelings"] = scores.join(" \u00b7 ") if scores.any?
     found["special"] = "Noted" if text.match?(/special feature|particularit|rien de sp[e\u00e9]cial|nothing special|sp[e\u00e9]cificit/i)
     found
+  end
+
+  # Maps the model's answer onto the checklist; the two scores live on the feelings line.
+  def from_model(answer)
+    values = answer.to_h.transform_values { |value| value.to_s.strip.presence }.compact
+    scores = [ ("IDK #{values["idk"]}" if values["idk"]), ("IDP #{values["idp"]}" if values["idp"]) ].compact
+    feelings = [ values["feelings"], *scores ].compact.join(" \u00b7 ")
+    sanitize(values.slice("glide_ratio", "speed", "cg", "aoa", "special").merge("feelings" => feelings))
   end
 
   # Keeps only known keys and short text values, whatever the client sent.

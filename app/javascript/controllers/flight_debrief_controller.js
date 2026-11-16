@@ -5,7 +5,6 @@ import { Controller } from "@hotwired/stimulus"
  * @property {string} urlValue
  * @property {string} keyValue
  * @property {string} commentsUrlValue
- * @property {boolean} autostartValue
  * @property {HTMLElement} statusTarget
  * @property {HTMLElement} durationTarget
  * @property {HTMLMeterElement} levelTarget
@@ -14,7 +13,7 @@ import { Controller } from "@hotwired/stimulus"
 /** @typedef {{uuid: string, parts: Blob[], type: string, url: string | null}} SavedRecording */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 export default class extends TypedController {
-  static values = { url: String, key: String, commentsUrl: String, autostart: Boolean }
+  static values = { url: String, key: String, commentsUrl: String }
   static targets = ["status", "transcript", "duration", "level"]
   /** @type {MediaRecorder | null} */
   recorder = null
@@ -66,7 +65,6 @@ export default class extends TypedController {
     this.saved = await this.store("get")
     this.showState(this.saved ? "recovery" : "idle")
     if (this.saved) this.statusTarget.textContent = "A saved debrief is available. Recover it before starting another."
-    else if (this.autostartValue) void this.start()
   }
 
   disconnect() {
@@ -106,6 +104,8 @@ export default class extends TypedController {
       this.showState("busy")
       const reservation = await this.api(this.urlValue, { uuid: crypto.randomUUID() })
       this.saved = { uuid: reservation.uuid, parts: [], type: "", url: reservation.url }
+      // A checklist beside the recorder reads the live transcript through this debrief.
+      this.element.dataset.debriefUrl = reservation.url
       await this.store("put", this.saved)
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       this.parts = []; this.turns.clear(); this.committed.clear(); this.completed.clear(); this.liveFailed = false; this.liveComplete = false
@@ -246,7 +246,8 @@ export default class extends TypedController {
 
   // Leaves the recording without publishing anything: used to skip a debrief between chained flights.
   async abandon() {
-    if (!window.confirm("Skip this debrief? Nothing will be added to the Pilot Log.")) return
+    const recording = Boolean(this.recorder && this.recorder.state !== "inactive")
+    if (recording && !window.confirm("Skip this debrief? What was recorded is discarded.")) return
     this.abandoned = true
     if (this.recorder && this.recorder.state !== "inactive") this.recorder.stop()
     else await this.dropSaved()

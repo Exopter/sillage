@@ -1,6 +1,9 @@
 require "test_helper"
+require_relative "../support/method_replacement"
 
 class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
+  include MethodReplacement
+
   setup { sign_in_as users(:julien) }
 
   test "starts a flight from the phone, lets the ground station pick it up and withdraws it on cancel" do
@@ -14,7 +17,9 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     end
     assert_response :created
     flight = Flight.find(response.parsed_body.dig("flight", "id"))
-    assert_equal "starting", response.parsed_body["phase"]
+    # The flight runs on the phone at once; the ground station joins when it can.
+    assert_equal "flight", response.parsed_body["phase"]
+    assert_not response.parsed_body.dig("flight", "recording")
     assert flight.preparation?
     assert_equal users(:julien), flight.pilot
 
@@ -47,15 +52,19 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
     assert_response :conflict
 
-    post response_stop_url(session), as: :json
+    post end_remote_flight_path(flight), as: :json
     assert_response :success
+    assert session.reload.stop_requested_at
     post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
     assert_response :success
     debrief = FlightDebrief.find(response.parsed_body.fetch("id"))
 
     get debrief_remote_flight_path(flight)
     assert_response :success
-    assert_select ".remote-debrief[data-flight-debrief-autostart-value='true'] .remote-item", count: DebriefChecklist::ITEMS.size
+    assert_select ".remote-debrief .remote-item", count: DebriefChecklist::ITEMS.size
+    assert_select ".remote-debrief[data-flight-debrief-autostart-value]", count: 0
+    assert_select "button.remote-mic[data-action='flight-debrief#start']"
+    assert_select ".remote-big", text: /Record debrief/
     assert_select ".remote-big", text: "Save and next flight"
 
     session.update!(status: "completed", ended_at: Time.current)
@@ -81,9 +90,37 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     assert_response :created
   end
 
-  private
+  test "runs a flight without the ground station and still debriefs it" do
+    post remote_flights_path, params: { pilot_id: users(:julien).id }, as: :json
+    flight = Flight.find(response.parsed_body.dig("flight", "id"))
+    assert_equal "flight", response.parsed_body["phase"]
 
-  def response_stop_url(session)
-    request_stop_api_v1_signal_session_path(session.uuid)
+    post end_remote_flight_path(flight), as: :json
+    assert_response :success
+    assert_equal "debrief", response.parsed_body["phase"]
+    assert flight.reload.waiting_for_recording?
+    assert flight.ended_at
+    get remote_pending_path, as: :json
+    assert_empty response.parsed_body
+
+    post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
+    assert_response :success
+  end
+
+  test "reads the checklist from a live transcript through the model" do
+    flight = flights(:one)
+    post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
+    debrief = FlightDebrief.find(response.parsed_body.fetch("id"))
+    client = Object.new
+    client.define_singleton_method(:checklist) { |text| { "glide_ratio" => "3", "feelings" => "IDK 9" } if text.include?("kiff") }
+
+    replace_method(Debriefs::OpenAi, :new, -> { client }) do
+      post checklist_flight_debrief_path(flight, debrief), params: { transcript: "on glissait a trois, le kiff etait a neuf" }, as: :json
+    end
+    assert_response :success
+    assert_equal({ "glide_ratio" => "3", "feelings" => "IDK 9" }, response.parsed_body["checklist"])
+
+    post checklist_flight_debrief_path(flight, debrief), params: { transcript: "ok" }, as: :json
+    assert_empty response.parsed_body["checklist"]
   end
 end

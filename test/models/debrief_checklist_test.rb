@@ -9,6 +9,13 @@ class DebriefChecklistTest < ActiveSupport::TestCase
     assert_empty DebriefChecklist.extract("We talked for 12 minutes about nothing in particular.")
   end
 
+  test "maps a model answer onto the checklist and folds the scores into the feelings line" do
+    assert_equal({ "glide_ratio" => "3", "speed" => "170 km/h", "feelings" => "Very smooth \u00b7 IDK 9 \u00b7 IDP 7" },
+      DebriefChecklist.from_model("glide_ratio" => "3", "speed" => "170 km/h", "cg" => nil, "feelings" => "Very smooth", "idk" => 9, "idp" => "7", "other" => "x"))
+    assert_equal({ "feelings" => "IDK 8" }, DebriefChecklist.from_model("idk" => "8", "special" => " "))
+    assert_empty DebriefChecklist.from_model({})
+  end
+
   test "keeps only known keys and short values from a client" do
     assert_equal({ "speed" => "165 km/h" }, DebriefChecklist.sanitize("speed" => " 165 km/h ", "admin" => "1", "cg" => ""))
     assert_equal 60, DebriefChecklist.sanitize("special" => "x" * 500)["special"].length

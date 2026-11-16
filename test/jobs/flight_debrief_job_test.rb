@@ -38,6 +38,21 @@ class FlightDebriefJobTest < ActiveSupport::TestCase
     assert_equal "I held a steady glide.", records.last.summary
   end
 
+  test "completes the checklist from the model, with word patterns when the model is unavailable" do
+    client = Object.new
+    client.define_singleton_method(:summarize) { |_| "I held a steady glide." }
+    client.define_singleton_method(:transcribe) { |_| "We were gliding at three. Speed 165." }
+    client.define_singleton_method(:checklist) { |_| { "glide_ratio" => "3", "speed" => "165 km/h" } }
+    understood = FlightDebrief.create!(flight: flights(:one), user: users(:julien), uuid: SecureRandom.uuid, status: "uploaded", checklist: { "pilot" => "Julien", "speed" => "170 km/h" })
+    replace_method(Debriefs::OpenAi, :new, -> { client }) { FlightDebriefJob.perform_now(understood.id) }
+    assert_equal({ "pilot" => "Julien", "speed" => "170 km/h", "glide_ratio" => "3" }, understood.reload.checklist)
+
+    client.define_singleton_method(:checklist) { |_| raise Debriefs::OpenAi::Error, "Temporarily unavailable" }
+    fallback = FlightDebrief.create!(flight: flights(:one), user: users(:julien), uuid: SecureRandom.uuid, status: "uploaded", checklist: { "pilot" => "Julien" })
+    replace_method(Debriefs::OpenAi, :new, -> { client }) { FlightDebriefJob.perform_now(fallback.id) }
+    assert_equal({ "pilot" => "Julien", "speed" => "165 km/h" }, fallback.reload.checklist)
+  end
+
   test "retains the transcript when summarization fails" do
     record = FlightDebrief.create!(flight: flights(:one), user: users(:julien), uuid: SecureRandom.uuid, status: "uploaded")
     client = Object.new

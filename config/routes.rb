@@ -42,6 +42,7 @@ Rails.application.routes.draw do
   get "remote/pending" => "remote#pending", as: :remote_pending
   post "remote/flights" => "remote#create", as: :remote_flights
   delete "remote/flights/:id" => "remote#cancel", as: :remote_flight
+  post "remote/flights/:id/end" => "remote#finish", as: :end_remote_flight
   get "remote/flights/:id/debrief" => "remote#debrief", as: :debrief_remote_flight
   get "forge" => "forge/fdrs#index", as: :forge
   get "core" => "core/users#index", as: :core
@@ -155,6 +156,7 @@ Rails.application.routes.draw do
         post :process_audio
         post :publish
         post :realtime
+        post :checklist
       end
     end
     resources :comments, controller: "flight_comments", only: [ :index, :create, :edit, :update, :destroy ]
