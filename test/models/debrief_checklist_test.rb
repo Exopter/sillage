@@ -9,6 +9,24 @@ class DebriefChecklistTest < ActiveSupport::TestCase
     assert_empty DebriefChecklist.extract("We talked for 12 minutes about nothing in particular.")
   end
 
+  test "reads figures dictated digit by digit and the phrasing used in the tunnel" do
+    assert_equal "speed 150, glide 2.8", DebriefChecklist.spoken_numbers("speed one five zero, glide two point eight")
+    assert_equal "at one point no one moved", DebriefChecklist.spoken_numbers("at one point no one moved")
+    assert_equal({ "aoa" => "0", "feelings" => "too twitchy" }, DebriefChecklist.extract("Zero degrees of angle of attack, it felt too twitchy"))
+    assert_equal({ "aoa" => "none", "feelings" => "bonnes" }, DebriefChecklist.extract("Pas d'incidence, les sensations sont bonnes"))
+  end
+
+  test "ticks the field debriefs of 16 November 2026 without the model, like the phone does" do
+    field = JSON.parse(file_fixture("debrief_field_transcripts.json").read)
+    assert_equal 7, field.size
+    field.each { |entry| assert_equal entry["expected"], DebriefChecklist.extract(entry["transcript"]), entry["flight"] }
+  end
+
+  test "normalizes model figures so both sources read the same" do
+    assert_equal({ "speed" => "140 km/h", "cg" => "3.5", "feelings" => "good" },
+      DebriefChecklist.from_model("speed" => "140", "cg" => "3.50", "special" => "4.0", "feelings" => "good"))
+  end
+
   test "maps a model answer onto the checklist and folds the scores into the feelings line" do
     assert_equal({ "glide_ratio" => "3", "speed" => "170 km/h", "feelings" => "IDK 9 \u00b7 IDP 7" },
       DebriefChecklist.from_model("glide_ratio" => "3", "speed" => "170 km/h", "cg" => nil, "feelings" => "Very smooth", "idk" => 9, "idp" => "7", "other" => "x"))
