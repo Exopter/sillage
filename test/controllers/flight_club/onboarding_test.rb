@@ -12,10 +12,10 @@ class FlightClub::OnboardingTest < ActionDispatch::IntegrationTest
     assert member.active_for_authentication?
 
     get edit_invitation_path(member.invitation_token)
-    assert_response :success
-    assert_select "h1", "Julien, your place is ready."
-    patch invitation_path(member.invitation_token), params: { password: "new-password-123456", password_confirmation: "new-password-123456" }
+    assert_redirected_to new_session_path
+    post session_path, params: { email_address: member.email_address, password: "password123456" }
     assert_redirected_to new_two_factor_setup_path
+    assert_equal original_digest, member.reload.password_digest
 
     sign_in_as member
     get root_path
