@@ -4,6 +4,40 @@ require_relative "../../support/exo_fdr_binary"
 class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
   include ExoFdrBinary
 
+  test "imports a distributed Seat recording with every module's samples attributed" do
+    seat, central, airspeed = 0x0000C8BE85F61B44, 0x000050233AD9B4DC, 0x0000748583F61B44
+    gps = [ 123_456, 2026, 7, 29, 10, 11, 6, 7, 80, 0, 3, 1, 0, 12,
+      57_168_000, 441_994_000, 700_000, 642_000, 1_000, 1_500,
+      20_000, 5_000, -1_000, 20_600, 3_600_000, 500, 10_000, 125 ].pack("VvC6Vl<C4l<4V2l<5V2v")
+    imu = [ 5, 3, 0, 0, 1, 0, 0 ].pack("CCve4")
+    pitot = [ "sensor-raw", 101_325.0, 1_730.0, 18.4, 53.2 ].pack("a11e4")
+    wrap = ->(role, device, sequence, timestamp, kind, payload) { [ 0xD1F1, 1, role, device, 7, sequence, timestamp, 1, kind, payload.bytesize ].pack("vCCQ<VVQ<vCC") + payload }
+    # Both leaves run exactly 4 s ahead of Seat.
+    clock = ->(device, seat_us) { [ 0xC1F1, 1, 3, 1_234, device, 7, 0, seat_us, seat_us + 4_000_000, seat_us + 4_000_000 ].pack("vCCVQ<VVQ<3") }
+    flight_import = fdr_import(fdr_binary([
+      { sequence: 0, timestamp_us: 1_000_000, type: 32, payload: wrap.call(1, seat, 0, 1_000_000, 1, gps) },
+      { sequence: 1, timestamp_us: 1_100_000, type: 33, payload: clock.call(central, 1_100_000) },
+      { sequence: 2, timestamp_us: 1_100_000, type: 33, payload: clock.call(airspeed, 1_100_000) },
+      { sequence: 3, timestamp_us: 6_000_000, type: 32, payload: wrap.call(2, central, 0, 6_000_000, 1, gps) },
+      { sequence: 4, timestamp_us: 6_000_000, type: 32, payload: wrap.call(2, central, 1, 6_000_000, 2, imu) },
+      { sequence: 5, timestamp_us: 6_500_000, type: 32, payload: wrap.call(3, airspeed, 0, 6_500_000, 3, pitot) }
+    ]), device_id: "ECU-441BF685BEC8")
+    ExoFdr::ImportService.new(flight_import).call
+
+    assert_equal "imported", flight_import.reload.status
+    flight = flight_import.flights.sole
+    # Only Seat draws the track; Central's position is kept as a second observation.
+    assert_equal 1, flight.track_points.count
+    samples = flight.sensor_samples.order(:elapsed_seconds).to_a
+    assert_equal [ "CENTRAL:GPS_PVT", "CENTRAL:IMU:rotation_vector", "AIRSPEED" ].sort, samples.map(&:sensor_type).sort
+    pitot_sample = samples.find { |sample| sample.sensor_type == "AIRSPEED" }
+    assert_equal [ "airspeed", "ECU-441BF6838574" ], pitot_sample.readings.values_at("source_role", "source_device_id")
+    assert_in_delta 53.2, pitot_sample.readings.fetch("airspeed_m_s")
+    # Leaf time 6.5 s is Seat time 2.5 s, 1.5 s after the first Seat record.
+    assert_in_delta 1.5, pitot_sample.elapsed_seconds, 0.001
+    assert_equal "central", samples.find { |sample| sample.sensor_type == "CENTRAL:GPS_PVT" }.readings.fetch("source_role")
+  end
+
   test "imports retain the capture-time system and modules after reassignment" do
     configuration = create_fdr_functional_configuration(version: 2)
     create = ->(role) { Assembly.create!(assembly_type: "ExoFDR", fdr_component_type: role, fdr_functional_configuration: configuration) }
