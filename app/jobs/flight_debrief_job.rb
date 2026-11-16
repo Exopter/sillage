@@ -13,6 +13,8 @@ class FlightDebriefJob < ApplicationJob
     debrief.update!(transcript:)
     summary = client.summarize(transcript)
     debrief.with_lock do
+      # Points ticked on the phone win; the full transcript fills the ones it missed.
+      debrief.checklist = DebriefChecklist.extract(transcript).merge(debrief.checklist) if debrief.checklist.present?
       comment = debrief.flight_comment
       if comment
         # Fill the entry published at upload time, unless its author has already rewritten it.

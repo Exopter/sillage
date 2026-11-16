@@ -1,0 +1,428 @@
+/* Tunnel remote: a phone held in one hand between chained flights.
+   One screen per state, one large action at the bottom, nothing to scroll. */
+.remote-page {
+  margin: 0;
+  background: var(--surface-app);
+  color: var(--text-body);
+  font: 400 var(--fs-card)/1.4 var(--font-ui);
+  overscroll-behavior: none;
+}
+
+.remote {
+  display: flex;
+  min-height: 100dvh;
+  max-width: 560px;
+  margin: 0 auto;
+  flex-direction: column;
+}
+
+.remote [hidden] {
+  display: none !important;
+}
+
+.remote-top {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: calc(var(--sp-3) + env(safe-area-inset-top)) var(--sp-5) var(--sp-3);
+  border-bottom: 1px solid var(--border-rule);
+}
+
+.remote-top strong {
+  flex: 1 1 auto;
+  overflow: hidden;
+  color: var(--text-strong);
+  font: 700 var(--fs-sm)/1.25 var(--font-mono);
+  letter-spacing: var(--ls-label);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.remote-exit {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  margin-left: -12px;
+  place-items: center;
+  color: var(--text-muted);
+}
+
+.remote-link {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--text-muted);
+  font: 700 var(--fs-xs)/1.45 var(--font-mono);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+}
+
+.remote-link::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.remote-link[data-state="live"] { color: var(--status-live-text); }
+.remote-link[data-state="wait"] { color: var(--status-caution-text); }
+.remote-link[data-state="down"] { color: var(--status-fault-text); }
+
+.remote-screen,
+.remote-debriefs,
+.remote-debrief {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.remote-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+  overflow-y: auto;
+}
+
+.remote-body.is-centered {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.remote-foot {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5) calc(var(--sp-5) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border-rule);
+  background: var(--surface-app);
+}
+
+.remote-foot-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.remote-eyebrow {
+  color: var(--text-muted);
+  font: 700 var(--fs-xs)/1.45 var(--font-mono);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+}
+
+.remote-code {
+  margin: 0;
+  color: var(--text-strong);
+  font: 700 2.125rem/1.12 var(--font-mono);
+  letter-spacing: var(--ls-tight);
+}
+
+.remote-name {
+  margin: 0;
+  color: var(--text-strong);
+  font: 600 var(--fs-section)/1.3 var(--font-ui);
+}
+
+.remote-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-text);
+  line-height: 1.43;
+}
+
+.remote-hint.is-centered {
+  text-align: center;
+}
+
+.remote-error {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--ex-radius-surface);
+  background: var(--ex-state-fault-bg);
+  color: var(--status-fault-text);
+  font-size: var(--fs-text);
+}
+
+.remote-pick {
+  display: grid;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border-rule);
+  border-radius: 8px;
+  background: var(--surface-card);
+}
+
+.remote-pick > span {
+  color: var(--text-muted);
+  font: 700 var(--fs-xs)/1.45 var(--font-mono);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+}
+
+.remote-pick select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-strong);
+  font: 600 var(--fs-section)/1.3 var(--font-ui);
+}
+
+.remote-pick:focus-within {
+  border-color: var(--focus-ring);
+}
+
+.remote-big,
+.remote-mid {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.remote-big {
+  min-height: 96px;
+  border: 2px solid var(--control-primary);
+  background: var(--control-primary);
+  color: var(--control-primary-text);
+  font: 700 var(--fs-page)/1 var(--font-ui);
+}
+
+.remote-big.is-stop {
+  background: transparent;
+  color: var(--text-strong);
+}
+
+.remote-big:active {
+  transform: scale(0.99);
+}
+
+.remote-stop-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  background: currentColor;
+}
+
+.remote-mid {
+  min-height: 60px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-body);
+  font: 600 var(--fs-card)/1 var(--font-ui);
+}
+
+.remote-text {
+  min-height: 44px;
+  padding: 0 var(--sp-2);
+  border: 0;
+  background: transparent;
+  color: var(--text-body);
+  font: 600 var(--fs-card)/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.remote-text.is-danger {
+  margin-left: auto;
+  color: var(--control-danger);
+}
+
+.remote :is(button, a, select):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.remote-time {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-1);
+  margin: auto 0;
+}
+
+.remote-clock {
+  color: var(--text-strong);
+  font: 700 4.5rem/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ls-tight);
+}
+
+.remote-clock.is-small {
+  margin-left: auto;
+  font-size: 2.5rem;
+}
+
+.remote-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--border-rule);
+  border-top-color: var(--text-strong);
+  border-radius: 50%;
+  animation: remote-spin 0.9s linear infinite;
+}
+
+@keyframes remote-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Debrief: recorder strip, then the checklist in large rows. */
+.remote-debrief {
+  --debrief-level: 0;
+  --debrief-wave: 1;
+}
+
+.remote-debrief .remote-body {
+  gap: var(--sp-3);
+  padding-block: var(--sp-4);
+}
+
+.remote-recorder {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.remote-mic {
+  display: grid;
+  width: 60px;
+  height: 60px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--state-live);
+  color: var(--ex-carbon-950);
+}
+
+.remote-debrief[data-state="paused"] .remote-mic,
+.remote-debrief[data-state="idle"] .remote-mic,
+.remote-debrief[data-state="recovery"] .remote-mic {
+  background: var(--surface-panel);
+  color: var(--text-muted);
+}
+
+.remote-wave {
+  display: flex;
+  height: 44px;
+  align-items: center;
+  gap: 4px;
+}
+
+.remote-wave i {
+  width: 4px;
+  height: calc(6px + 38px * var(--debrief-level) * var(--debrief-wave));
+  border-radius: 2px;
+  background: var(--state-live);
+  transition: height var(--dur) var(--ease-out);
+}
+
+.remote-wave i:is(:nth-child(1), :nth-child(9)) { --debrief-wave: 0.35; }
+.remote-wave i:is(:nth-child(2), :nth-child(8)) { --debrief-wave: 0.6; }
+.remote-wave i:is(:nth-child(3), :nth-child(7)) { --debrief-wave: 0.85; }
+.remote-wave i:nth-child(5) { --debrief-wave: 0.7; }
+
+.remote-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.remote-count {
+  color: var(--text-strong);
+  font: 700 var(--fs-sm)/1.25 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.remote-list {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-rule);
+  border-radius: 8px;
+  background: var(--surface-card);
+  list-style: none;
+}
+
+.remote-list li + li {
+  border-top: 1px solid var(--border-rule);
+}
+
+.remote-item {
+  display: flex;
+  width: 100%;
+  min-height: 56px;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: 600 1.125rem/1.3 var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.remote-box {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 2px solid var(--border-strong);
+  border-radius: 50%;
+  color: transparent;
+}
+
+.remote-item-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.remote-item-value {
+  max-width: 45%;
+  flex: 0 1 auto;
+  overflow: hidden;
+  color: var(--status-ready-text);
+  font: 700 var(--fs-body)/1.3 var(--font-mono);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remote-item[data-state="done"] {
+  color: var(--text-strong);
+}
+
+.remote-item[data-state="done"] .remote-box {
+  border-color: var(--state-ready);
+  background: var(--state-ready);
+  color: var(--ex-carbon-950);
+}
+
+@media (max-height: 760px) {
+  .remote-big { min-height: 76px; }
+  .remote-item { min-height: 48px; font-size: var(--fs-card); }
+  .remote-mic { width: 48px; height: 48px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .remote-spinner { animation-duration: 3s; }
+  .remote-wave i { transition: none; }
+}

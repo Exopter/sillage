@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="<%= I18n.locale %>">
+  <head>
+    <title><%= content_for(:title) || "Tunnel remote" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#070b0d">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <link rel="icon" href="/icon.svg?v=exopter-20261115" type="image/svg+xml">
+    <%= stylesheet_link_tag "exopter_fonts", "exopter_design_system", "exopter_semantics", "button", "icon_button", "input", "select", "application", "native_controls", "remote", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+  <body class="remote-page ex-dark">
+    <%= yield %>
+  </body>
+</html>

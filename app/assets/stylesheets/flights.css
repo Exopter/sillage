@@ -296,6 +296,10 @@
 .flight-debrief-summary strong { display: block; margin-bottom: 2px; color: var(--text-muted); font: 700 var(--fs-xs)/1.45 var(--font-mono); letter-spacing: var(--ls-label); text-transform: uppercase; }
 .flight-debrief-pending { display: flex; align-items: center; gap: var(--sp-3); margin: 0; padding: var(--sp-3) var(--sp-4); border-radius: var(--ex-radius-surface); background: var(--surface-app); color: var(--text-muted); font-size: var(--fs-text); line-height: 1.5; }
 .flight-debrief-pending .flight-debrief-spinner { width: 18px; height: 18px; flex: 0 0 auto; border-width: 2px; }
+.flight-debrief-checklist { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1px; margin: 0; overflow: hidden; border: 1px solid var(--border-rule); border-radius: var(--ex-radius-surface); background: var(--border-rule); }
+.flight-debrief-checklist div { padding: var(--sp-2) var(--sp-3); background: var(--surface-card); }
+.flight-debrief-checklist dt { color: var(--text-muted); font: 700 var(--fs-xs)/1.45 var(--font-mono); letter-spacing: var(--ls-label); text-transform: uppercase; }
+.flight-debrief-checklist dd { margin: 0; color: var(--text-strong); font: 700 var(--fs-text)/1.43 var(--font-mono); }
 .flight-debrief-audio { width: 100%; height: 44px; }
 .flight-debrief-download { display: inline-flex; align-items: center; justify-self: start; gap: 6px; min-height: 32px; color: var(--link); font: 600 var(--fs-sm)/1.4 var(--font-ui); text-decoration: none; }
 .flight-debrief-download:hover { text-decoration: underline; text-underline-offset: 3px; }

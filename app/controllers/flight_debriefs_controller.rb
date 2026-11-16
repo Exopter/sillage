@@ -4,7 +4,10 @@ class FlightDebriefsController < ApplicationController
   before_action :set_debrief, except: :create
 
   def create
-    return render json: { error: "End the live session before recording a debrief." }, status: :conflict if @flight.live?
+    # A requested stop is enough: the recording may begin while the ground station finishes saving.
+    if @flight.live? && @flight.signal_sessions.where(status: %w[live syncing], stop_requested_at: nil).exists?
+      return render json: { error: "End the live session before recording a debrief." }, status: :conflict
+    end
     uuid = params.require(:uuid).to_s
     return head :unprocessable_entity unless uuid.match?(/\A[0-9a-f-]{36}\z/)
     @flight.with_lock do
@@ -63,6 +66,8 @@ class FlightDebriefsController < ApplicationController
         @debrief.update!(status: "uploaded", transcript: params[:transcript].to_s.first(200_000).presence || @debrief.transcript)
         FlightDebriefJob.perform_later(@debrief.id)
       end
+      checklist = DebriefChecklist.sanitize(params[:checklist]&.to_unsafe_h)
+      @debrief.update!(checklist: @debrief.checklist.merge(checklist)) if checklist.any?
       # Drafts recorded before automatic publication reach the Pilot log here.
       @debrief.publish_entry!(Current.user)
       @debrief.update!(status: "published") if @debrief.status == "ready"

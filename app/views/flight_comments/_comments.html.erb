@@ -35,6 +35,13 @@
           <% if (debrief = comment.flight_debrief) %>
             <div class="flight-debrief-entry">
               <span class="flight-debrief-badge"><%= sillage_icon "mic", size: 13 %>Audio debrief</span>
+              <% if debrief.checklist.present? %>
+                <dl class="flight-debrief-checklist" aria-label="Debrief checklist">
+                  <% DebriefChecklist::ITEMS.each do |item| %>
+                    <% if (value = debrief.checklist[item[:key]]).present? %><div><dt><%= item[:label] %></dt><dd><%= value %></dd></div><% end %>
+                  <% end %>
+                </dl>
+              <% end %>
               <% if debrief.summary_pending? %>
                 <p class="flight-debrief-pending"<% if comment.owned_by?(Current.user) %> data-controller="debrief-summary" data-debrief-summary-url-value="<%= flight_debrief_path(flight, debrief) %>" data-debrief-summary-comments-url-value="<%= flight_comments_path(flight) %>"<% end %>><span class="flight-debrief-spinner" aria-hidden="true"></span>Writing the summary. The audio is already saved.</p>
               <% elsif debrief.status == "failed" && comment.body == FlightDebrief::PENDING_SUMMARY %>

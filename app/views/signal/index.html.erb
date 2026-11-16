@@ -60,7 +60,7 @@
        data-signal-workspace-flight-code-value="<%= flight&.code || "UNASSIGNED" %>"
        data-signal-workspace-batch-url-value="<%= batches_api_v1_signal_session_path(@active_session.uuid) %>"
        data-signal-workspace-event-url-value="<%= events_api_v1_signal_session_path(@active_session.uuid) %>"
-       data-signal-workspace-home-url-value="<%= signal_path(view: "home") %>"
+       data-signal-workspace-home-url-value="<%= signal_path(view: "home", station: params[:station].presence) %>"
        data-signal-workspace-complete-url-value="<%= complete_api_v1_signal_session_path(@active_session.uuid) %>">
     <%= render "signal/exit_dialog", flight: flight %>
     <div class="signal-live-shell">
@@ -177,6 +177,31 @@
               <%= link_to "Radio history", signal_session_radio_history_path(session.uuid), class: "signal-tool-button exds-btn exds-btn--secondary" %>
             </div>
           <% end %>
+        </section>
+      <% end %>
+      <% if params[:station] == "1" %>
+        <section class="signal-launch-card signal-station" data-controller="tunnel-station" data-tunnel-station-url-value="<%= remote_pending_path %>" data-state="blocked">
+          <div class="signal-launch-body">
+            <span class="signal-k">Tunnel station</span><h2>This computer follows the remote</h2>
+            <p role="status" data-tunnel-station-target="status">Checking the radio.</p>
+            <%= form_with url: signal_sessions_path, data: { turbo: false, signal_acquisition_form: true, tunnel_station_target: "form" } do |form| %>
+              <%= form.hidden_field :device_id, value: "", id: nil %>
+              <%= form.hidden_field :flight_id, value: "", id: nil, data: { tunnel_station_target: "flight" } %>
+              <%= form.hidden_field :station, value: "1", id: nil %>
+            <% end %>
+            <%= link_to "Leave station mode", signal_path(view: "home"), class: "signal-tool-button exds-btn exds-btn--secondary" %>
+          </div>
+        </section>
+      <% else %>
+        <section class="signal-launch-card signal-station">
+          <div class="signal-launch-body">
+            <span class="signal-k">Tunnel session</span><h2>Chain flights from a phone</h2>
+            <p>Leave this computer in station mode with the radio connected, then start and end each flight from the remote.</p>
+            <div class="signal-station-actions">
+              <%= link_to "Turn on station mode", signal_path(view: "home", station: 1), class: "signal-tool-button exds-btn exds-btn--secondary" %>
+              <%= link_to "Open the remote", remote_path, class: "signal-tool-button exds-btn exds-btn--primary is-primary" %>
+            </div>
+          </div>
         </section>
       <% end %>
       <p class="operations-help" data-signal-acquisition-notice>Connect a recorder assigned to an assembly to enable acquisition.</p>

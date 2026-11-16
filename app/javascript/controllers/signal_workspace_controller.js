@@ -435,7 +435,11 @@ export default class extends TypedController {
       const response = await fetch(gatewayUrl, { method: "POST", headers: { "X-Signal-Gateway": localStorage.getItem(`signal-gateway:${this.sessionValue}`) || "", "Content-Type": "application/json", "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "" }, body: JSON.stringify({ token }) })
       if (!response.ok) throw new Error("Another device owns this session, or access was revoked.")
       const state = await response.json()
-      if (state.stop_requested && !this.ending && !this.ended) await this.finishSession("save")
+      if (state.stop_requested && !this.ending && !this.ended) {
+        // In tunnel station mode the computer goes back to waiting for the next remote start.
+        if (this.homeUrlValue.includes("station=1")) this.exitDestination = this.homeUrlValue
+        await this.finishSession("save")
+      }
     }
     await heartbeat()
     if (this.ended || this.ending) return

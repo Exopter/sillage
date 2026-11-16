@@ -22,8 +22,8 @@ class SignalSessionsController < ApplicationController
       flight_id: params[:flight_id],
       station_metadata: { "source" => "web_serial" }
     ).call
-    redirect_to signal_path(session: signal_session.uuid), notice: "Signal session started."
+    redirect_to signal_path(session: signal_session.uuid, station: params[:station].presence), notice: "Signal session started."
   rescue Signal::StartSession::InvalidFlight, Signal::RecorderAccess::Denied => error
-    redirect_to signal_path(view: "home"), alert: error.message
+    redirect_to signal_path(view: "home", station: params[:station].presence), alert: error.message
   end
 end
