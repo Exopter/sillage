@@ -102,6 +102,9 @@ class FlightPilotFlowTest < ActionDispatch::IntegrationTest
 
     get flight_path(flight)
     assert_response :success
+    # Each person keeps one avatar tone, and two different people never look the same by default.
+    assert_select ".flight-replay-header .sillage-avatar[data-tone='#{(@pilot.id - 1) % 8 + 1}']", count: 1
+    assert_not_equal ApplicationController.helpers.sillage_avatar_tone(User.new(id: 3)), ApplicationController.helpers.sillage_avatar_tone(User.new(id: 4))
     assert_select ".flight-replay-header .flight-pilot" do
       assert_select ".sillage-avatar-photo[src='#{avatar_url}']"
       assert_select ".sillage-avatar-insignia[src*='insignia-explorer']"

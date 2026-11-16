@@ -159,6 +159,13 @@ module ApplicationHelper
     }
   end
 
+  AVATAR_TONES = 8
+
+  # A stable colour per person: consecutive accounts never share a tone.
+  def sillage_avatar_tone(user)
+    (user.id.to_i - 1) % AVATAR_TONES + 1
+  end
+
   def sillage_user_initials(user)
     return "--" unless user
     return "#{user.first_name[0]}#{user.last_name[0]}".upcase if user.first_name.present? && user.last_name.present?
