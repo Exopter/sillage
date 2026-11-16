@@ -129,7 +129,8 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_select ".workspace-details", text: /Wi-Fi hostname.*#{@assembly.serial_number.downcase}/m
     assert_select ".workspace-details dt", text: "ECU ID", count: 0
     assert_select ".exds-recorder-nav", text: /Recordings.*Device.*Calibration/
-    assert_select ".workspace-panel", text: /FDR identity/
+    assert_select ".workspace-panel summary", text: "Identity and observed state"
+    assert_select ".workspace-panel[aria-label='Setup'] .exds-setup-step[data-step='named'][data-state='done']", text: /#{@assembly.serial_number}/
     assert_select ".workspace-details dt", text: "Hardware platform", count: 1
     get parts_forge_fdr_path(@assembly.serial_number)
     assert_redirected_to forge_fdr_path(@assembly.serial_number, anchor: "components")
@@ -163,8 +164,16 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-import-search][type='search']", count: 1
     assert_select "[data-fdr-connectivity-target='recordingControl']", count: 1
     assert_select "[data-fdr-connectivity-target='syncProgress']", count: 1
+    # Forge opens on the module list: every module with its setup marks and its next step.
     get forge_path
-    assert_redirected_to files_forge_fdr_path(@assembly.serial_number)
+    assert_response :success
+    assert_select "#registered-recorders a[href='#{forge_fdr_path(@assembly.serial_number)}']", count: 1
+    assert_select "#registered-recorders .exds-setup-progress i", count: 6
+    assert_select "[data-recorder-session-host][hidden]", count: 1
+    get forge_fdr_path(@assembly.serial_number)
+    assert_select ".exds-setup-step", count: 6
+    assert_select ".exds-setup-step[data-step='seen']", count: 1
+    assert_select ".exds-setup-step[data-state='next']", maximum: 1
     get forge_path(connect: 1)
     assert_response :success
     assert_select "[data-action='fdr-connectivity#connectUsb']", count: 1

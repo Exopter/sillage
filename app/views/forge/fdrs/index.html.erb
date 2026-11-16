@@ -3,33 +3,40 @@
 <header class="workspace-header recorder-fleet-header">
   <div>
     <h1>FDRs</h1>
-    <p>One identity for each recorder, its files, configuration and connections.</p>
+    <p>Every ExoFDR module, grouped by the system it belongs to, with what is left to set up.</p>
   </div>
+  <%= link_to "Connect a module", forge_path(connect: 1), class: "button-primary exds-btn exds-btn--primary" %>
 </header>
 
+<% labels = { "usb-c" => "USB-C", "ble" => "Bluetooth", "wifi" => "Wi-Fi", "ground-radio" => "Radio" } %>
 <section id="registered-recorders" class="workspace-panel" data-controller="recorder-fleet">
   <div class="workspace-panel-header">
-    <h2>Registered FDRs</h2>
-    <span><%= pluralize @assemblies.size, "FDR" %></span>
+    <h2>Modules</h2>
+    <span><%= pluralize @assemblies.size, "module" %> · steps: seen, registered, key, named, name on board, in a system</span>
   </div>
   <% if @assemblies.any? %>
     <div class="workspace-table-wrap">
       <table class="workspace-table">
-        <thead><tr><th>FDR</th><th>Configuration</th><th>Firmware</th><th>Connection</th></tr></thead>
-        <tbody>
-          <% @assemblies.each do |assembly| %>
-            <% fdr = assembly.embedded_controller %>
-            <% snapshot = fdr ? fdr.connection_snapshot : {transports: [], last_seen_at: nil} %>
-            <% labels = { "usb-c" => "USB-C", "ble" => "Bluetooth", "wifi" => "Wi-Fi", "ground-radio" => "Radio" } %>
-            <% live = snapshot[:transports].any? %>
-            <tr data-recorder-fleet-target="row" data-device-id="<%= fdr&.device_id %>">
-              <td><%= link_to assembly.display_name, forge_fdr_path(assembly.serial_number), class: "workspace-strong-link" %></td>
-              <td><%= assembly.functional_configuration %> · <%= assembly.fdr_component_label || assembly.assembly_method_label %></td>
-              <td data-recorder-firmware><%= fdr&.last_seen_firmware.presence || "Not reported" %></td>
-              <td><span data-recorder-connection class="workspace-status <%= live ? "is-installed" : "is-draft" %>"><%= live ? snapshot[:transports].map { |transport| labels.fetch(transport) }.join(" · ") : "Offline" %></span><br><small data-recorder-seen class="workspace-muted"><%= snapshot[:last_seen_at] ? "Last seen #{time_ago_in_words(snapshot[:last_seen_at])} ago" : "Never seen" %></small></td>
-            </tr>
-          <% end %>
-        </tbody>
+        <thead><tr><th>Module</th><th>Firmware</th><th>Connection</th><th>Setup</th></tr></thead>
+        <% @module_groups.each do |system, modules| %>
+          <tbody>
+            <tr><th colspan="4" class="exds-module-group" scope="rowgroup">
+              <% if system %><%= link_to system.serial_number, hangar_assembly_path(system), class: "workspace-strong-link" %> <small>Distributed system</small><% else %>Standalone recorders<% end %>
+            </th></tr>
+            <% modules.each do |assembly| %>
+              <% fdr = assembly.embedded_controller %>
+              <% snapshot = fdr ? fdr.connection_snapshot : {transports: [], last_seen_at: nil} %>
+              <% live = snapshot[:transports].any? %>
+              <% setup = Forge::ModuleSetup.new(assembly:, controller: fdr) %>
+              <tr data-recorder-fleet-target="row" data-device-id="<%= fdr&.device_id %>">
+                <td><%= link_to assembly.display_name, forge_fdr_path(assembly.serial_number), class: "workspace-strong-link" %><br><small class="workspace-muted"><%= [ assembly.functional_configuration, assembly.fdr_component_label || assembly.assembly_method_label ].compact.join(" · ") %></small></td>
+                <td data-recorder-firmware><%= fdr&.last_seen_firmware.presence || "Not reported" %></td>
+                <td><span data-recorder-connection class="workspace-status <%= live ? "is-installed" : "is-draft" %>"><%= live ? snapshot[:transports].map { |transport| labels.fetch(transport) }.join(" · ") : "Offline" %></span><br><small data-recorder-seen class="workspace-muted"><%= snapshot[:last_seen_at] ? "Last seen #{time_ago_in_words(snapshot[:last_seen_at])} ago" : "Never seen" %></small></td>
+                <td><span class="exds-setup-progress" role="img" aria-label="<%= setup.done_count %> of <%= setup.steps.size %> setup steps done"><% setup.steps.each do |step| %><i data-state="<%= step.state %>"></i><% end %></span><br><small class="workspace-muted"><%= setup.summary %></small></td>
+              </tr>
+            <% end %>
+          </tbody>
+        <% end %>
       </table>
     </div>
   <% else %>
@@ -39,7 +46,7 @@
 
 <% if @unassigned_fdrs.any? %>
   <section class="workspace-panel" data-controller="recorder-fleet">
-    <h2>Finish setup</h2>
+    <h2>New boards</h2>
     <% @unassigned_fdrs.each do |fdr| %>
       <% snapshot = fdr.connection_snapshot %>
       <p data-recorder-fleet-target="row" data-device-id="<%= fdr.device_id %>"><%= link_to "Set up FDR", forge_fdr_path(fdr) %> · <%= fdr.device_model || "Connected board" %> · <span data-recorder-firmware><%= fdr.last_seen_firmware %></span> · <span data-recorder-connection><%= snapshot[:transports].map { |transport| {"usb-c" => "USB-C", "ble" => "Bluetooth", "wifi" => "Wi-Fi", "ground-radio" => "Radio"}.fetch(transport) }.join(" · ").presence || "Offline" %></span><span data-recorder-seen></span></p>

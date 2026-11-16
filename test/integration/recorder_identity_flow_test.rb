@@ -11,8 +11,10 @@ class RecorderIdentityFlowTest < ActionDispatch::IntegrationTest
   test "Forge presents a single FDR name without another ECU identifier" do
     label = "#{@assembly.serial_number}"
     get forge_fdrs_path
-    assert_redirected_to files_forge_fdr_path(@assembly.serial_number)
-    follow_redirect!
+    assert_response :success
+    assert_select "#registered-recorders a", text: label
+    assert_select "main", text: /#{@ecu.device_id}/, count: 0
+    get files_forge_fdr_path(@assembly.serial_number)
     assert_response :success
     assert_select ".exds-recorder-switcher a strong", text: label
     # Each entry says what the recorder is and whether it is reachable now.

@@ -8,15 +8,15 @@ module Forge
     before_action :load_workspace
 
     def index
-      @assemblies = Assembly.not_retired.connectable_fdrs.includes(:fdr_functional_configuration,
+      @assemblies = Assembly.not_retired.connectable_fdrs.includes(:fdr_functional_configuration, :parent,
         active_fdr_board_installation: { embedded_controller: [ :signal_presence, :recorder_connections ] }).ordered
       @fdrs = EmbeddedController.includes(:part, :signal_presence, :recorder_connections, active_fdr_board_installation: :assembly).ordered.reject { |fdr| fdr.part&.state == "retired" || fdr.assembly&.serviceability_state == "retired" }
       @unassigned_fdrs = @fdrs.reject { |fdr| fdr.assembly || fdr.fdr_board_installations.exists? }
       live_fdrs = @fdrs.select { |fdr| fdr.assembly && fdr.signal_presence&.fresh? }
       @default_wifi_configuration_fdr = live_fdrs.one? ? live_fdrs.first : (@fdrs.one? ? @fdrs.first : nil)
-      return if params[:connect] == "1"
-      selected = @assemblies.find { |assembly| assembly.serial_number == session[:forge_recorder] } || @assemblies.find { |assembly| assembly.id == @default_wifi_configuration_fdr&.assembly&.id } || @assemblies.first
-      redirect_to files_forge_fdr_path(selected.serial_number) if selected
+      # Modules of one distributed system are read together; standalone recorders follow.
+      @module_groups = @assemblies.group_by { |assembly| assembly.parent if assembly.parent&.fdr_system? }
+        .sort_by { |system, _modules| system ? [ 0, system.serial_number ] : [ 1, "" ] }
     end
 
     def show
