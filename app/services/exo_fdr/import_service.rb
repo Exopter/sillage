@@ -162,6 +162,12 @@ module ExoFdr
       records.each do |record|
         elapsed = (record.fetch("timestamp_us").to_i - origin_us) / 1_000_000.0
         recorded_at = recording_started_at ? recording_started_at + elapsed : nil
+        if record["source_role"] == "central"
+          # Seat carries the reference GPS and IMU. Central is a second observation
+          # of both, kept beside them and never merged into the track.
+          sensors << central_sample(record, recorded_at, elapsed).merge(provenance(record, recording, blob))
+          next
+        end
         case record["type"]
         when "gps_pvt"
           points << provenance(record, recording, blob).merge(
@@ -210,8 +216,24 @@ module ExoFdr
         sensor_type: type,
         recorded_at:,
         elapsed_seconds: elapsed,
-        readings: record.slice(*keys)
+        readings: record.slice(*keys, *SOURCE_KEYS)
       }
+    end
+
+    # Which module of a distributed system observed the sample.
+    SOURCE_KEYS = %w[source_role source_device_id clock_uncertainty_us].freeze
+    CENTRAL_KEYS = {
+      "gps_pvt" => %w[latitude_deg_e7 longitude_deg_e7 height_msl_mm velocity_north_mm_s velocity_east_mm_s
+        velocity_down_mm_s horizontal_accuracy_mm vertical_accuracy_mm fix_type satellites],
+      "imu" => %w[accuracy frame_id coordinate_frame x y z w],
+      "system_event" => %w[code severity text],
+      "marker" => %w[marker_id source_system source_component]
+    }.freeze
+
+    def central_sample(record, recorded_at, elapsed)
+      type = record.fetch("type")
+      name = type == "imu" ? "IMU:#{record['sensor']}" : type.upcase
+      sensor_sample("CENTRAL:#{name}", record, recorded_at, elapsed, CENTRAL_KEYS.fetch(type, %w[raw_hex payload_size]))
     end
 
     def imu_mount_profile_for(recorded_at)

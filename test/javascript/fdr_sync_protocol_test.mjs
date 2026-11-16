@@ -707,6 +707,40 @@ await assert.rejects(importClient.controlImport(1, 277, 42), /rejected this sele
   await single.request(protocol.UsbMessage.HELLO, new Uint8Array(), [protocol.UsbMessage.DEVICE_INFO])
   assert.equal(count, 1)
   assert.deepEqual(protocol.USB_FDR_PORT_FILTERS.map(filter => filter.usbVendorId), [0x303a, 0x2886])
+
+  // A silent recorder receives a bounded number of greetings, so its receive buffer never fills.
+  const silent = new protocol.UsbFdrClient({ close: async () => {} })
+  let greetings = 0
+  silent.writer = { write: async () => { greetings += 1 }, abort: async () => {}, releaseLock() {} }
+  silent.frameReader = { read: () => new Promise(() => {}) }
+  const unanswered = silent.request(protocol.UsbMessage.HELLO, new Uint8Array(), [protocol.UsbMessage.DEVICE_INFO], { resendMs: 2, timeoutMs: 60 })
+  await assert.rejects(unanswered, /stopped responding/)
+  assert.equal(greetings, 1 + protocol.USB_HELLO_RESENDS)
+
+  // A port whose close() never settles does not hold the caller: the error can still be shown.
+  const stuck = new protocol.UsbFdrClient({ close: () => new Promise(() => {}) })
+  stuck.writer = { abort: async () => {}, releaseLock() {} }
+  const started = Date.now()
+  await stuck.close()
+  assert.ok(Date.now() - started < protocol.USB_PORT_RELEASE_TIMEOUT_MS + 1000)
+}
+
+// A module on the distributed tunnel firmware prints diagnostics and never answers.
+// Lines captured from the Seat module on 2026-11-16: the operator is told so in seconds.
+{
+  const consoleText = "SD logger: committed batch bytes=4020 records=47 durable=41902\nDIST channel=6 send_error=ESP_OK\nDIST delivered=2458 delivery_failed=53\nDIST group_connected=1 group_time_us=152991251\nLED state=1 mode=4 local_us=260001487 group_us=260001474\n"
+  let open = true
+  const readable = new ReadableStream({ async pull(controller) {
+    await new Promise(resolve => setTimeout(resolve, 50))
+    if (open) controller.enqueue(new TextEncoder().encode(consoleText))
+  }, cancel() { open = false } })
+  const tunnel = new protocol.UsbFdrClient({ readable, writable: new WritableStream(), open: async () => {}, close: async () => {} })
+  const began = Date.now()
+  const failure = await tunnel.connect().then(() => null, error => error)
+  assert.match(failure.message, /distributed tunnel firmware, which has no USB-C control/)
+  assert.equal(failure.usbConnectionTimedOut, undefined, "a board that only prints text is not retried")
+  assert.ok(Date.now() - began < protocol.USB_CONNECTION_TIMEOUT_MS / 2)
+  assert.match(protocol.formatUsbErrorDetails(failure), /no EXS1 answer · .*DIST/)
 }
 console.log("FDR synchronization protocol tests passed")
 

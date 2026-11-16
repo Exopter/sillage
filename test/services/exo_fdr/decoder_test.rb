@@ -33,6 +33,40 @@ class ExoFdr::DecoderTest < ActiveSupport::TestCase
     assert_equal 0, result.stats.fetch("crc_errors")
   end
 
+  test "reads a distributed recording on the Seat timeline and keeps each module identified" do
+    seat, central, airspeed = 0x0000C8BE85F61B44, 0x000050233AD9B4DC, 0x0000748583F61B44
+    envelope = lambda do |role, device, boot, sequence, timestamp, kind, payload|
+      [ 0xD1F1, 1, role, device, boot, sequence, timestamp, 1, kind, payload.bytesize ].pack("vCCQ<VVQ<vCC") + payload
+    end
+    # Central runs 4.0 s ahead of Seat: sent at 10.000 s, stamped 14.001 s, answered 14.002 s, received 10.004 s.
+    clock = [ 0xC1F1, 1, 3, 1_234, central, 7, 0, 10_000_000, 14_001_000, 14_002_000 ].pack("vCCVQ<VVQ<3")
+    binary = file_header +
+      record(type: 32, sequence: 0, timestamp_us: 9_000_000, payload: envelope.call(1, seat, 1_234, 0, 9_000_000, 1, gps_payload)) +
+      record(type: 32, sequence: 1, timestamp_us: 13_500_000, payload: envelope.call(2, central, 7, 40, 13_500_000, 2, imu_payload)) +
+      record(type: 33, sequence: 2, timestamp_us: 10_004_000, payload: clock) +
+      record(type: 32, sequence: 3, timestamp_us: 14_500_000, payload: envelope.call(2, central, 7, 41, 14_500_000, 2, imu_payload)) +
+      record(type: 32, sequence: 4, timestamp_us: 14_500_000, payload: envelope.call(2, central, 7, 41, 14_500_000, 2, imu_payload)) +
+      record(type: 32, sequence: 5, timestamp_us: 3_000_000, payload: envelope.call(3, airspeed, 9, 5, 3_000_000, 3, airspeed_payload)) +
+      record(type: 32, sequence: 6, timestamp_us: 1, payload: "broken".b)
+    result = ExoFdr::Decoder.new(StringIO.new(binary)).call
+
+    assert_equal %w[gps_pvt distributed_clock imu imu], result.records.map { |row| row.fetch("type") }
+    position, _clock, held, live = result.records
+    assert_equal [ "seat", "ECU-441BF685BEC8", 9_000_000 ], position.values_at("source_role", "source_device_id", "timestamp_us")
+    assert_in_delta 44.1994, position.fetch("latitude_deg_e7") / 1e7
+    # The observation that arrived before the first clock exchange is placed once the exchange is known.
+    assert_equal [ "central", "ECU-DCB4D93A2350", 40, 13_500_000 ], held.values_at("source_role", "source_device_id", "source_sequence", "source_timestamp_us")
+    assert_equal 13_500_000 - 3_999_500, held.fetch("timestamp_us")
+    assert_equal 14_500_000 - 3_999_500, live.fetch("timestamp_us")
+    assert_equal 1_500, live.fetch("clock_uncertainty_us")
+    assert_equal "rotation_vector", live.fetch("sensor")
+    # The replayed copy is dropped, the leaf with no clock exchange is reported, the broken envelope is counted.
+    assert_equal 1, result.stats.fetch("duplicate_records")
+    assert_equal 1, result.stats.fetch("unaligned_records")
+    assert_equal 1, result.stats.fetch("malformed_headers")
+    assert_equal 0, result.stats.fetch("sequence_gaps")
+  end
+
   test "recovers after a corrupt record and reports a sequence gap" do
     corrupted = record(type: 2, sequence: 1, timestamp_us: 2_000_000, payload: imu_payload).dup
     corrupted.setbyte(corrupted.length - 1, corrupted.getbyte(corrupted.length - 1) ^ 0xff)

@@ -1164,8 +1164,7 @@
   border-radius: 999px;
 }
 
-.workspace-status.is-available,
-.workspace-status.is-validated {
+.workspace-status.is-available {
   color: var(--ex-state-ready-text, #315a26);
   background: var(--ex-state-ready-bg, rgba(140, 255, 77, 0.18));
 }
@@ -1175,8 +1174,7 @@
   background: var(--ex-state-live-bg);
 }
 
-.workspace-status.is-quarantined,
-.workspace-status.is-blocked {
+.workspace-status.is-quarantined {
   color: var(--ex-state-caution-text, #7a4b0a);
   background: var(--ex-state-caution-bg, rgba(242, 162, 58, 0.16));
 }

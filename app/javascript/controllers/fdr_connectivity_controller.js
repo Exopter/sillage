@@ -32,6 +32,8 @@ import { setRecorderSession } from "recorder_session"
 const USB_PORT_STORAGE_KEY = "sillage:fdr-usb-port"
 const BLE_DEVICE_STORAGE_KEY = "sillage:fdr-ble-device"
 const USB_TRANSFER_RECOVERY_ATTEMPTS = 3
+// Sillage answers these lookups in well under a second; a stalled request must not freeze the connection.
+const SILLAGE_REQUEST_TIMEOUT_MS = 10_000
 const USB_TRANSFER_RECOVERY_DELAY_MS = 500
 /** @type {Set<number>} */
 const USB_TRANSFER_REQUEST_TYPES = new Set([
@@ -48,6 +50,7 @@ const WIFI_SYNCHRONIZATION_IN_PROGRESS = new Set([
 ])
 const ConnectionStatus = Object.freeze({
   NOT_CONNECTED: ["Not connected", "disconnected"],
+  CONNECTING: ["Connecting", "connecting"],
   CONNECTED: ["Connected", "ready"],
   ERROR: ["Error", "error"]
 })
@@ -344,7 +347,8 @@ export default class extends TypedController {
   }
 
   async connectUsb() {
-    if (this.usbClient) return this.disconnectUsb()
+    // While a recorder is being identified the button cancels the attempt.
+    if (this.usbClient || this.usbBusy) return this.disconnectUsb()
     if (!navigator.serial) return this.showUsbConnectionError("Web Serial is not available in this browser.")
     try {
       const port = await navigator.serial.requestPort({ filters: [...USB_FDR_PORT_FILTERS] })
@@ -447,16 +451,17 @@ export default class extends TypedController {
     this.usbSyncActive = false
     this.usbSyncInterrupted = false
     this.usbEraseActive = false
-    this.usbDeviceTarget.textContent = "Identifying recorder"
+    this.usbDeviceTarget.textContent = "Opening the USB-C port"
+    this.usbButtonTarget.textContent = "Cancel"
     this.syncProgressTarget.hidden = true
     this.syncProgressTarget.value = 0
     this.syncProgressTarget.max = 1
     this.hideUsbConnectionNotice()
-    this.showSynchronizationNotice(skipFileSynchronization
-      ? "Restoring the authenticated USB-C control session without restarting synchronization"
-      : "Preparing sealed recordings and verifying checksums")
+    // Nothing is synchronized before the recorder is identified and authenticated.
+    if (skipFileSynchronization) this.showSynchronizationNotice("Restoring the authenticated USB-C control session without restarting synchronization")
+    else this.hideSynchronizationNotice()
     this.renderRecorderInformation()
-    this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.NOT_CONNECTED)
+    this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.CONNECTING)
     try {
       const device = await this.connectUsbClient(port, session, client)
       if (!device) return
@@ -476,6 +481,7 @@ export default class extends TypedController {
       if (!this.usbSessionActive(session, client)) return
       /** @type {{message:string,state:string,label:string}|null} */
       let authenticationNotice = null
+      this.usbDeviceTarget.textContent = "Authenticating with Sillage"
       const challenge = await client.usbAuthenticationChallenge()
       this.usbAuthenticationConfigured = challenge.configured
       if (!challenge.configured) {
@@ -499,6 +505,7 @@ export default class extends TypedController {
         }
       }
       this.usbIdentity = device
+      this.usbDeviceTarget.textContent = "Checking this recorder in Forge"
       await this.refreshRecorderRegistration()
       if (this.usbAuthenticated && (device.capabilities & UsbCapability.CANONICAL_NAME) && this.registeredRecorder?.identity_provisioning) {
         await new UsbWifiClient(client).configureIdentity(this.registeredRecorder.identity_provisioning)
@@ -522,6 +529,7 @@ export default class extends TypedController {
         this.usbSyncActive = true
         this.usbSyncInterrupted = false
         this.updateUsbActions()
+        this.showSynchronizationNotice("Preparing sealed recordings and verifying checksums")
         try {
           const synchronization = await this.synchronizeUsbFiles(client, device)
           if (!this.usbSessionActive(session, client)) return
@@ -610,7 +618,11 @@ export default class extends TypedController {
     let client = initialClient
     for (let attempt = 1; attempt <= USB_CONNECTION_ATTEMPTS; attempt += 1) {
       try {
-        return await client.connect({ attempt, attempts: USB_CONNECTION_ATTEMPTS })
+        return await client.connect({ attempt, attempts: USB_CONNECTION_ATTEMPTS, onStage: (stage) => {
+          if (!this.usbSessionActive(session, client)) return
+          this.usbDeviceTarget.textContent = stage === "opening" ? "Opening the USB-C port"
+            : attempt > 1 ? `Waiting for the recorder to answer (attempt ${attempt} of ${USB_CONNECTION_ATTEMPTS})` : "Waiting for the recorder to answer"
+        } })
       } catch (caught) {
         const error = protocolError(caught)
         const retryable = error?.usbConnectionTimedOut
@@ -1525,7 +1537,8 @@ export default class extends TypedController {
         "Content-Type": "application/json",
         "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || ""
       },
-      body: JSON.stringify({ device_id: deviceId, nonce, transport })
+      body: JSON.stringify({ device_id: deviceId, nonce, transport }),
+      signal: AbortSignal.timeout(SILLAGE_REQUEST_TIMEOUT_MS)
     })
     const payload = await readResponse(response, `Sillage could not authenticate this ${transport.toUpperCase()} session.`)
     return authenticationHex(payload.proof)
@@ -1595,7 +1608,8 @@ export default class extends TypedController {
       const response = await fetch(url, {
         cache: "no-store",
         credentials: "same-origin",
-        headers: { "Accept": "application/json" }
+        headers: { "Accept": "application/json" },
+        signal: AbortSignal.timeout(SILLAGE_REQUEST_TIMEOUT_MS)
       })
       const payload = registrationPayload(await readResponse(response, "Sillage could not check this recorder in Forge."))
       if (requestToken !== this.registrationRequestToken) return

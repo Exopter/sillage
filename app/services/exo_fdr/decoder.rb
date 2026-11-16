@@ -1,3 +1,4 @@
+require "set"
 require "zlib"
 
 module ExoFdr
@@ -22,6 +23,15 @@ module ExoFdr
       0x03 => "magnetic_field_calibrated",
       0x05 => "rotation_vector"
     }.freeze
+    # Distributed systems: Seat stores every module's observation in an envelope
+    # (type 32) and the clock exchanges that place leaf timestamps on its timeline (type 33).
+    DISTRIBUTED_OBSERVATION = 32
+    DISTRIBUTED_CLOCK = 33
+    DISTRIBUTED_ROLES = { 1 => "seat", 2 => "central", 3 => "airspeed" }.freeze
+    DISTRIBUTED_MAX_PAYLOAD = 128
+    # A leaf timestamp is mapped with a clock exchange at most this far from it.
+    CLOCK_MAPPING_WINDOW_US = 5_000_000
+    PENDING_OBSERVATIONS_PER_SOURCE = 4_096
     AIRSPEED_FAILURE_NAMES = %w[none command_bus_busy read_bus_busy command_error short_read
       read_error repeated_frame sensor_status busy_timeout conversion_range temperature_step].freeze
     AIRSPEED_DIAGNOSTIC_FIELDS = %w[diagnostic_version failure_reason_id phase i2c_error sensor_status
@@ -40,6 +50,9 @@ module ExoFdr
         "skipped_bytes" => 0, "partial_tail_bytes" => 0, "sequence_gaps" => 0,
         "duplicate_records" => 0, "records_by_type" => Hash.new(0)
       }
+      @clock_offsets = {}
+      @pending_observations = Hash.new { |pending, source| pending[source] = [] }
+      @source_sequences = Hash.new { |sets, source| sets[source] = Set.new }
       @header = decode_file_header
     end
 
@@ -92,7 +105,8 @@ module ExoFdr
         raw_header = data.byteslice(0, RECORD_HEADER_SIZE)
         sync, version, type, header_size, payload_size, flags, _reserved, sequence, timestamp_us, stored_crc =
           raw_header.unpack("vCCvvvvVQ<V")
-        sane = sync == 0xA55A && version == 2 && header_size == RECORD_HEADER_SIZE && payload_size <= 96
+        sane = sync == 0xA55A && version == 2 && header_size == RECORD_HEADER_SIZE &&
+          payload_size <= (type >= DISTRIBUTED_OBSERVATION ? DISTRIBUTED_MAX_PAYLOAD : 96)
         unless sane
           @stats["malformed_headers"] += 1
           raise Error, "Malformed ExoFDR record header at byte #{offset}." unless @recover
@@ -120,7 +134,8 @@ module ExoFdr
           "time_s" => timestamp_us / 1_000_000.0, "type_id" => type,
           "type" => RECORD_NAMES.fetch(type, "unknown_#{type}"), "record_flags" => flags
         }.merge(decode_payload(type, payload))
-        @on_record&.call(record)
+        distributed = type == DISTRIBUTED_OBSERVATION || type == DISTRIBUTED_CLOCK
+        @on_record&.call(record) unless distributed
         if @seen_sequences && !@seen_sequences[header.fetch("boot_id")].add?(sequence)
           @stats["duplicate_records"] += 1
           discard.call(record_size)
@@ -130,12 +145,17 @@ module ExoFdr
         @stats["sequence_gaps"] += (sequence - expected_sequence) & 0xffffffff if expected_sequence && sequence != expected_sequence
         expected_sequence = (sequence + 1) & 0xffffffff
         @next_sequence_by_boot[header.fetch("boot_id")] = expected_sequence if @next_sequence_by_boot
-        record_name = RECORD_NAMES.fetch(type, "unknown_#{type}")
-        @stats["records"] += 1
-        @stats["records_by_type"][record_name] += 1
-        yield record
+        (distributed ? resolve_distributed(record, type, payload) : [ record ]).each do |ready|
+          @on_record&.call(ready) if distributed
+          @stats["records"] += 1
+          @stats["records_by_type"][ready.fetch("type")] += 1
+          yield ready
+        end
         discard.call(record_size)
       end
+      unaligned = @pending_observations.sum { |_source, pending| pending.size }
+      @stats["unaligned_records"] = @stats["unaligned_records"].to_i + unaligned if unaligned.positive?
+      @pending_observations.clear
     end
 
     private
@@ -154,6 +174,74 @@ module ExoFdr
       device_id = "ECU-#{mac}" if mac != "000000000000" && mac.match?(/\A[0-9A-F]{12}\z/)
       { "format_version" => version, "boot_id" => boot_id,
         "boot_monotonic_us" => boot_us, "firmware" => decode_string(firmware), "device_id" => device_id }
+    end
+
+    # Returns the records an envelope or a clock exchange makes ready, in Seat time.
+    def resolve_distributed(record, type, payload)
+      return resolve_clock(record, payload) if type == DISTRIBUTED_CLOCK
+
+      magic, version, role, device, boot, sequence, timestamp, flags, kind, size = payload.unpack("vCCQ<VVQ<vCC")
+      valid = payload.bytesize >= 32 && magic == 0xD1F1 && version == 1 && DISTRIBUTED_ROLES.key?(role) &&
+        device.positive? && (device >> 48).zero? && kind.between?(1, 6) && size <= 96 && payload.bytesize == 32 + size
+      unless valid
+        @stats["malformed_headers"] += 1
+        return []
+      end
+      source = [ device, boot ]
+      # A leaf replays an observation when its receipt was lost; keep the first copy.
+      seen = @seen_sequences ? @seen_sequences["#{device}/#{boot}"].add?(sequence) : @source_sequences[source].add?(sequence)
+      unless seen
+        @stats["duplicate_records"] += 1
+        return []
+      end
+      observation = record.merge(
+        "type_id" => kind, "type" => RECORD_NAMES.fetch(kind), "record_flags" => flags,
+        "source_role" => DISTRIBUTED_ROLES.fetch(role), "source_device_id" => distributed_device_id(device),
+        "source_boot_id" => boot, "source_sequence" => sequence, "source_timestamp_us" => timestamp
+      ).except("raw_hex", "payload_size").merge(decode_payload(kind, payload.byteslice(32, size)))
+      return [ observation ] if role == 1
+
+      mapping = @clock_offsets[source]
+      if mapping && (mapping.fetch(:leaf_us) - timestamp).abs <= CLOCK_MAPPING_WINDOW_US
+        [ on_seat_timeline(observation, mapping) ]
+      else
+        pending = @pending_observations[source]
+        pending << observation
+        if pending.size > PENDING_OBSERVATIONS_PER_SOURCE
+          pending.shift
+          @stats["unaligned_records"] = @stats["unaligned_records"].to_i + 1
+        end
+        []
+      end
+    end
+
+    def resolve_clock(record, payload)
+      magic, version, kind, seat_boot, device, boot, _sequence, t1, t2, t3 = payload.unpack("vCCVQ<VVQ<3")
+      t4 = record.fetch("timestamp_us")
+      clock = record.merge("type" => "distributed_clock", "seat_boot_id" => seat_boot,
+        "source_device_id" => distributed_device_id(device.to_i), "source_boot_id" => boot)
+      plausible = payload.bytesize == 48 && [ magic, version, kind ] == [ 0xC1F1, 1, 3 ] &&
+        t4 >= t1 && t3 >= t2 && t4 - t1 >= t3 - t2
+      return [ clock ] unless plausible
+
+      source = [ device, boot ]
+      mapping = { offset_us: ((t2 - t1) + (t3 - t4)) / 2, leaf_us: t2, uncertainty_us: ((t4 - t1) - (t3 - t2)) / 2 }
+      @clock_offsets[source] = mapping
+      waiting, late = @pending_observations.delete(source).to_a.partition do |observation|
+        (t2 - observation.fetch("source_timestamp_us")).abs <= CLOCK_MAPPING_WINDOW_US
+      end
+      @stats["unaligned_records"] = @stats["unaligned_records"].to_i + late.size if late.any?
+      [ clock ] + waiting.map { |observation| on_seat_timeline(observation, mapping) }
+    end
+
+    def on_seat_timeline(observation, mapping)
+      seat_us = observation.fetch("source_timestamp_us") - mapping.fetch(:offset_us)
+      observation.merge("timestamp_us" => seat_us, "time_s" => seat_us / 1_000_000.0,
+        "clock_uncertainty_us" => mapping.fetch(:uncertainty_us))
+    end
+
+    def distributed_device_id(device)
+      "ECU-#{[ device ].pack('Q<').byteslice(0, 6).unpack1('H*').upcase}"
     end
 
     def decode_payload(type, payload)
