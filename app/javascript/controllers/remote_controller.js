@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 /**
- * @typedef {{id: number, code: string, pilot: string, aircraft: string, aircraft_id: number | null, pilot_id: number, started_at: string | null, recording: boolean, debrief_url: string, cancel_url: string, end_url: string}} RemoteFlight
+ * @typedef {{id: number, code: string, pilot: string, aircraft: string, aircraft_id: number | null, pilot_id: number, destination?: string, started_at: string | null, recording: boolean, debrief_url: string, cancel_url: string, end_url: string}} RemoteFlight
  * @typedef {{gateway_connected: boolean, stop_requested: boolean, close_url: string}} RemoteSession
  * @typedef {{phase: string, flights_today: number, server_time?: number, flight?: RemoteFlight, session?: RemoteSession | null, error?: string}} RemoteState
  * @typedef {Object} Bindings
@@ -23,6 +23,7 @@ import { Controller } from "@hotwired/stimulus"
  * @property {HTMLElement} debriefsTarget
  * @property {HTMLSelectElement} aircraftTarget
  * @property {HTMLSelectElement} pilotTarget
+ * @property {HTMLSelectElement} destinationTarget
  */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 const DONE_KEY = "sillage-remote-done"
@@ -33,7 +34,7 @@ const DONE_KEY = "sillage-remote-done"
 // offered as soon as the debrief is handed off.
 export default class extends TypedController {
   static values = { stateUrl: String, flightsUrl: String, initial: Object }
-  static targets = ["title", "link", "count", "saved", "savedText", "cancel", "pilotName", "aircraftName", "clock", "flightStatus", "error", "forceClose", "debriefs", "aircraft", "pilot"]
+  static targets = ["title", "link", "count", "saved", "savedText", "cancel", "pilotName", "aircraftName", "clock", "flightStatus", "error", "forceClose", "debriefs", "aircraft", "pilot", "destination"]
   /** @type {RemoteState} */
   state = { phase: "ready", flights_today: 0 }
   endedFlight = 0
@@ -105,7 +106,7 @@ export default class extends TypedController {
     this.titleTarget.textContent = phase === "ready" || !flight ? "Tunnel session" : flight.code
     if (flight) {
       this.pilotNameTarget.textContent = flight.pilot
-      this.aircraftNameTarget.textContent = flight.aircraft
+      this.aircraftNameTarget.textContent = [flight.aircraft, flight.destination].filter(Boolean).join(" \u00b7 ")
     }
     if (phase === "debrief" && flight) void this.openDebrief(flight)
     if (phase === "flight" && flight) {
@@ -154,11 +155,11 @@ export default class extends TypedController {
     this.fail("")
     try {
       void navigator.wakeLock?.request("screen").catch(() => {})
-      let result = await this.call(this.flightsUrlValue, "POST", { aircraft_id: this.aircraftTarget.value, pilot_id: this.pilotTarget.value })
+      let result = await this.call(this.flightsUrlValue, "POST", { aircraft_id: this.aircraftTarget.value, pilot_id: this.pilotTarget.value, destination: this.destinationTarget.value })
       if (result.status === 409 && this.state.session?.close_url) {
         // The previous flight never closed on a silent ground station: close it, then start.
         await this.call(this.state.session.close_url, "POST")
-        result = await this.call(this.flightsUrlValue, "POST", { aircraft_id: this.aircraftTarget.value, pilot_id: this.pilotTarget.value })
+        result = await this.call(this.flightsUrlValue, "POST", { aircraft_id: this.aircraftTarget.value, pilot_id: this.pilotTarget.value, destination: this.destinationTarget.value })
       }
       if (result.ok) this.apply(result.data)
       else if (result.status === 409) this.fail("The previous flight is still closing on the ground station. Try again in a few seconds.")
