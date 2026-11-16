@@ -426,7 +426,7 @@ export default class extends TypedController {
 
   /** @param {SerialPort} port */
   async openSerial(port) {
-    if (!this.recorderDeviceIdValue || !this.recorderAssemblyIdValue) throw new Error("Assign a recorder to an assembly and start a new acquisition.")
+    if (!this.recorderDeviceIdValue) throw new Error("Connect a recorder and start a new acquisition.")
     const tokenKey = `signal-gateway:${this.sessionValue}`
     let token = localStorage.getItem(tokenKey)
     if (!token) { token = crypto.randomUUID(); localStorage.setItem(tokenKey, token) }
@@ -577,7 +577,8 @@ export default class extends TypedController {
     try {
       const identity = await resolveRadioIdentity(this.recorderDeviceIdValue)
       if (this.captureAuthorization !== token || this.port !== port || !port || this.ended) return
-      if (!identity.canAcquire || identity.assemblyId !== this.recorderAssemblyIdValue) throw new Error("The recorder is no longer assigned to this acquisition's assembly.")
+      // An acquisition started on an assembly stays on it; one started without an assembly needs none.
+      if (!identity.canAcquire || (this.recorderAssemblyIdValue && identity.assemblyId !== this.recorderAssemblyIdValue)) throw new Error("The recorder is no longer assigned to this acquisition's assembly.")
       this.acquisitionAuthorized = true
       this.worker?.postMessage({type: "init-capture", filename: `${this.flightCodeValue}-${this.sessionValue}.mavcap`})
       this.handleWorkerMessage(message)

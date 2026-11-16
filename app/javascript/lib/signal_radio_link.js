@@ -10,7 +10,7 @@ export async function resolveRadioIdentity(deviceId) {
   })
   if (!response.ok) throw new Error("Aircraft identity is unavailable")
   const payload = await response.json()
-  if (payload?.registered === false) return {deviceId, recorderLabel: deviceId, aircraftLabel: null, registered: false, assemblyId: null, canAcquire: false}
+  if (payload?.registered === false) return {deviceId, recorderLabel: deviceId, aircraftLabel: null, registered: false, assemblyId: null, canAcquire: true}
   if (payload?.registered !== true || payload.recorder?.device_id !== deviceId)
     throw new Error("Recorder identity does not match the radio")
   const recorderLabel = payload.recorder.assembly?.serial_number || payload.recorder.name || deviceId
@@ -60,7 +60,7 @@ export class SignalRadioReadiness {
     const issues = this.measurements.moduleSnapshot(now).filter(module => module.role <= 3 && ["degraded", "stale"].includes(module.state))
     if (issues.length) return {state: "degraded", label: name ? `${name} · Needs attention` : "Recorder needs attention", detail: issues.map(module => `${module.name}: ${module.state === "stale" ? "link lost" : `${module.sensors} · ${module.storage}`}`).join("; ")}
     const detail = !this.deviceId ? "Radio ready · Waiting for recorder identity" : !resolved ? "Radio ready · Identifying aircraft…"
-      : !resolved.registered ? "Radio ready · Recorder not registered" : !resolved.assemblyId ? "Radio ready · Assign to an assembly" : !resolved.canAcquire ? "Assembly unavailable for acquisition" : !resolved.aircraftLabel ? "Radio ready · No aircraft assigned" : "Radio ready"
+      : !resolved.registered ? "Radio ready · Recorder not registered" : !resolved.assemblyId ? "Radio ready · No assembly assigned" : !resolved.aircraftLabel ? "Radio ready · No aircraft assigned" : "Radio ready"
     return {state: "connected", label: name ? `${name} connected` : "Identifying aircraft…", detail}
   }
 }
