@@ -30,6 +30,9 @@ export const USB_HELLO_RESEND_MS = 800
 // A recorder that is not reading must not fill its small USB receive buffer: a blocked write keeps the port from closing.
 export const USB_HELLO_RESENDS = 2
 export const USB_SECURITY_TIMEOUT_MS = 8_000
+// A board that streams this much text and no EXS1 frame within this delay runs firmware without USB control.
+export const USB_TEXT_ONLY_AFTER_MS = 3_000
+export const USB_TEXT_ONLY_MIN_BYTES = 256
 // ExoFDR boards enumerate under Espressif or Seeed. The port chooser lists only these.
 export const USB_FDR_PORT_FILTERS = Object.freeze([{ usbVendorId: 0x303a }, { usbVendorId: 0x2886 }])
 export const USB_SERIAL_BUFFER_SIZE = 64 * 1024
@@ -51,6 +54,8 @@ export const USB_PORT_RELEASE_TIMEOUT_MS = 2_000
  *   usbConnectionAttempts?: number,
  *   timeoutMs?: number,
  *   usbConnectionStage?: "opening" | "handshake",
+ *   usbTextOnlyFirmware?: boolean,
+ *   technicalDetails?: string,
  *   usbConnectionLost?: boolean,
  *   usbSyncInterrupted?: boolean,
  *   usbConnectionTimedOut?: boolean,
@@ -256,10 +261,22 @@ export class UsbFdrClient {
       }, timeoutMs)
     })
 
+    let textOnlyId
+    const textOnly = new Promise((_, reject) => {
+      textOnlyId = globalThis.setTimeout(() => {
+        const reader = this.frameReader
+        if (!reader || reader.frames || reader.received < USB_TEXT_ONLY_MIN_BYTES) return
+        timedOut = true
+        void this.close()
+        reject(usbTextOnlyFirmwareError(reader.preamble))
+      }, USB_TEXT_ONLY_AFTER_MS)
+    })
+
     try {
-      return await Promise.race([connection, timeout])
+      return await Promise.race([connection, timeout, textOnly])
     } finally {
       globalThis.clearTimeout(timeoutId)
+      globalThis.clearTimeout(textOnlyId)
     }
   }
 
@@ -589,6 +606,18 @@ function usbConnectionTimeoutError(stage, timeoutMs, attempt, attempts) {
   return error
 }
 
+/** @param {string} preamble Text the board printed instead of answering. */
+function usbTextOnlyFirmwareError(preamble) {
+  const tunnel = /\bDIST \w+=/.test(preamble)
+  const error = /** @type {FdrProtocolError} */ (new Error(tunnel
+    ? "This module runs the distributed tunnel firmware, which has no USB-C control: it only prints diagnostics and keeps recording. Sillage cannot identify, authenticate or synchronize it over USB-C. Its recordings stay on the microSD card."
+    : "This board prints diagnostic text and does not answer Sillage over USB-C. Its firmware has no USB-C control, or another firmware is installed."))
+  error.usbConnectionStage = "handshake"
+  error.usbTextOnlyFirmware = true
+  error.technicalDetails = preamble.split("\n").filter((line) => line.trim()).slice(-3).join(" | ").slice(0, 300)
+  return error
+}
+
 /**
  * @param {number} type
  * @param {number} timeoutMs
@@ -637,6 +666,10 @@ export class FrameReader {
   constructor(reader) {
     this.reader = reader
     this.buffer = new Uint8Array()
+    this.received = 0
+    this.frames = 0
+    // Latest text seen before any frame, to tell a debug console from a recorder that is only slow.
+    this.preamble = ""
   }
 
   /** @returns {Promise<UsbFrame>} */
@@ -644,12 +677,14 @@ export class FrameReader {
     while (true) {
       const bufferedLength = this.buffer.length
       const frame = this.extractFrame()
-      if (frame) return frame
+      if (frame) { this.frames += 1; return frame }
       // Discarding an invalid header can reveal a complete response already
       // buffered. Scan it before awaiting bytes the recorder will never send.
       if (this.buffer.length < bufferedLength) continue
       const { value, done } = await this.reader.read()
       if (done) throw new Error("The recorder disconnected during synchronization.")
+      this.received += value.length
+      if (!this.frames) this.preamble = (this.preamble + new TextDecoder().decode(value)).slice(-600)
       this.buffer = joinBytes(this.buffer, value)
     }
   }
@@ -1191,6 +1226,7 @@ export function formatUsbErrorDetails(error) {
   if (error?.usbConnectionTimedOut) {
     return `Web Serial · ${error.usbConnectionStage} · attempt ${error.usbConnectionAttempt}/${error.usbConnectionAttempts}`
   }
+  if (error?.usbTextOnlyFirmware) return `Web Serial · no EXS1 answer · ${error.technicalDetails || "text output"}`
   if (!Number.isInteger(error?.recorderCode)) return ""
   const errorName = enumName(UsbErrorCode, error.recorderCode) || "UNKNOWN_ERROR"
   const requestName = enumName(UsbMessage, error.recorderRequestType) || "UNKNOWN_REQUEST"
