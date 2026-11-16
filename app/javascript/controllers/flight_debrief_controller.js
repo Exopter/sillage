@@ -6,6 +6,7 @@ import { Controller } from "@hotwired/stimulus"
  * @property {string} keyValue
  * @property {string} commentsUrlValue
  * @property {number} replacesValue
+ * @property {boolean} prewarmValue
  * @property {HTMLElement} statusTarget
  * @property {HTMLElement} durationTarget
  * @property {HTMLMeterElement} levelTarget
@@ -14,7 +15,7 @@ import { Controller } from "@hotwired/stimulus"
 /** @typedef {{uuid: string, parts: Blob[], type: string, url: string | null}} SavedRecording */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 export default class extends TypedController {
-  static values = { url: String, key: String, commentsUrl: String, replaces: Number }
+  static values = { url: String, key: String, commentsUrl: String, replaces: Number, prewarm: Boolean }
   static targets = ["status", "transcript", "duration", "level"]
   /** @type {MediaRecorder | null} */
   recorder = null
@@ -28,6 +29,10 @@ export default class extends TypedController {
   database = null
   /** @type {Blob[]} */
   parts = []
+  // The live connection opened ahead of the recording, when the screen asks for it.
+  warm = false
+  /** @type {Promise<void> | null} */
+  preparation = null
   floor = 1
   spokeAt = 0
   pending = 0
@@ -68,11 +73,48 @@ export default class extends TypedController {
       request.onerror = () => reject(request.error)
     })
     this.saved = await this.store("get")
+    // A reservation with nothing recorded is a connection opened early and never used.
+    if (this.saved && !this.saved.parts.length) await this.release()
     this.showState(this.saved ? "recovery" : "idle")
     if (this.saved) this.statusTarget.textContent = "A saved debrief is available. Recover it before starting another."
+    else if (this.prewarmValue) this.preparation = this.prepare()
+  }
+
+  // Opens the microphone and the live transcription before the operator records, so
+  // the first words are heard. The microphone track stays disabled until the tap:
+  // nothing said before it is sent or kept.
+  async prepare() {
+    try {
+      const reservation = await this.api(this.urlValue, { uuid: crypto.randomUUID() })
+      this.saved = { uuid: reservation.uuid, parts: [], type: "", url: reservation.url }
+      this.element.dataset.debriefUrl = reservation.url
+      await this.store("put", this.saved)
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      this.stream.getAudioTracks().forEach(track => { track.enabled = false })
+      await this.live()
+      this.warm = true
+    } catch {
+      // The tap on the microphone takes the normal path and reports what is wrong.
+      await this.release()
+    }
+  }
+
+  // Gives back a connection or reservation that holds no recording.
+  async release() {
+    this.warm = false
+    this.stream?.getTracks().forEach(track => track.stop())
+    this.stream = null
+    this.peer?.close()
+    this.peer = null
+    this.channel = null
+    const url = this.saved?.url
+    this.saved = null
+    try { if (url) await this.api(url, {}, "DELETE") } catch { /* It expires on the server. */ }
+    try { await this.store("delete") } catch { /* Nothing was stored. */ }
   }
 
   disconnect() {
+    if (this.saved && !this.saved.parts.length && (!this.recorder || this.recorder.state === "inactive")) void this.release()
     if (this.recorder?.state !== "inactive") this.recorder?.stop()
     this.stream?.getTracks().forEach(track => track.stop())
     this.peer?.close()
@@ -105,14 +147,25 @@ export default class extends TypedController {
 
   async start() {
     try {
-      if (this.saved || this.recorder?.state === "recording") throw new Error("Recover the saved debrief first.")
       this.showState("busy")
-      const reservation = await this.api(this.urlValue, { uuid: crypto.randomUUID() })
-      this.saved = { uuid: reservation.uuid, parts: [], type: "", url: reservation.url }
-      // A checklist beside the recorder reads the live transcript through this debrief.
-      this.element.dataset.debriefUrl = reservation.url
-      await this.store("put", this.saved)
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      if (this.preparation) { await this.preparation; this.preparation = null }
+      // The early connection is used only while it is still alive; otherwise start from scratch.
+      const warm = this.warm && Boolean(this.saved && this.stream) && !["failed", "closed", "disconnected"].includes(this.peer?.connectionState || "closed")
+      if (this.warm && !warm) await this.release()
+      this.warm = false
+      if ((this.saved && !warm) || this.recorder?.state === "recording") throw new Error("Recover the saved debrief first.")
+      if (warm && this.stream) {
+        this.stream.getAudioTracks().forEach(track => { track.enabled = true })
+        if (this.channel?.readyState === "open") this.channel.send(JSON.stringify({ type: "input_audio_buffer.clear" }))
+      } else {
+        const reservation = await this.api(this.urlValue, { uuid: crypto.randomUUID() })
+        this.saved = { uuid: reservation.uuid, parts: [], type: "", url: reservation.url }
+        // A checklist beside the recorder reads the live transcript through this debrief.
+        this.element.dataset.debriefUrl = reservation.url
+        await this.store("put", this.saved)
+        this.stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      }
+      if (!this.saved || !this.stream) throw new Error("The microphone is unavailable.")
       this.parts = []; this.turns.clear(); this.committed.clear(); this.completed.clear(); this.liveFailed = false; this.liveComplete = false; this.floor = 1; this.spokeAt = 0; this.pending = 0; this.sentAt = 0
       await this.store("put", this.saved || undefined)
       const type = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"].find(value => MediaRecorder.isTypeSupported(value))
@@ -151,7 +204,7 @@ export default class extends TypedController {
       this.statusTarget.textContent = "Recording… Keep this screen open."
       try {
         // Straight to the live connection: every round trip here is speech the live transcript misses.
-        await this.live()
+        if (!warm) await this.live()
       } catch { this.statusTarget.textContent = "Recording locally. Transcription will run after upload." }
     } catch (error) {
       const denied = error instanceof DOMException && ["NotAllowedError", "SecurityError"].includes(error.name)
@@ -275,9 +328,8 @@ export default class extends TypedController {
   }
 
   async dropSaved() {
-    try { if (this.saved?.url) await this.api(this.saved.url, {}, "DELETE") } catch { /* The reservation expires with the next recording. */ }
-    try { await this.store("delete") } catch { /* Nothing was stored. */ }
-    this.saved = null
+    if (this.preparation) { await this.preparation; this.preparation = null }
+    await this.release()
     this.showState("idle")
     this.element.dispatchEvent(new CustomEvent("flight-debrief:abandoned", { bubbles: true }))
   }

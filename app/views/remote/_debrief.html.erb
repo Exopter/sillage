@@ -1,5 +1,5 @@
 <section class="remote-debrief flight-debrief" data-controller="flight-debrief debrief-checklist"
-  data-flight-debrief-url-value="<%= flight_debriefs_path(flight) %>" data-flight-debrief-key-value="<%= Current.user.id %>:<%= flight.id %>"
+  data-flight-debrief-url-value="<%= flight_debriefs_path(flight) %>" data-flight-debrief-key-value="<%= Current.user.id %>:<%= flight.id %>" data-flight-debrief-prewarm-value="true"
   data-debrief-checklist-pilot-value="<%= flight.display_pilot %>" data-flight-id="<%= flight.id %>" data-flight-code="<%= flight.code %>"
   aria-label="Debrief of <%= flight.code %>">
   <div class="remote-body">

@@ -4,23 +4,35 @@ module Debriefs
   class OpenAi
     Error = Class.new(StandardError)
 
+    CONTEXT = "A pilot's flight debrief after a wind tunnel or wingsuit flight, in English or French. It opens with the glide ratio, the speed in km/h, the CG setting and the angle of attack setting, then how the flight felt.".freeze
+    # Literal terms the transcription models tend to miss or mishear in a debrief.
+    KEYWORDS = [ "glide ratio", "finesse", "speed", "CG", "centre de gravit\u00e9", "centrage", "angle of attack", "AoA", "angle d'attaque",
+      "incidence", "IDK", "indice de kiff", "IDP", "indice de puret\u00e9", "special features", "stall", "wingsuit", "Exowing" ].freeze
+
     def realtime
-      request("realtime/client_secrets", {
-        expires_after: { anchor: "created_at", seconds: 60 },
-        session: { type: "transcription", audio: { input: {
-          transcription: { model: "gpt-live-transcribe", languages: %w[en fr],
-            prompt: "A pilot's flight debrief after a wind tunnel or wingsuit flight. Expected terms: glide ratio, finesse, speed, CG, centre de gravit\u00e9, AoA, angle d'attaque, IDK (indice de kiff), IDP (indice de puret\u00e9), special features.", delay: "low" }, turn_detection: nil
-        } } }
-      })
+      session = ->(hints) {
+        { expires_after: { anchor: "created_at", seconds: 60 },
+          session: { type: "transcription", audio: { input: {
+            transcription: { model: "gpt-live-transcribe", languages: %w[en fr], prompt: CONTEXT, delay: "low" }.merge(hints), turn_detection: nil
+          } } } }
+      }
+      request("realtime/client_secrets", session.call(keywords: KEYWORDS))
+    rescue Error
+      # Keyword hints are an addition: never let them cost the live transcription.
+      request("realtime/client_secrets", session.call({}))
     end
 
     def transcribe(audio)
       audio.open do |file|
-        uri = URI("https://api.openai.com/v1/audio/transcriptions")
-        req = Net::HTTP::Post.new(uri)
-        req["Authorization"] = "Bearer #{api_key}"
-        req.set_form([ [ "model", "gpt-transcribe" ], [ "file", file, { filename: audio.filename.to_s, content_type: audio.content_type } ] ], "multipart/form-data")
-        perform(uri, req).fetch("text")
+        base = [ [ "model", "gpt-transcribe" ], [ "file", file, { filename: audio.filename.to_s, content_type: audio.content_type } ] ]
+        hints = [ [ "prompt", CONTEXT ], *KEYWORDS.map { |keyword| [ "keywords[]", keyword ] }, *%w[en fr].map { |language| [ "languages[]", language ] } ]
+        begin
+          transcription(base + hints)
+        rescue Error
+          # Same rule as the live session: hints never cost the transcription itself.
+          file.rewind
+          transcription(base)
+        end
       end
     end
 
@@ -34,9 +46,9 @@ module Debriefs
     end
 
     # Reads the debrief checklist out of a transcript, whatever words the pilot used.
-    def checklist(transcript)
+    def checklist(transcript, effort: "low")
       result = request("responses", {
-        model: "gpt-6-luna", reasoning: { effort: "low" }, max_output_tokens: 400,
+        model: "gpt-6-luna", reasoning: { effort: }, max_output_tokens: 400,
         instructions: CHECKLIST_INSTRUCTIONS, input: transcript.to_s.last(12_000)
       })
       text = result.fetch("output").flat_map { |item| item.fetch("content", []) }.filter_map { |item| item["text"] if item["type"] == "output_text" }.join
@@ -69,6 +81,14 @@ module Debriefs
     TEXT
 
     private
+
+    def transcription(fields)
+      uri = URI("https://api.openai.com/v1/audio/transcriptions")
+      req = Net::HTTP::Post.new(uri)
+      req["Authorization"] = "Bearer #{api_key}"
+      req.set_form(fields, "multipart/form-data")
+      perform(uri, req).fetch("text")
+    end
 
     def api_key
       ENV["OPENAI_API_KEY"].presence || raise(Error, "OpenAI is not configured")
