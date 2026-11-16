@@ -30,7 +30,7 @@ export default class extends TypedController {
     if (event.target.matches("[data-signal-acquisition-form]")) {
       if (!this.canAcquire()) {
         event.preventDefault()
-        this.detailTarget.textContent = "Assign the connected recorder to an assembly before starting acquisition."
+        this.detailTarget.textContent = "Connect the recorder and wait for its identity before starting acquisition."
         return
       }
       const device = event.target.querySelector("input[name='device_id']")
@@ -182,7 +182,7 @@ export default class extends TypedController {
     for (const button of document.querySelectorAll("[data-signal-acquisition]")) if (button instanceof HTMLButtonElement) button.disabled = !allowed
     for (const input of document.querySelectorAll("[data-signal-acquisition-form] input[name='device_id']")) if (input instanceof HTMLInputElement) input.value = allowed ? deviceId : ""
     const notice = document.querySelector("[data-signal-acquisition-notice]")
-    if (notice) { notice.textContent = allowed ? "Recorder assigned to an assembly. Acquisition is available." : "Connect and assign the recorder to an assembly to enable acquisition." }
+    if (notice) { notice.textContent = allowed ? (this.identity?.assemblyId ? "Recorder identified. Acquisition is available." : "Recorder identified without an assembly. Acquisition is available; the flight will have no recorder assembly until one is assigned.") : "Connect a recorder to enable acquisition." }
 
   }
 }

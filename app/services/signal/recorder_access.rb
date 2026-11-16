@@ -1,20 +1,30 @@
 module Signal
+  # Who may feed an acquisition. A recorder identified by its ECU ID is enough:
+  # registration and assignment to an assembly describe the flight when they
+  # exist, and never block the capture.
   class RecorderAccess
     Denied = Class.new(StandardError)
-    MESSAGE = "Assign the connected recorder to an assembly before starting acquisition.".freeze
+    MESSAGE = "Connect a recorder before starting acquisition.".freeze
 
-    def self.allowed?(recorder)
-      assembly = recorder&.assembly
-      assembly&.controlled_fdr? && !assembly.fdr_system? && assembly.serviceability_state != "retired"
+    Access = Data.define(:device_id, :recorder) do
+      def assembly
+        recorder&.assembly
+      end
+
+      def aircraft
+        recorder&.aircraft
+      end
+    end
+
+    def self.allowed?(_recorder)
+      true
     end
 
     def self.resolve!(device_id)
       id = FdrIdentity::DeviceId.normalize(device_id)
-      recorder = EmbeddedController.find_by(device_id: id) if FdrIdentity::DeviceId.valid?(id)
-      unless allowed?(recorder)
-        raise Denied, MESSAGE
-      end
-      recorder
+      raise Denied, MESSAGE unless FdrIdentity::DeviceId.valid?(id)
+
+      Access.new(device_id: id, recorder: EmbeddedController.find_by(device_id: id))
     end
 
     def self.for_session!(session, device_id: nil)
@@ -23,11 +33,13 @@ module Signal
       if device_id.present? && FdrIdentity::DeviceId.normalize(device_id) != expected
         raise Denied, "The connected recorder does not match this acquisition."
       end
-      recorder = resolve!(expected)
-      if recorder.assembly.id != session.station_metadata["recorder_assembly_id"]
+      access = resolve!(expected)
+      started_with = session.station_metadata["recorder_assembly_id"]
+      # An acquisition started on an assembly stays on it; one started without may gain one.
+      if started_with.present? && access.assembly&.id != started_with
         raise Denied, "The recorder assembly changed. Start a new acquisition."
       end
-      recorder
+      access
     end
   end
 end

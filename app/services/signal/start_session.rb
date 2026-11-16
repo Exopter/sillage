@@ -41,7 +41,7 @@ module Signal
           flight:,
           started_at: @started_at,
           station_metadata: @station_metadata.merge("recorder_device_id" => @recorder.device_id,
-            "recorder_assembly_id" => @assembly.id)
+            "recorder_assembly_id" => @assembly&.id)
         )
         IdentifySource.new(
           signal_session: session,
@@ -57,7 +57,7 @@ module Signal
     def prepare_flight
       if @flight_id.blank?
         return @user.flights.create!(name: "Signal flight", status: "live", started_at: @started_at,
-          fdr: @assembly.fdr_system_at || @assembly, aircraft: @recorder.aircraft).tap do |flight|
+          fdr: @assembly&.fdr_system_at || @assembly, aircraft: @recorder.aircraft).tap do |flight|
           flight.capture_configuration!(at: nil)
         end
       end
@@ -66,8 +66,8 @@ module Signal
       unless flight.preparation? || flight.live? || (flight.logged? && flight.fdr_id.present?)
         raise InvalidFlight, "Only a draft or live flight can receive a Signal session."
       end
-      owner = @assembly.fdr_system_at || @assembly
-      if flight.fdr_id && ![ @assembly.id, owner.id ].include?(flight.fdr_id)
+      owner = @assembly&.fdr_system_at || @assembly
+      if flight.fdr_id && owner && ![ @assembly.id, owner.id ].include?(flight.fdr_id)
         raise RecorderAccess::Denied, "The connected recorder does not match the flight assembly."
       end
       if flight.aircraft && @recorder.aircraft && flight.aircraft != @recorder.aircraft
