@@ -1778,6 +1778,11 @@ body {
   white-space: nowrap;
 }
 
+/* The delete form adds no box of its own to the header row. */
+.flight-replay-delete {
+  display: contents;
+}
+
 .flight-replay-header .mode-badge.is-neutral {
   border-color: var(--ex-carbon-700);
   background: var(--ex-carbon-800);
