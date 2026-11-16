@@ -20,6 +20,7 @@ module Hangar
       @assemblies = all.select { |assembly| included.include?(assembly) }
       @nodes = {}
       @assemblies.each { |assembly| add_assembly(assembly) }
+      add_standalone_parts(state)
       @nodes.values.each { |node| @nodes[node.parent_key]&.children&.push(node) }
       @roots = @nodes.values.select { |node| node.parent_key.nil? }
       @nodes.each_value do |node|
@@ -27,6 +28,9 @@ module Hangar
       end
       @aircraft = Installation.active.where(installable_type: "Assembly", installable_id: @assemblies.map(&:id))
         .includes(:aircraft).to_h { |installation| [ "assembly-#{installation.installable_id}", installation.aircraft ] }
+      @installations = Installation.active.where(installable_type: "Part", installable_id: @standalone.map(&:id)).includes(:aircraft)
+        .index_by { |installation| "part-#{installation.installable_id}" }
+      @aircraft.merge!(@installations.transform_values(&:aircraft))
       @part_counts = {}
     end
 
@@ -60,10 +64,31 @@ module Hangar
 
     def groups
       [ [ "SYSTEMS", "Grouped modules", roots.select { |node| node.kind == "system" }, "systems" ],
-        [ "Standalone", "Not assigned to a system", roots.reject { |node| node.kind == "system" }, "standalone" ] ]
+        [ "Standalone", "Not assigned to a system", roots.select { |node| node.kind == "assembly" }, "standalone" ],
+        [ "Parts on their own", "Not inside an assembly", roots.select { |node| node.kind == "part" }, "parts" ] ]
+    end
+
+    # The active aircraft installation of a part that is not inside an assembly.
+    def installation(node)
+      @installations[node.key]
     end
 
     private
+
+    def add_standalone_parts(state)
+      scope = Part.includes(:function).where.missing(:active_part_installation)
+        .where.not(id: EmbeddedController.where.not(part_id: nil).select(:part_id)).ordered
+      scope = scope.where.not(state: "retired") unless state == "all"
+      @standalone = state.present? && state != "all" ? [] : scope.to_a
+      @standalone.each { |part| add_part(part, nil) }
+    end
+
+    def add_part(part, parent_key)
+      key = "part-#{part.id}"
+      nodes[key] = Node.new(key:, asset: part, parent_key:, kind: "part", label: part.display_name,
+        subtitle: [ part.function.name, part.serial_number.presence || part.internal_number ].join(" \u00b7 "),
+        search: [ part.display_name, part.serial_number, part.internal_number, part.function.name, part.function.code ].join(" ").downcase, children: [])
+    end
 
     def add_assembly(assembly)
       key = "assembly-#{assembly.id}"
@@ -74,10 +99,7 @@ module Hangar
       assembly.parts.each do |part|
         next if assembly.controlled_fdr? && part.function.code == "CONTROLLER"
 
-        part_key = "part-#{part.id}"
-        nodes[part_key] = Node.new(key: part_key, asset: part, parent_key: key, kind: "part", label: part.display_name,
-          subtitle: part.serial_number.presence || part.internal_number,
-          search: [ part.display_name, part.serial_number, part.internal_number, part.function.name, part.function.code ].join(" ").downcase, children: [])
+        add_part(part, key)
       end
     end
   end

@@ -68,45 +68,45 @@ module Hangar
     def install_part
       part = Part.available.find(params.require(:part_id))
       part.install_in!(@assembly)
-      redirect_to hangar_assembly_path(@assembly), notice: "#{part.internal_number} installed."
+      redirect_to hangar_return_path(hangar_assembly_path(@assembly)), notice: "#{part.internal_number} installed."
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => error
-      redirect_to hangar_assembly_path(@assembly), alert: error.message
+      redirect_to hangar_return_path(hangar_assembly_path(@assembly)), alert: error.message
     end
 
     def remove_part
       part = @assembly.parts.find(params[:part_id])
       part.remove_from_assembly!
-      redirect_to hangar_assembly_path(@assembly), notice: "#{part.internal_number} removed."
+      redirect_to hangar_return_path(hangar_assembly_path(@assembly)), notice: "#{part.internal_number} removed."
     end
 
     def replace_part
       outgoing = @assembly.parts.find(params[:part_id])
       incoming = Part.available.find(params.require(:replacement_part_id))
       unless outgoing.function_id == incoming.function_id
-        return redirect_to hangar_assembly_path(@assembly), alert: "Replacement must have the same function."
+        return redirect_to hangar_return_path(hangar_assembly_path(@assembly)), alert: "Replacement must have the same function."
       end
 
       Part.transaction do
         outgoing.remove_from_assembly!
         incoming.install_in!(@assembly)
       end
-      redirect_to hangar_assembly_path(@assembly), notice: "#{outgoing.internal_number} replaced by #{incoming.internal_number}."
+      redirect_to hangar_return_path(hangar_assembly_path(@assembly)), notice: "#{outgoing.internal_number} replaced by #{incoming.internal_number}."
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => error
-      redirect_to hangar_assembly_path(@assembly), alert: error.message
+      redirect_to hangar_return_path(hangar_assembly_path(@assembly)), alert: error.message
     end
 
     def attach_assembly
       child = Assembly.roots.find(params.require(:child_id))
       child.update!(parent: @assembly)
-      redirect_to hangar_assembly_path(@assembly), notice: "#{child.internal_number} attached."
+      redirect_to hangar_return_path(hangar_assembly_path(@assembly)), notice: "#{child.internal_number} attached."
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => error
-      redirect_to hangar_assembly_path(@assembly), alert: error.message
+      redirect_to hangar_return_path(hangar_assembly_path(@assembly)), alert: error.message
     end
 
     def detach_assembly
       child = @assembly.children.find(params[:child_id])
       child.update!(parent: nil)
-      redirect_to hangar_assembly_path(@assembly), notice: "#{child.internal_number} detached."
+      redirect_to hangar_return_path(hangar_assembly_path(@assembly)), notice: "#{child.internal_number} detached."
     end
 
     private

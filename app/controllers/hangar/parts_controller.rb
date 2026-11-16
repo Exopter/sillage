@@ -15,10 +15,12 @@ module Hangar
         SQL
       end
       @parts = @state == "all" ? @parts : @state ? @parts.where(state: @state) : @parts.where.not(state: "retired")
+      @part_aircraft = Installation.active.where(installable_type: "Part").includes(:aircraft).to_h { |installation| [ installation.installable_id, installation.aircraft ] }
     end
 
     def show
       @forge_assembly = @part.embedded_controller&.assembly
+      @aircraft_installation = Installation.active.includes(:aircraft).find_by(installable: @part)
       @part_installations = @part.part_installations.includes(:assembly).recent
     end
 

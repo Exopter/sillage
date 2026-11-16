@@ -1,9 +1,6 @@
-<% content_for :title, "Fleet configuration" %>
+<% content_for :title, "Inventory · Hangar" %>
 <%= render "hangar/tabs" %>
-<header class="hangar-section-head exds-hierarchy-heading">
-  <div><h2>Assemblies</h2><p>Explore systems, their modules, and the parts inside.</p></div>
-  <%= link_to new_hangar_assembly_path, class: "button-primary exds-btn exds-btn--primary" do %><%= sillage_icon "plus", size: 17 %><span>New assembly</span><% end %>
-</header>
+<%= render "hangar/inventory_head", view: "tree" %>
 <% if @inventory.roots.any? %>
   <div data-controller="assembly-hierarchy" data-assembly-hierarchy-selected-value="<%= @selected_node&.key %>" data-action="turbo:before-cache@document->assembly-hierarchy#beforeCache">
     <div class="exds-hierarchy-summary">
@@ -15,19 +12,19 @@
     <div class="exds-hierarchy-layout">
       <section class="hangar-panel exds-hierarchy-panel" aria-label="Assembly hierarchy">
         <div class="exds-hierarchy-tools">
-          <label class="exds-hierarchy-search"><%= sillage_icon "search", size: 15 %><input type="search" placeholder="Search serial, module, or part..." aria-label="Search assemblies and parts" data-assembly-hierarchy-target="search" data-action="input->assembly-hierarchy#search"></label>
+          <label class="exds-hierarchy-search"><%= sillage_icon "search", size: 15 %><input type="search" placeholder="Search serial, module, or part..." aria-label="Search assemblies and parts" value="<%= params[:q] %>" data-assembly-hierarchy-target="search" data-action="input->assembly-hierarchy#search"></label>
           <button type="button" class="button-secondary exds-btn exds-btn--secondary is-compact" data-assembly-hierarchy-target="expand" data-action="assembly-hierarchy#expandAll">Expand all</button>
         </div>
         <div class="exds-hierarchy-filter-row">
           <div class="exds-hierarchy-filters" role="group" aria-label="Filter assemblies">
-            <% { "all" => "All", "systems" => "SYSTEMS", "standalone" => "Standalone" }.each do |value, label| %>
+            <% { "all" => "All", "systems" => "SYSTEMS", "standalone" => "Standalone", "parts" => "Loose parts" }.each do |value, label| %>
               <button type="button" class="<%= "is-active" if value == "all" %>" aria-pressed="<%= value == "all" %>" data-filter="<%= value %>" data-assembly-hierarchy-target="filter" data-action="assembly-hierarchy#filter"><%= label %></button>
             <% end %>
           </div>
           <%= render "state_filter" %>
           <span class="exds-hierarchy-result-count" data-assembly-hierarchy-target="count" aria-live="polite"><%= pluralize @inventory.assemblies.size, "assembly" %></span>
         </div>
-        <div class="exds-hierarchy-columns"><span>Assembly / Part</span><span>Aircraft</span></div>
+        <div class="exds-hierarchy-columns"><span>Assembly / Part</span><span>Where</span></div>
         <% @inventory.groups.each do |label, description, roots, category| %>
           <% next if roots.empty? %>
           <section data-assembly-hierarchy-target="group" data-category="<%= category %>" aria-label="<%= label %>">

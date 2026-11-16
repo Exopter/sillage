@@ -161,7 +161,7 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
     get hangar_assemblies_path(assembly_id: @assembly.id)
 
     assert_response :success
-    assert_select "a[href='#{edit_hangar_assembly_path(@assembly)}']", count: 0
+    assert_select "a[href='#{edit_hangar_assembly_path(@assembly)}'][data-turbo-frame='_top']", text: "Edit"
     assert_select "a[href='#{hangar_assembly_path(@assembly)}']", text: "Open full record"
     assert_select "form[action='#{hangar_assembly_path(@assembly)}']", count: 0
 
@@ -182,7 +182,7 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
     get hangar_part_path(@part)
     assert_response :success
     assert_select "header.workspace-header input[name='_method'][value='delete']", count: 0
-    assert_select "section:last-child.danger-panel" do
+    assert_select "details:last-child.danger-panel" do
       assert_select "h2", "Sensitive zone"
       assert_select "p", text: /retirement preserves.*traceability/
       assert_select "form[action='#{hangar_part_path(@part)}']" do
@@ -334,7 +334,7 @@ class HangarAssetManagementTest < ActionDispatch::IntegrationTest
 
   def assert_assembly_sensitive_zone(assembly)
     assert_select "header.workspace-header input[name='_method'][value='delete']", count: 0
-    assert_select "section:last-child.danger-panel" do
+    assert_select "details:last-child.danger-panel" do
       assert_select "h2", "Sensitive zone"
       assert_select "p", text: /retirement preserves.*traceability/
       confirmation = "Delete #{assembly.display_name} (#{assembly.internal_number}) permanently? This cannot be undone. Retire the assembly instead to preserve traceability."

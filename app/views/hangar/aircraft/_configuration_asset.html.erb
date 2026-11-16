@@ -1,4 +1,6 @@
 <% tone, label = hangar_asset_status(asset) %>
+<% installation = local_assigns[:installation] %>
+<% back = hangar_aircraft_path(@selected_aircraft) %>
 <div class="hangar-tree-row is-level-<%= [level, 3].min %>">
   <% if asset.is_a?(Assembly) %>
     <%= link_to hangar_assembly_path(asset), class: "hangar-tree-primary" do %>
@@ -6,16 +8,29 @@
       <span class="hangar-tree-copy"><strong><%= asset.selection_label %></strong><small><%= pluralize(asset.parts.size, "direct part") %></small></span>
     <% end %>
   <% else %>
-    <div class="hangar-tree-primary">
-      <span class="hangar-tree-icon"><%= sillage_icon asset.is_a?(Assembly) ? "layers" : "settings", size: 15 %></span>
+    <%= link_to hangar_part_path(asset), class: "hangar-tree-primary" do %>
+      <span class="hangar-tree-icon"><%= sillage_icon "settings", size: 15 %></span>
       <span class="hangar-tree-copy">
         <strong><%= hangar_asset_code asset %> · <%= hangar_asset_name asset %></strong>
         <% if asset.serial_number.present? %><small>Asset ID <%= asset.internal_number %></small><% end %>
       </span>
-    </div>
+    <% end %>
   <% end %>
-  <span class="hangar-kind"><%= hangar_asset_kind asset %></span>
+  <span class="hangar-kind"><%= asset.is_a?(Part) && asset.function ? asset.function.name : hangar_asset_kind(asset) %></span>
   <span class="status-dot is-<%= tone %>"><span></span><%= label %></span>
+  <span class="hangar-tree-actions">
+    <% if installation %>
+      <%= button_to "Remove", hangar_installation_path(installation), method: :delete, params: { return_to: back }, class: "button-secondary exds-btn exds-btn--secondary is-compact",
+        form: { data: { turbo_confirm: "Remove #{hangar_asset_name asset} from #{@selected_aircraft.registration} now?" } } %>
+    <% elsif asset.is_a?(Part) && asset.assembly && !(asset.assembly.controlled_fdr? && asset.function.code == "CONTROLLER") %>
+      <% candidates = @replacement_parts.fetch(asset.function_id, []) %>
+      <% if candidates.any? %>
+        <%= render "hangar/picker", trigger: "Replace", title: "Replace #{asset.display_name}", submit: "Replace", method: :patch,
+          url: replace_part_hangar_assembly_path(asset.assembly, part_id: asset.id), hidden: { return_to: back },
+          options: hangar_part_options(candidates, field: "replacement_part_id") %>
+      <% end %>
+    <% end %>
+  </span>
 </div>
 <% if asset.is_a?(Assembly) %>
   <% asset.children.ordered.each do |child| %><%= render "hangar/aircraft/configuration_asset", asset: child, level: level + 1 %><% end %>

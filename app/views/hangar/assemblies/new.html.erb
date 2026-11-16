@@ -1,6 +1,8 @@
 <% content_for :title, "New assembly" %>
 <%= render "hangar/tabs" %>
 <div class="workspace-form-page">
-  <header class="workspace-header"><div><span class="section-eyebrow">Assemblies</span><h2>New assembly</h2><p>Select a type, a functional configuration and an assembly method to issue a permanent identity.</p></div></header>
+  <header class="workspace-header"><div><h2>Add to inventory</h2><p>An ExoFDR gets its name and serial number from its version and assembly method.</p></div>
+    <nav class="hangar-view-switch" aria-label="Kind of item"><%= link_to "Part", new_hangar_part_path %><%= link_to "Assembly", new_hangar_assembly_path, aria: { current: "true" } %></nav>
+  </header>
   <section class="workspace-panel workspace-form-panel"><%= render "form", assembly: @assembly %></section>
 </div>

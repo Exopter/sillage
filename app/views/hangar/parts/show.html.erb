@@ -24,7 +24,7 @@
       <div><dt>Model</dt><dd><%= @part.model %></dd></div>
       <div><dt>Serial number</dt><dd><%= @part.serial_number.presence || "—" %></dd></div>
       <div><dt>State</dt><dd><span class="status-dot is-<%= @part.state == "quarantined" ? "caution" : @part.state == "retired" ? "fault" : @part.state == "available" ? "unknown" : "ready" %>"><span></span><%= @part.state == "quarantined" ? "Review flag" : @part.state.titleize %></span></dd></div>
-      <div><dt>Assembly</dt><dd><%= @part.assembly ? link_to(@part.assembly.identity_label, hangar_assembly_path(@part.assembly)) : "Not installed" %></dd></div>
+      <div><dt>Where</dt><dd><% if @part.assembly %><%= link_to @part.assembly.identity_label, hangar_assembly_path(@part.assembly) %><% elsif @aircraft_installation %>On <%= link_to @aircraft_installation.aircraft.registration, hangar_aircraft_path(@aircraft_installation.aircraft) %><% else %>In stock<% end %></dd></div>
       <% if @part.embedded_controller %><div><dt>ECU ID</dt><dd class="workspace-mono"><%= ecu_label(@part.embedded_controller.device_id).presence || "Not identified" %></dd></div><% end %>
       <div><dt>Internal Asset ID</dt><dd class="workspace-mono"><%= @part.internal_number %></dd></div>
     </dl>
@@ -46,10 +46,11 @@
   <% else %><div class="workspace-empty">This part has never been installed in an assembly.</div><% end %>
 </section>
 
-<section class="workspace-panel danger-panel" aria-labelledby="part-sensitive-zone">
+<details class="workspace-panel danger-panel exds-disclosure hangar-fold" aria-labelledby="part-sensitive-zone">
+  <summary><span>Retire or delete</span><small>Retiring keeps the history</small></summary>
   <h2 id="part-sensitive-zone">Sensitive zone</h2>
   <p>Retiring this part is recommended instead of deleting it: retirement preserves its identity and installation history for traceability. Remove it from its assembly or aircraft first, then ask an administrator to set its state to Retired.</p>
   <p>Deletion is permanent and cannot be undone. Parts with installation history or an embedded controller record cannot be deleted.</p>
   <%= button_to "Delete part", hangar_part_path(@part), method: :delete, class: "button-danger exds-btn exds-btn--danger",
     form: { data: { turbo_confirm: "Delete #{@part.internal_number} permanently? This cannot be undone. Retire the part instead to preserve traceability." } } %>
-</section>
+</details>

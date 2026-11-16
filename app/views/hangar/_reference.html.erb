@@ -1,0 +1,34 @@
+<% content_for :title, "Reference · Hangar" %>
+<%= render "hangar/tabs" %>
+<div class="hangar-reference">
+  <section class="hangar-panel" aria-labelledby="reference-functions">
+    <header class="hangar-reference-head">
+      <div><h2 id="reference-functions">Functions</h2><p>The role a part plays. Used to offer the right replacements.</p></div>
+      <%= link_to new_hangar_function_path, class: "button-secondary exds-btn exds-btn--secondary is-compact" do %><%= sillage_icon "plus", size: 16 %><span>New function</span><% end %>
+    </header>
+    <% if @functions.any? %>
+      <div class="hangar-table-wrap"><table class="hangar-table">
+        <thead><tr><th>Function</th><th>Description</th><th>Parts</th></tr></thead>
+        <tbody><% @functions.each do |function| %>
+          <tr><td><%= link_to function.name, hangar_function_path(function), class: "hangar-table-primary" %></td><td><%= function.description %></td><td><%= function.parts.size %></td></tr>
+        <% end %></tbody>
+      </table></div>
+    <% else %><div class="workspace-empty">No functions yet. <%= link_to "Define the first function", new_hangar_function_path %> before registering parts.</div><% end %>
+  </section>
+  <section class="hangar-panel" aria-labelledby="reference-versions">
+    <header class="hangar-reference-head">
+      <div><h2 id="reference-versions">ExoFDR versions</h2><p>The planned capabilities of each recorder version. Fixed once a recorder uses it.</p></div>
+      <%= link_to new_hangar_fdr_functional_configuration_path, class: "button-secondary exds-btn exds-btn--secondary is-compact" do %><%= sillage_icon "plus", size: 16 %><span>New version</span><% end %>
+    </header>
+    <% if @configurations.any? %>
+      <div class="hangar-table-wrap"><table class="hangar-table">
+        <thead><tr><th>Version</th><th>Planned capabilities</th><th>Assemblies</th></tr></thead>
+        <tbody><% @configurations.each do |configuration| %>
+          <tr><td><%= link_to configuration.label, hangar_fdr_functional_configuration_path(configuration), class: "hangar-table-primary" %></td><td class="workspace-preserve-lines"><%= configuration.planned_capabilities %></td><td><%= configuration.assemblies.size %></td></tr>
+        <% end %></tbody>
+      </table></div>
+    <% else %>
+      <div class="workspace-empty">No functional configurations yet. <%= link_to "Define a version", new_hangar_fdr_functional_configuration_path %> and its planned capabilities before creating an ExoFDR.</div>
+    <% end %>
+  </section>
+</div>

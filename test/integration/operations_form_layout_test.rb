@@ -47,16 +47,40 @@ class OperationsFormLayoutTest < ActionDispatch::IntegrationTest
     Part.create!(function:, model: "FlySight 2")
     Assembly.create!(name: "Flight data recorder")
 
+    part = Part.find_by!(model: "FlySight 2")
+    assembly = Assembly.find_by!(name: "Flight data recorder")
+    busy = Part.create!(function:, model: "Busy part")
+    Installation.create!(aircraft: aircraft(:pilatus), installable: busy, installed_at: 1.hour.ago)
+
     get hangar_aircraft_path(aircraft(:exowing))
 
     assert_response :success
-    assert_select "aside form.workspace-form", count: 2
-    assert_select "aside form.workspace-inline-form", count: 0
-    assert_select "label", text: /Assembly/
-    assert_select "label", text: /Part/
-    assert_select "label", text: /Installed at/, count: 2
-    assert_select "input[type='datetime-local']", count: 2
-    assert_select ".workspace-form > .workspace-actions", count: 2
+    assert_select ".hangar-asset-head .hangar-picker form[action='#{hangar_aircraft_installations_path(aircraft(:exowing))}']" do
+      assert_select "input[name='return_to'][value='#{hangar_aircraft_path(aircraft(:exowing))}']", count: 1
+      assert_select "input[type='search']", count: 1
+      assert_select "input[type='datetime-local'][name='installation[installed_at]']", count: 1
+      assert_select "button[role='option']:not([disabled]) strong", text: part.display_name
+      assert_select "button[role='option']:not([disabled]) strong", text: assembly.selection_label
+      assert_select "button[role='option'][disabled]", text: /Busy part.*On #{aircraft(:pilatus).registration}.*Remove it there first/m
+      assert_select "input[type='submit'][value='Install'][disabled]", count: 1
+    end
+    assert_select "aside form.workspace-form", count: 0
+  end
+
+  test "equipment installs, is removed from its row and returns to the aircraft page" do
+    function = Function.create!(name: "Row action function")
+    part = Part.create!(function:, model: "Row part")
+    exowing = aircraft(:exowing)
+
+    post hangar_aircraft_installations_path(exowing), params: { return_to: hangar_aircraft_path(exowing), installation: { installable_type: "Part", installable_id: part.id, installed_at: "" } }
+    assert_redirected_to hangar_aircraft_path(exowing)
+    installation = exowing.installations.active.find_by!(installable: part)
+    follow_redirect!
+    assert_select ".hangar-tree-row form[action='#{hangar_installation_path(installation)}'] button", "Remove"
+
+    delete hangar_installation_path(installation), params: { return_to: "https://example.org/hangar" }
+    assert_redirected_to hangar_aircraft_path(exowing)
+    assert_not installation.reload.active?
   end
 
   test "aircraft installation history identifies assets without exposing database ids" do

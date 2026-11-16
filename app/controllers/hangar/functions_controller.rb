@@ -3,7 +3,8 @@ module Hangar
     before_action :set_function, only: %i[show edit update destroy]
 
     def index
-      @functions = Function.ordered
+      @functions = Function.includes(:parts).ordered
+      @configurations = FdrFunctionalConfiguration.includes(:assemblies).ordered
     end
 
     def show

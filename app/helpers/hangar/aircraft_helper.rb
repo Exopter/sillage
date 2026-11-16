@@ -49,6 +49,21 @@ module Hangar::AircraftHelper
     fragments.presence&.join(" · ") || "No installed equipment"
   end
 
+  # Picker rows for parts that are free to install.
+  def hangar_part_options(parts, field:)
+    parts.map do |part|
+      { label: part.display_name, icon: "settings", where: "In stock", fields: { field => part.id },
+        meta: [ part.function.name, ("S/N #{part.serial_number}" if part.serial_number.present?), part.internal_number ].compact.join(" \u00b7 ") }
+    end
+  end
+
+  def hangar_assembly_options(assemblies, field:)
+    assemblies.map do |assembly|
+      { label: assembly.selection_label, icon: "layers", where: "In stock", fields: { field => assembly.id },
+        meta: "Assembly \u00b7 #{pluralize(assembly.snapshot_part_numbers.size, "part")}" }
+    end
+  end
+
   def hangar_root_assembly(assembly)
     assembly.parent ? hangar_root_assembly(assembly.parent) : assembly
   end

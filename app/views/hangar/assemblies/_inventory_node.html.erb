@@ -10,7 +10,7 @@
         <span class="exds-hierarchy-copy"><strong><%= node.label %></strong><small><%= node.subtitle %><% if node.assembly? %> · <% if node.kind == "system" %><%= pluralize @inventory.child_assemblies(node).size, "module" %> · <% end %><%= pluralize @inventory.part_count(node), "part" %><% end %></small></span>
       <% end %>
     </div>
-    <% if node.parent_key.nil? %><span class="exds-hierarchy-location"><%= location&.registration || "No aircraft assigned" %></span><% end %>
+    <% if node.parent_key.nil? %><span class="exds-hierarchy-location"><%= location&.registration || (node.assembly? ? "No aircraft assigned" : "In stock") %></span><% end %>
   </div>
   <% if node.children.any? %>
     <div id="children-<%= node.key %>" data-node-children>

@@ -30,7 +30,7 @@
   </div>
 
   <% if replacing %>
-    <p class="flight-debrief-note"><%= sillage_icon "refresh-cw", size: 14 %><span>The new recording replaces the current debrief once it is saved. <%= link_to "Keep the current debrief", flight_comments_path(flight) %></span></p>
+    <p class="flight-debrief-note"><%= sillage_icon "rotate-ccw", size: 14 %><span>The new recording replaces the current debrief once it is saved. <%= link_to "Keep the current debrief", flight_comments_path(flight) %></span></p>
   <% end %>
   <p class="flight-debrief-note"><%= sillage_icon "lock-keyhole", size: 14 %><span>Audio is saved on this device first, so a lost connection does not lose it. The original stays attached to the Pilot Log entry.</span></p>
 </section>

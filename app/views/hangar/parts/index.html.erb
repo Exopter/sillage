@@ -1,14 +1,7 @@
-<% content_for :title, "Fleet configuration" %>
+<% content_for :title, "Parts · Hangar" %>
 
 <%= render "hangar/tabs" %>
-
-<header class="workspace-header">
-  <div>
-    <h2>Parts</h2>
-    <p>Serialized physical inventory with installation state and functional role.</p>
-  </div>
-  <%= link_to new_hangar_part_path, class: "button-primary exds-btn exds-btn--primary" do %><%= sillage_icon "plus", size: 17 %><span>Register part</span><% end %>
-</header>
+<%= render "hangar/inventory_head", view: "list" %>
 
 <%= form_with url: hangar_parts_path, method: :get, class: "workspace-filterbar", data: { controller: "auto-submit" } do |form| %>
   <label class="search-control">
@@ -28,14 +21,14 @@
   <% if @parts.any? %>
     <div class="workspace-table-wrap">
       <table class="workspace-table is-stacked">
-        <thead><tr><th>Part</th><th>Function</th><th>Serial</th><th>Assembly</th><th>State</th><th class="workspace-table-actions">Actions</th></tr></thead>
+        <thead><tr><th>Part</th><th>Function</th><th>Serial</th><th>Where</th><th>State</th><th class="workspace-table-actions">Actions</th></tr></thead>
         <tbody>
           <% @parts.each do |part| %>
             <tr>
               <td><%= link_to part.display_name, hangar_part_path(part), class: "workspace-strong-link" %><br><small class="workspace-muted">Asset ID <%= part.internal_number %></small></td>
               <td data-label="Function"><%= part.function.name %></td>
               <td data-label="Serial"><%= part.serial_number.presence || "—" %></td>
-              <td data-label="Assembly"><%= part.assembly ? link_to(part.assembly.identity_label, hangar_assembly_path(part.assembly)) : "—" %></td>
+              <td data-label="Where"><% if part.assembly %><%= link_to part.assembly.identity_label, hangar_assembly_path(part.assembly) %><% elsif (aircraft = @part_aircraft[part.id]) %><%= link_to aircraft.registration, hangar_aircraft_path(aircraft) %><% else %>In stock<% end %></td>
               <td><span class="status-dot is-<%= part.state == "quarantined" ? "caution" : part.state == "retired" ? "fault" : part.state == "available" ? "unknown" : "ready" %>"><span></span><%= part.state == "quarantined" ? "Review flag" : part.state.titleize %></span></td>
               <td class="workspace-table-actions">
                 <div class="workspace-actions">
