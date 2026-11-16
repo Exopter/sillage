@@ -20,13 +20,13 @@
         <span class="remote-eyebrow">Next flight</span>
         <p class="remote-code" data-remote-target="count">Flight 1</p>
       </div>
-      <label class="remote-pick"><span>Wing</span>
-        <%= select_tag :aircraft_id, options_from_collection_for_select(@aircraft, :id, :display_name, default_aircraft), include_blank: "No wing", data: { remote_target: "aircraft" } %>
+      <label class="remote-pick"><span>Aircraft</span>
+        <%= select_tag :aircraft_id, options_from_collection_for_select(@aircraft, :id, :display_name, default_aircraft), include_blank: "No aircraft", data: { remote_target: "aircraft" } %>
       </label>
       <label class="remote-pick"><span>Pilot</span>
         <%= select_tag :pilot_id, options_for_select(@pilots.map { |pilot| [ pilot.full_name || pilot.email_address, pilot.id ] }, default_pilot), data: { remote_target: "pilot" } %>
       </label>
-      <p class="remote-hint">Wing and pilot stay as they were on the last flight.</p>
+      <p class="remote-hint">Aircraft and pilot stay as they were on the last flight.</p>
       <p class="remote-error" role="alert" data-remote-target="error" hidden></p>
     </div>
     <footer class="remote-foot">
@@ -37,7 +37,7 @@
   <%# 2. Flight in progress, recorded by the ground station or running on the phone alone %>
   <section class="remote-screen" data-remote-phases="flight" hidden aria-label="Flight in progress">
     <div class="remote-body">
-      <div><p class="remote-name" data-remote-target="pilotName">Pilot</p><span class="remote-eyebrow" data-remote-target="aircraftName">Wing</span></div>
+      <div><p class="remote-name" data-remote-target="pilotName">Pilot</p><span class="remote-eyebrow" data-remote-target="aircraftName">Aircraft</span></div>
       <div class="remote-time">
         <span class="remote-eyebrow">Flight time</span>
         <output class="remote-clock" data-remote-target="clock">00:00</output>

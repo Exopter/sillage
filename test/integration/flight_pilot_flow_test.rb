@@ -107,6 +107,9 @@ class FlightPilotFlowTest < ActionDispatch::IntegrationTest
       assert_select ".sillage-avatar-insignia[src*='insignia-explorer']"
       assert_select ".flight-pilot-name", "Elias Okafor"
     end
+    assert_select ".flight-replay-header form.flight-replay-delete[action='#{flight_path(flight)}'][data-turbo-confirm*='#{flight.code}']" do
+      assert_select "button.exds-iconbtn--danger[aria-label='Delete this flight']"
+    end
 
     @pilot.avatar.purge
     get preview_flights_path(id: flight.id)

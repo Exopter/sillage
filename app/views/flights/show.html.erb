@@ -55,6 +55,12 @@
     </div>
     <%= render "flights/pilot", flight: @flight %>
     <span class="mode-badge is-neutral"><%= @flight.effective_visibility.capitalize %></span>
+    <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
+      <%= button_to @flight, method: :delete, class: "kit-icon-button exds-iconbtn exds-iconbtn--ghost exds-iconbtn--danger", title: t("flights.show.delete"),
+        aria: { label: t("flights.show.delete") }, form: { class: "flight-replay-delete", data: { turbo_confirm: t("flights.show.confirm_delete", code: @flight.code) } } do %>
+        <%= sillage_icon "trash", size: 18 %>
+      <% end %>
+    <% end %>
   </header>
 
   <div data-controller="section-tabs">
@@ -387,8 +393,9 @@
               <h2><%= t("flights.show.danger") %></h2>
             </div>
           </div>
-          <%= button_to @flight, method: :delete, class: "danger-button exds-btn exds-btn--danger", form: { data: { turbo_confirm: t("flights.show.confirm_delete") } } do %>
-            <%= sillage_icon "octagon-x", size: 18 %>
+          <p class="operations-help"><%= t("flights.show.delete_help") %></p>
+          <%= button_to @flight, method: :delete, class: "danger-button exds-btn exds-btn--danger", form: { data: { turbo_confirm: t("flights.show.confirm_delete", code: @flight.code) } } do %>
+            <%= sillage_icon "trash", size: 16 %>
             <span><%= t("flights.show.delete") %></span>
           <% end %>
         </div>

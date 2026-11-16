@@ -500,9 +500,17 @@
   color: var(--ex-vapor-50);
 }
 
+/* One rhythm between every row of the page: the head, each card, the notice and the grid. */
 .signal-home-inner {
+  display: grid;
   width: min(1200px, 100%);
   margin: 0 auto;
+  gap: var(--sp-4);
+}
+
+.signal-home-inner > * {
+  min-width: 0;
+  margin-block: 0;
 }
 
 @media (max-width: 920px) {
@@ -1324,7 +1332,7 @@
 .signal-launch-grid {
   display: grid;
   grid-template-columns: 1.15fr .85fr;
-  gap: 14px;
+  gap: var(--sp-4);
 }
 
 @media (max-width: 760px) {
@@ -1394,7 +1402,12 @@
 }
 
 .signal-launch-body {
-  padding: 14px;
+  padding: var(--sp-5);
+}
+
+/* A control directly under the card's sentence keeps the same distance as the tunnel actions. */
+.signal-launch-body > p + form {
+  margin-top: var(--sp-3);
 }
 
 .signal-launch-body h2 {
@@ -1407,7 +1420,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 9px 12px;
+  padding: var(--sp-3) var(--sp-5);
   border-top: 1px solid var(--ex-carbon-700);
 }
 
@@ -1434,13 +1447,12 @@
 }
 
 .signal-prep-empty {
-  padding: 14px;
+  padding: var(--sp-4) var(--sp-5);
   border-top: 1px solid var(--ex-carbon-700);
 }
 
 .signal-start-direct {
   width: 100%;
-  margin-top: 16px;
 }
 
 .signal-launch-rules {
@@ -1608,3 +1620,9 @@ textarea {
 .signal-station[data-state="armed"] { border-color: var(--state-ready); }
 .signal-station[data-state="blocked"] { border-color: var(--state-caution); }
 .signal-station-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
+/* Station mode needs the radio on a desktop browser, so a phone only offers the remote. */
+.signal-station-mobile { display: none; }
+@media (max-width: 760px) {
+  .signal-station-desktop { display: none; }
+  .signal-station-mobile { display: inline; }
+}

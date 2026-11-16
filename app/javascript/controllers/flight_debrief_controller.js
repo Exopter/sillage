@@ -5,6 +5,7 @@ import { Controller } from "@hotwired/stimulus"
  * @property {string} urlValue
  * @property {string} keyValue
  * @property {string} commentsUrlValue
+ * @property {number} replacesValue
  * @property {HTMLElement} statusTarget
  * @property {HTMLElement} durationTarget
  * @property {HTMLMeterElement} levelTarget
@@ -13,7 +14,7 @@ import { Controller } from "@hotwired/stimulus"
 /** @typedef {{uuid: string, parts: Blob[], type: string, url: string | null}} SavedRecording */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 export default class extends TypedController {
-  static values = { url: String, key: String, commentsUrl: String }
+  static values = { url: String, key: String, commentsUrl: String, replaces: Number }
   static targets = ["status", "transcript", "duration", "level"]
   /** @type {MediaRecorder | null} */
   recorder = null
@@ -229,7 +230,7 @@ export default class extends TypedController {
         form.append("audio", new Blob(this.saved.parts, { type: this.saved.type }), this.saved.type.includes("mp4") ? "debrief.mp4" : this.saved.type.includes("ogg") ? "debrief.ogg" : "debrief.webm")
         await this.api(`${debrief.url}/upload`, form)
       }
-      await this.api(`${debrief.url}/process_audio`, { transcript: this.liveComplete ? [...this.committed].map(id => this.turns.get(id)).join("\n") : undefined, checklist: this.checklist() })
+      await this.api(`${debrief.url}/process_audio`, { transcript: this.liveComplete ? [...this.committed].map(id => this.turns.get(id)).join("\n") : undefined, checklist: this.checklist(), replaces: this.replacesValue || undefined })
       // The entry is in the Pilot log from here on; the summary is written in the background.
       await this.store("delete")
       this.saved = null

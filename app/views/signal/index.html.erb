@@ -160,7 +160,7 @@
   <div class="signal-home ex-dark">
     <div class="signal-home-inner">
       <header class="signal-home-head">
-        <div><span class="signal-k">Sillage Signal</span><h1>Start live acquisition</h1><p>Check the wing connection in the header, then start an acquisition. Use Chrome or Edge on desktop.</p></div>
+        <div><span class="signal-k">Sillage Signal</span><h1>Start live acquisition</h1><p>Check the aircraft connection in the header, then start an acquisition. Use Chrome or Edge on desktop.</p></div>
       </header>
       <% if @live_session %>
         <section class="signal-launch-card"><div class="signal-launch-body">
@@ -196,9 +196,9 @@
         <section class="signal-launch-card signal-station">
           <div class="signal-launch-body">
             <span class="signal-k">Tunnel session</span><h2>Chain flights from a phone</h2>
-            <p>Leave this computer in station mode with the radio connected, then start and end each flight from the remote.</p>
+            <p><span class="signal-station-desktop">Leave this computer in station mode with the radio connected, then start and end each flight from the remote.</span><span class="signal-station-mobile">Start and end each flight from here while the ground computer records in station mode.</span></p>
             <div class="signal-station-actions">
-              <%= link_to "Turn on station mode", signal_path(view: "home", station: 1), class: "signal-tool-button exds-btn exds-btn--secondary" %>
+              <%= link_to "Turn on station mode", signal_path(view: "home", station: 1), class: "signal-tool-button signal-station-desktop exds-btn exds-btn--secondary" %>
               <%= link_to "Open the remote", remote_path, class: "signal-tool-button exds-btn exds-btn--primary is-primary" %>
             </div>
           </div>

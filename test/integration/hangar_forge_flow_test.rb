@@ -73,9 +73,9 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     get hangar_path
     assert_response :success
     assert_select "h1", "Hangar"
-    assert_select "h2", "Fleet"
-    assert_select ".hangar-tabs"
-    assert_select ".hangar-summary-card", 3
+    assert_select ".hangar-tabs .exds-tab[aria-current='page']", "Fleet"
+    assert_select ".hangar-head form[action='#{hangar_assemblies_path}'] input[name='q']", count: 1
+    assert_select ".hangar-summary-card", count: 0
     assert_select ".hangar-fleet-layout"
     assert_select "aside[aria-label='Fleet aircraft'] .hangar-fleet-item", minimum: 1
     assert_select "section[aria-label='Selected aircraft configuration']"
@@ -92,7 +92,8 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     get hangar_parts_path
     assert_response :success
     assert_select "h1", "Hangar"
-    assert_select "h2", "Parts"
+    assert_select ".hangar-tabs .exds-tab[aria-current='page']", "Inventory"
+    assert_select ".hangar-view-switch a[aria-current='true']", "Parts list"
     assert_select "a", text: @part.display_name
     assert_select ".workspace-muted", text: /Asset ID #{@part.internal_number}/
 
@@ -106,12 +107,13 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
 
     get new_hangar_part_path
     assert_response :success
-    assert_select "label", text: /Internal Asset ID/
+    assert_select ".workspace-muted", text: /asset ID is assigned when you save/
+    assert_select ".hangar-chips input[type='radio'][name='part[function_id]']", minimum: 1
     assert_select "input[name='part[internal_number]']", count: 0
 
     get new_hangar_assembly_path
     assert_response :success
-    assert_select "label", text: /Internal Asset ID/
+    assert_select ".workspace-muted", text: /asset ID is assigned when you save/
     assert_select "input[name='assembly[code]'], input[name='assembly[internal_number]']", count: 0
     assert_select "input[name='assembly[serial_number]']", count: 0
     assert_select "select[name='assembly[assembly_type]']", count: 1

@@ -73,6 +73,7 @@ class FlightDebriefsController < ApplicationController
       @debrief.publish_entry!(Current.user)
       @debrief.update!(status: "published") if @debrief.status == "ready"
     end
+    replace_previous if params[:replaces].present?
     render json: payload
   end
 
@@ -115,6 +116,16 @@ class FlightDebriefsController < ApplicationController
   def set_debrief
     @debrief = @flight.flight_debriefs.find(params[:id])
     raise ActiveRecord::RecordNotFound unless @debrief.user_id == Current.user.id || (action_name == "show" && @debrief.status == "published")
+  end
+
+  # A debrief recorded again takes the place of the one it was started from.
+  def replace_previous
+    previous = @flight.flight_debriefs.where(user: Current.user).where.not(id: @debrief.id).find_by(id: params[:replaces])
+    return unless previous
+
+    comment = previous.flight_comment
+    previous.destroy!
+    comment&.destroy!
   end
 
   def payload

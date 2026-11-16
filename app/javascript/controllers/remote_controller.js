@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 /**
  * @typedef {{id: number, code: string, pilot: string, aircraft: string, aircraft_id: number | null, pilot_id: number, started_at: string | null, recording: boolean, debrief_url: string, cancel_url: string, end_url: string}} RemoteFlight
  * @typedef {{gateway_connected: boolean, stop_requested: boolean, close_url: string}} RemoteSession
- * @typedef {{phase: string, flights_today: number, flight?: RemoteFlight, session?: RemoteSession | null, error?: string}} RemoteState
+ * @typedef {{phase: string, flights_today: number, server_time?: number, flight?: RemoteFlight, session?: RemoteSession | null, error?: string}} RemoteState
  * @typedef {Object} Bindings
  * @property {string} stateUrlValue
  * @property {string} flightsUrlValue
@@ -39,6 +39,8 @@ export default class extends TypedController {
   endedFlight = 0
   pollTimer = 0
   clockTimer = 0
+  // How far this phone's clock runs ahead of the server's, in milliseconds.
+  skew = 0
   savedTimer = 0
   busy = false
 
@@ -91,6 +93,7 @@ export default class extends TypedController {
   /** @param {RemoteState} state */
   apply(state) {
     this.state = state
+    if (state.server_time) this.skew = Date.now() - state.server_time
     const phase = this.phaseOf(state)
     this.element.dataset.phase = phase
     this.element.querySelectorAll("[data-remote-phases]").forEach(node => {
@@ -107,7 +110,7 @@ export default class extends TypedController {
     if (phase === "debrief" && flight) void this.openDebrief(flight)
     if (phase === "flight" && flight) {
       const session = state.session
-      const waited = flight.started_at ? Date.now() - Date.parse(flight.started_at) : 0
+      const waited = flight.started_at ? Date.now() - this.skew - Date.parse(flight.started_at) : 0
       this.element.dataset.recording = String(flight.recording && session?.gateway_connected !== false)
       this.flightStatusTarget.textContent = flight.recording
         ? (session?.gateway_connected === false ? "The ground station stopped answering. Keep going: you can still debrief." : "Recording on the ground station.")
@@ -135,7 +138,7 @@ export default class extends TypedController {
   renderClock() {
     const started = this.state.flight?.started_at
     if (this.element.dataset.phase !== "flight" || !started) return
-    const seconds = Math.max(0, Math.floor((Date.now() - Date.parse(started)) / 1000))
+    const seconds = Math.max(0, Math.floor((Date.now() - this.skew - Date.parse(started)) / 1000))
     this.clockTarget.textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`
   }
 

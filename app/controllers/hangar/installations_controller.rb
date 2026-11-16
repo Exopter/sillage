@@ -14,7 +14,7 @@ module Hangar
         aircraft_registration: aircraft.registration,
         installed_at: installation.installed_at.iso8601
       )
-      redirect_to hangar_aircraft_path(aircraft), notice: "#{installation.installable_type} installed."
+      redirect_to hangar_return_path(hangar_aircraft_path(aircraft)), notice: "#{installation.installable_type} installed."
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound, KeyError => error
       redirect_to hangar_aircraft_path(params[:aircraft_id]), alert: error.message
     end
@@ -28,7 +28,7 @@ module Hangar
         aircraft_registration: installation.aircraft.registration,
         removed_at: installation.removed_at.iso8601
       )
-      redirect_to hangar_aircraft_path(installation.aircraft), notice: "Installation removed."
+      redirect_to hangar_return_path(hangar_aircraft_path(installation.aircraft)), notice: "Installation removed."
     end
 
     private

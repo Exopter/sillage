@@ -1,68 +1,40 @@
-<div class="workspace-grid is-assembly">
-  <section class="workspace-panel is-wide">
-    <div class="workspace-panel-header"><h2>Composition</h2><span><%= @assembly.fdr_system? ? "Independent modules" : @assembly.controlled_fdr? ? "Sensors and peripherals" : pluralize(@assembly.snapshot_part_numbers.size, "serialized part") %></span></div>
-    <%= render "hangar/assemblies/tree", assembly: @assembly %>
-  </section>
-
-  <div class="workspace-stack">
-    <% unless @assembly.fdr_system? %>
-    <section class="workspace-panel">
-      <h2>Install part</h2>
-      <% if @available_parts.any? %>
-        <%= form_with url: install_part_hangar_assembly_path(@assembly), class: "workspace-inline-form" do |form| %>
-          <%= form.collection_select :part_id, @available_parts, :id, ->(part) { "#{part.display_name} · #{part.serial_number.presence || part.internal_number} · #{part.function.name}" } %>
-          <%= form.submit "Install", class: "button-primary exds-btn exds-btn--primary" %>
-        <% end %>
-      <% else %><p class="workspace-muted">No available part.</p><% end %>
-    </section>
-    <% end %>
-
-    <% if @assembly.fdr_component_type.blank? || @assembly.fdr_system? %>
-    <section class="workspace-panel">
-      <h2>Attach subassembly</h2>
-      <% if @available_assemblies.any? %>
-        <%= form_with url: attach_assembly_hangar_assembly_path(@assembly), class: "workspace-inline-form" do |form| %>
-          <%= form.collection_select :child_id, @available_assemblies, :id, :selection_label %>
-          <%= form.submit "Attach", class: "button-primary exds-btn exds-btn--primary" %>
-        <% end %>
-      <% else %><p class="workspace-muted">No root assembly available.</p><% end %>
-    </section>
-    <% end %>
-  </div>
-</div>
-
-<% unless @assembly.fdr_system? %>
 <section class="workspace-panel">
-  <h2>Direct parts</h2>
-  <% if @assembly.parts.any? %>
+  <div class="workspace-panel-header">
+    <h2>Composition</h2>
+    <div class="workspace-actions">
+      <% unless @assembly.fdr_system? %>
+        <%= render "hangar/picker", trigger: "Install part", icon: "plus", title: "Install in #{@assembly.display_name}", url: install_part_hangar_assembly_path(@assembly),
+          options: hangar_part_options(@available_parts, field: "part_id"), empty: "No part in stock" %>
+      <% end %>
+      <% if @assembly.fdr_component_type.blank? || @assembly.fdr_system? %>
+        <%= render "hangar/picker", trigger: "Attach subassembly", icon: "plus", title: "Attach to #{@assembly.display_name}", submit: "Attach", url: attach_assembly_hangar_assembly_path(@assembly),
+          options: hangar_assembly_options(@available_assemblies, field: "child_id"), empty: "No free assembly" %>
+      <% end %>
+    </div>
+  </div>
+  <% parts = @assembly.fdr_system? ? [] : @assembly.parts.includes(:function).ordered.reject { |part| @assembly.controlled_fdr? && part.function.code == "CONTROLLER" } %>
+  <% children = @assembly.children.ordered.to_a %>
+  <% if parts.any? || children.any? %>
     <div class="workspace-list">
-      <% @assembly.parts.includes(:function).ordered.reject { |part| @assembly.controlled_fdr? && part.function.code == "CONTROLLER" }.each do |part| %>
+      <% parts.each do |part| %>
         <div class="workspace-list-row is-static">
-          <span><strong><%= part.display_name %> · <%= part.function.name %></strong><small><%= part.serial_number.present? ? "S/N #{part.serial_number} · Asset ID #{part.internal_number}" : "Asset ID #{part.internal_number}" %><%= " · ECU ID #{ecu_label(part.embedded_controller.device_id)}" if part.embedded_controller&.device_id %></small></span>
+          <span><strong><%= link_to part.display_name, hangar_part_path(part) %> · <%= part.function.name %></strong><small><%= part.serial_number.present? ? "S/N #{part.serial_number} · Asset ID #{part.internal_number}" : "Asset ID #{part.internal_number}" %><%= " · ECU ID #{ecu_label(part.embedded_controller.device_id)}" if part.embedded_controller&.device_id %></small></span>
           <div class="workspace-actions">
             <% replacements = @available_parts.select { |candidate| candidate.function_id == part.function_id } %>
             <% if replacements.any? %>
-              <%= form_with url: replace_part_hangar_assembly_path(@assembly, part_id: part.id), method: :patch, class: "workspace-compact-form" do |form| %>
-                <%= form.collection_select :replacement_part_id, replacements, :id, :internal_number %>
-                <%= form.submit "Replace", class: "button-secondary exds-btn exds-btn--secondary" %>
-              <% end %>
+              <%= render "hangar/picker", trigger: "Replace", title: "Replace #{part.display_name}", submit: "Replace", method: :patch,
+                url: replace_part_hangar_assembly_path(@assembly, part_id: part.id), options: hangar_part_options(replacements, field: "replacement_part_id") %>
             <% end %>
-            <%= button_to "Remove", remove_part_hangar_assembly_path(@assembly, part_id: part.id), method: :delete, class: "button-secondary exds-btn exds-btn--secondary" %>
+            <%= button_to "Take out", remove_part_hangar_assembly_path(@assembly, part_id: part.id), method: :delete, class: "button-secondary exds-btn exds-btn--secondary is-compact" %>
           </div>
         </div>
       <% end %>
-    </div>
-  <% else %><div class="workspace-empty">No part installed directly in this assembly.</div><% end %>
-</section>
-<% end %>
-
-<% if @assembly.children.any? %>
-  <section class="workspace-panel">
-    <h2>Direct subassemblies</h2>
-    <div class="workspace-list">
-      <% @assembly.children.ordered.each do |child| %>
-        <div class="workspace-list-row is-static"><span><strong><%= child.selection_label %></strong></span><%= button_to "Detach", detach_assembly_hangar_assembly_path(@assembly, child_id: child.id), method: :delete, class: "button-secondary exds-btn exds-btn--secondary" %></div>
+      <% children.each do |child| %>
+        <div class="workspace-list-row is-static">
+          <span><strong><%= link_to child.selection_label, hangar_assembly_path(child) %></strong><small>Subassembly · <%= pluralize child.snapshot_part_numbers.size, "part" %></small></span>
+          <%= button_to "Take out", detach_assembly_hangar_assembly_path(@assembly, child_id: child.id), method: :delete, class: "button-secondary exds-btn exds-btn--secondary is-compact" %>
+        </div>
       <% end %>
     </div>
-  </section>
-<% end %>
+  <% else %><div class="workspace-empty">Nothing is installed in this assembly yet.</div><% end %>
+</section>

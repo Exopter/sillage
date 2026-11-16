@@ -4,14 +4,10 @@
   <% end %>
 
   <div class="workspace-form-grid">
-    <label>
-      <span>Internal Asset ID</span>
-      <%= text_field_tag nil, part.internal_number || "Assigned automatically", disabled: true %>
-    </label>
-    <label>
-      <span>Function</span>
-      <%= form.collection_select :function_id, @functions, :id, :name, { prompt: "Select a function" }, required: true %>
-    </label>
+    <fieldset class="hangar-chips">
+      <legend>Function</legend>
+      <%= form.collection_radio_buttons :function_id, @functions, :id, :name do |choice| %><%= choice.label { choice.radio_button(required: true) + content_tag(:span, choice.text) } %><% end %>
+    </fieldset>
     <label>
       <span>Manufacturer</span>
       <%= form.text_field :manufacturer %>
@@ -50,6 +46,7 @@
     <%= form.text_area :notes, rows: 4 %>
   </label>
 
+  <p class="workspace-muted"><%= part.persisted? ? "Asset ID #{part.internal_number}" : "The asset ID is assigned when you save." %></p>
   <div class="workspace-actions">
     <%= link_to "Cancel", part.persisted? ? hangar_part_path(part) : hangar_parts_path, class: "button-secondary exds-btn exds-btn--secondary" %>
     <%= form.submit class: "button-primary exds-btn exds-btn--primary" %>

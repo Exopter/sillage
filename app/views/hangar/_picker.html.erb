@@ -1,0 +1,44 @@
+<%# One equipment chooser for the whole Hangar. options: [{ label:, meta:, where:, note:, fields: {}, disabled: }] %>
+<% options = local_assigns.fetch(:options) %>
+<% usable = options.reject { |option| option[:disabled] } %>
+<div class="hangar-picker" data-controller="equipment-picker">
+  <button type="button" class="<%= local_assigns.fetch(:trigger_class, "button-secondary exds-btn exds-btn--secondary is-compact") %>" data-action="equipment-picker#open"<% if usable.empty? %> disabled title="<%= local_assigns.fetch(:empty, "Nothing available") %>"<% end %>>
+    <% if local_assigns[:icon] %><%= sillage_icon local_assigns[:icon], size: 16 %><% end %><span><%= trigger %></span>
+  </button>
+  <dialog class="hangar-picker-dialog" aria-label="<%= title %>" data-equipment-picker-target="dialog" data-action="click->equipment-picker#backdrop">
+    <%= form_with url:, method: local_assigns.fetch(:method, :post), class: "hangar-picker-form", data: { turbo_frame: "_top" } do |form| %>
+      <% local_assigns.fetch(:hidden, {}).each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
+      <div data-equipment-picker-target="fields"></div>
+      <header class="hangar-picker-head">
+        <h2><%= title %></h2>
+        <button type="button" class="exds-iconbtn exds-iconbtn--ghost exds-iconbtn--sm" aria-label="Close" data-action="equipment-picker#close"><%= sillage_icon "x", size: 16 %></button>
+      </header>
+      <div class="hangar-picker-tools">
+        <label class="search-control"><%= sillage_icon "search", size: 16 %><input type="search" autocomplete="off" placeholder="Name, serial or asset ID" aria-label="Search equipment" data-equipment-picker-target="search" data-action="input->equipment-picker#filter keydown->equipment-picker#enter"></label>
+        <span class="hangar-picker-count" aria-live="polite" data-equipment-picker-target="count"><%= pluralize options.size, "match" %></span>
+      </div>
+      <div class="hangar-picker-list" role="listbox" aria-label="<%= title %>">
+        <% options.each do |option| %>
+          <button type="button" role="option" class="hangar-picker-option" aria-selected="false"<%= " disabled" if option[:disabled] %>
+            data-equipment-picker-target="option" data-action="equipment-picker#choose"
+            data-search="<%= [ option[:label], option[:meta], option[:where] ].join(" ").downcase %>" data-fields="<%= option.fetch(:fields, {}).to_json %>">
+            <span class="hangar-tree-icon"><%= sillage_icon option.fetch(:icon, "settings"), size: 15 %></span>
+            <span class="hangar-picker-copy"><strong><%= option[:label] %></strong><small><%= option[:meta] %></small></span>
+            <span class="hangar-picker-where"><strong><%= option[:where] %></strong><% if option[:note] %><small><%= option[:note] %></small><% end %></span>
+            <span class="hangar-picker-check" aria-hidden="true"><%= sillage_icon "check", size: 16 %></span>
+          </button>
+        <% end %>
+        <p class="hangar-picker-empty" data-equipment-picker-target="empty" hidden>No match. Try a serial number or an asset ID.</p>
+      </div>
+      <footer class="hangar-picker-foot">
+        <% if local_assigns[:date_field] %>
+          <details class="hangar-picker-date"><summary>Installed now · <span>Change date</span></summary><%= datetime_local_field_tag local_assigns[:date_field], nil, id: nil, aria: { label: "Installed at" } %></details>
+        <% else %><span></span><% end %>
+        <div class="workspace-actions">
+          <button type="button" class="button-secondary exds-btn exds-btn--secondary" data-action="equipment-picker#close">Cancel</button>
+          <%= form.submit local_assigns.fetch(:submit, "Install"), class: "button-primary exds-btn exds-btn--primary", disabled: true, data: { equipment_picker_target: "submit" } %>
+        </div>
+      </footer>
+    <% end %>
+  </dialog>
+</div>

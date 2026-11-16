@@ -1,7 +1,8 @@
+<% replacing = local_assigns[:replacing] %>
 <% unless flight.live? %>
-<section id="<%= dom_id(flight, :debrief) %>" class="exds-browser-editor-section flight-debrief" aria-labelledby="<%= dom_id(flight, :debrief_title) %>" data-controller="flight-debrief" data-flight-debrief-url-value="<%= flight_debriefs_path(flight) %>" data-flight-debrief-key-value="<%= Current.user.id %>:<%= flight.id %>" data-flight-debrief-comments-url-value="<%= flight_comments_path(flight) %>">
+<section id="<%= dom_id(flight, :debrief) %>" class="exds-browser-editor-section flight-debrief" aria-labelledby="<%= dom_id(flight, :debrief_title) %>" data-controller="flight-debrief" data-flight-debrief-url-value="<%= flight_debriefs_path(flight) %>" data-flight-debrief-key-value="<%= Current.user.id %>:<%= flight.id %>" data-flight-debrief-comments-url-value="<%= flight_comments_path(flight) %>"<% if replacing %> data-flight-debrief-replaces-value="<%= replacing.id %>"<% end %>>
   <header class="flight-debrief-head">
-    <div><span class="flight-debrief-eyebrow">Pilot log</span><h3 id="<%= dom_id(flight, :debrief_title) %>">Debrief your flight</h3></div>
+    <div><span class="flight-debrief-eyebrow">Pilot log</span><h3 id="<%= dom_id(flight, :debrief_title) %>"><%= replacing ? "Record the debrief again" : "Debrief your flight" %></h3></div>
     <ol class="flight-debrief-steps" aria-label="Debrief steps"><li>Record</li><li>Save</li><li>Pilot log</li></ol>
   </header>
 
@@ -16,12 +17,6 @@
     <p class="flight-debrief-status" data-flight-debrief-target="status" role="status">Tap the microphone and talk. When you finish, the debrief goes straight to the Pilot Log and its summary follows.</p>
   </div>
 
-  <ul class="flight-debrief-prompts" data-debrief-states="idle recording paused" aria-label="What to cover">
-    <li><%= sillage_icon "circle-check", size: 18 %><span>What went well</span></li>
-    <li><%= sillage_icon "triangle-alert", size: 18 %><span>What was hard</span></li>
-    <li><%= sillage_icon "arrow-up-right", size: 18 %><span>What to try next</span></li>
-  </ul>
-
   <div class="flight-debrief-actions">
   <button type="button" class="exds-btn exds-btn--secondary exds-btn--lg" data-debrief-states="recording paused" hidden data-action="flight-debrief#pause">Pause</button>
   <button type="button" class="exds-btn exds-btn--primary exds-btn--lg" data-debrief-states="recording paused" hidden data-action="flight-debrief#stop">Finish recording</button>
@@ -34,6 +29,9 @@
   <button type="button" class="exds-btn exds-btn--danger" data-debrief-states="recovery" hidden data-action="flight-debrief#discard">Discard draft</button>
   </div>
 
+  <% if replacing %>
+    <p class="flight-debrief-note"><%= sillage_icon "rotate-ccw", size: 14 %><span>The new recording replaces the current debrief once it is saved. <%= link_to "Keep the current debrief", flight_comments_path(flight) %></span></p>
+  <% end %>
   <p class="flight-debrief-note"><%= sillage_icon "lock-keyhole", size: 14 %><span>Audio is saved on this device first, so a lost connection does not lose it. The original stays attached to the Pilot Log entry.</span></p>
 </section>
 <% else %>

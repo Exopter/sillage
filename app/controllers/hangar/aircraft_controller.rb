@@ -3,19 +3,13 @@ module Hangar
     before_action :set_aircraft, only: %i[show edit update destroy]
 
     def index
-      @aircraft = Aircraft.includes(installations: :installable).ordered.to_a
-      @flight_counts = Flight.visible_to(Current.user).group(:aircraft_id).count
-      @aircraft.sort_by! { |aircraft| [ -aircraft.installations.count(&:active?), aircraft.registration ] }
-      @selected_aircraft = @aircraft.find { |aircraft| aircraft.id == params[:aircraft_id].to_i } || @aircraft.first
-      @active_installations = @selected_aircraft&.installations&.select(&:active?) || []
-      @active_installation_count = Installation.active.count
-      @attention_count = Part.where(state: %w[quarantined retired]).count + Aircraft.where(active: false).count
+      load_fleet(params[:aircraft_id])
     end
 
+    # The fleet page is the aircraft's page: one place to see and change what is installed.
     def show
-      @installations = @aircraft.installations.includes(:installable).recent
-      @available_assemblies = Assembly.not_retired.roots.where.not(id: Installation.active.where(installable_type: "Assembly").select(:installable_id)).ordered
-      @available_parts = Part.available.where.not(id: Installation.active.where(installable_type: "Part").select(:installable_id)).ordered
+      load_fleet(@aircraft.id)
+      render :index
     end
 
     def new
@@ -54,6 +48,38 @@ module Hangar
     end
 
     private
+
+    def load_fleet(selected_id)
+      @fleet = Aircraft.includes(installations: :installable).ordered.to_a
+      @flight_counts = Flight.visible_to(Current.user).group(:aircraft_id).count
+      @fleet.sort_by! { |aircraft| [ -aircraft.installations.count(&:active?), aircraft.registration ] }
+      @selected_aircraft = @fleet.find { |aircraft| aircraft.id == selected_id.to_i } || @fleet.first
+      return unless @selected_aircraft
+
+      @active_installations = @selected_aircraft.installations.select(&:active?)
+      @installations = @selected_aircraft.installations.includes(:installable).recent
+      @install_options = install_options
+      @replacement_parts = Part.available.includes(:function).ordered.group_by(&:function_id)
+    end
+
+    # Everything that could go on the aircraft, with where it is now. Equipment
+    # on another aircraft is listed but must be removed there first.
+    def install_options
+      elsewhere = Installation.active.where.not(aircraft: @selected_aircraft).includes(:aircraft, :installable)
+        .index_by { |installation| [ installation.installable_type, installation.installable_id ] }
+      here = @active_installations.map { |installation| [ installation.installable_type, installation.installable_id ] }.to_set
+      assemblies = Assembly.not_retired.roots.ordered.reject { |assembly| here.include?([ "Assembly", assembly.id ]) }
+      parts = Part.available.includes(:function).ordered.to_a + elsewhere.values.map(&:installable).grep(Part)
+      (assemblies + parts.uniq).reject { |asset| here.include?([ asset.class.name, asset.id ]) }.map do |asset|
+        other = elsewhere[[ asset.class.name, asset.id ]]&.aircraft
+        part = asset.is_a?(Part)
+        { label: part ? asset.display_name : asset.selection_label,
+          meta: part ? [ asset.function.name, ("S/N #{asset.serial_number}" if asset.serial_number.present?), asset.internal_number ].compact.join(" \u00b7 ") : "Assembly \u00b7 #{helpers.pluralize(asset.snapshot_part_numbers.size, "part")}",
+          icon: part ? "settings" : "layers", where: other ? "On #{other.registration}" : "In stock",
+          note: ("Remove it there first" if other), disabled: other.present?,
+          fields: { "installation[installable_type]" => asset.class.name, "installation[installable_id]" => asset.id } }
+      end
+    end
 
     def set_aircraft
       @aircraft = Aircraft.find(params[:id])

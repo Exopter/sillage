@@ -500,7 +500,7 @@
   padding: var(--sp-1) var(--sp-4);
   border: 0;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-strong);
   font: 600 1.125rem/1.3 var(--font-ui);
   text-align: left;
   cursor: pointer;
@@ -545,8 +545,9 @@
   content: attr(data-hint);
 }
 
+/* Ticked points sink to the bottom and step back; the ones still to cover stay bright on top. */
 .remote-item[data-state="done"] {
-  color: var(--text-strong);
+  color: var(--text-muted);
   animation: remote-flash 0.7s var(--ease-out);
 }
 

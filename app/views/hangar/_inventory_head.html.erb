@@ -1,0 +1,11 @@
+<header class="hangar-section-head hangar-inventory-head">
+  <h2 class="sr-only">Inventory</h2>
+  <nav class="hangar-view-switch" aria-label="Inventory view">
+    <%= link_to "Tree", hangar_assemblies_path, aria: { current: ("true" if view == "tree") } %>
+    <%= link_to "Parts list", hangar_parts_path, aria: { current: ("true" if view == "list") } %>
+  </nav>
+  <div class="workspace-actions">
+    <%= link_to new_hangar_assembly_path, class: "button-secondary exds-btn exds-btn--secondary" do %><%= sillage_icon "plus", size: 17 %><span>New assembly</span><% end %>
+    <%= link_to new_hangar_part_path, class: "button-primary exds-btn exds-btn--primary" do %><%= sillage_icon "plus", size: 17 %><span>Register part</span><% end %>
+  </div>
+</header>

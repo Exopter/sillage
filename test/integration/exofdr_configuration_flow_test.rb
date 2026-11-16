@@ -6,9 +6,11 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
   test "configuration catalogue is separate from core inventory and supports CRUD until used" do
     get hangar_fdr_functional_configurations_path
     assert_response :success
-    assert_select "nav[aria-label='Hangar inventory'] a", count: 3
-    assert_select "nav[aria-label='Hangar inventory']", text: /Functions/, count: 0
-    assert_select "nav[aria-label='Hangar configuration'] a", count: 2
+    assert_select "nav[aria-label='Hangar inventory'] a", count: 2
+    assert_select "nav[aria-label='Hangar inventory']", text: /Reference/, count: 0
+    assert_select "nav[aria-label='Hangar configuration'] a[aria-current='page']", "Reference"
+    assert_select ".hangar-reference h2", "Functions"
+    assert_select ".hangar-reference h2", "ExoFDR versions"
     assert_select ".workspace-empty", /No functional configurations yet/
 
     post hangar_fdr_functional_configurations_path, params: { fdr_functional_configuration: { version: 42, planned_capabilities: "Recording and telemetry" } }
@@ -89,16 +91,16 @@ class ExofdrConfigurationFlowTest < ActionDispatch::IntegrationTest
     assert_select "input[type='submit'][disabled]", count: 1
   end
 
-  test "assembly preview only exposes open actions and retains explicit Asset ID labels" do
+  test "assembly preview acts on the record and retains explicit Asset ID labels" do
     assembly = create_exofdr_assembly
     controller = create_embedded_controller(assembly:, device_id: "ECU-A172E0")
     get hangar_assemblies_path(assembly_id: assembly.id)
     assert_response :success
     assert_select "aside[aria-label='Selected assembly details'] .workspace-actions" do
-      assert_select "a", count: 2
+      assert_select "a[href='#{edit_hangar_assembly_path(assembly)}']", text: "Edit"
       assert_select "a[href='#{hangar_assembly_path(assembly)}']", text: "Open full record"
       assert_select "a[href='#{forge_fdr_path(assembly.serial_number)}']", text: "Open in Forge"
-      assert_select "button", count: 0
+      assert_select ".hangar-picker form[action='#{install_part_hangar_assembly_path(assembly)}'] input[name='return_to']", count: 1
     end
     assert_select "main", text: /Open controller in Forge/, count: 0
     assert_select ".hangar-details-body dt", text: "Internal Asset ID", count: 1

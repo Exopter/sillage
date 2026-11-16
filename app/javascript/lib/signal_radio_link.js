@@ -51,17 +51,17 @@ export class SignalRadioReadiness {
 
   /** @param {number} now @param {boolean} connected @param {RadioIdentity|null} [identity] */
   snapshot(now, connected, identity = null) {
-    if (!connected) return {state: "offline", label: "No wing connected", detail: "Connect the ground radio to check the wing."}
-    if (this.lastWingAt == null) return {state: "waiting", label: "Waiting for wing", detail: "Ground radio connected · No wing telemetry"}
+    if (!connected) return {state: "offline", label: "No aircraft connected", detail: "Connect the ground radio to check the aircraft."}
+    if (this.lastWingAt == null) return {state: "waiting", label: "Waiting for aircraft", detail: "Ground radio connected · No aircraft telemetry"}
     const resolved = identity?.deviceId === this.deviceId ? identity : null
     const name = resolved?.aircraftLabel || resolved?.recorderLabel || this.deviceId
     if (now < this.lastWingAt || now - this.lastWingAt >= 1500)
-      return {state: "stale", label: name ? `${name} · Link lost` : "Wing link lost", detail: "No recent wing telemetry · Check the radio link"}
+      return {state: "stale", label: name ? `${name} · Link lost` : "Aircraft link lost", detail: "No recent aircraft telemetry · Check the radio link"}
     const issues = this.measurements.moduleSnapshot(now).filter(module => module.role <= 3 && ["degraded", "stale"].includes(module.state))
     if (issues.length) return {state: "degraded", label: name ? `${name} · Needs attention` : "Recorder needs attention", detail: issues.map(module => `${module.name}: ${module.state === "stale" ? "link lost" : `${module.sensors} · ${module.storage}`}`).join("; ")}
     const detail = !this.deviceId ? "Radio ready · Waiting for recorder identity" : !resolved ? "Radio ready · Identifying aircraft…"
       : !resolved.registered ? "Radio ready · Recorder not registered" : !resolved.assemblyId ? "Radio ready · No assembly assigned" : !resolved.aircraftLabel ? "Radio ready · No aircraft assigned" : "Radio ready"
-    return {state: "connected", label: name ? `${name} connected` : "Identifying wing…", detail}
+    return {state: "connected", label: name ? `${name} connected` : "Identifying aircraft…", detail}
   }
 }
 

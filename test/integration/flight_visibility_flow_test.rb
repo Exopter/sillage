@@ -164,7 +164,7 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
   test "Hangar usage counts only flights visible to the signed in user" do
     get hangar_path(aircraft_id: aircraft(:pilatus).id)
     assert_response :success
-    assert_select "strong", text: "2 test flights"
+    assert_select ".hangar-asset-title p", text: /2 flights/
   end
 
   test "team flights still require authentication and active accounts" do

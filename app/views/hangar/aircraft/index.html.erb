@@ -1,38 +1,20 @@
-<% content_for :title, "Fleet configuration" %>
+<% content_for :title, @selected_aircraft ? "#{@selected_aircraft.registration} · Hangar" : "Hangar" %>
 <%= render "hangar/tabs" %>
-
-<header class="hangar-section-head">
-  <div>
-    <h2>Fleet</h2>
-    <p>Aircraft are durable identities; installations record which equipment flew, and when.</p>
-  </div>
-  <%= link_to new_hangar_aircraft_path, class: "button-primary exds-btn exds-btn--primary" do %>
-    <%= sillage_icon "plus", size: 17 %><span>Register aircraft</span>
-  <% end %>
-</header>
-
-<section class="hangar-summary" aria-label="Fleet summary">
-  <article class="hangar-summary-card"><span class="section-eyebrow">Aircraft</span><strong><%= @aircraft.size %> registered</strong></article>
-  <article class="hangar-summary-card"><span class="section-eyebrow">Installed configurations</span><strong><%= @active_installation_count %> active</strong></article>
-  <article class="hangar-summary-card<%= " is-attention" if @attention_count.positive? %>"><span class="section-eyebrow">Attention</span><strong><%= @attention_count.positive? ? pluralize(@attention_count, "review item") : "Nothing to review" %></strong></article>
-</section>
 
 <% if @selected_aircraft %>
   <% aircraft_tone, aircraft_label = hangar_aircraft_status(@selected_aircraft) %>
+  <% back = hangar_aircraft_path(@selected_aircraft) %>
   <div class="hangar-fleet-layout">
     <aside class="hangar-panel" aria-label="Fleet aircraft">
-      <header class="hangar-panel-head"><span class="section-eyebrow">Fleet aircraft</span><span class="hangar-count"><%= @aircraft.size %></span></header>
-      <% @aircraft.each do |aircraft| %>
+      <% @fleet.each do |aircraft| %>
         <% tone, label = hangar_aircraft_status(aircraft) %>
-        <%= link_to hangar_aircraft_index_path(aircraft_id: aircraft.id), class: [ "hangar-fleet-item", ("is-active" if aircraft == @selected_aircraft) ], aria: { current: ("true" if aircraft == @selected_aircraft) } do %>
+        <%= link_to hangar_aircraft_path(aircraft), class: [ "hangar-fleet-item", ("is-active" if aircraft == @selected_aircraft) ], aria: { current: ("true" if aircraft == @selected_aircraft) } do %>
           <span class="hangar-fleet-name"><strong><%= aircraft.registration %></strong><%= sillage_icon "chevron-right", size: 15 %></span>
-          <span class="hangar-fleet-meta">
-            <%= aircraft.name %>
-            <% if aircraft.notes.present? %><small><%= aircraft.notes %></small><% end %>
-          </span>
+          <span class="hangar-fleet-meta"><%= aircraft.name %></span>
           <span class="hangar-fleet-foot"><span class="status-dot is-<%= tone %>"><span></span><%= label %></span><span><%= hangar_aircraft_summary aircraft %></span></span>
         <% end %>
       <% end %>
+      <%= link_to new_hangar_aircraft_path, class: "hangar-fleet-add" do %><%= sillage_icon "plus", size: 16 %><span>Register aircraft</span><% end %>
     </aside>
 
     <section class="hangar-panel" aria-label="Selected aircraft configuration">
@@ -44,29 +26,45 @@
             <span class="status-dot is-<%= aircraft_tone %>"><span aria-hidden="true"></span><%= aircraft_label %></span>
           </div>
           <h2><%= @selected_aircraft.registration %> · <%= @selected_aircraft.name %></h2>
-          <% if @selected_aircraft.notes.present? %><p><%= @selected_aircraft.notes %></p><% end %>
+          <p><%= [ (@active_installations.any? ? "Configured since #{l @active_installations.map(&:installed_at).min.to_date, format: :long}" : "Nothing installed"), pluralize(@flight_counts.fetch(@selected_aircraft.id, 0), "flight"), @selected_aircraft.notes.presence ].compact.join(" · ") %></p>
         </div>
         <div class="workspace-actions">
-          <%= link_to "Configuration", hangar_aircraft_path(@selected_aircraft), class: "button-secondary exds-btn exds-btn--secondary is-compact" %>
-          <%= link_to "Edit", edit_hangar_aircraft_path(@selected_aircraft), class: "button-secondary exds-btn exds-btn--secondary is-compact" %>
-          <%= button_to "Delete", hangar_aircraft_path(@selected_aircraft), method: :delete, class: "button-danger exds-btn exds-btn--danger is-compact",
-            form: { data: { turbo_confirm: "Delete aircraft #{@selected_aircraft.registration} permanently? This cannot be undone." } } %>
+          <%= render "hangar/picker", trigger: "Install equipment", icon: "plus", trigger_class: "button-primary exds-btn exds-btn--primary",
+            title: "Install on #{@selected_aircraft.registration}", url: hangar_aircraft_installations_path(@selected_aircraft),
+            hidden: { return_to: back }, date_field: "installation[installed_at]", options: @install_options, empty: "Nothing in stock to install" %>
+          <%= link_to "Edit", edit_hangar_aircraft_path(@selected_aircraft), class: "button-secondary exds-btn exds-btn--secondary" %>
         </div>
       </header>
-
-      <div class="hangar-asset-meta">
-        <div><span class="section-eyebrow">Current configuration</span><strong><%= @active_installations.any? ? "Configuration since #{l @active_installations.map(&:installed_at).min.to_date, format: :long}" : "No active configuration" %></strong></div>
-        <div><span class="section-eyebrow">Usage</span><strong><%= pluralize @flight_counts.fetch(@selected_aircraft.id, 0), "test flight" %></strong></div>
-        <div><span class="section-eyebrow">Installed content</span><strong><%= hangar_aircraft_summary @selected_aircraft %></strong></div>
-      </div>
 
       <div class="hangar-config-head"><span class="section-eyebrow">Installed configuration</span></div>
       <div>
         <% @active_installations.each do |installation| %>
-          <%= render "hangar/aircraft/configuration_asset", asset: installation.installable, level: 0 %>
+          <%= render "hangar/aircraft/configuration_asset", asset: installation.installable, level: 0, installation: %>
         <% end %>
-        <% if @active_installations.empty? %><div class="workspace-empty">No equipment currently installed. <%= link_to "Open the configuration", hangar_aircraft_path(@selected_aircraft) %> to record an installation.</div><% end %>
+        <% if @active_installations.empty? %><div class="workspace-empty">Nothing is installed on <%= @selected_aircraft.registration %> yet. Use Install equipment to add a recorder, an assembly or a part.</div><% end %>
       </div>
+
+      <details class="workspace-panel exds-disclosure hangar-fold">
+        <summary><span>Installation history</span><small><%= pluralize @installations.size, "installation" %></small></summary>
+        <% if @installations.any? %>
+          <div class="workspace-list">
+            <% @installations.each do |installation| %>
+              <div class="workspace-list-row is-static">
+                <span>
+                  <strong><%= hangar_asset_code(installation.installable) %> · <%= hangar_asset_name(installation.installable) %></strong>
+                  <small><%= hangar_asset_kind(installation.installable) %> · <%= l installation.installed_at, format: :short %> → <%= installation.removed_at ? l(installation.removed_at, format: :short) : "Active" %></small>
+                </span>
+              </div>
+            <% end %>
+          </div>
+        <% else %><p class="workspace-muted">Nothing has been installed on this aircraft.</p><% end %>
+      </details>
+      <details class="workspace-panel exds-disclosure hangar-fold danger-panel">
+        <summary><span>Delete aircraft</span><small>Permanent</small></summary>
+        <p class="workspace-muted">An aircraft with flights or installation history cannot be deleted. Untick Selectable for flight preparation in Edit to take it out of use and keep its records.</p>
+        <%= button_to "Delete", hangar_aircraft_path(@selected_aircraft), method: :delete, class: "button-danger exds-btn exds-btn--danger",
+          form: { data: { turbo_confirm: "Delete aircraft #{@selected_aircraft.registration} permanently? This cannot be undone." } } %>
+      </details>
     </section>
   </div>
 <% else %>

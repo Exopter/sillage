@@ -34,6 +34,34 @@ class SharedFlightDebriefTest < ActionDispatch::IntegrationTest
     assert_equal "completed", SignalSession.find_by!(uuid:).status
   end
 
+  test "the recorder leaves once a debrief is saved and returns to delete or record it again" do
+    flight = flights(:one)
+    user = users(:julien)
+    get flight_comments_path(flight)
+    assert_select ".flight-debrief[data-controller='flight-debrief']", count: 1
+    assert_select ".flight-debrief", text: /What went well/, count: 0
+
+    first = flight.flight_debriefs.create!(uuid: SecureRandom.uuid, user:, status: "published", summary: "First take")
+    first.publish_entry!(user)
+    get flight_comments_path(flight)
+    assert_select ".flight-debrief[data-controller='flight-debrief']", count: 0
+    assert_select ".exds-comment-menu a[href=?]", flight_comments_path(flight, rerecord: first.id), text: /Record again/
+
+    get flight_comments_path(flight, rerecord: first.id)
+    assert_select ".flight-debrief[data-flight-debrief-replaces-value='#{first.id}'] h3", "Record the debrief again"
+
+    second = flight.flight_debriefs.create!(uuid: SecureRandom.uuid, user:, status: "uploaded")
+    second.audio.attach(io: StringIO.new("audio"), filename: "debrief.webm", content_type: "audio/webm")
+    post process_audio_flight_debrief_path(flight, second), params: { replaces: first.id }, as: :json
+    assert_response :success
+    assert_not FlightDebrief.exists?(first.id)
+    assert_equal [ second.reload.flight_comment ], flight.comments.reload.select(&:flight_debrief)
+
+    delete flight_comment_path(flight, second.flight_comment)
+    get flight_comments_path(flight)
+    assert_select ".flight-debrief[data-controller='flight-debrief']", count: 1
+  end
+
   test "closing a disconnected flight retains late batches without reopening it" do
     session = Signal::StartSession.new(device_id: signal_recorder.device_id, user: users(:julien)).call
     post close_disconnected_api_v1_signal_session_path(session.uuid), as: :json
