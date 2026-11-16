@@ -12,7 +12,7 @@
       <div class="exds-history__metric"><dt>Last preflight check</dt><dd class="exds-history__text-value"><%= imu_check_result(preflight) %></dd></div>
     </dl>
     <% if events.any? %>
-      <div class="exds-history__subheading"><h3>Status timeline</h3><span>Most recent first · UTC</span></div>
+      <div class="exds-history__subheading"><h3>Status timeline</h3><span>Most recent first · your local time</span></div>
       <ol class="exds-history__events"><%= render partial: "flights/imu_event", collection: events.first(3), as: :event %></ol>
       <% if events.size > 3 %>
         <details class="exds-history__more">
@@ -22,11 +22,11 @@
       <% end %>
     <% end %>
     <% if checks.any? %>
-      <div class="exds-history__subheading"><h3>Recorded checks</h3><span>Latest <%= checks.size %> · UTC</span></div>
+      <div class="exds-history__subheading"><h3>Recorded checks</h3><span>Latest <%= checks.size %> · your local time</span></div>
       <ol class="exds-history__events">
         <% checks.each do |check| %>
           <li class="exds-history__event">
-            <time class="exds-history__time" datetime="<%= check.created_at.iso8601 %>"><%= check.created_at.utc.strftime("%H:%M:%S") %><small><%= check.created_at.utc.strftime("%d %b %Y %Z") %></small></time>
+            <time class="exds-history__time" datetime="<%= check.created_at.iso8601 %>"><%= local_time check.created_at, :time, tag: :span %><small><%= local_time check.created_at, :date, tag: :span %></small></time>
             <div class="exds-history__event-body <%= "exds-history__event-body--fault" if check.outcome == "failed" %>">
               <strong class="exds-history__event-title"><%= check.kind.humanize %></strong>
               <p><%= check.summary["reason"] %></p>

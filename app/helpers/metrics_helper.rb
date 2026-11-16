@@ -16,7 +16,7 @@ module MetricsHelper
       return [ entry.flown_on.strftime("%d %b %Y"), entry.flown_at&.strftime("%H:%M") ].compact.join(" · ")
     end
     timestamp = entry.is_a?(FlightImport) ? entry.log_started_at : entry.display_started_at
-    logbook_value(timestamp&.strftime("%d %b · %H:%M"))
+    logbook_value(timestamp && local_time(timestamp, :short))
   end
 
   def logbook_duration(value)

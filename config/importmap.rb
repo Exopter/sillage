@@ -7,6 +7,7 @@ pin "html2canvas-pro", to: "/vendor/feedback/2.5.2/html2canvas-pro.esm.js", prel
 pin "@hotwired/turbo-rails", to: "turbo.min.js"
 pin "@hotwired/stimulus", to: "stimulus.min.js"
 pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
+pin "local_time", to: "lib/local_time.js"
 pin "exs1_contract", to: "lib/exs1_contract.js"
 pin "fdr_partial_file", to: "lib/fdr_partial_file.js"
 pin "fdr_sync_protocol", to: "lib/fdr_sync_protocol.js"

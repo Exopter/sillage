@@ -172,7 +172,7 @@
         <section class="signal-launch-card" aria-label="Unassigned sessions">
           <div class="signal-launch-body"><span class="signal-k">Recovery</span><h2>Unassigned sessions</h2><p>Review an interrupted acquisition to save or discard it.</p></div>
           <% @retained_sessions.each do |session| %>
-            <div class="signal-prep-row"><div><strong><%= l session.started_at, format: :short %></strong><span><%= session.uuid.first(8).upcase %> · Pending review</span></div>
+            <div class="signal-prep-row"><div><strong><%= local_time(session.started_at, :long) %></strong><span><%= session.uuid.first(8).upcase %> · Pending review</span></div>
               <%= link_to "Review session", signal_path(session: session.uuid, review: 1), class: "signal-tool-button exds-btn exds-btn--secondary" %>
               <%= link_to "Radio history", signal_session_radio_history_path(session.uuid), class: "signal-tool-button exds-btn exds-btn--secondary" %>
             </div>
@@ -212,7 +212,7 @@
           </div>
           <% @preparation_flights.each do |flight| %>
             <div class="signal-prep-row">
-              <div><strong><%= flight.code %></strong><span><%= flight.name %> · <%= flight.display_aircraft %></span><span>Created <time datetime="<%= flight.created_at.iso8601 %>"><%= flight.created_at.utc.strftime("%d %b %Y · %H:%M UTC") %></time></span><%= link_to "Edit draft", edit_flight_path(flight), class: "workspace-strong-link" %></div>
+              <div><strong><%= flight.code %></strong><span><%= flight.name %> · <%= flight.display_aircraft %></span><span>Created <%= local_time flight.created_at, :list %></span><%= link_to "Edit draft", edit_flight_path(flight), class: "workspace-strong-link" %></div>
               <%= button_to "Open session", signal_sessions_path(flight_id: flight.id), class: "signal-tool-button exds-btn exds-btn--primary is-primary", disabled: true, data: { signal_acquisition: true }, params: { device_id: "" }, form: { data: { turbo: false, signal_acquisition_form: true } } %>
             </div>
           <% end %>

@@ -55,7 +55,7 @@
         <% if history.any? %>
           <div class="workspace-list">
             <% history.each do |installation| %>
-              <div class="workspace-list-row is-static"><span><strong><%= installation.assembly.identity_label %></strong><small><%= l installation.installed_at, format: :short %> → <%= installation.removed_at ? l(installation.removed_at, format: :short) : "Active" %></small></span></div>
+              <div class="workspace-list-row is-static"><span><strong><%= installation.assembly.identity_label %></strong><small><%= local_time(installation.installed_at, :long) %> → <%= installation.removed_at ? local_time(installation.removed_at, :long) : "Active" %></small></span></div>
             <% end %>
           </div>
         <% else %><p class="workspace-muted">Never installed in an assembly.</p><% end %>

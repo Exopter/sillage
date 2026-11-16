@@ -4,7 +4,7 @@
     <div>
       <span class="exds-history__eyebrow">Signal · full session</span>
       <h2>Radio signal</h2>
-      <p><%= session.started_at.utc.strftime("%d %b %Y · %H:%M:%S") %><%= " to #{session.ended_at.utc.strftime('%H:%M:%S')}" if session.ended_at %> UTC · Includes reception before and after the onboard recording.</p>
+      <p><%= local_time session.started_at, :seconds %><% if session.ended_at %> to <%= local_time session.ended_at, :time %><% end %> · Includes reception before and after the onboard recording.</p>
     </div>
     <div class="exds-history__actions">
       <span class="exds-history__badge"><%= session.status.capitalize %></span>

@@ -8,8 +8,8 @@
     <h2><%= @active_session.flight&.code || "Unassigned session" %></h2>
     <dl class="workspace-details">
       <div><dt>Status</dt><dd><%= @active_session.status.humanize %></dd></div>
-      <div><dt>Started</dt><dd><%= l @active_session.started_at, format: :long %></dd></div>
-      <div><dt>Ended</dt><dd><%= @active_session.ended_at ? l(@active_session.ended_at, format: :long) : "Session in progress" %></dd></div>
+      <div><dt>Started</dt><dd><%= local_time(@active_session.started_at, :seconds) %></dd></div>
+      <div><dt>Ended</dt><dd><%= @active_session.ended_at ? local_time(@active_session.ended_at, :seconds) : "Session in progress" %></dd></div>
       <div><dt>Received batches</dt><dd><%= @active_session.signal_batches.count %></dd></div>
     </dl>
     <div class="workspace-actions">
@@ -26,7 +26,7 @@
       <thead><tr><th>Flight</th><th>Started</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody><% @read_only_sessions.each do |session| %><tr>
         <td><%= session.flight&.code || "Unassigned session" %></td>
-        <td><%= l session.started_at, format: :short %></td><td><%= session.status.humanize %></td>
+        <td><%= local_time(session.started_at, :long) %></td><td><%= session.status.humanize %></td>
         <td><%= link_to "View session", signal_path(session: session.uuid), class: "workspace-strong-link" %> · <%= link_to "Radio history", signal_session_radio_history_path(session.uuid), class: "workspace-strong-link" %></td>
       </tr><% end %></tbody>
     </table></div>

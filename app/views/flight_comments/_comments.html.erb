@@ -15,7 +15,7 @@
       <div class="exds-comment-main">
         <div class="exds-comment-header">
           <div><strong><%= comment_author_name(comment.user) %></strong><% if comment.owned_by?(Current.user) %><span class="exds-comment-you">You</span><% end %>
-            <div class="exds-comment-date"><time datetime="<%= comment.created_at.iso8601 %>" data-flight-comments-target="timestamp"><%= comment.created_at.utc.strftime("%d %b %Y, %H:%M UTC") %></time><% if comment.edited_at %><span> · Edited</span><% end %><% if comment.imported_from_notes? %><span title="Migrated from a note. The date is the last flight update, not the original note date."> · Migrated note (approximate date)</span><% end %></div>
+            <div class="exds-comment-date"><%= local_time comment.created_at %><% if comment.edited_at %><span> · Edited</span><% end %><% if comment.imported_from_notes? %><span title="Migrated from a note. The date is the last flight update, not the original note date."> · Migrated note (approximate date)</span><% end %></div>
           </div>
           <% if can_manage_operations? && comment.owned_by?(Current.user) && !editing_comment %>
             <details class="exds-comment-actions">
