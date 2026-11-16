@@ -9,7 +9,7 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
     create = ->(role) { Assembly.create!(assembly_type: "ExoFDR", fdr_component_type: role, fdr_functional_configuration: configuration) }
     system = create.call("SYSTEMS")
     later_system = create.call("SYSTEMS")
-    main = create.call("MAIN")
+    main = create.call("SEAT")
     central = create.call("CENTRAL")
     later_central = create.call("CENTRAL")
     board = EmbeddedController.create!(device_id: "ECU-ABC123")

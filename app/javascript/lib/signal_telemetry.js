@@ -139,7 +139,7 @@ export class SignalTelemetry {
 
   /** @param {number} now */
   moduleSnapshot(now) {
-    return ["Main", "Central", "AirSpeed", "Display"].map((name, index) => {
+    return ["Seat", "Central", "AirSpeed", "Display"].map((name, index) => {
       const item = this.modules.get(index + 1), report = item?.report
       const ageMs = report?.ageMs != null && item ? report.ageMs + Math.max(0, now - item.at) : null
       const known = Boolean(report && (report.flags & 1) && ageMs != null)

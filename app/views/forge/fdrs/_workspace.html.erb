@@ -9,8 +9,13 @@
         <%= sillage_icon "chevron-down", size: 16 %>
       </summary>
       <nav aria-label="Recorders">
+        <% transports = { "usb-c" => "USB-C", "ble" => "Bluetooth", "wifi" => "Wi-Fi", "ground-radio" => "Radio" } %>
         <% @workspace_recorders.each do |recorder| %>
-          <%= link_to recorder.display_name, files_forge_fdr_path(recorder.serial_number), aria: { current: ("true" if recorder == @assembly) } %>
+          <% live = recorder.embedded_controller&.connection_snapshot&.fetch(:transports, []) || [] %>
+          <%= link_to files_forge_fdr_path(recorder.serial_number), aria: { current: ("true" if recorder == @assembly) } do %>
+            <span><strong><%= recorder.display_name %></strong><small><%= [ recorder.functional_configuration, recorder.fdr_component_label || recorder.assembly_method_label ].compact.join(" · ") %></small></span>
+            <span class="status-dot is-<%= live.any? ? "ready" : "unknown" %>"><span aria-hidden="true"></span><%= live.any? ? live.map { |transport| transports.fetch(transport, transport) }.join(" · ") : (recorder.embedded_controller ? "Offline" : "No board") %></span>
+          <% end %>
         <% end %>
         <%= link_to "Connect a new recorder", forge_path(connect: 1) %>
       </nav>

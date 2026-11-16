@@ -46,7 +46,7 @@ class FdrFunctionalConfigurationTest < ActiveSupport::TestCase
       assert_not Assembly.new(assembly_type: "ExoFDR", fdr_functional_configuration: configuration, assembly_method: "WIRE").save
       assert_not Assembly.new(assembly_type: "ExoFDR", fdr_functional_configuration: configuration, assembly_method: "PERF", serviceability_state: "invalid").save
     end
-    assert_equal "EXOFDR-V42-MAIN-01", create_exofdr_assembly(fdr_functional_configuration: configuration, fdr_component_type: "MAIN", assembly_method: "PCB").serial_number
+    assert_equal "EXOFDR-V42-SEAT-01", create_exofdr_assembly(fdr_functional_configuration: configuration, fdr_component_type: "SEAT", assembly_method: "PCB").serial_number
   end
 
   test "assembly identity and parameters remain fixed after reactivation" do

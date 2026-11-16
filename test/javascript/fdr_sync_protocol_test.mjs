@@ -682,6 +682,32 @@ assert.deepEqual(await importClient.controlImport(1, 277, 42), {paused:false, re
 importClient.request = async () => ({payload:Uint8Array.from([1,1,0,0,13,0,0,0])})
 await assert.rejects(importClient.controlImport(1, 277, 42), /rejected this selection/)
 
+// A recorder that is still starting misses the first greeting: the greeting is
+// repeated on the open port, the answer to any copy is accepted, and repeats stop.
+{
+  const greeting = new protocol.UsbFdrClient({})
+  const writes = []
+  greeting.writer = { write: async bytes => { writes.push(Buffer.from(bytes).toString("hex")) } }
+  greeting.frameReader = { read: async () => {
+    while (writes.length < 3) await new Promise(resolve => setTimeout(resolve, 2))
+    return { sequence: 0, type: protocol.UsbMessage.DEVICE_INFO, payload: new Uint8Array() }
+  } }
+  const answer = await greeting.request(protocol.UsbMessage.HELLO, new Uint8Array(), [protocol.UsbMessage.DEVICE_INFO], { resendMs: 5 })
+  assert.equal(answer.type, protocol.UsbMessage.DEVICE_INFO)
+  assert.ok(writes.length >= 3)
+  assert.equal(new Set(writes).size, 1, "every repeat is the same frame with the same sequence")
+  const sent = writes.length
+  await new Promise(resolve => setTimeout(resolve, 30))
+  assert.equal(writes.length, sent, "repeats stop once the recorder has answered")
+  // An ordinary request is written once.
+  const single = new protocol.UsbFdrClient({})
+  let count = 0
+  single.writer = { write: async () => { count += 1 } }
+  single.frameReader = { read: async () => { await new Promise(resolve => setTimeout(resolve, 20)); return { sequence: 0, type: protocol.UsbMessage.DEVICE_INFO, payload: new Uint8Array() } } }
+  await single.request(protocol.UsbMessage.HELLO, new Uint8Array(), [protocol.UsbMessage.DEVICE_INFO])
+  assert.equal(count, 1)
+  assert.deepEqual(protocol.USB_FDR_PORT_FILTERS.map(filter => filter.usbVendorId), [0x303a, 0x2886])
+}
 console.log("FDR synchronization protocol tests passed")
 
 const datedCatalogue = new Uint8Array(40)

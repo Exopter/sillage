@@ -15,7 +15,7 @@ class ExofdrIdentityConcurrencyTest < ActiveSupport::TestCase
     AssetIdentifier.where(identifiable_type: "Assembly", identifiable_id: ids).delete_all
     Assembly.where(id: ids).delete_all
     @configuration.destroy!
-    IdentifierSequence.where(name: %w[EXOFDR-V876543-MAIN EXOFDR-V876543-SYSTEMS]).delete_all
+    IdentifierSequence.where(name: %w[EXOFDR-V876543-SEAT EXOFDR-V876543-SYSTEMS]).delete_all
   end
 
   test "simultaneous creations receive unique consecutive serials" do
@@ -27,14 +27,14 @@ class ExofdrIdentityConcurrencyTest < ActiveSupport::TestCase
         ActiveRecord::Base.connection_pool.with_connection do
           ready << true
           start.pop
-          Assembly.create!(assembly_type: "ExoFDR", fdr_functional_configuration_id: configuration_id, fdr_component_type: "MAIN").serial_number
+          Assembly.create!(assembly_type: "ExoFDR", fdr_functional_configuration_id: configuration_id, fdr_component_type: "SEAT").serial_number
         end
       end
     end
     Timeout.timeout(5) { 3.times { ready.pop } }
     3.times { start << true }
     serials = Timeout.timeout(5) { @threads.map(&:value) }
-    assert_equal %w[EXOFDR-V876543-MAIN-01 EXOFDR-V876543-MAIN-02 EXOFDR-V876543-MAIN-03], serials.sort
+    assert_equal %w[EXOFDR-V876543-SEAT-01 EXOFDR-V876543-SEAT-02 EXOFDR-V876543-SEAT-03], serials.sort
   end
 
   test "catalogue edits cannot change a baseline while its first assembly is being committed" do
@@ -45,7 +45,7 @@ class ExofdrIdentityConcurrencyTest < ActiveSupport::TestCase
     @threads = [ Thread.new do
       ActiveRecord::Base.connection_pool.with_connection do
         Assembly.transaction do
-          Assembly.create!(assembly_type: "ExoFDR", fdr_functional_configuration_id: configuration_id, fdr_component_type: "MAIN")
+          Assembly.create!(assembly_type: "ExoFDR", fdr_functional_configuration_id: configuration_id, fdr_component_type: "SEAT")
           issued << true
           release.pop
         end
@@ -70,7 +70,7 @@ class ExofdrIdentityConcurrencyTest < ActiveSupport::TestCase
 
   test "simultaneous attachments keep one module per role and one matching history row" do
     system = Assembly.create!(assembly_type: "ExoFDR", fdr_functional_configuration: @configuration, fdr_component_type: "SYSTEMS")
-    modules = 2.times.map { Assembly.create!(assembly_type: "ExoFDR", fdr_functional_configuration: @configuration, fdr_component_type: "MAIN") }
+    modules = 2.times.map { Assembly.create!(assembly_type: "ExoFDR", fdr_functional_configuration: @configuration, fdr_component_type: "SEAT") }
     ready = Queue.new
     start = Queue.new
     @threads = modules.map do |mod|

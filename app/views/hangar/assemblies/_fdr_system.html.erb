@@ -1,7 +1,7 @@
 <% if @assembly.fdr_system? %>
   <section class="workspace-panel">
     <h2>Module connections</h2>
-    <p class="workspace-muted">Each module reports its own connection. A connected Main does not establish the state of the other modules.</p>
+    <p class="workspace-muted">Each module reports its own connection. A connected Seat does not establish the state of the other modules.</p>
     <div class="hangar-table-wrap"><table class="hangar-table">
       <thead><tr><th>Module</th><th>Identity</th><th>Connection</th></tr></thead>
       <tbody><% Assembly::FDR_MODULE_TYPES.each do |role| %>

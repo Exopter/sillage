@@ -168,6 +168,9 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     get forge_path(connect: 1)
     assert_response :success
     assert_select "[data-action='fdr-connectivity#connectUsb']", count: 1
+    # On a recorder page the connect action is on the page itself, not only behind Connections.
+    get files_forge_fdr_path(@assembly.serial_number)
+    assert_select "button[data-forge-quick-connect][data-action='fdr-connectivity#connectUsb']", text: /Connect USB-C/, count: 1
     get hangar_assembly_path(@assembly)
     assert_response :success
     assert_select "h2", "Composition"

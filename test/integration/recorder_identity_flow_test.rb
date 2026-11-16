@@ -14,7 +14,10 @@ class RecorderIdentityFlowTest < ActionDispatch::IntegrationTest
     assert_redirected_to files_forge_fdr_path(@assembly.serial_number)
     follow_redirect!
     assert_response :success
-    assert_select ".exds-recorder-switcher a", text: label
+    assert_select ".exds-recorder-switcher a strong", text: label
+    # Each entry says what the recorder is and whether it is reachable now.
+    assert_select ".exds-recorder-switcher a small", text: /Perfboard|PCB|Seat|Central/
+    assert_select ".exds-recorder-switcher a .status-dot", minimum: 1
     assert_select "small", text: @ecu.device_id, count: 0
 
     [ forge_fdr_path(@ecu), connectivity_forge_fdr_path(@ecu), activity_forge_fdr_path(@ecu) ].each do |path|
@@ -94,13 +97,13 @@ class RecorderIdentityFlowTest < ActionDispatch::IntegrationTest
   test "radio identity resolves a module through its systems assembly" do
     configuration = create_fdr_functional_configuration(version: 2)
     system = Assembly.create!(assembly_type: "ExoFDR", fdr_component_type: "SYSTEMS", fdr_functional_configuration: configuration)
-    main = Assembly.create!(assembly_type: "ExoFDR", fdr_component_type: "MAIN", fdr_functional_configuration: configuration, parent: system)
-    controller = create_embedded_controller(assembly: main, device_id: "ECU-441BF685BEC8")
+    seat = Assembly.create!(assembly_type: "ExoFDR", fdr_component_type: "SEAT", fdr_functional_configuration: configuration, parent: system)
+    controller = create_embedded_controller(assembly: seat, device_id: "ECU-441BF685BEC8")
     Installation.create!(installable: system, aircraft: aircraft(:exowing), installed_at: 1.hour.ago)
     get api_v1_fdr_registration_path, params: { device_id: controller.device_id }, as: :json
     assert_response :success
     assert_equal aircraft(:exowing).display_name, response.parsed_body.dig("aircraft", "display_name")
-    assert_equal main.serial_number, response.parsed_body.dig("recorder", "assembly", "serial_number")
+    assert_equal seat.serial_number, response.parsed_body.dig("recorder", "assembly", "serial_number")
   end
 
   private

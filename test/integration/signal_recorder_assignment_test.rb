@@ -77,14 +77,14 @@ class SignalRecorderAssignmentTest < ActionDispatch::IntegrationTest
   test "creating a physical assembly and binding it is one confirmed operation" do
     configuration = create_fdr_functional_configuration(version: 2)
     assert_difference [ "Assembly.count", "EmbeddedController.count", "FdrBoardInstallation.count" ], 1 do
-      assign(configuration_id: configuration.id, fdr_component_type: "MAIN")
+      assign(configuration_id: configuration.id, fdr_component_type: "SEAT")
       assert_response :success
     end
     recorder = EmbeddedController.find_by!(device_id: @device_id)
-    assert_equal "MAIN", recorder.assembly.fdr_component_type
+    assert_equal "SEAT", recorder.assembly.fdr_component_type
     assert_equal 2, recorder.assembly.fdr_functional_configuration.version
     assert_no_difference [ "Assembly.count", "EmbeddedController.count", "FdrBoardInstallation.count" ] do
-      assign(configuration_id: configuration.id, fdr_component_type: "MAIN")
+      assign(configuration_id: configuration.id, fdr_component_type: "SEAT")
       assert_response :unprocessable_entity
     end
   end

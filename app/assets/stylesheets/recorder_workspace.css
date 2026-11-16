@@ -8,9 +8,14 @@
 .exds-recorder-switcher summary::-webkit-details-marker { display: none; }
 .exds-recorder-switcher summary strong { font-size: var(--fs-sm); overflow-wrap: anywhere; }
 .exds-recorder-switcher summary small { display: block; color: var(--text-muted); margin-top: var(--ex-space-1); font-size: var(--fs-caption); }
-.exds-recorder-switcher > nav { position: absolute; top: calc(100% + 4px); left: 0; width: min(100%, 320px); box-sizing: border-box; z-index: 10; padding: var(--ex-space-2); border: 1px solid var(--border-rule); border-radius: var(--ex-radius-surface); background: var(--surface-card); box-shadow: var(--ex-shadow-panel); }
+.exds-recorder-switcher > nav { position: absolute; top: calc(100% + 4px); left: 0; width: min(92vw, 420px); box-sizing: border-box; z-index: 10; padding: var(--ex-space-2); border: 1px solid var(--border-rule); border-radius: var(--ex-radius-surface); background: var(--surface-card); box-shadow: var(--ex-shadow-panel); }
 .exds-recorder-switcher > nav a { display: block; padding: var(--ex-space-3) var(--ex-space-2); font-size: var(--fs-sm); color: var(--text-body); text-decoration: none; overflow-wrap: anywhere; }
 .exds-recorder-switcher > nav a:hover { background: var(--surface-panel); }
+.exds-recorder-switcher > nav a:has(> span) { display: flex; align-items: center; justify-content: space-between; gap: var(--ex-space-3); }
+.exds-recorder-switcher > nav a strong { display: block; color: var(--text-strong); font-weight: 600; }
+.exds-recorder-switcher > nav a small { display: block; margin-top: 2px; color: var(--text-muted); font-size: var(--fs-caption); }
+.exds-recorder-switcher > nav a[aria-current="true"] { background: var(--surface-hover); box-shadow: inset 3px 0 0 var(--selection-marker); }
+.exds-recorder-switcher > nav .status-dot { flex: 0 0 auto; font-size: var(--fs-micro); }
 .exds-recorder-nav { display: flex; flex: 0 0 auto; gap: var(--ex-space-6); margin-bottom: -1px; }
 .exds-recorder-nav a { display: flex; align-items: center; gap: var(--ex-space-2); padding: 10px 0; color: var(--text-muted); border-bottom: 2px solid transparent; font: 600 var(--fs-text)/1.43 var(--font-ui); text-decoration: none; white-space: nowrap; }
 .exds-recorder-nav a:hover { color: var(--text-strong); }
