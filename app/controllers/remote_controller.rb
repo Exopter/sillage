@@ -26,7 +26,7 @@ class RemoteController < ApplicationController
     destination = params[:destination].to_s
     folder = FlightFolder.contributable_to(Current.user).find_by(id: destination.delete_prefix("folder:")) if destination.start_with?("folder:")
     flight = Current.user.flights.create!(
-      name: "Tunnel flight", status: "preparation",
+      status: "preparation",
       # A tunnel flight is team work: it is shared unless the operator asks to keep it private.
       folder:, visibility: destination == "private" ? "private" : "team",
       aircraft: Aircraft.active.find_by(id: params[:aircraft_id]),

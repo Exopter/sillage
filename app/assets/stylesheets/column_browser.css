@@ -200,3 +200,7 @@
 }
 
 .exds-browser-preview-actions { display: flex; flex: 0 0 auto; gap: var(--ex-space-2); }
+/* The overflow menu of the preview header opens under its own button. */
+.exds-browser-preview-menu { position: relative; margin: 0; }
+.exds-browser-preview-menu > .exds-comment-menu { top: calc(100% + 4px); }
+.exds-browser-preview-menu form { display: contents; }

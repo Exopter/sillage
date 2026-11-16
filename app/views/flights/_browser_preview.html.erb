@@ -3,11 +3,21 @@
   <% if entry %>
     <% flight = entry.is_a?(Flight) %>
     <% accessible = !flight || entry.visible_to?(Current.user) %>
-    <header class="exds-browser-preview-heading"><div><h2><%= browser_name(entry) %></h2><p><%= flight ? entry.description : entry.import_type.upcase %></p></div>
+    <header class="exds-browser-preview-heading"><div><h2><%= browser_name(entry) %></h2><% subtitle = flight ? entry.description : entry.import_type.upcase %><% if subtitle.present? %><p><%= subtitle %></p><% end %></div>
       <% if can_manage_operations? && flight && accessible %>
         <div class="exds-browser-preview-actions">
           <% unless entry.live? %><%= link_to "##{dom_id(entry, :debrief)}", class: "exds-browser-icon-button", title: "Record debrief", aria: { label: "Record debrief" }, data: { turbo: false } do %><%= sillage_icon "mic", size: 17 %><% end %><% end %>
           <%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button", aria: { label: "Edit flight" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 17 %><% end %>
+          <% unless entry.live? %>
+            <details class="exds-browser-preview-menu exds-comment-actions">
+              <summary class="exds-browser-icon-button" title="More actions" aria-label="More actions for <%= entry.code %>"><%= sillage_icon "ellipsis", size: 17 %></summary>
+              <div class="exds-comment-menu">
+                <%# The browser context brings the operator back to the same folder, filter and search. %>
+                <%= button_to flight_path(entry, **browser_context.except(:page), browser: 1), method: :delete,
+                      form: { data: { turbo_frame: "_top", turbo_confirm: t("flights.show.confirm_delete", code: entry.code) } } do %><%= sillage_icon "trash", size: 16 %> Delete flight<% end %>
+              </div>
+            </details>
+          <% end %>
         </div>
       <% end %>
     </header>

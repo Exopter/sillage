@@ -4,7 +4,8 @@ module Signal
     def initialize(signal_session:, disposition:, name: nil, ended_at: Time.current)
       @session = signal_session
       @disposition = disposition
-      @name = name.to_s.strip.presence || "Signal flight"
+      # A flight has a description only when someone writes one.
+      @name = name.to_s.strip.presence
       @ended_at = ended_at
     end
 
