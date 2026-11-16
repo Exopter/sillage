@@ -19,6 +19,10 @@ class FdrSystemFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".exds-recorder-heading p", seat.serial_number
     assert_equal board, seat.reload.embedded_controller
+    # A serial put back and settled again stays reachable too.
+    seat.update_columns(legacy_identity: { "previous_serial_number" => "EXOFDR-V1-PCB-03", "former_serial_numbers" => [ "EXOFDR-V2-MAIN-01" ] })
+    get forge_fdr_path("EXOFDR-V2-MAIN-01")
+    assert_response :success
   end
 
   test "Hangar creates a logical system and exposes missing modules without connection claims" do

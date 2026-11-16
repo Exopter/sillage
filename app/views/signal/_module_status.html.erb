@@ -1,6 +1,6 @@
 <div class="signal-modules" role="group" aria-label="FDR module status" data-controller="signal-module-status"
      data-action="sillage:module-status@window->signal-module-status#update" data-tooltip-boundary>
-  <% [["Main", "database"], ["Central", "activity"], ["AirSpeed", "gauge"], ["Display", "layout-grid"]].each_with_index do |(name, icon), index| %>
+  <% [["Seat", "database"], ["Central", "activity"], ["AirSpeed", "gauge"], ["Display", "layout-grid"]].each_with_index do |(name, icon), index| %>
     <div class="signal-module" data-signal-module-status-target="module" data-module-role="<%= index + 1 %>" data-state="unknown"
          data-controller="tooltip" data-action="mouseleave->tooltip#leave focusin->tooltip#show focusout->tooltip#blur keydown.esc@window->tooltip#hide resize@window->tooltip#position scroll@window->tooltip#position">
       <button type="button" class="exds-iconbtn exds-iconbtn--sm exds-iconbtn--ghost signal-module-indicator"

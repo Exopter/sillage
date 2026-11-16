@@ -94,13 +94,13 @@ class RecorderIdentityFlowTest < ActionDispatch::IntegrationTest
   test "radio identity resolves a module through its systems assembly" do
     configuration = create_fdr_functional_configuration(version: 2)
     system = Assembly.create!(assembly_type: "ExoFDR", fdr_component_type: "SYSTEMS", fdr_functional_configuration: configuration)
-    main = Assembly.create!(assembly_type: "ExoFDR", fdr_component_type: "MAIN", fdr_functional_configuration: configuration, parent: system)
-    controller = create_embedded_controller(assembly: main, device_id: "ECU-441BF685BEC8")
+    seat = Assembly.create!(assembly_type: "ExoFDR", fdr_component_type: "SEAT", fdr_functional_configuration: configuration, parent: system)
+    controller = create_embedded_controller(assembly: seat, device_id: "ECU-441BF685BEC8")
     Installation.create!(installable: system, aircraft: aircraft(:exowing), installed_at: 1.hour.ago)
     get api_v1_fdr_registration_path, params: { device_id: controller.device_id }, as: :json
     assert_response :success
     assert_equal aircraft(:exowing).display_name, response.parsed_body.dig("aircraft", "display_name")
-    assert_equal main.serial_number, response.parsed_body.dig("recorder", "assembly", "serial_number")
+    assert_equal seat.serial_number, response.parsed_body.dig("recorder", "assembly", "serial_number")
   end
 
   private
