@@ -29,6 +29,31 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "the preview overflow menu deletes the flight and returns to the same folder" do
+    @flight.update!(status: "preparation", started_at: nil, flight_import: nil)
+    get flights_path(folder: @folder.id, selected: "flight:#{@flight.id}")
+    assert_response :success
+    assert_select ".exds-browser-preview-actions a[aria-label='Edit flight'] + details.exds-browser-preview-menu" do
+      assert_select "summary[aria-label=?]", "More actions for #{@flight.code}"
+      assert_select "form[action=?][data-turbo-confirm*=?]", flight_path(@flight, folder: @folder.id, browser: 1), @flight.code do
+        assert_select "input[name='_method'][value='delete']"
+        assert_select "button", text: /Delete flight/
+      end
+    end
+
+    assert_difference "Flight.count", -1 do
+      delete flight_path(@flight, folder: @folder.id, browser: 1)
+    end
+    assert_redirected_to flights_path(filter: "flights", folder: @folder.id)
+    assert_equal "Flight deleted.", flash[:notice]
+
+    # A flight being recorded is ended from Signal, not deleted from under it.
+    live = @owner.flights.create!(name: "Live flight", status: "live", started_at: Time.current, folder: @folder)
+    get flights_path(folder: @folder.id, selected: "flight:#{live.id}")
+    assert_select ".exds-browser-preview-actions a[aria-label='Edit flight']"
+    assert_select "details.exds-browser-preview-menu", count: 0
+  end
+
   test "columns are the only view with direct folder actions and a separate preview frame" do
     get flights_path(folder: @folder.id)
     assert_response :success

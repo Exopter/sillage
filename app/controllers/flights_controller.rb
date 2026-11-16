@@ -112,7 +112,8 @@ class FlightsController < ApplicationController
 
   def destroy
     Flights::DeleteRecording.new(flight: @flight).call
-    redirect_to flights_path, notice: t(".success")
+    # Deleted from the flight browser: return to the folder, filter and search it was opened from.
+    redirect_to (params[:browser].present? ? selection_return_path : flights_path), status: :see_other, notice: t(".success")
   rescue ActiveJob::EnqueueError
     redirect_to @flight, alert: "The flight could not be deleted. Please try again."
   end

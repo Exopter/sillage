@@ -56,6 +56,7 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     assert_not response.parsed_body.dig("flight", "recording")
     assert flight.preparation?
     assert_equal users(:julien), flight.pilot
+    assert_nil flight.name, "a flight carries a description only when someone writes one"
 
     # A station that hears nothing, or whose remote is off, is not handed the flight.
     station = SecureRandom.uuid

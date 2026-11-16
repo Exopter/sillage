@@ -56,7 +56,7 @@ module Signal
 
     def prepare_flight
       if @flight_id.blank?
-        return @user.flights.create!(name: "Signal flight", status: "live", started_at: @started_at,
+        return @user.flights.create!(status: "live", started_at: @started_at,
           fdr: @assembly&.fdr_system_at || @assembly, aircraft: @recorder.aircraft).tap do |flight|
           flight.capture_configuration!(at: nil)
         end
