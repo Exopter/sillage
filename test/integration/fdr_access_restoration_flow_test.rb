@@ -95,7 +95,7 @@ class FdrAccessRestorationFlowTest < ActionDispatch::IntegrationTest
   test "requires an authenticated active account" do
     delete session_path
     request_restoration
-    assert_redirected_to new_session_path
+    assert_response :unauthorized
     assert_empty @recorder.device_activities
 
     sign_in_as_admin users(:operator)
@@ -108,12 +108,12 @@ class FdrAccessRestorationFlowTest < ActionDispatch::IntegrationTest
   test "rejects disabled operators and requires administrator two factor verification" do
     users(:operator).update!(disabled_at: Time.current)
     request_restoration
-    assert_redirected_to new_session_path
+    assert_response :unauthorized
     assert_empty @recorder.device_activities
 
     sign_in_as users(:julien), otp_verified: false
     request_restoration
-    assert_redirected_to new_two_factor_setup_path
+    assert_response :forbidden
     assert_empty @recorder.device_activities
   end
 

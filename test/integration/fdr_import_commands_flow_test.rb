@@ -12,7 +12,7 @@ class FdrImportCommandsFlowTest < ActionDispatch::IntegrationTest
   test "only a signed-in operator can request a selection from a fresh capable recorder" do
     publish
     post api_v1_fdr_import_commands_path, params: command_params, as: :json
-    assert_response :redirect
+    assert_response :unauthorized
     sign_in_as_admin users(:operator)
     @recorder.signal_presence.update!(last_seen_at: 1.minute.ago)
     assert_no_difference "FdrImportCommand.count" do
