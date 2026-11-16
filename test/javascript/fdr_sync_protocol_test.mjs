@@ -707,6 +707,22 @@ await assert.rejects(importClient.controlImport(1, 277, 42), /rejected this sele
   await single.request(protocol.UsbMessage.HELLO, new Uint8Array(), [protocol.UsbMessage.DEVICE_INFO])
   assert.equal(count, 1)
   assert.deepEqual(protocol.USB_FDR_PORT_FILTERS.map(filter => filter.usbVendorId), [0x303a, 0x2886])
+
+  // A silent recorder receives a bounded number of greetings, so its receive buffer never fills.
+  const silent = new protocol.UsbFdrClient({ close: async () => {} })
+  let greetings = 0
+  silent.writer = { write: async () => { greetings += 1 }, abort: async () => {}, releaseLock() {} }
+  silent.frameReader = { read: () => new Promise(() => {}) }
+  const unanswered = silent.request(protocol.UsbMessage.HELLO, new Uint8Array(), [protocol.UsbMessage.DEVICE_INFO], { resendMs: 2, timeoutMs: 60 })
+  await assert.rejects(unanswered, /stopped responding/)
+  assert.equal(greetings, 1 + protocol.USB_HELLO_RESENDS)
+
+  // A port whose close() never settles does not hold the caller: the error can still be shown.
+  const stuck = new protocol.UsbFdrClient({ close: () => new Promise(() => {}) })
+  stuck.writer = { abort: async () => {}, releaseLock() {} }
+  const started = Date.now()
+  await stuck.close()
+  assert.ok(Date.now() - started < protocol.USB_PORT_RELEASE_TIMEOUT_MS + 1000)
 }
 console.log("FDR synchronization protocol tests passed")
 

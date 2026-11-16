@@ -27,6 +27,9 @@ export const USB_CONNECTION_RETRY_DELAY_MS = 250
 // A recorder that is still starting misses the first greeting: repeat it on the
 // open port until it answers, so it connects the moment it is ready.
 export const USB_HELLO_RESEND_MS = 800
+// A recorder that is not reading must not fill its small USB receive buffer: a blocked write keeps the port from closing.
+export const USB_HELLO_RESENDS = 2
+export const USB_SECURITY_TIMEOUT_MS = 8_000
 // ExoFDR boards enumerate under Espressif or Seeed. The port chooser lists only these.
 export const USB_FDR_PORT_FILTERS = Object.freeze([{ usbVendorId: 0x303a }, { usbVendorId: 0x2886 }])
 export const USB_SERIAL_BUFFER_SIZE = 64 * 1024
@@ -223,22 +226,26 @@ export class UsbFdrClient {
     this.frameReader = new FrameReader(this.reader)
   }
 
+  /** @param {{ timeoutMs?: number, attempt?: number, attempts?: number, onStage?: (stage: "opening" | "handshake") => void }} [options] */
   async connect({
     timeoutMs = USB_CONNECTION_TIMEOUT_MS,
     attempt = 1,
-    attempts = 1
+    attempts = 1,
+    onStage = undefined
   } = {}) {
     let timedOut = false
     let timeoutId
     /** @type {"opening" | "handshake"} */
     let stage = "opening"
     const connection = (async () => {
+      onStage?.(stage)
       await this.open()
       if (timedOut) {
         await this.close()
         throw usbConnectionTimeoutError(stage, timeoutMs, attempt, attempts)
       }
       stage = "handshake"
+      onStage?.(stage)
       return this.hello()
     })()
     const timeout = new Promise((_, reject) => {
@@ -414,7 +421,7 @@ export class UsbFdrClient {
 
   async usbAuthenticationChallenge() {
     const payload = Uint8Array.from([1, UsbSecurityCommand.GET_CHALLENGE])
-    const frame = await this.request(UsbMessage.SECURITY, payload, [UsbMessage.SECURITY_DATA])
+    const frame = await this.request(UsbMessage.SECURITY, payload, [UsbMessage.SECURITY_DATA], { timeoutMs: USB_SECURITY_TIMEOUT_MS })
     const status = parseUsbSecurityStatus(frame.payload)
     if (status.result !== FdrAuthResult.OK && status.result !== FdrAuthResult.NOT_CONFIGURED) {
       throw fdrAuthenticationError(status.result)
@@ -498,10 +505,15 @@ export class UsbFdrClient {
 
     const sequence = this.sequence++ >>> 0
     const frameBytes = encodeFrame(type, sequence, payload)
+    /** @type {ReturnType<typeof setInterval> | undefined} */
     let resend
     try {
       await writer.write(frameBytes)
-      if (resendMs > 0) resend = globalThis.setInterval(() => { if (this.writer === writer) void writer.write(frameBytes).catch(() => {}) }, resendMs)
+      let resends = 0
+      if (resendMs > 0) resend = globalThis.setInterval(() => {
+        if (this.writer !== writer || ++resends > USB_HELLO_RESENDS) return globalThis.clearInterval(resend)
+        void writer.write(frameBytes).catch(() => {})
+      }, resendMs)
       while (true) {
         const frame = await frameReader.read()
         if (frame.sequence !== sequence) continue
@@ -520,10 +532,16 @@ export class UsbFdrClient {
 
   async close() {
     if (this.closePromise) return this.closePromise
-    this.closePromise = this.performClose()
+    // Chrome can leave close() pending while a write to a silent recorder is blocked. Never let that hold the caller.
+    let timer
+    this.closePromise = Promise.race([
+      this.performClose(),
+      new Promise((resolve) => { timer = globalThis.setTimeout(resolve, USB_PORT_RELEASE_TIMEOUT_MS) })
+    ]).then(() => {})
     try {
       await this.closePromise
     } finally {
+      globalThis.clearTimeout(timer)
       this.closePromise = null
     }
   }
@@ -536,6 +554,7 @@ export class UsbFdrClient {
     this.frameReader = null
     try { await reader?.cancel() } catch (_) {}
     try { reader?.releaseLock() } catch (_) {}
+    try { void writer?.abort().catch(() => {}) } catch (_) {}
     try { writer?.releaseLock() } catch (_) {}
     try { await this.port?.close() } catch (_) {}
   }
