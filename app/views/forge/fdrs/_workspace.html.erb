@@ -2,27 +2,10 @@
 <% identifier = @assembly&.serial_number || @fdr&.id %>
 <% active = action_name == "files" ? :recordings : action_name == "calibration" ? :calibration : action_name == "activity" ? :history : :device %>
 <div class="exds-recorder-workspace">
-  <%# The module list is its own navigation: the switcher belongs to the pages of one recorder. %>
+  <%# The module list is the way to another recorder: go back to it, as everywhere else. %>
   <% if identifier %>
   <aside class="exds-recorder-sidebar" aria-label="Forge workspace">
-    <details class="exds-recorder-switcher">
-      <summary aria-label="Choose recorder">
-        <span><strong><%= @assembly&.display_name || @fdr&.display_name || "Select a recorder" %></strong><small><%= @assembly ? "#{@assembly.functional_configuration} · #{@assembly.fdr_component_label || @assembly.assembly_method_label}" : "Recorder workspace" %></small></span>
-        <%= sillage_icon "chevron-down", size: 16 %>
-      </summary>
-      <nav aria-label="Recorders">
-        <% transports = { "usb-c" => "USB-C", "ble" => "Bluetooth", "wifi" => "Wi-Fi", "ground-radio" => "Radio" } %>
-        <% @workspace_recorders.each do |recorder| %>
-          <% live = recorder.embedded_controller&.connection_snapshot&.fetch(:transports, []) || [] %>
-          <%= link_to files_forge_fdr_path(recorder.serial_number), aria: { current: ("true" if recorder == @assembly) } do %>
-            <span><strong><%= recorder.display_name %></strong><small><%= [ recorder.functional_configuration, recorder.fdr_component_label || recorder.assembly_method_label ].compact.join(" · ") %></small></span>
-            <span class="status-dot is-<%= live.any? ? "ready" : "unknown" %>"><span aria-hidden="true"></span><%= live.any? ? live.map { |transport| transports.fetch(transport, transport) }.join(" · ") : (recorder.embedded_controller ? "Offline" : "No board") %></span>
-          <% end %>
-        <% end %>
-        <%= link_to "All modules", forge_path %>
-        <%= link_to "Connect a new recorder", forge_path(connect: 1) %>
-      </nav>
-    </details>
+    <%= link_to "FDRs", forge_path, class: "exds-back-link" %>
     <% if identifier %>
       <nav class="exds-recorder-nav" aria-label="FDR sections">
         <% [["Recordings", files_forge_fdr_path(identifier), :recordings], ["Device", forge_fdr_path(identifier), :device], ["Calibration", calibration_forge_fdr_path(identifier), :calibration]].each do |label, path, tab| %>
