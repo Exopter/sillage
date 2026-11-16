@@ -2,6 +2,8 @@
 <% identifier = @assembly&.serial_number || @fdr&.id %>
 <% active = action_name == "files" ? :recordings : action_name == "calibration" ? :calibration : action_name == "activity" ? :history : :device %>
 <div class="exds-recorder-workspace">
+  <%# The module list is its own navigation: the switcher belongs to the pages of one recorder. %>
+  <% if identifier %>
   <aside class="exds-recorder-sidebar" aria-label="Forge workspace">
     <details class="exds-recorder-switcher">
       <summary aria-label="Choose recorder">
@@ -17,6 +19,7 @@
             <span class="status-dot is-<%= live.any? ? "ready" : "unknown" %>"><span aria-hidden="true"></span><%= live.any? ? live.map { |transport| transports.fetch(transport, transport) }.join(" · ") : (recorder.embedded_controller ? "Offline" : "No board") %></span>
           <% end %>
         <% end %>
+        <%= link_to "All modules", forge_path %>
         <%= link_to "Connect a new recorder", forge_path(connect: 1) %>
       </nav>
     </details>
@@ -32,5 +35,6 @@
       <%= link_to forge_path(connect: 1) do %><%= sillage_icon "plus", size: 16 %><span>Add recorder</span><% end %>
     </nav>
   </aside>
+  <% end %>
   <div class="exds-recorder-content"><%= yield %></div>
 </div>

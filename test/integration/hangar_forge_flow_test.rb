@@ -170,8 +170,11 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
     assert_select "#registered-recorders a[href='#{forge_fdr_path(@assembly.serial_number)}']", count: 1
     assert_select "#registered-recorders .exds-setup-progress i", count: 6
     assert_select "[data-recorder-session-host][hidden]", count: 1
+    # The list replaces the recorder switcher; a recorder page offers the way back.
+    assert_select ".exds-recorder-switcher", count: 0
     get forge_fdr_path(@assembly.serial_number)
     assert_select ".exds-setup-step", count: 6
+    assert_select ".exds-recorder-switcher nav a[href='#{forge_path}']", text: "All modules"
     assert_select ".exds-setup-step[data-step='seen']", count: 1
     assert_select ".exds-setup-step[data-state='next']", maximum: 1
     get forge_path(connect: 1)
