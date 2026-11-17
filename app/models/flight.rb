@@ -5,6 +5,11 @@ class Flight < ApplicationRecord
   LOCATION_SOURCES = %w[manual openstreetmap].freeze
   VISIBILITIES = %w[private team].freeze
   EFFECTIVE_VISIBILITIES = %w[private public shared].freeze
+  # Where the flight is flown. The tunnel has no GPS, no exit and no landing.
+  ENVIRONMENTS = %w[sky tunnel].freeze
+  TUNNEL_GLIDE_RATIOS = (1.49..3.98)
+  # Where tunnel flights are flown unless another place is entered.
+  TUNNEL_LOCATION = "Inclined Slovenia"
 
   belongs_to :user
   belongs_to :pilot, class_name: "User", inverse_of: :piloted_flights
@@ -28,12 +33,16 @@ class Flight < ApplicationRecord
 
   before_validation :assign_code
   before_validation :assign_default_pilot, on: :create
+  before_validation :assign_tunnel_location
   after_create :create_initial_comment
   validates :initial_comment, length: { maximum: FlightComment::MAX_LENGTH }, allow_blank: true
   validate :validate_initial_comment_images, if: :new_record?
 
   validates :code, presence: true
-  validates :flown_on, :location, presence: true, if: -> { logged? || validation_context == :logbook }
+  validates :flown_on, presence: true, if: -> { logged? || validation_context == :logbook }
+  validates :location, presence: true, if: -> { sky? && (logged? || validation_context == :logbook) }
+  validates :environment, inclusion: { in: ENVIRONMENTS }
+  validates :tunnel_glide_ratio, numericality: { greater_than_or_equal_to: TUNNEL_GLIDE_RATIOS.min, less_than_or_equal_to: TUNNEL_GLIDE_RATIOS.max }, allow_nil: true
   validate :fdr_must_be_recorder
   validate :pilot_must_be_available, if: -> { new_record? || will_save_change_to_pilot_id? }
   validate :log_time_must_be_valid
@@ -58,6 +67,19 @@ class Flight < ApplicationRecord
       value == "shared" ? where(folder_id: FlightFolder.where(visibility: %w[shared club]).select(:id)) :
       where(folder_id: nil, visibility: "team").or(where(folder_id: FlightFolder.where(visibility: "public").select(:id)))
   }
+
+  ENVIRONMENTS.each do |value|
+    define_method("#{value}?") { environment == value }
+  end
+
+  def environment_label
+    environment.capitalize
+  end
+
+  # Angle of the tunnel airflow below the horizon, in degrees, for the set glide ratio.
+  def tunnel_airflow_angle
+    Math.atan(1 / tunnel_glide_ratio.to_f) * 180 / Math::PI if tunnel_glide_ratio
+  end
 
   def owned_by?(user)
     user.present? && user_id == user.id
@@ -143,6 +165,13 @@ class Flight < ApplicationRecord
   end
 
   private
+
+  def assign_tunnel_location
+    return unless tunnel? && location.blank?
+
+    self.location = TUNNEL_LOCATION
+    self.location_source = "manual"
+  end
 
   def assign_default_pilot
     self.pilot = user if pilot_id.nil?

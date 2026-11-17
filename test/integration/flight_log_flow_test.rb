@@ -79,7 +79,8 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
   test "the flight preview edits pilot, date and location in place" do
     flight = @owner.flights.create!(status: "review", started_at: Time.utc(2026, 11, 16, 16, 12), location: "Tunnel")
     get flights_path(selected: "flight:#{flight.id}")
-    assert_select "#flight-preview details.exds-inline-edit", count: 3
+    assert_select "#flight-preview details.exds-inline-edit", count: 4
+    assert_select "#flight-preview details.exds-inline-edit select[name='flight[environment]']", count: 1
     assert_select "#flight-preview details.exds-inline-edit form[data-turbo-frame='flight-browser'] select[name='flight[pilot_id]']", count: 1
     assert_select "#flight-preview details.exds-inline-edit input[name='flight[location]'][value='Tunnel']", count: 1
     # Changing the pilot alone leaves the recorded date and time untouched.

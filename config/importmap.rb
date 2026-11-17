@@ -20,6 +20,8 @@ pin "signal_layout", to: "lib/signal_layout.js"
 pin "signal_telemetry", to: "lib/signal_telemetry.js"
 pin "signal_instruments", to: "lib/signal_instruments.js"
 pin "signal_map", to: "lib/signal_map.js"
+pin "wing_aero", to: "lib/wing_aero.js", preload: false
+pin "airflow_scene", to: "lib/airflow_scene.js", preload: false
 pin "aircraft_connection", to: "lib/aircraft_connection.js"
 pin "usb_page_lifecycle", to: "lib/usb_page_lifecycle.js"
 pin_all_from "app/javascript/controllers", under: "controllers", preload: false

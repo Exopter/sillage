@@ -41,6 +41,10 @@ module Flights
         changes[:folder_id] = given[:folder_id] == "unfiled" ? nil : find(FlightFolder.contributable_to(@user), given[:folder_id], "folder").id
       end
       changes[:location] = given[:location].to_s.strip.first(200) if given[:location].to_s.strip.present?
+      if given[:environment].present?
+        raise Invalid, "Choose Tunnel or Sky." unless given[:environment].in?(Flight::ENVIRONMENTS)
+        changes[:environment] = given[:environment]
+      end
       if given[:flown_on].present?
         changes[:flown_on] = Date.iso8601(given[:flown_on].to_s)
       end

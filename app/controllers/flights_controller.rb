@@ -31,7 +31,8 @@ class FlightsController < ApplicationController
 
   def new
     status = params[:intent] == "prepare" ? "preparation" : "logged"
-    @flight = Current.user.flights.new(pilot: Current.user, status:, flown_on: (Date.current if status == "logged"))
+    @flight = Current.user.flights.new(pilot: Current.user, status:, flown_on: (Date.current if status == "logged"),
+      environment: params[:environment].presence_in(Flight::ENVIRONMENTS) || Current.user.flights.order(:id).last&.environment || "sky")
     load_browser(panel: "new")
     @flight.folder = @folder if @folder&.contributable_by?(Current.user)
     load_form_options
@@ -152,7 +153,7 @@ class FlightsController < ApplicationController
   end
 
   def bulk_update
-    changes = params.fetch(:changes, {}).permit(:pilot_id, :aircraft_id, :location, :flown_on, :folder_id)
+    changes = params.fetch(:changes, {}).permit(:pilot_id, :aircraft_id, :location, :flown_on, :folder_id, :environment)
     result = Flights::EditSelection.new(user: Current.user, flight_ids: selected_flight_ids, changes:).call
     notice = "#{result.updated} #{'flight'.pluralize(result.updated)} updated."
     notice += " #{result.unchanged} already matched." if result.unchanged.positive?
@@ -170,7 +171,7 @@ class FlightsController < ApplicationController
   def selected_flight_ids
     Flights::Selection.flight_ids(user: Current.user, scope: params[:scope], entries: params[:entries],
       filter: params[:filter].presence_in(Flights::Logbook::FILTERS) || "flights", query: params[:q],
-      visibility: params[:visibility], folder: requested_folder)
+      visibility: params[:visibility], folder: requested_folder, environment: params[:environment])
   end
 
   def replay_payload
@@ -187,7 +188,8 @@ class FlightsController < ApplicationController
 
   def selection_return_path
     flights_path(filter: params[:filter].presence_in(Flights::Logbook::FILTERS) || "flights",
-      q: params[:q].to_s.strip.presence, visibility: params[:visibility].presence_in(Flight::EFFECTIVE_VISIBILITIES), folder: params[:folder].presence)
+      q: params[:q].to_s.strip.presence, visibility: params[:visibility].presence_in(Flight::EFFECTIVE_VISIBILITIES), folder: params[:folder].presence,
+      environment: params[:environment].presence_in(Flight::ENVIRONMENTS))
   end
 
   def set_flight
@@ -215,6 +217,8 @@ class FlightsController < ApplicationController
       :folder_id,
       :location,
       :aircraft_id,
+      :environment,
+      :tunnel_glide_ratio,
       :initial_comment,
       :exit_at,
       :opening_at,

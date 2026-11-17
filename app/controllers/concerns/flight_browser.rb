@@ -8,6 +8,7 @@ module FlightBrowser
     @filter = params[:filter].presence_in(Flights::Logbook::FILTERS) || (@flight_import&.set_aside? ? "set_aside" : "flights")
     @visibility = (params[:visibility] == "team" ? "public" : params[:visibility]).presence_in(Flight::EFFECTIVE_VISIBILITIES) || "all"
     @folder_filter = requested_folder
+    @environment = params[:environment].presence_in(Flight::ENVIRONMENTS)
     @page = [ params[:page].to_i, 1 ].max
   end
 
@@ -19,7 +20,7 @@ module FlightBrowser
     @destination_folders = FlightFolder.contributable_to(Current.user).ordered
     @folder_filter ||= focus.folder_id.to_s if focus&.folder&.visible_to?(Current.user)
     @folder = @folders.find(@folder_filter) if @folder_filter && @folder_filter != "unfiled"
-    logbook = Flights::Logbook.new(user: Current.user, filter: @filter, query: @query, visibility: @visibility, folder: @folder_filter)
+    logbook = Flights::Logbook.new(user: Current.user, filter: @filter, query: @query, visibility: @visibility, folder: @folder_filter, environment: @environment)
     entries = logbook.page(@page)
     @next_page = @page + 1 if entries.size > Flights::Logbook::PER_PAGE
     @total_pages = [ (logbook.count.to_f / Flights::Logbook::PER_PAGE).ceil, 1 ].max if @next_page || @page > 1
@@ -46,6 +47,6 @@ module FlightBrowser
   end
 
   def browser_return_parameters
-    params.permit(:folder, :filter, :q, :visibility, :page).to_h
+    params.permit(:folder, :filter, :q, :visibility, :environment, :page).to_h
   end
 end

@@ -34,7 +34,7 @@ class Signal::StartSessionTest < ActiveSupport::TestCase
     assert_equal "live", flight.reload.status
     assert_equal "team", flight.visibility
     assert_equal({ "source" => "test", "recorder_device_id" => signal_recorder.device_id,
-      "recorder_assembly_id" => signal_recorder.assembly.id }, session.station_metadata)
+      "recorder_assembly_id" => signal_recorder.assembly.id, "environment" => "sky" }, session.station_metadata)
     assert_equal signal_recorder.assembly, flight.fdr
     assert_equal flight.aircraft.configuration_snapshot, flight.configuration_snapshot
   end

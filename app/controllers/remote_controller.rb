@@ -35,6 +35,9 @@ class RemoteController < ApplicationController
       folder:, visibility: destination == "private" ? "private" : "team",
       aircraft: Aircraft.active.find_by(id: params[:aircraft_id]),
       pilot:,
+      # The remote follows the ground station; alone, it is the tunnel remote.
+      environment: (station = SignalStation.for_remote(Current.user))&.environment || "tunnel",
+      tunnel_glide_ratio: station&.tunnel_glide_ratio,
       remote_start_requested_at: Time.current
     )
     render json: state_payload(flight), status: :created
@@ -78,7 +81,8 @@ class RemoteController < ApplicationController
 
     cast = ActiveModel::Type::Boolean.new
     station = SignalStation.check_in!(user: Current.user, key:, remote_enabled: cast.cast(params[:remote]) == true,
-      ready: cast.cast(params[:ready]) == true, device_id: params[:device_id], aircraft_label: params[:aircraft])
+      ready: cast.cast(params[:ready]) == true, device_id: params[:device_id], aircraft_label: params[:aircraft],
+      environment: params[:environment], tunnel_glide_ratio: params[:tunnel_glide_ratio])
     flight = pending_flight if station.remote_enabled && station.ready
     render json: flight ? { flight_id: flight.id, code: flight.code, pilot: flight.display_pilot, aircraft: flight.display_aircraft } : {}
   end
@@ -99,7 +103,7 @@ class RemoteController < ApplicationController
     station = SignalStation.for_remote(Current.user)
     return { state: "offline" } unless station
 
-    { state: station.remote_state, aircraft: station.aircraft_label }
+    { state: station.remote_state, aircraft: station.aircraft_label, environment: station.environment, tunnel_glide_ratio: station.tunnel_glide_ratio&.to_f }
   end
 
   def remote_flights

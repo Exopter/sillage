@@ -3,14 +3,14 @@ import { Controller } from "@hotwired/stimulus"
 const REMOTE_KEY = "signal-remote"
 const STATION_KEY = "signal-station-key"
 
-/** @typedef {{urlValue: string, toggleTarget: HTMLButtonElement, labelTarget: HTMLElement, pairTarget: HTMLButtonElement, dialogTarget: HTMLDialogElement, statusTarget: HTMLElement}} Bindings */
+/** @typedef {{urlValue: string, environmentValue: string, toggleTarget: HTMLButtonElement, labelTarget: HTMLElement, pairTarget: HTMLButtonElement, dialogTarget: HTMLDialogElement, statusTarget: HTMLElement}} Bindings */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 
 // The phone remote switch of a ground computer in standby. The computer checks
 // in with Sillage so the phone knows what it hears; with the switch on, it
 // starts the flight a phone asks for.
 export default class extends TypedController {
-  static values = { url: String }
+  static values = { url: String, environment: String }
   static targets = ["toggle", "label", "pair", "dialog", "status"]
   timer = 0
   enabled = false
@@ -18,6 +18,7 @@ export default class extends TypedController {
   /** @type {{ready: boolean, deviceId: string, label: string}} */
   heard = { ready: false, deviceId: "", label: "" }
   key = ""
+  glide = 0
 
   connect() {
     this.enabled = read(REMOTE_KEY) === "1"
@@ -38,6 +39,14 @@ export default class extends TypedController {
     this.heard = { ready, deviceId, label }
     this.render()
     if (changed) void this.checkIn()
+  }
+
+  /** The phone remote stamps this glide ratio on the tunnel flights it starts.
+   * @param {CustomEvent<{ratio: number}>} event
+   */
+  glideRatio(event) {
+    this.glide = event.detail.ratio
+    void this.checkIn()
   }
 
   toggle() {
@@ -66,7 +75,8 @@ export default class extends TypedController {
     try {
       const response = await fetch(this.urlValue, { method: "POST", credentials: "same-origin", cache: "no-store",
         headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "" },
-        body: JSON.stringify({ key: this.key, remote: this.enabled, ready: this.heard.ready, device_id: this.heard.deviceId, aircraft: this.heard.label }) })
+        body: JSON.stringify({ key: this.key, remote: this.enabled, ready: this.heard.ready, device_id: this.heard.deviceId, aircraft: this.heard.label,
+          environment: this.environmentValue, tunnel_glide_ratio: this.environmentValue === "tunnel" && this.glide ? this.glide.toFixed(2) : null }) })
       if (!response.ok) return
       const pending = await response.json()
       if (!pending.flight_id || !this.enabled || !this.heard.ready || this.starting) return

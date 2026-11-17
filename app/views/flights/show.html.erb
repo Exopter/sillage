@@ -54,6 +54,7 @@
       <span><%= @flight.code %><% if @flight.description.present? %> · <%= @flight.description %><% end %></span>
     </div>
     <%= render "flights/pilot", flight: @flight %>
+    <span class="mode-badge is-neutral"><%= @flight.environment_label %></span>
     <span class="mode-badge is-neutral"><%= visibility_label(@flight.effective_visibility) %></span>
     <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
       <%= button_to @flight, method: :delete, class: "kit-icon-button exds-iconbtn exds-iconbtn--ghost exds-iconbtn--danger", title: t("flights.show.delete"),
@@ -347,6 +348,8 @@
           <%= form_with model: @flight, class: "details-form" do |form| %>
             <%= form.label :pilot_id, "Pilot *" %>
             <%= form.collection_select :pilot_id, @pilots, :id, ->(pilot) { pilot.full_name || pilot.email_address }, { prompt: "Select a pilot" }, required: true %>
+            <%= form.label :environment, "Mode *" %>
+            <%= form.select :environment, [["Sky", "sky"], ["Tunnel", "tunnel"]], {}, required: true %>
             <%= form.label :description, "Description (optional)" %>
             <%= form.text_field :description %>
             <%= form.label :aircraft_id, t("flights.form.aircraft") %>
@@ -355,8 +358,8 @@
             <%= form.date_field :flown_on, value: @flight.display_flown_on, required: true %>
             <%= form.label :flown_at, "Time (optional)" %>
             <%= form.time_field :flown_at %>
-            <%= form.label :location, "Location *" %>
-            <%= form.text_field :location, required: true %>
+            <%= form.label :location, @flight.tunnel? ? "Location (optional)" : "Location *" %>
+            <%= form.text_field :location, required: @flight.sky? %>
             <%= form.label :fdr_id, "FDR (optional)" %>
             <%= form.collection_select :fdr_id, @fdrs, :id, :display_name, { include_blank: "None" } %>
             <%= render "flights/visibility_field", form: form %>
@@ -374,6 +377,7 @@
         <% else %>
           <dl class="details-grid">
             <div><dt>Pilot</dt><dd><%= render "flights/pilot", flight: @flight %></dd></div>
+            <div><dt>Mode</dt><dd><%= @flight.environment_label %></dd></div>
             <div><dt>Description</dt><dd><%= @flight.description %></dd></div>
             <div><dt>Aircraft</dt><dd><%= @flight.display_aircraft %></dd></div>
             <div><dt>Location</dt><dd><%= @flight.display_location %></dd></div>

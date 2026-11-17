@@ -1539,3 +1539,39 @@ textarea {
   /* The room navigation sits under the page on a phone. */
   .signal-phone { min-height: calc(100dvh - var(--ex-shell-header-height) - 60px - env(safe-area-inset-bottom)); }
 }
+
+/* Signal Tunnel or Signal Sky, chosen in standby. */
+.signal-environment { padding: 2px; border: 1px solid var(--ex-carbon-700); border-radius: var(--radius); }
+.signal-environment a {
+  padding: 6px 10px;
+  border-radius: var(--ex-radius-surface);
+  color: var(--ex-graphite-400);
+  font: 600 var(--fs-micro)/1 var(--font-mono);
+  text-decoration: none;
+  text-transform: uppercase;
+}
+.signal-environment a:hover,
+.signal-environment a:focus-visible,
+.signal-environment a[aria-current="true"] { background: var(--ex-carbon-700); color: var(--selection-marker); outline: 0; }
+
+/* Signal Tunnel: the wing model in the tunnel airflow, driven by the recorder IMU. */
+.signal-airflow { display: flex; flex-direction: column; }
+.signal-airflow-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ex-carbon-700);
+  color: var(--ex-graphite-400);
+  font-size: var(--fs-micro);
+}
+.signal-airflow-bar .signal-mode-buttons { margin-left: auto; }
+.signal-airflow-glide { display: inline-flex; align-items: center; gap: 8px; }
+.signal-airflow-glide output { min-width: 4ch; color: var(--ex-vapor-50); font: 600 var(--fs-body)/1 var(--font-mono); text-align: center; }
+.signal-airflow-scene { position: relative; min-height: 0; flex: 1; background: var(--ex-carbon-950); }
+.signal-airflow-scene canvas { display: block; width: 100%; height: 100%; }
+.signal-airflow-status { position: absolute; right: 12px; bottom: 10px; left: 12px; margin: 0; color: var(--ex-graphite-400); font-size: var(--fs-micro); }
+.signal-airflow-readouts { border-top: 1px solid var(--ex-carbon-700); }
+.signal-widget[data-mode="mini"] .signal-airflow-bar small,
+.signal-widget[data-mode="mini"] .signal-airflow-readouts { display: none; }

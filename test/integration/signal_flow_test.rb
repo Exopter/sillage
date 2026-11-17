@@ -236,6 +236,40 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-controller='signal-watch'] button", text: "End flight"
   end
 
+  test "Signal Tunnel shows the wing in the airflow, stamps the mode and the glide ratio and keeps GPS out" do
+    get signal_path(view: "home", environment: "sky")
+    assert_select "[data-signal-environment='sky'] [data-widget='map']", count: 1
+    assert_select "[data-controller='signal-airflow']", count: 0
+    assert_select ".signal-environment a[aria-current='true']", text: "Sky"
+    assert_select "[data-signal-workspace-target='altitude']", count: 1
+
+    get signal_path(view: "home", environment: "tunnel")
+    assert_response :success
+    assert_select ".signal-environment a[aria-current='true']", text: "Tunnel"
+    assert_select "[data-signal-environment='tunnel'] [data-widget='airflow'][data-mode='large'] [data-controller='signal-airflow']", count: 1
+    assert_select "[data-controller='signal-airflow'][data-signal-airflow-sections-url-value*='exowing-sections']", count: 1
+    assert_select "[data-controller='signal-airflow'] button[data-step]", count: 2
+    assert_select "[data-widget='map'], [data-signal-workspace-target='mapScene'], [data-signal-workspace-target='altitude'], [data-signal-workspace-target='glide'], [data-signal-workspace-target='heading']", count: 0
+    assert_select "[data-sensor='gps'], [data-sensor='mag']", count: 0
+    assert_select "form[action=?] input[name='environment'][value='tunnel']", signal_sessions_path
+    assert_select "[data-controller='signal-station'][data-signal-station-environment-value='tunnel']", count: 1
+
+    # The choice is remembered on this computer.
+    get signal_path(view: "home")
+    assert_select "[data-signal-environment='tunnel']", count: 1
+
+    post signal_sessions_path, params: { device_id: signal_recorder.device_id, transport: "ground-radio", environment: "tunnel", tunnel_glide_ratio: "2.99" }
+    session = users(:julien).signal_sessions.order(:id).last
+    assert session.flight.tunnel?
+    assert_equal 2.99, session.flight.tunnel_glide_ratio.to_f
+    assert_equal "tunnel", session.station_metadata["environment"]
+
+    # The recording keeps the mode of its flight, whatever this computer chose since.
+    get signal_path(session: session.uuid, environment: "sky")
+    assert_select "[data-signal-environment='tunnel'] [data-controller='signal-airflow'][data-signal-airflow-ratio-value='2.99']", count: 1
+    assert_select ".signal-command-bar[data-signal-state='recording']", text: /Tunnel/
+  end
+
   test "recovery is owner scoped and excludes discarded acquisitions" do
     session = create_signal_session
     other = users(:operator).signal_sessions.create!

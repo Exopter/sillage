@@ -20,7 +20,7 @@
 <% end %>
 
 <%# One workspace for both states: standby keeps the link open and shows live telemetry without recording it. %>
-<div class="signal-root ex-dark"
+<div class="signal-root ex-dark" data-signal-environment="<%= @environment %>"
      data-controller="signal-workspace"
      data-signal-workspace-cesium-token-value="<%= @cesium_ion_token %>"
      data-signal-workspace-cesium-base-url-value="<%= Rails.application.config.x.cesium_base_url %>"
@@ -37,9 +37,10 @@
        data-signal-workspace-batch-url-value="<%= batches_api_v1_signal_session_path(@active_session.uuid) %>"
        data-signal-workspace-event-url-value="<%= events_api_v1_signal_session_path(@active_session.uuid) %>"
        data-signal-workspace-complete-url-value="<%= complete_api_v1_signal_session_path(@active_session.uuid) %>"
+       data-action="sillage:signal-glide-ratio@window->signal-workspace#setGlideRatio"
      <% else %>
        data-signal-workspace-flight-code-value="STANDBY"
-       data-action="sillage:signal-start@window->signal-workspace#startFlight sillage:signal-identity-changed@window->signal-workspace#refreshIdentity"
+       data-action="sillage:signal-start@window->signal-workspace#startFlight sillage:signal-identity-changed@window->signal-workspace#refreshIdentity sillage:signal-glide-ratio@window->signal-workspace#setGlideRatio"
      <% end %>>
   <% if @active_session %>
     <%= render "signal/exit_dialog", flight: flight %>
@@ -48,10 +49,10 @@
     <header class="signal-command-bar" data-signal-state="<%= @active_session ? "recording" : "standby" %>">
       <div class="signal-session-identity">
         <% if @active_session %>
-          <span class="signal-k signal-recording-label">Recording · <%= flight&.code || "Flight" %></span>
+          <span class="signal-k signal-recording-label">Recording · <%= flight&.code || "Flight" %> · <%= @environment.capitalize %></span>
           <small><%= flight&.display_aircraft || "No aircraft" %></small>
         <% else %>
-          <span class="signal-k">Standby · Not recording</span>
+          <span class="signal-k">Signal <%= @environment.capitalize %> · Standby · Not recording</span>
           <small data-signal-workspace-target="standbyAircraft">No aircraft heard</small>
         <% end %>
         <small data-signal-workspace-target="mountLabel">Waiting for recorder mounting</small>
@@ -79,10 +80,17 @@
           <%# A distributed Seat changes mode only on a command signed with its Sillage key. %>
           <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" data-signal-workspace-target="modeButton" data-action="signal-workspace#changeMode" data-mode="ground" hidden><%= sillage_icon "wifi", size: 14 %><span>Ground mode (Wi-Fi)</span></button>
           <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" data-signal-workspace-target="modeButton" data-action="signal-workspace#changeMode" data-mode="flight" hidden><%= sillage_icon "plane", size: 14 %><span>Flight mode</span></button>
+          <nav class="signal-mode-buttons signal-environment" aria-label="Signal mode">
+            <% Flight::ENVIRONMENTS.reverse_each do |value| %>
+              <%= link_to value.capitalize, signal_path(view: "home", environment: value, flight_id: @selected_flight&.id), aria: { current: ("true" if @environment == value) }, data: { turbo: false } %>
+            <% end %>
+          </nav>
           <%= render "signal/remote_switch" %>
           <%= form_with url: signal_sessions_path, class: "signal-start", data: { signal_workspace_target: "startForm" } do |form| %>
             <%= form.hidden_field :device_id, value: "", id: nil, data: { signal_workspace_target: "startDevice" } %>
             <%= form.hidden_field :transport, value: "", id: nil, data: { signal_workspace_target: "startTransport" } %>
+            <%= form.hidden_field :environment, value: @environment, id: nil %>
+            <%= form.hidden_field :tunnel_glide_ratio, value: "", id: nil, data: { signal_workspace_target: "startGlideRatio" } %>
             <span class="exds-selection-field">
               <%= form.select :flight_id, options_for_select([ [ "New flight", "" ] ] + @prepared_flights.map { |prepared| [ "#{prepared.code} · #{prepared.display_aircraft}", prepared.id ] }, @selected_flight&.id),
                     {}, id: nil, class: "exds-select", aria: { label: "Flight to record" }, data: { signal_workspace_target: "startFlight" } %>
@@ -98,6 +106,6 @@
       <p id="signal-start-hint" class="signal-standby-hint" role="status" data-signal-workspace-target="startHint">Connect the link to hear the aircraft.</p>
       <%= render "signal/standby_notices" %>
     <% end %>
-    <%= render "signal/dashboard", code: flight&.code || (@active_session ? "Flight" : "Standby") %>
+    <%= render "signal/dashboard", code: flight&.code || (@active_session ? "Flight" : "Standby"), environment: @environment, glide_ratio: flight&.tunnel_glide_ratio %>
   </div>
 </div>

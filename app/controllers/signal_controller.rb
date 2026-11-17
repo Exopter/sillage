@@ -2,6 +2,7 @@
 # recorded), recording, and a watch view for every other device.
 class SignalController < ApplicationController
   STATION_COOKIE = :signal_station_flight
+  ENVIRONMENT_COOKIE = :signal_environment
 
   def index
     no_store
@@ -19,6 +20,7 @@ class SignalController < ApplicationController
       @read_only_sessions = SignalSession.accessible_to(Current.user).where.not(status: "discarded").includes(:flight).recent.limit(50)
       return render :read_only
     end
+    @environment = signal_environment
     # A phone cannot hold the ground radio: it opens on the remote and the live view instead of the station.
     return render_phone_hub(live) if phone_hub?
 
@@ -43,6 +45,17 @@ class SignalController < ApplicationController
   end
 
   private
+
+  # Signal Tunnel or Signal Sky. A recording follows its flight; standby follows
+  # the last choice made on this computer, then the operator's latest flight.
+  def signal_environment
+    recorded = @active_session&.flight&.environment || @active_session&.station_metadata&.dig("environment")
+    return recorded if recorded.in?(Flight::ENVIRONMENTS)
+
+    chosen = params[:environment].presence_in(Flight::ENVIRONMENTS)
+    cookies.permanent[ENVIRONMENT_COOKIE] = { value: chosen, httponly: true, same_site: :lax } if chosen
+    chosen || cookies[ENVIRONMENT_COOKIE].presence_in(Flight::ENVIRONMENTS) || Current.user.flights.order(:id).last&.environment || "sky"
+  end
 
   def phone_hub?
     request.user_agent.to_s.match?(/Mobi|Android/) && params[:setup] != "1" && params[:watch] != "1" && params[:join] != "1" && params[:session].blank?

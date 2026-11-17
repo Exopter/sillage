@@ -15,6 +15,8 @@ class SignalSessionsController < ApplicationController
       user: Current.user,
       device_id: params[:device_id],
       flight_id: params[:flight_id],
+      environment: params[:environment],
+      tunnel_glide_ratio: params[:tunnel_glide_ratio],
       station_metadata: { "source" => "web_serial", "transport" => params[:transport].to_s.presence }.compact
     ).call
     # This computer records the flight; every other device opening Signal watches it.

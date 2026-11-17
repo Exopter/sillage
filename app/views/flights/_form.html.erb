@@ -9,6 +9,11 @@
 
   <div class="exds-browser-form-grid">
     <label class="exds-browser-field is-wide">
+      <span>Mode *</span>
+      <%= form.select :environment, [["Sky", "sky"], ["Tunnel", "tunnel"]], {}, required: true, aria: { describedby: "flight-mode-help" } %>
+      <small id="flight-mode-help" class="exds-browser-autocomplete-help">Tunnel flights have no GPS track. Their location is Inclined Slovenia unless another one is entered.</small>
+    </label>
+    <label class="exds-browser-field is-wide">
       <span>Pilot *</span>
       <%= form.collection_select :pilot_id, @pilots, :id, ->(pilot) { pilot.full_name || pilot.email_address }, { prompt: "Select a pilot" }, required: true %>
     </label>
@@ -21,9 +26,9 @@
       <%= form.time_field :flown_at, data: { controller: ("local-time" if !preparation && (flight.new_record? || @logging_preparation) && flight.errors.empty?) } %>
     </label>
     <div class="exds-browser-field is-wide" data-controller="location-suggestions" data-action="focusout->location-suggestions#leave">
-      <%= form.label :location, preparation ? "Location (optional)" : "Location *" %>
+      <%= form.label :location, preparation || flight.tunnel? ? "Location (optional)" : "Location *" %>
       <div class="exds-browser-autocomplete">
-        <%= form.text_field :location, required: !preparation, autocomplete: "off", role: "combobox", aria: { autocomplete: "list", expanded: "false", controls: "flight-location-suggestions", describedby: "flight-location-help" }, data: { location_suggestions_target: "input", action: "input->location-suggestions#search focus->location-suggestions#search keydown->location-suggestions#navigate" }, placeholder: "Airfield, drop zone or operating location" %>
+        <%= form.text_field :location, required: !preparation && flight.sky?, autocomplete: "off", role: "combobox", aria: { autocomplete: "list", expanded: "false", controls: "flight-location-suggestions", describedby: "flight-location-help" }, data: { location_suggestions_target: "input", action: "input->location-suggestions#search focus->location-suggestions#search keydown->location-suggestions#navigate" }, placeholder: "Airfield, drop zone or operating location" %>
         <div id="flight-location-suggestions" class="exds-browser-autocomplete-results" role="listbox" aria-label="Existing locations" data-location-suggestions-target="results" hidden>
           <% @location_suggestions.each_with_index do |location, index| %>
             <button type="button" id="flight-location-option-<%= index %>" class="exds-browser-autocomplete-option" role="option" aria-selected="false" tabindex="-1" data-location-suggestions-target="option" data-action="mousedown->location-suggestions#keepFocus click->location-suggestions#select"><%= location %></button>

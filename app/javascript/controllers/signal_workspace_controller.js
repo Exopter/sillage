@@ -79,6 +79,12 @@ const CHART_WINDOW_MS = 30_000
  * @property {HTMLFormElement} startFormTarget
  * @property {HTMLInputElement} startDeviceTarget
  * @property {HTMLInputElement} startTransportTarget
+ * @property {HTMLInputElement} startGlideRatioTarget
+ * @property {boolean} hasStartGlideRatioTarget
+ * @property {boolean} hasMapSceneTarget
+ * @property {boolean} hasHeadingTarget
+ * @property {boolean} hasAltitudeTarget
+ * @property {boolean} hasLatestEventTarget
  * @property {HTMLSelectElement} startFlightTarget
  * @property {HTMLButtonElement} startButtonTarget
  * @property {HTMLElement} startHintTarget
@@ -232,7 +238,7 @@ export default class extends TypedController {
     "qualityAttitude", "qualityHeading", "attitudeDetail", "headingDetail", "preflightDetail", "preflightStatus",
     "exitDialog", "exitError", "exitStatus", "flightName", "exitAction",
     "parserStatus", "aircraftMarker", "aircraftLabel", "latestEvent", "sensorValue", "streamBadge", "mountLabel", "sensorAxes",
-    "aircraftStatus", "standbyAircraft", "startForm", "startDevice", "startTransport", "startFlight", "startButton", "startHint", "modeButton"
+    "aircraftStatus", "standbyAircraft", "startForm", "startDevice", "startTransport", "startFlight", "startButton", "startHint", "modeButton", "startGlideRatio"
   ]
 
   static values = {
@@ -282,7 +288,9 @@ export default class extends TypedController {
     this.batchWrite = Promise.resolve()
     this.unregisterUsbPageRelease = registerUsbPageRelease(() => this.releaseCapture())
     // One layout for the station: it stays put from standby into a recording and back.
-    this.layoutStorageKey = "signal-layout:station"
+    // Signal Tunnel and Signal Sky hold different widgets, so each keeps its own layout.
+    this.layoutStorageKey = `signal-layout:station:${this.element.getAttribute("data-signal-environment") || "sky"}`
+    this.glideRatio = 0
     this.parkedLink = null
     this.standbyIdentity = null; this.identityKey = ""; this.identityAt = 0; this.identityLoading = false
     this.standbySignature = ""
@@ -331,10 +339,13 @@ export default class extends TypedController {
     navigator.serial?.addEventListener("connect", this.boundSerialConnect)
     navigator.serial?.addEventListener("disconnect", this.boundSerialDisconnect)
     this.restoreLayout()
-    this.map3d = new SignalMap({ container: this.mapSceneTarget, credits: this.mapCreditsTarget,
-      status: this.mapStatusTarget, followButton: this.mapFollowTarget,
-      baseUrl: this.cesiumBaseUrlValue, token: this.cesiumTokenValue, label: this.flightCodeValue })
-    this.map3d.start()
+    // Signal Tunnel has no map: nothing there depends on GPS.
+    if (this.hasMapSceneTarget) {
+      this.map3d = new SignalMap({ container: this.mapSceneTarget, credits: this.mapCreditsTarget,
+        status: this.mapStatusTarget, followButton: this.mapFollowTarget,
+        baseUrl: this.cesiumBaseUrlValue, token: this.cesiumTokenValue, label: this.flightCodeValue })
+      this.map3d.start()
+    }
     if (!this.standby) this.batchTimer = window.setInterval(() => {
       if (!this.ending) this.queuePendingBatch().then(() => this.flushOutbox()).catch((error) => this.showWarning(`Local storage failed: ${error.message}. Keep this page open and free disk space.`))
     }, BATCH_INTERVAL_MS)
@@ -758,7 +769,7 @@ export default class extends TypedController {
     this.streamBadgeTargets.forEach((badge) => {
       const widget = badge.closest("[data-widget]")?.getAttribute("data-widget")
       const available = widget === "map" ? this.telemetry.gps != null
-        : widget === "instruments" ? this.telemetry.roll != null && this.telemetry.pitch != null : true
+        : widget === "instruments" || widget === "airflow" ? this.telemetry.roll != null && this.telemetry.pitch != null : true
       const label = live && !available ? (widget === "map" && this.telemetry.fix != null ? "No fix" : "No data") : state
       badge.textContent = label
       badge.dataset.state = live && !available ? "waiting" : state.toLowerCase()
@@ -770,6 +781,10 @@ export default class extends TypedController {
     }
     if (this.standby) this.renderStandby(live, now)
     this.renderModules()
+    // The wing in the airflow follows the recorder IMU; a stale attitude is sent as missing.
+    window.dispatchEvent(new CustomEvent("sillage:signal-telemetry", {detail: {
+      roll: live ? this.telemetry.roll : null, pitch: live ? this.telemetry.pitch : null
+    }}))
     this.renderRadioMetrics(live, now)
     this.dataStatusTarget.textContent = this.ended ? "Flight ended locally" : live ? "Receiving telemetry" : this.lastFrameAt ? "Telemetry stale" : "Waiting for telemetry"
     this.pushHistory(live, now)
@@ -838,12 +853,14 @@ export default class extends TypedController {
       ? this.activeMountProfile === BELLY_MOUNT ? "Wingsuit belly pocket · MAG" : "Native sensor axes · MAG"
       : "Waiting for recorder mounting"
     for (const target of this.sensorAxesTargets || []) target.textContent = this.telemetry.bodyFrame ? "F/R/D" : "X/Y/Z"
-    this.headingTarget.textContent = formatNumber(this.telemetry.heading, 0, 3)
     this.airspeedTarget.textContent = formatNumber(this.telemetry.airspeed, 1)
-    this.altitudeTarget.textContent = formatNumber(this.telemetry.altitude, 0)
-    this.verticalSpeedTarget.textContent = formatNumber(this.telemetry.verticalSpeed, 1)
-    this.glideTarget.textContent = formatNumber(this.telemetry.glide, 1)
-    this.aircraftLabelTarget.textContent = this.telemetry.gps
+    if (this.hasHeadingTarget) this.headingTarget.textContent = formatNumber(this.telemetry.heading, 0, 3)
+    if (this.hasAltitudeTarget) {
+      this.altitudeTarget.textContent = formatNumber(this.telemetry.altitude, 0)
+      this.verticalSpeedTarget.textContent = formatNumber(this.telemetry.verticalSpeed, 1)
+      this.glideTarget.textContent = formatNumber(this.telemetry.glide, 1)
+    }
+    if (this.hasMapSceneTarget) this.aircraftLabelTarget.textContent = this.telemetry.gps
       ? `${this.telemetry.gps[1].toFixed(5)}, ${this.telemetry.gps[0].toFixed(5)}` : "No current GPS position"
     const vector = (/** @type {number[]|null} */ values) => values ? values.map((value) => formatNumber(value, 2)).join(" / ") : "---"
     const fix = this.telemetry.fix
@@ -990,8 +1007,25 @@ export default class extends TypedController {
     const eventUuid = crypto.randomUUID()
     const label = `Operator marker · ${new Date().toLocaleTimeString()}`
     await writeOutbox(this.database, { id: `${this.sessionValue}:event:${eventUuid}`, session: this.sessionValue, kind: "event", url: this.eventUrlValue, method: "POST", body: { event_uuid: eventUuid, event_type: "marker", occurred_at: occurredAt, label, metadata: {} }, queuedAt: Date.now() })
-    this.latestEventTarget.hidden = false
-    this.latestEventTarget.textContent = label
+    if (this.hasLatestEventTarget) {
+      this.latestEventTarget.hidden = false
+      this.latestEventTarget.textContent = label
+    }
+    await this.flushOutbox()
+  }
+
+  /** The tunnel glide ratio set on the airflow widget: stamped on the next flight, and
+   * marked in the recording when it changes during one.
+   * @param {CustomEvent<{ratio: number}>} event
+   */
+  async setGlideRatio(event) {
+    const ratio = event.detail.ratio, changed = this.glideRatio !== 0 && ratio !== this.glideRatio
+    this.glideRatio = ratio
+    if (this.hasStartGlideRatioTarget) this.startGlideRatioTarget.value = ratio.toFixed(2)
+    if (!changed || this.standby || this.ending || this.ended || !this.db) return
+    const eventUuid = crypto.randomUUID()
+    await writeOutbox(this.database, { id: `${this.sessionValue}:event:${eventUuid}`, session: this.sessionValue, kind: "event", url: this.eventUrlValue, method: "POST",
+      body: { event_uuid: eventUuid, event_type: "note", occurred_at: new Date().toISOString(), label: `Tunnel glide ratio ${ratio.toFixed(2)}`, metadata: { source: "tunnel_glide_ratio", glide_ratio: ratio } }, queuedAt: Date.now() })
     await this.flushOutbox()
   }
 
@@ -1407,7 +1441,8 @@ export default class extends TypedController {
         if (viewportChanged || oversized) this.applyPreset(this.widgetTargets.find((widget) => widget.dataset.mode === "large")?.dataset.widget || "map")
         else this.clampAllWidgets()
       } else {
-        this.applyPreset("map")
+        // The widget marked large leads: the map in Signal Sky, the wing in the airflow in Signal Tunnel.
+        this.applyPreset(this.widgetTargets.find((widget) => widget.dataset.mode === "large")?.dataset.widget || "map")
       }
       this.updateModeButtons()
     })
@@ -1538,6 +1573,7 @@ export default class extends TypedController {
   }
 
   drawMap() {
+    if (!this.hasMapSceneTarget) return
     const ready = this.map3d?.ready || false
     this.mapCanvasTarget.hidden = ready
     this.mapSceneTarget.hidden = !ready
