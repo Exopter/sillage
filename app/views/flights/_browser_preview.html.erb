@@ -34,10 +34,6 @@
       </div>
     <% end %>
     <% preview_videos = accessible ? Array(@preview_videos) : [] %>
-    <% if preview_videos.any? %>
-      <%# A tunnel flight has no route: its cameras take the place of the map. Nothing loads until the flight is selected. %>
-      <%= render "flights/tunnel_cameras", videos: preview_videos, viewer: false %>
-    <% end %>
     <% editable = can_manage_operations? && flight && accessible && !entry.live? %>
     <dl class="exds-browser-metadata">
       <% if flight %><div><dt>Pilot</dt><dd>
@@ -70,6 +66,13 @@
         <%= link_to "Join live session", signal_path(session: live_session.uuid, join: 1), class: "exds-btn exds-btn--primary", data: { turbo_frame: "_top" } %>
       <% end %>
       <%= render "flight_comments/comments", flight: entry %>
+      <% if preview_videos.any? %>
+        <%# The cameras follow the discussion in their own section. Nothing loads until the flight is selected. %>
+        <section class="exds-browser-editor-section" aria-label="Flight videos">
+          <div class="exds-comments-heading"><h3>Videos</h3><span><%= preview_videos.size %></span></div>
+          <%= render "flights/tunnel_cameras", videos: preview_videos, viewer: false %>
+        </section>
+      <% end %>
       <%= render "flights/log_equipment", flight: entry %>
     <% end %>
     <dl class="exds-browser-metadata">

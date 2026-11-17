@@ -113,6 +113,7 @@
 .exds-browser-editor-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-rule); }
 .exds-browser-editor-section h3 { margin: 0; font-size: var(--fs-card); }
 .exds-browser-editor-section .workspace-actions { flex-wrap: wrap; margin-top: 16px; }
+.exds-browser-editor-section > .video-player { margin-top: 12px; }
 .exds-browser-editor .upload-drop { min-width: 0; padding: 24px 16px; }
 .exds-browser-editor .upload-drop input { max-width: 100%; }
 @container (max-width: 380px) {
