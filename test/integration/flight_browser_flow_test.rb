@@ -9,9 +9,10 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     sign_in_as @owner
   end
 
-  test "the preview opens the flight from the top of the panel" do
+  test "the preview opens the flight from its header actions" do
     get preview_flights_path(id: @flight.id, kind: "flight"), headers: { "Turbo-Frame" => "flight-preview" }
-    assert_select ".exds-browser-preview > header + a[href=?]", flight_path(@flight), text: /Open flight/
+    assert_select ".exds-browser-preview-heading .exds-browser-preview-actions > a.exds-btn--primary:first-child[href=?]", flight_path(@flight), text: /Open flight/
+    assert_select ".exds-browser-preview > header + a", count: 0
   end
 
   test "a flight with tunnel cameras shows them in the list and plays them in the preview" do
