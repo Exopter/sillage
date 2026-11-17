@@ -226,6 +226,17 @@ late.api = async (url) => { lateCalls.push(url); return { url: "/debriefs/13", s
 late.refreshLog = () => {}
 await late.send()
 assert.deepEqual(lateCalls, ["/debriefs", "/debriefs/13/upload", "/debriefs/13/process_audio"])
+// FLT-2026-111: a recording resent by a reopened page carries the ticks saved with it.
+const ticks = recorder("ticks:flight")
+await ticks.connect()
+ticks.element.dataset.checklist = "{}"
+ticks.saved = { uuid: "ticks", parts: [original], type: "audio/webm", url: null, checklist: { cg: "5", feelings: "Noted" } }
+let processed = null
+ticks.api = async (url, body) => { if (url.endsWith("process_audio")) processed = body; return { url: "/debriefs/14", audio: true } }
+ticks.refreshLog = () => {}
+await ticks.send()
+assert.deepEqual(processed.checklist, { cg: "5", feelings: "Noted" })
+ticks.database.close()
 stalled.database.close(); interrupted.database.close(); late.database.close()
 console.log("Send after an interrupted or silent recorder and late audio passed")
 

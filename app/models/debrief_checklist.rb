@@ -10,6 +10,8 @@ module DebriefChecklist
     { key: "special", label: "Special features" }
   ].freeze
   KEYS = ITEMS.map { |item| item[:key] }.freeze
+  # Stored beside the values: the cells corrected by hand, which no later reading may overwrite.
+  EDITED = "edited".freeze
   NUMBER = /[+-]?\d+(?:[.,]\d+)?/
   GAP = /[^\d+-]{0,24}/
   # A figure belongs to the label right before it: the gap never runs over the next label.
@@ -87,9 +89,20 @@ module DebriefChecklist
   # replaces what was detected live, wrong guesses included; the phone keeps what only it
   # knows: the points ticked by hand. Without the model, word patterns complete the live values.
   def settle(live, transcript, understood)
-    return live.merge(extract(transcript)) unless understood
+    edited = Array(live[EDITED])
+    read = understood || extract(transcript)
+    kept = understood ? live.reject { |key, value| KEYS.include?(key) && value != "Noted" && edited.exclude?(key) } : live
+    # A cell corrected by hand in the Pilot log is never rewritten, emptied ones included.
+    kept.merge(read.except(*edited))
+  end
 
-    live.reject { |key, value| KEYS.include?(key) && value != "Noted" }.merge(understood)
+  # Applies the cells typed in the Pilot log and remembers which ones were changed by hand.
+  def edit(checklist, values)
+    typed = sanitize(values)
+    changed = KEYS.select { |key| values.respond_to?(:key?) && values.key?(key) && typed[key] != checklist[key] }
+    return checklist if changed.empty?
+
+    checklist.except(*changed).merge(typed.slice(*changed)).merge(EDITED => (Array(checklist[EDITED]) | changed))
   end
 
   UNIT = %r{km/h|kmh|mph|m/s|kts?|knots|\u00b0|deg(?:rees)?|%|mm|cm}i

@@ -34,6 +34,17 @@ class DebriefChecklistTest < ActiveSupport::TestCase
     assert_equal live.merge("glide_ratio" => "3.2"), DebriefChecklist.settle(live, "Glide ratio 3.2", nil)
   end
 
+  test "cells corrected by hand are remembered and survive a later reading" do
+    checklist = { "glide_ratio" => "150", "aoa" => "3.2", "speed" => "150 km/h" }
+    edited = DebriefChecklist.edit(checklist, { "glide_ratio" => " 4 ", "aoa" => "", "speed" => "150 km/h", "cg" => "", "admin" => "1" })
+    assert_equal({ "speed" => "150 km/h", "glide_ratio" => "4", "edited" => %w[glide_ratio aoa] }, edited)
+    assert_same checklist, DebriefChecklist.edit(checklist, { "speed" => "150 km/h" })
+    # The audio lands later and is read again: typed and emptied cells stay as they were left.
+    assert_equal({ "speed" => "155 km/h", "glide_ratio" => "4", "edited" => %w[glide_ratio aoa], "cg" => "3" },
+      DebriefChecklist.settle(edited, "", { "glide_ratio" => "3.2", "aoa" => "0", "speed" => "155 km/h", "cg" => "3" }))
+    assert_equal "4", DebriefChecklist.settle(edited, "Glide ratio 3.2", nil)["glide_ratio"]
+  end
+
   test "ticks the field debriefs of 16 and 17 November 2026 without the model, like the phone does" do
     field = JSON.parse(file_fixture("debrief_field_transcripts.json").read)
     assert_equal 11, field.size

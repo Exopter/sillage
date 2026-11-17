@@ -13,7 +13,7 @@ import { Controller } from "@hotwired/stimulus"
  * @property {HTMLMeterElement} levelTarget
  * @property {HTMLElement} transcriptTarget
  */
-/** @typedef {{uuid: string, parts: Blob[], type: string, url: string | null}} SavedRecording */
+/** @typedef {{uuid: string, parts: Blob[], type: string, url: string | null, checklist?: Record<string, string>}} SavedRecording */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 export default class extends TypedController {
   static values = { url: String, key: String, commentsUrl: String, replaces: Number, prewarm: Boolean, autosend: Boolean }
@@ -233,6 +233,8 @@ export default class extends TypedController {
         this.parts.push(event.data)
         if (!this.saved) return
         this.saved.parts = this.parts.slice()
+        // The ticks are saved with the audio, so a page reopened later sends both.
+        this.saved.checklist = this.checklist()
         const snapshot = { ...this.saved }
         this.writeQueue = this.writeQueue.then(() => this.store("put", snapshot)).catch(() => { this.statusTarget.textContent = "Local saving failed. Finish and download or upload before leaving." })
       }
@@ -473,7 +475,7 @@ export default class extends TypedController {
       await this.api(`${debrief.url}/upload`, form)
     }
     await live
-    await this.api(`${debrief.url}/process_audio`, { transcript: this.liveComplete ? [...this.committed].map(id => this.turns.get(id)).join("\n") : undefined, checklist: this.checklist(), replaces: this.replacesValue || undefined })
+    await this.api(`${debrief.url}/process_audio`, { transcript: this.liveComplete ? [...this.committed].map(id => this.turns.get(id)).join("\n") : undefined, checklist: this.ticked(), replaces: this.replacesValue || undefined })
     // The entry is in the Pilot log from here on; the summary is written in the background.
     try { await this.store("delete") } catch { /* The server already holds the audio. */ }
     this.saved = null
@@ -487,6 +489,13 @@ export default class extends TypedController {
   /** Checklist points ticked beside the recorder, when the page has a checklist. */
   checklist() {
     try { return JSON.parse(this.element.dataset.checklist || "null") || undefined } catch { return undefined }
+  }
+
+  // The ticks on screen, or the ones saved with the recording when the screen has none
+  // (a recorder brought back out of sight to send what a closed page left behind).
+  ticked() {
+    const shown = this.checklist()
+    return shown && Object.keys(shown).length ? shown : this.saved?.checklist || shown
   }
 
   // Leaves the recording without publishing anything: used to skip a debrief between chained flights.

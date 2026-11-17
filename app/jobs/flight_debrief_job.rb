@@ -14,9 +14,11 @@ class FlightDebriefJob < ApplicationJob
     transcript = final_transcript(debrief, client)
     debrief.update!(transcript:)
     summary = client.summarize(transcript)
-    understood = read_checklist(client, transcript) if debrief.checklist.present?
+    # Every debrief gets its checklist, whether or not the phone sent one: a recording resent
+    # by a reopened page arrives without it (FLT-2026-111, 17 November 2026).
+    understood = read_checklist(client, transcript)
     debrief.with_lock do
-      debrief.checklist = DebriefChecklist.settle(debrief.checklist, transcript, understood) if debrief.checklist.present?
+      debrief.checklist = DebriefChecklist.settle(debrief.checklist, transcript, understood)
       comment = debrief.flight_comment
       # The audio landed while its live transcript was being summarized: read the recording itself.
       if !had_audio && debrief.audio.attached?
