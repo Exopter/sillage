@@ -157,6 +157,7 @@ Rails.application.routes.draw do
         post :publish
         post :realtime
         post :checklist
+        post :live
       end
     end
     resources :comments, controller: "flight_comments", only: [ :index, :create, :edit, :update, :destroy ]

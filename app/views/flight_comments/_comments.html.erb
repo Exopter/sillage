@@ -54,9 +54,11 @@
               <% if debrief.audio.attached? %>
                 <audio class="flight-debrief-audio" controls preload="metadata" data-controller="audio-duration" src="<%= attachment_path(debrief.audio.attachment) %>"></audio>
                 <%= link_to attachment_path(debrief.audio.attachment), download: true, class: "flight-debrief-download" do %><%= sillage_icon "download", size: 15 %><span>Download original audio</span><% end %>
+              <% elsif !debrief.summary_pending? %>
+                <p class="flight-debrief-note"><%= sillage_icon "info", size: 14 %><span>The audio did not reach the server. This entry is written from what was heard live; it is replaced if the phone delivers the recording.</span></p>
               <% end %>
               <% if debrief.transcript.present? %>
-                <details class="exds-disclosure flight-debrief-transcript"><summary>Full transcript</summary><p><%= debrief.transcript %></p></details>
+                <details class="exds-disclosure flight-debrief-transcript"><summary><%= debrief.audio.attached? ? "Full transcript" : "Live transcript" %></summary><p><%= debrief.transcript %></p></details>
               <% end %>
             </div>
           <% else %>

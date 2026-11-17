@@ -13,6 +13,9 @@ production:
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12
+  publish_debriefs_heard_without_audio:
+    class: FlightDebriefLiveOnlyJob
+    schedule: every 5 minutes
   # No-op until the TUNNEL_MEDIA_* settings are present.
   sync_tunnel_media:
     class: TunnelMediaSyncJob

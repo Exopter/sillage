@@ -187,6 +187,25 @@ clearInterval(refused.meterTimer)
 early.database.close(); returning.database.close(); refused.database.close()
 console.log("Immediate local recording, early live connection, muted microphone and reservation release passed")
 
+// What is heard live is handed to the server while recording, a few seconds apart, so a
+// debrief whose audio never arrives still has its words (FLT-2026-100).
+const heard = recorder("heard")
+const kept = []
+heard.api = async (url, body) => { kept.push([url, body.transcript]) }
+heard.turns.set("a", "Glide ratio 3.5")
+heard.keepLive()
+assert.deepEqual(kept, [], "nothing is sent before the server knows the recording")
+heard.debriefUrl = "/debriefs/7"
+heard.keepLive()
+heard.turns.set("b", "speed 150")
+heard.keepLive()
+assert.deepEqual(kept, [["/debriefs/7/live", "Glide ratio 3.5"]], "sends are spaced")
+heard.keepLive(true)
+heard.keepLive(true)
+assert.deepEqual(kept.at(-1), ["/debriefs/7/live", "Glide ratio 3.5\nspeed 150"])
+assert.equal(kept.length, 2, "the same words are not sent twice")
+console.log("Live transcript kept on the server passed")
+
 // A send needs a real pause: a short breath inside a figure no longer cuts the phrase.
 const pacing = recorder("pacing")
 const commits = []

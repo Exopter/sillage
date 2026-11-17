@@ -8,6 +8,8 @@ class FlightDebriefJob < ApplicationJob
     end
     return unless claimed
 
+    had_audio = debrief.audio.attached?
+    previous = debrief.summary
     client = Debriefs::OpenAi.new
     transcript = final_transcript(debrief, client)
     debrief.update!(transcript:)
@@ -16,9 +18,17 @@ class FlightDebriefJob < ApplicationJob
     debrief.with_lock do
       debrief.checklist = DebriefChecklist.settle(debrief.checklist, transcript, understood) if debrief.checklist.present?
       comment = debrief.flight_comment
+      # The audio landed while its live transcript was being summarized: read the recording itself.
+      if !had_audio && debrief.audio.attached?
+        debrief.update!(transcript:, summary:, status: "uploaded")
+        comment&.update_columns(body: summary, updated_at: Time.current) if comment&.body == FlightDebrief::PENDING_SUMMARY
+        FlightDebriefJob.perform_later(debrief.id)
+        next
+      end
       if comment
-        # Fill the entry published at upload time, unless its author has already rewritten it.
-        comment.update_columns(body: summary, updated_at: Time.current) if comment.body == FlightDebrief::PENDING_SUMMARY
+        # Fill the entry published at upload time, or written earlier from the live transcript,
+        # unless its author has already rewritten it.
+        comment.update_columns(body: summary, updated_at: Time.current) if [ FlightDebrief::PENDING_SUMMARY, previous ].compact.include?(comment.body)
         debrief.update!(transcript:, summary:, status: "published")
       else
         debrief.update!(transcript:, summary:, status: "ready")

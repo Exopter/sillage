@@ -41,6 +41,8 @@ export default class extends TypedController {
   /** @type {string | null} */
   debriefUrl = null
   sending = false
+  keptLive = ""
+  keptAt = 0
   stopped = false
   /** @type {(() => void) | null} */
   wake = null
@@ -297,12 +299,25 @@ export default class extends TypedController {
         this.turns.set(message.item_id, message.transcript)
       }
       this.transcriptTarget.textContent = [...this.turns.values()].join("\n")
+      this.keepLive()
     }
     const offer = await this.peer.createOffer()
     await this.peer.setLocalDescription(offer)
     const response = await fetch("https://api.openai.com/v1/realtime/calls", { method: "POST", signal: AbortSignal.timeout(15000), headers: { Authorization: `Bearer ${secret.value}`, "Content-Type": "application/sdp" }, body: offer.sdp })
     if (!response.ok) throw new Error("Live transcription unavailable")
     await this.peer.setRemoteDescription({ type: "answer", sdp: await response.text() })
+  }
+
+  // Hands the server what has been heard so far, a few seconds apart. If the audio never
+  // arrives, the debrief is written from these words instead of being lost with it.
+  /** @param {boolean} [now] */
+  keepLive(now = false) {
+    const transcript = [...this.turns.values()].join("\n")
+    if (!this.debriefUrl || !transcript.trim() || transcript === this.keptLive) return
+    if (!now && Date.now() - this.keptAt < 4000) return
+    this.keptAt = Date.now()
+    this.keptLive = transcript
+    void this.api(`${this.debriefUrl}/live`, { transcript, checklist: this.checklist() }).catch(() => { this.keptLive = "" })
   }
 
   // Sends what was just said for transcription once the pilot has really paused. Each send is
@@ -338,6 +353,7 @@ export default class extends TypedController {
     // Nothing here may keep the recording from being sent.
     try { if (this.audioContext?.state !== "closed") await this.audioContext?.close() } catch { /* Already closed. */ }
     try { await this.wakeLock?.release() } catch { /* Already released. */ }
+    this.keepLive(true)
     const live = this.settleLive()
     await this.writeQueue
     if (this.abandoned) { await live; await this.dropSaved(); return }
@@ -354,6 +370,7 @@ export default class extends TypedController {
         await new Promise(resolve => setTimeout(resolve, 2000))
         this.liveComplete = !this.liveFailed && this.committed.size > previousCount && [...this.committed].every(id => this.completed.has(id))
       }
+      this.keepLive(true)
     } catch { this.liveComplete = false } finally {
       this.stream?.getTracks().forEach(track => track.stop())
       this.stream = null
