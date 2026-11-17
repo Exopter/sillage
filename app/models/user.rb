@@ -53,7 +53,8 @@ class User < ApplicationRecord
   validate :validate_avatar
 
   scope :active, -> { where(disabled_at: nil) }
-  scope :available_as_pilot, -> { active.where.not(invitation_accepted_at: nil) }
+  # An invited user can be given flights before accepting the invitation.
+  scope :available_as_pilot, -> { active }
   scope :admins, -> { where(role: "admin") }
 
   def self.default_admin

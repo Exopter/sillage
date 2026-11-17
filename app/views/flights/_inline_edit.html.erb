@@ -1,0 +1,12 @@
+<%# A value that turns into its field when clicked. Saving returns to the same browser view. %>
+<details class="exds-inline-edit" data-controller="inline-edit" data-action="toggle->inline-edit#opened keydown.esc->inline-edit#close">
+  <summary title="Edit <%= label %>" aria-label="Edit <%= label %>"><%= yield %><%= sillage_icon "pencil", size: 14 %></summary>
+  <%= form_with model: flight, data: { turbo_frame: "flight-browser", inline_edit_target: "form" } do |form| %>
+    <%= hidden_field_tag :intent, flight.preparation? ? "prepare" : "log", id: nil %>
+    <%= hidden_field_tag :return_to_browser, "1", id: nil %>
+    <% browser_context.each do |key, value| %><%= hidden_field_tag key, value, id: nil %><% end %>
+    <%= fields.call(form) %>
+    <% if local_assigns[:save] %><%= form.button "Save", class: "button-primary exds-btn exds-btn--primary" %><% end %>
+    <button type="button" class="button-secondary exds-btn exds-btn--secondary" data-action="inline-edit#close">Cancel</button>
+  <% end %>
+</details>

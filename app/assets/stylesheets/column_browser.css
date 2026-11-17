@@ -117,6 +117,16 @@
 .exds-browser-metadata dt { font: var(--fs-xs) var(--ex-font-mono); color: var(--text-muted); text-transform: uppercase; }
 .exds-browser-metadata dd { margin: 0; font-size: var(--fs-text); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; overflow-wrap: anywhere; }
 .exds-browser-metadata dd > small { color: var(--text-muted); font-size: var(--fs-caption); }
+.exds-inline-edit { min-width: 0; flex: 1; }
+.exds-inline-edit > summary { display: inline-flex; align-items: center; gap: 10px; margin: -4px -8px; padding: 4px 8px; border-radius: var(--ex-radius-instrument); cursor: pointer; list-style: none; }
+.exds-inline-edit > summary::-webkit-details-marker { display: none; }
+.exds-inline-edit > summary > svg { color: var(--text-muted); opacity: 0; flex-shrink: 0; }
+.exds-inline-edit > summary:is(:hover, :focus-visible) { background: var(--surface-panel); }
+.exds-inline-edit > summary:is(:hover, :focus-visible) > svg { opacity: 1; }
+.exds-inline-edit[open] > summary { display: none; }
+.exds-inline-edit form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.exds-inline-edit :is(input, select) { min-width: 0; min-height: var(--ex-control-height); padding: 4px 10px; border: 1px solid var(--border-strong); border-radius: var(--ex-radius-instrument); background: var(--surface-card); color: var(--text-body); font: inherit; }
+.exds-inline-edit input[type=text] { flex: 1 1 160px; }
 .exds-browser-footer { display: flex; justify-content: space-between; gap: 16px; padding: 8px 16px; border-top: 1px solid var(--border-rule); font-size: var(--fs-caption); color: var(--text-muted); }
 .exds-browser-dialog { width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow-y: auto; padding: 28px; border: 1px solid var(--border-rule); border-radius: var(--ex-radius-surface); box-shadow: var(--ex-shadow-raised); color: var(--text-body); }
 .exds-browser-dialog::backdrop { background: rgb(16 24 26 / .35); }
@@ -175,7 +185,8 @@
 }
 
 @media (pointer: coarse) {
-  .exds-browser-icon-button, .exds-browser-field :is(input, select) { min-height: 44px; }
+  .exds-browser-icon-button, .exds-browser-field :is(input, select), .exds-inline-edit :is(input, select) { min-height: 44px; }
+  .exds-inline-edit > summary > svg { opacity: 1; }
   .exds-browser-icon-button { min-width: 44px; }
   .exds-browser-nav { min-height: 44px; }
 }

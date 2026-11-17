@@ -4,7 +4,6 @@ module DebriefChecklist
   ITEMS = [
     { key: "glide_ratio", label: "Glide ratio" },
     { key: "speed", label: "Speed" },
-    { key: "pilot", label: "Pilot" },
     { key: "cg", label: "CG setting" },
     { key: "aoa", label: "AoA setting" },
     { key: "feelings", label: "Feelings", hint: "IDK \u00b7 IDP" },

@@ -35,10 +35,10 @@ class FlightTest < ActiveSupport::TestCase
     end
   end
 
-  test "inactive and invited users cannot be assigned but historical pilots are preserved" do
+  test "invited users can be assigned, inactive users cannot, and historical pilots are preserved" do
     flight = flights(:one)
-    assert_not flight.update(pilot: users(:invited))
-    assert_includes flight.errors[:pilot], "must be an active user with an accepted invitation"
+    assert_includes User.available_as_pilot, users(:invited)
+    flight.update!(pilot: users(:invited))
     pilot = users(:operator)
     flight.reload.update!(pilot:)
     pilot.update!(disabled_at: Time.current)

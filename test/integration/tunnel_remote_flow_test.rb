@@ -133,7 +133,7 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     debrief.update!(status: "uploaded")
     post process_audio_flight_debrief_path(flight, debrief), params: { checklist: { speed: "165 km/h", pilot: "Julien", injected: "x" } }, as: :json
     assert_response :success
-    assert_equal({ "speed" => "165 km/h", "pilot" => "Julien" }, debrief.reload.checklist)
+    assert_equal({ "speed" => "165 km/h" }, debrief.reload.checklist)
 
     get remote_state_path, as: :json
     assert_equal "ready", response.parsed_body["phase"]

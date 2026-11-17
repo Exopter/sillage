@@ -1,14 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
 import { extractChecklist } from "debrief_checklist"
 
-/** @typedef {{pilotValue: string, itemTargets: HTMLButtonElement[], countTarget: HTMLElement}} Bindings */
+/** @typedef {{itemTargets: HTMLButtonElement[], countTarget: HTMLElement}} Bindings */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 
 // Ticks checklist points as the pilot covers them. Three sources, weakest first:
 // word patterns (instant, work offline), the model reading the live transcript
 // (understands paraphrases), and the operator's own taps, which always win.
 export default class extends TypedController {
-  static values = { pilot: String }
   static targets = ["item", "count"]
   /** @type {Record<string, string>} */
   heard = {}
@@ -28,7 +27,6 @@ export default class extends TypedController {
   asking = false
 
   connect() {
-    if (this.pilotValue) this.heard.pilot = this.pilotValue
     this.rows = this.itemTargets.map((item) => /** @type {HTMLElement} */ (item.parentElement))
     const transcript = this.element.querySelector('[data-flight-debrief-target="transcript"]')
     if (transcript) {
