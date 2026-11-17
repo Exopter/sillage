@@ -189,7 +189,7 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
 
   test "a reservation opened early and never used does not block the next recording" do
     flight = flights(:one)
-    stale = flight.flight_debriefs.create!(uuid: SecureRandom.uuid, user: users(:julien))
+    stale = flight.flight_debriefs.create!(uuid: SecureRandom.uuid, user: users(:operator))
     fresh = SecureRandom.uuid
     post flight_debriefs_path(flight), params: { uuid: fresh }, as: :json
     assert_response :conflict
@@ -201,6 +201,83 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
 
     delete flight_debrief_path(flight, FlightDebrief.find_by!(uuid: fresh))
     assert_response :no_content
+  end
+
+  test "the operator's own unused reservation gives way at once, a recording stays" do
+    flight = flights(:one)
+    # The phone records first and reserves in the background: its own leftover must not strand the audio.
+    unused = flight.flight_debriefs.create!(uuid: SecureRandom.uuid, user: users(:julien))
+    post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
+    assert_response :success
+    assert_not FlightDebrief.exists?(unused.id)
+
+    recorded = FlightDebrief.find(response.parsed_body.fetch("id"))
+    recorded.audio.attach(io: StringIO.new("audio"), filename: "debrief.webm", content_type: "audio/webm")
+    post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
+    assert_response :success
+    assert FlightDebrief.exists?(recorded.id)
+  end
+
+  test "a debrief whose audio never arrives is written from the words heard live, and the audio replaces them" do
+    flight = flights(:one)
+    post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
+    debrief = FlightDebrief.find(response.parsed_body.fetch("id"))
+    post live_flight_debrief_path(flight, debrief), params: { transcript: "Quatre\nFeed 150.\nCG\nTrois point five", checklist: { speed: "150 km/h", admin: "1" } }, as: :json
+    assert_response :no_content
+    assert_equal "Quatre\nFeed 150.\nCG\nTrois point five", debrief.reload.transcript
+    assert_equal({ "speed" => "150 km/h" }, debrief.checklist)
+
+    # Its words make it a debrief: another recording of the operator does not sweep it away.
+    post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
+    assert_response :success
+    assert FlightDebrief.exists?(debrief.id)
+    FlightDebrief.find(response.parsed_body.fetch("id")).destroy!
+
+    FlightDebrief.publish_heard_without_audio!
+    assert_equal "recording", debrief.reload.status, "the phone is given time to deliver the audio"
+
+    client = Object.new
+    client.define_singleton_method(:summarize) { |text| "Summary of: #{text.lines.first.strip}" }
+    client.define_singleton_method(:checklist) { |_| { "glide_ratio" => "4", "speed" => "150 km/h", "cg" => "3.5" } }
+    client.define_singleton_method(:transcribe) { |_| "Glide ratio quatre, speed 150, CG trois point five." }
+    debrief.update_columns(updated_at: 11.minutes.ago)
+    replace_method(Debriefs::OpenAi, :new, -> { client }) do
+      perform_enqueued_jobs { FlightDebrief.publish_heard_without_audio! }
+    end
+    assert_equal "published", debrief.reload.status
+    assert_equal "Summary of: Quatre", debrief.flight_comment.body
+    assert_equal({ "glide_ratio" => "4", "speed" => "150 km/h", "cg" => "3.5" }, debrief.checklist)
+    get flight_comments_path(flight)
+    assert_select ".flight-debrief-note", text: /audio did not reach the server/
+    assert_select ".flight-debrief-transcript summary", text: "Live transcript"
+    assert_select "audio.flight-debrief-audio", count: 0
+
+    # The phone finally delivers the recording: the entry is rewritten from it.
+    replace_method(Debriefs::OpenAi, :new, -> { client }) do
+      perform_enqueued_jobs do
+        debrief.audio.attach(io: StringIO.new("audio"), filename: "debrief.webm", content_type: "audio/webm")
+        debrief.update!(status: "uploaded")
+        post process_audio_flight_debrief_path(flight, debrief), as: :json
+        assert_response :success
+      end
+    end
+    assert_equal "Glide ratio quatre, speed 150, CG trois point five.", debrief.reload.transcript
+    assert_equal "Summary of: Glide ratio quatre, speed 150, CG trois point five.", debrief.flight_comment.body
+    get flight_comments_path(flight)
+    assert_select ".flight-debrief-transcript summary", text: "Full transcript"
+    assert_select "audio.flight-debrief-audio", count: 1
+  end
+
+  test "the phone builds the debrief screen from a copy already on the remote" do
+    get remote_path
+    assert_response :success
+    assert_select "template[data-remote-target='debriefTemplate']" do |templates|
+      copy = templates.first.inner_html
+      assert_includes copy, 'data-flight-debrief-url-value="/flights/FLIGHT_ID/debriefs"'
+      assert_includes copy, %(data-flight-debrief-key-value="#{users(:julien).id}:FLIGHT_ID")
+      assert_includes copy, 'data-flight-debrief-autosend-value="true"'
+      assert_includes copy, 'data-flight-code="FLIGHT_CODE"'
+    end
   end
 
   test "reads the checklist from a live transcript through the model" do

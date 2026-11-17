@@ -158,10 +158,12 @@ class SharedFlightDebriefTest < ActionDispatch::IntegrationTest
 
   test "refuses a second recorder and hides a private debrief" do
     flight = flights(:one)
-    post flight_debriefs_path(flight), params: { device_id: signal_recorder.device_id, uuid: SecureRandom.uuid }, as: :json
-    id = response.parsed_body.fetch("id")
+    elsewhere = flight.flight_debriefs.create!(uuid: SecureRandom.uuid, user: users(:operator))
     post flight_debriefs_path(flight), params: { device_id: signal_recorder.device_id, uuid: SecureRandom.uuid }, as: :json
     assert_response :conflict
+    elsewhere.destroy!
+    post flight_debriefs_path(flight), params: { device_id: signal_recorder.device_id, uuid: SecureRandom.uuid }, as: :json
+    id = response.parsed_body.fetch("id")
     sign_in_as_admin(users(:operator))
     get flight_debrief_path(flight, id), as: :json
     assert_response :not_found

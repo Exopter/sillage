@@ -1,6 +1,7 @@
 class FlightDebriefsController < ApplicationController
   rate_limit to: 10, within: 1.minute, only: :realtime
   rate_limit to: 40, within: 1.minute, only: :checklist
+  rate_limit to: 40, within: 1.minute, only: :live
   before_action :set_flight
   before_action :set_debrief, except: :create
 
@@ -14,9 +15,13 @@ class FlightDebriefsController < ApplicationController
     @flight.with_lock do
       @debrief = @flight.flight_debriefs.find_by(uuid:)
       unless @debrief
-        # A reservation opened ahead of a recording that never came must not block the next one.
-        @flight.flight_debriefs.where(status: "recording").where(updated_at: ...30.minutes.ago).find_each { |stale| stale.destroy! unless stale.audio.attached? }
-        if @flight.flight_debriefs.where(status: "recording").exists?
+        # A reservation opened ahead of a recording that never came must not block the next one. The
+        # operator's own unused reservation gives way at once: the phone records first and reserves
+        # in the background, so a refusal here would strand audio already captured on it. A
+        # reservation that holds audio or live words is a debrief, never a leftover.
+        open = @flight.flight_debriefs.where(status: "recording")
+        open.where(updated_at: ...30.minutes.ago).or(open.where(user: Current.user)).find_each { |stale| stale.destroy! if stale.unused? }
+        if open.where.not(user: Current.user).exists?
           return render json: { error: "A debrief is already recording on another device." }, status: :conflict
         end
         @debrief = @flight.flight_debriefs.create!(uuid:, user: Current.user)
@@ -86,6 +91,16 @@ class FlightDebriefsController < ApplicationController
     render json: { error: error.message }, status: :service_unavailable
   end
 
+  # What the phone has heard so far, kept while the pilot talks: if the audio never arrives
+  # (FLT-2026-100, 17 November 2026), the debrief still exists with its words and its checklist.
+  def live
+    return head :conflict unless @debrief.status == "recording"
+    transcript = params[:transcript].to_s.first(200_000).presence
+    checklist = DebriefChecklist.sanitize(params[:checklist]&.to_unsafe_h)
+    @debrief.update!(transcript: transcript || @debrief.transcript, checklist: @debrief.checklist.merge(checklist), updated_at: Time.current)
+    head :no_content
+  end
+
   # Live reading of the checklist while the pilot is still talking.
   def checklist
     return head :conflict unless @debrief.status == "recording"
@@ -133,6 +148,6 @@ class FlightDebriefsController < ApplicationController
 
   def payload
     @debrief.as_json(only: %i[id uuid status transcript summary error_message]).merge(
-      url: flight_debrief_path(@flight, @debrief), published: @debrief.flight_comment_id.present?)
+      url: flight_debrief_path(@flight, @debrief), published: @debrief.flight_comment_id.present?, audio: @debrief.audio.attached?)
   end
 end

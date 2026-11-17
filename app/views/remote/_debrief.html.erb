@@ -1,7 +1,9 @@
+<%# locals: (flight_id:, code:) -%>
+<%# Rendered for a flight, and once as a template the phone fills in itself: flight_id and code are then placeholders. %>
 <section class="remote-debrief flight-debrief" data-controller="flight-debrief debrief-checklist"
-  data-flight-debrief-url-value="<%= flight_debriefs_path(flight) %>" data-flight-debrief-key-value="<%= Current.user.id %>:<%= flight.id %>" data-flight-debrief-prewarm-value="true"
-  data-flight-id="<%= flight.id %>" data-flight-code="<%= flight.code %>"
-  aria-label="Debrief of <%= flight.code %>">
+  data-flight-debrief-url-value="<%= flight_debriefs_path(flight_id) %>" data-flight-debrief-key-value="<%= Current.user.id %>:<%= flight_id %>" data-flight-debrief-prewarm-value="true" data-flight-debrief-autosend-value="true"
+  data-flight-id="<%= flight_id %>" data-flight-code="<%= code %>"
+  aria-label="Debrief of <%= code %>">
   <div class="remote-body">
     <div class="remote-stage">
       <button type="button" class="remote-mic" data-debrief-states="idle" data-action="flight-debrief#start" aria-label="Record debrief">

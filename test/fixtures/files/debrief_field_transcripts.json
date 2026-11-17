@@ -73,5 +73,44 @@
       "aoa": "0",
       "feelings": "good"
     }
+  },
+  {
+    "flight": "FLT-2026-101 live",
+    "transcript": "Glide ratio 3.5\nSpeed one five zero.\nZero CG\nThree point five\nAOA\nZero\n\nGood feeling, better feeling\nIvan if we had a\nSymmetrical\nLeg strap setting on purple.",
+    "expected": {
+      "glide_ratio": "3.5",
+      "speed": "150 km/h",
+      "cg": "3.5",
+      "aoa": "0",
+      "feelings": "good"
+    }
+  },
+  {
+    "flight": "FLT-2026-102 live, speed line mended",
+    "transcript": "\nGlide ratio 3 point\nTwo, speed one five five.\nCG\nThree point five\ncentre\nOkay, correction,\nCorrection,",
+    "expected": {
+      "glide_ratio": "3.2",
+      "speed": "155 km/h",
+      "cg": "3.5"
+    }
+  },
+  {
+    "flight": "FLT-2026-103 live",
+    "transcript": "That\nGlide ratio  3.\nTwo\nSpeed one five five\nCG  3.5\nA OA  zero\nAoA zero\n\nI tried again to",
+    "expected": {
+      "glide_ratio": "3.2",
+      "speed": "155 km/h",
+      "cg": "3.5",
+      "aoa": "0"
+    }
+  },
+  {
+    "flight": "FLT-2026-096",
+    "transcript": "Glide ratio, quatre. Speed, 150 kilometers per hour. It was maybe easier on 3.2, actually. Yeah, I think so. I mean, I felt I had to work harder now.",
+    "expected": {
+      "glide_ratio": "4",
+      "speed": "150 km/h",
+      "feelings": "Noted"
+    }
   }
 ]

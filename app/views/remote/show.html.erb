@@ -3,9 +3,9 @@
 <% default_pilot = @last_flight&.pilot_id || Current.user.id %>
 
 <main class="remote" data-controller="remote" data-phase="<%= @state[:phase] %>"
-  data-action="flight-debrief:published->remote#published flight-debrief:abandoned->remote#abandoned"
+  data-action="flight-debrief:published->remote#published flight-debrief:abandoned->remote#abandoned flight-debrief:waiting->remote#waiting flight-debrief:empty->remote#empty"
   data-remote-state-url-value="<%= remote_state_path %>" data-remote-flights-url-value="<%= remote_flights_path %>"
-  data-remote-initial-value="<%= @state.to_json %>">
+  data-remote-initial-value="<%= @state.to_json %>" data-remote-user-value="<%= Current.user.id %>">
   <header class="remote-top">
     <%= link_to root_path, class: "remote-exit", aria: { label: "Leave the remote" }, title: "Leave the remote" do %><%= sillage_icon "x", size: 20 %><% end %>
     <strong data-remote-target="title">Tunnel session</strong>
@@ -61,5 +61,7 @@
   <%# 3. Debrief: one recorder per flight, kept alive while it uploads %>
   <section class="remote-screen" data-remote-phases="debrief" hidden aria-label="Debrief">
     <div class="remote-debriefs" data-remote-target="debriefs"></div>
+    <%# The debrief opens from this copy, so ending a flight never waits for the network. %>
+    <template data-remote-target="debriefTemplate"><%= render "remote/debrief", flight_id: "FLIGHT_ID", code: "FLIGHT_CODE" %></template>
   </section>
 </main>

@@ -22,9 +22,18 @@ assert.equal(spokenNumbers("CG three point five\nZero angle of attack"), "CG 3.5
 assert.deepEqual(extractChecklist("Zero degrees of angle of attack, it felt too twitchy"), { aoa: "0", feelings: "too twitchy" })
 assert.deepEqual(extractChecklist("Pas d'incidence, les sensations sont bonnes"), { aoa: "none", feelings: "bonnes" })
 
-// Tunnel debriefs recorded on 16 November 2026: what the patterns must tick with no model at all.
+// A figure belongs to its own label: the CG value in front of "AoA" is not the angle (17 November 2026).
+assert.deepEqual(extractChecklist("Glide ratio 3.5 speed 150 CG 3.5 AoA 0"), { glide_ratio: "3.5", speed: "150 km/h", cg: "3.5", aoa: "0" })
+assert.deepEqual(extractChecklist("Glide ratio 3.2, speed 155, CG 3.5 AoA setting"), { glide_ratio: "3.2", speed: "155 km/h", cg: "3.5" })
+assert.deepEqual(extractChecklist("Glide ratio quatre, speed 150, CG trois point five, AoA z\u00e9ro, bon feeling"), { glide_ratio: "4", speed: "150 km/h", cg: "3.5", aoa: "0", feelings: "bon" })
+// A live line cut inside a figure is mended; an ordinary line break is not.
+assert.equal(spokenNumbers("Glide ratio 3 point\nTwo, speed"), "Glide ratio 3.2, speed")
+assert.equal(spokenNumbers("Glide ratio  3.\nTwo\nSpeed"), "Glide ratio  3.2\nSpeed")
+assert.equal(spokenNumbers("speed 150.\nUn peu instable"), "speed 150.\nUn peu instable")
+
+// Tunnel debriefs recorded on 16 and 17 November 2026: what the patterns must tick with no model at all.
 const field = JSON.parse(readFileSync(new URL("../fixtures/files/debrief_field_transcripts.json", import.meta.url), "utf8"))
-assert.equal(field.length, 7)
+assert.equal(field.length, 11)
 for (const { flight, transcript, expected } of field) assert.deepEqual(extractChecklist(transcript), expected, flight)
 // Ticks arrive while the pilot is still talking: the opening sentence alone is enough.
 assert.deepEqual(extractChecklist("Two point eight speed one three zero CG three point five"), { glide_ratio: "2.8", speed: "130 km/h", cg: "3.5" })

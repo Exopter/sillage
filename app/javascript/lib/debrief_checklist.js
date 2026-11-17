@@ -1,11 +1,12 @@
 // Finds the debrief checklist points in a transcript. Mirrors
 // app/models/debrief_checklist.rb, which fills the same points from the final transcript.
 // The patterns follow how pilots actually dictate in the tunnel (field debriefs of
-// 16 November 2026): figures spoken digit by digit ("speed one five zero"), the
+// 16 and 17 November 2026): figures spoken digit by digit ("speed one five zero"), the
 // glide ratio given as a bare leading number, "no angle of attack", "the feeling is good".
 
 const NUMBER = "[+-]?\\d+(?:[.,]\\d+)?"
-const GAP = "[^\\d+-]{0,24}"
+// A figure belongs to the label right before it: the gap never runs over the next label.
+const LABEL_GAP = "(?:(?!speed|vitesse|\\bc\\.?g\\.?\\b|\\ba\\.?o\\.?a\\.?\\b)[^\\d+-]){0,24}"
 /** @type {Record<string, string>} */
 const DIGITS = { zero: "0", one: "1", two: "2", three: "3", four: "4", five: "5", six: "6", seven: "7", eight: "8", nine: "9",
   "z\u00e9ro": "0", un: "1", deux: "2", trois: "3", quatre: "4", cinq: "5", sept: "7", huit: "8", neuf: "9" }
@@ -13,19 +14,31 @@ const DIGIT_WORD = Object.keys(DIGITS).join("|")
 const SPOKEN = new RegExp(`(?<![\\p{L}\\d])(?:${DIGIT_WORD})(?:[ ,]+(?:${DIGIT_WORD}|point|dot|virgule|comma))+(?![\\p{L}\\d])`, "giu")
 const AOA = "\\ba\\.?o\\.?a\\.?\\b|angle of attack|angle d.attaque|incidence"
 const FEEL = "feel(?:ing|s)?|felt|ressentis?|sensations?"
+const DECIMAL_WORD = "point|dot|virgule|comma"
+// Field debriefs of 17 November 2026: the live transcript arrives in short lines cut wherever the
+// pilot breathes ("Glide ratio 3 point" / "Two, speed"), and a lone number word follows its label
+// ("Glide ratio, quatre", "AoA setting zero").
+const LABEL = `glide\\s*ratio|finesse|\\bc\\.?g\\.?(?:\\s+setting)?|(?:${AOA})(?:\\s+setting)?`
+const MEND_WORD = new RegExp(`\\b(${DECIMAL_WORD})[ \\t]*\\n\\s*`, "gi")
+const MEND_FIGURE = new RegExp(`(?<![\\p{L}\\d.,])(\\d)\\.[ \\t]*\\n\\s*(${DIGIT_WORD})(?=\\s*(?:[,.]|\\n|$))`, "giu")
+const MIXED = new RegExp(`(?<![\\p{L}\\d.,])(\\d+)\\s+(?:${DECIMAL_WORD})\\s+(${DIGIT_WORD}|\\d)(?![\\p{L}\\d])`, "giu")
+const AFTER_LABEL = new RegExp(`((?:${LABEL})[\\s,:.]*(?:(?:is|was|at|est|\u00e0|de|of)\\s+)?)(${DIGIT_WORD})(?=\\s*(?:[,.;:]|\\n|$)|\\s+(?:speed|vitesse|c\\.?g\\b|a\\.?o\\.?a|kilo|km|degr))`, "giu")
+// Words the feeling pattern must not report as the feeling itself ("I felt I had to work").
+const NOT_A_FEELING = ["had", "have", "has", "to", "that", "like", "as", "if", "when", "i", "it", "we", "you", "the", "a", "and", "so", "but", "je", "que", "comme"]
 
 /** "one five zero" becomes "150" and "two point eight" becomes "2.8". A lone number word is left alone.
  * @param {string} text */
 export function spokenNumbers(text) {
-  return text.replace(SPOKEN, run => {
+  const digit = (/** @type {string} */ word) => DIGITS[word.toLowerCase()] ?? word
+  return text.replace(MEND_WORD, "$1 ").replace(MEND_FIGURE, (_run, whole, word) => `${whole}.${digit(word)}`).replace(SPOKEN, run => {
     const figure = run.toLowerCase().split(/[ ,]+/).map(word => DIGITS[word] ?? ".").join("")
     return /^\d+(?:\.\d+)?$/.test(figure) ? figure : run
-  })
+  }).replace(MIXED, (_run, whole, word) => `${whole}.${digit(word)}`).replace(AFTER_LABEL, (_run, lead, word) => `${lead}${digit(word)}`)
 }
 
 /** @param {string} text @param {string} lead @param {string} [value] */
 function capture(text, lead, value = NUMBER) {
-  const match = new RegExp(`(?:${lead})${GAP}(${value})`, "i").exec(text)
+  const match = new RegExp(`(?:${lead})${LABEL_GAP}(${value})`, "i").exec(text)
   return match ? match[1].replace(",", ".") : null
 }
 
@@ -35,7 +48,8 @@ function feeling(text) {
   if (before) return before[1].toLowerCase()
   const after = new RegExp(`\\b(?:${FEEL})\\b[\\s:,]*((?:(?:is|was|are|were|still|it|the|a|that|i|very|much|quite|est|sont|c.est)\\s+)*)(more|less|not|too|turning|plus|moins|pas)?\\s*([\\p{L}]+)?`, "iu").exec(text)
   if (!after) return null
-  return [after[2], after[3]].filter(Boolean).join(" ").toLowerCase() || "Noted"
+  const word = NOT_A_FEELING.includes((after[3] || "").toLowerCase()) ? null : after[3]
+  return [after[2], word].filter(Boolean).join(" ").toLowerCase() || "Noted"
 }
 
 /** @param {string} transcript @returns {Record<string, string>} */
@@ -53,8 +67,10 @@ export function extractChecklist(transcript) {
   const cg = capture(text, "\\bc\\.?g\\.?\\b|cent(?:er|re) (?:of|de) gravit[ye\u00e9]|centrage")
   if (cg) found.cg = cg
   const none = new RegExp(`\\b(?:no|sans|pas d[e\u2019'])\\s*(?:${AOA})`, "i").test(text)
-  const zeroBefore = new RegExp(`(?:\\b(zero|z\u00e9ro)|(${NUMBER}))\\s*(?:degrees?|degr[e\u00e9]s?|\u00b0)?\\s*(?:of\\s+|d[e\u2019']\\s*)?(?:${AOA})`, "i").exec(text)
-  const aoa = none ? "none" : zeroBefore ? (zeroBefore[1] ? "0" : zeroBefore[2].replace(",", ".")) : capture(text, AOA)
+  // "CG 3.5 AoA 0": a figure in front of the label is the angle only when a unit or "of" ties them.
+  const before = new RegExp(`(?:\\b(zero|z\u00e9ro)|(${NUMBER}))\\s*(?:(?:degrees?|degr[e\u00e9]s?|\u00b0)\\s*(?:of\\s+|d[e\u2019']\\s*)?|of\\s+|d[e\u2019']\\s*)(?:${AOA})`, "i").exec(text)
+  const bare = new RegExp(`\\b(?:zero|z\u00e9ro)\\s+(?:${AOA})`, "i").test(text)
+  const aoa = none ? "none" : before ? (before[1] ? "0" : before[2].replace(",", ".")) : capture(text, AOA) || (bare ? "0" : null)
   if (aoa) found.aoa = aoa
   const idk = capture(text, "\\bidk\\b|indice de kiff|\\bkiff\\b")
   const idp = capture(text, "\\bidp\\b|indice de puret[e\u00e9]|\\bpuret[e\u00e9]")

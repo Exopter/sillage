@@ -4,10 +4,11 @@ module Debriefs
   class OpenAi
     Error = Class.new(StandardError)
 
-    CONTEXT = "A pilot's flight debrief after a wind tunnel or wingsuit flight, in English or French. It opens with the glide ratio, the speed in km/h, the CG setting and the angle of attack setting, then how the flight felt.".freeze
+    CONTEXT = "A pilot's flight debrief after a wind tunnel or wingsuit flight, in English or French. It opens with the glide ratio, the speed in km/h, the CG setting and the angle of attack (AoA) setting, then how the flight felt. Pilots often mix both languages in one sentence, such as French figures with English terms (\"glide ratio quatre, speed 150, CG trois point cinq, AoA z\u00e9ro, bon feeling\"): write each word in the language it was spoken and never translate. Figures are short decimals such as 3.5.".freeze
     # Literal terms the transcription models tend to miss or mishear in a debrief.
     KEYWORDS = [ "glide ratio", "finesse", "speed", "CG", "centre de gravit\u00e9", "centrage", "angle of attack", "AoA", "angle d'attaque",
-      "incidence", "IDK", "indice de kiff", "IDP", "indice de puret\u00e9", "special features", "stall", "wingsuit", "Exowing" ].freeze
+      "incidence", "IDK", "indice de kiff", "IDP", "indice de puret\u00e9", "special features", "stall", "wingsuit", "Exowing",
+      "CG setting", "AoA setting", "feeling", "leg strap", "chest strap", "asymmetrical", "handle check", "kilometers per hour" ].freeze
 
     def realtime
       session = ->(hints) {
@@ -48,7 +49,8 @@ module Debriefs
     # Reads the debrief checklist out of a transcript, whatever words the pilot used.
     def checklist(transcript, effort: "low")
       result = request("responses", {
-        model: "gpt-6-luna", reasoning: { effort: }, max_output_tokens: 400,
+        # Reasoning counts against the limit: a tight one cuts the answer short and loses the whole reading.
+        model: "gpt-6-luna", reasoning: { effort: }, max_output_tokens: 1500,
         instructions: CHECKLIST_INSTRUCTIONS, input: transcript.to_s.last(12_000)
       })
       text = result.fetch("output").flat_map { |item| item.fetch("content", []) }.filter_map { |item| item["text"] if item["type"] == "output_text" }.join
@@ -72,7 +74,16 @@ module Debriefs
       How pilots dictate: figures are often spoken digit by digit ("one five zero" is 150, "two point eight" is 2.8). The
       debrief usually opens with glide ratio, speed, CG and angle of attack in that order; the first words are sometimes
       lost or misheard, so a bare decimal figure right before the speed is the glide ratio. When a figure changes later in
-      the debrief ("then we raised the speed to 140"), keep the first one stated: it is the test condition.
+      the debrief ("then we raised the speed to 140"), keep the first one stated: it is the test condition. An explicit
+      correction is different ("correction, glide ratio 3.7"): the corrected figure replaces the first.
+      Each figure belongs to one point only, the one whose name it follows: "CG 3.5 AoA 0" is cg 3.5 and aoa 0, and when
+      the angle of attack is never mentioned aoa is null whatever figure the CG has. Never fill a point from its usual
+      position alone when its name and its figure are both missing.
+      Pilots mix French and English in one sentence ("glide ratio quatre, CG trois point cinq, AoA z\u00e9ro, bon feeling").
+      A live transcript comes as short lines cut at arbitrary moments: a figure can be split over two lines ("3 point" then
+      "Two" is 3.2), a word can be clipped or repeated at a cut ("a" then "Symmetrical" is asymmetrical; "one five zero."
+      then "Zero CG" is speed 150 followed by the CG), and names are misheard ("Feed" for speed, "Our" or "A OA" for AoA).
+      Read across the lines as one sentence.
       Reply with one JSON object and nothing else. Use exactly those keys. For each key give the shortest possible value,
       or null when the point was not addressed: the bare number with its unit when a figure was given ("2.8", "165 km/h",
       "+2\u00b0", "3"), otherwise one or two words ("smooth", "none", "new suit"). Never a sentence, never repeat the name
