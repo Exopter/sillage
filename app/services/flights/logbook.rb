@@ -49,7 +49,7 @@ module Flights
         scope = scope.left_joins(:aircraft, :flight_import).where(
           "flights.name ILIKE :q OR EXISTS (SELECT 1 FROM flight_comments WHERE flight_comments.flight_id = flights.id AND flight_comments.body ILIKE :q) OR flights.code ILIKE :q OR flights.location ILIKE :q OR aircraft.registration ILIKE :q OR (flight_imports.id IN (:import_ids) AND flight_imports.source_filename ILIKE :q)", q: pattern, import_ids: FlightImport.accessible_to(@user).select(:id))
       end
-      scope.select("flights.id, 'flight' AS kind, COALESCE(flights.flown_on + COALESCE(flights.flown_at, '00:00'::time), flights.started_at) AS started_at, flights.created_at")
+      scope.select("flights.id, 'flight' AS kind, COALESCE(flights.flown_on + flights.flown_at, CASE WHEN flights.flown_on IS NULL OR abs(flights.started_at::date - flights.flown_on) <= 1 THEN flights.started_at END, flights.flown_on::timestamp, flights.started_at) AS started_at, flights.created_at")
     end
 
     def import_scope

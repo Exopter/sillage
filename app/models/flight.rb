@@ -99,6 +99,12 @@ class Flight < ApplicationRecord
     fdr_id.present? || flight_import_id.present? || signal_sessions.exists? || imu_checks.exists?
   end
 
+  # A date entered without a time keeps the time of the recording: saving another
+  # field stores the date alone and must not move the flight to midnight.
+  def time_from_recording?
+    flown_on.present? && flown_at.nil? && started_at.present? && (started_at.to_date - flown_on).abs <= 1
+  end
+
   def display_flown_on
     flown_on || display_started_at&.to_date
   end
