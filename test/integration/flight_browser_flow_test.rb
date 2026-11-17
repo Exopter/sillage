@@ -27,7 +27,10 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
       source_url: "https://shop.example.test/front", recorded_at: @flight.started_at)
 
     get flights_path(folder: @folder.id)
-    assert_select ".exds-browser-entry[data-entry=?] .exds-browser-entry-location", "flight:#{@flight.id}", text: "Tunnel · Inclined Slovenia · 2 cameras"
+    assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
+      assert_select ".exds-browser-entry-detail", text: "Tunnel · Inclined Slovenia · #{@flight.description}"
+      assert_select ".exds-browser-entry-cameras[title='2 cameras']", text: "2 cameras"
+    end
 
     get preview_flights_path(id: @flight.id, kind: "flight"), headers: { "Turbo-Frame" => "flight-preview" }
     assert_select "[data-controller='video-source'] video[preload='metadata'][src=?]", attachment_path(side.file.attachment)
@@ -41,32 +44,31 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_select "button[data-video-source-target='source']", 0
   end
 
-  test "a tunnel flight row names its mode in the location line, without a badge" do
+  test "a tunnel flight row names its mode in the detail line, without a badge" do
     @flight.update!(environment: "tunnel", location: "Inclined Slovenia")
     get flights_path(folder: @folder.id)
     assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
-      assert_select ".exds-browser-entry-location", text: "Tunnel · Inclined Slovenia"
-      assert_select ".exds-browser-entry-heading .mode-badge", count: 0
+      assert_select ".exds-browser-entry-detail", text: "Tunnel · Inclined Slovenia · #{@flight.description}"
+      assert_select ".mode-badge", count: 0
     end
   end
 
-  test "flight rows distinguish duration dates descriptions and preparation" do
+  test "flight rows lead with the time under a day header, without the flight duration" do
     @flight.update!(duration_seconds: 4786, description: "Test flight")
     get flights_path(folder: @folder.id)
+    assert_select ".exds-browser-entries[data-local-days='exds-browser-day'] > .exds-browser-day[data-day-header]", text: "Fri 15 May 2026"
     assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
-      assert_select ".exds-browser-entry-heading .status-dot", count: 0
-      assert_select ".exds-browser-entry-location", text: @flight.location
-      assert_select ".exds-browser-entry-duration[aria-label='Duration: 1h 19m 46s']"
-      assert_select ".exds-browser-entry-date", text: "15 May 2026 · 20:01"
-      assert_select ".exds-browser-entry-description", text: "Test flight"
+      assert_select ".status-dot", count: 0
+      assert_select ".exds-browser-entry-time", text: "20:01"
+      assert_select ".exds-browser-entry-detail", text: "#{@flight.location} · Test flight"
+      assert_select ".exds-browser-entry-link", text: /1h 19m/, count: 0
     end
     @flight.update!(status: "preparation", started_at: nil, flight_import: nil, duration_seconds: nil, description: "Draft flight")
     get flights_path(folder: @folder.id)
-    assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
-      assert_select ".exds-browser-entry-heading .status-dot", text: "Preparation"
-      assert_select ".exds-browser-entry-duration", text: "Created"
-      assert_select ".exds-browser-entry-date time[data-local-time='list'][datetime]", minimum: 1
-      assert_select ".exds-browser-entry-description", text: ""
+    assert_select ".exds-browser-entry[data-entry=?][data-day-at]", "flight:#{@flight.id}" do
+      assert_select ".exds-browser-entry-meta .status-dot", text: "Preparation"
+      assert_select ".exds-browser-entry-time[title='Creation time'] time[data-local-time='clock'][datetime]", 1
+      assert_select ".exds-browser-entry-detail", text: @flight.location
     end
   end
 
