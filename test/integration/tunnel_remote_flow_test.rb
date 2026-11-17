@@ -180,6 +180,14 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     assert_equal "debrief", response.parsed_body["phase"]
     assert flight.reload.waiting_for_recording?
     assert flight.ended_at
+    # Nothing recorded this flight, so nothing is announced as missing.
+    assert_not flight.recording_expected?
+    get flight_path(flight)
+    assert_response :success
+    assert_select "section[aria-label='Waiting for recording']", count: 0
+    get flights_path
+    assert_select ".status-dot", text: "Waiting for recording", count: 0
+    assert_select ".status-dot[title='Logged']", text: "Logged"
     post remote_station_path, params: { key: SecureRandom.uuid, ready: true }, as: :json
     assert_empty response.parsed_body
 

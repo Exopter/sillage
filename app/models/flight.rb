@@ -61,6 +61,8 @@ class Flight < ApplicationRecord
   validates :video_duration_seconds, numericality: { greater_than: 0 }, allow_nil: true
   validate :video_upload_must_be_video
   attr_accessor :folder_assignment_user
+  # Set by lists that resolve the expectation for a whole page at once.
+  attr_writer :recording_expected
 
   validate :folder_must_accept_contributor, if: -> { new_record? || will_save_change_to_folder_id? || will_save_change_to_user_id? }
 
@@ -125,6 +127,15 @@ class Flight < ApplicationRecord
 
   def recording_enabled?
     fdr_id.present? || flight_import_id.present? || signal_sessions.exists? || imu_checks.exists?
+  end
+
+  # A closed flight waits for a recording only when something can still deliver one:
+  # a flight ended from the remote without acquisition has nothing to wait for.
+  def recording_expected?
+    return false unless waiting_for_recording?
+    return @recording_expected unless @recording_expected.nil?
+
+    recording_enabled?
   end
 
   # A date entered without a time keeps the time of the recording: saving another

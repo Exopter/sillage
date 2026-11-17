@@ -170,7 +170,7 @@
   <div class="flight-replay-content">
     <div class="flight-record-panel" id="analysis" data-section-tabs-target="panel">
     <div class="flight-analysis-workspace">
-    <% if @flight.waiting_for_recording? %>
+    <% if @flight.recording_expected? %>
       <section class="analysis-mode-banner" aria-label="Waiting for recording">
         <strong>Waiting for recording</strong>
         <span>Signal capture is complete. Import the microSD recording to analyse the authoritative flight data.</span>
