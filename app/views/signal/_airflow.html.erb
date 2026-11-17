@@ -11,6 +11,8 @@
        data-signal-airflow-model-url-value="<%= asset_path("blueprints/exowing-scene.glb") %>"
        data-signal-airflow-seat-url-value="<%= asset_path("blueprints/exowing-seat.glb") %>"
        data-signal-airflow-pilot-url-value="<%= asset_path("blueprints/exowing-pilot.glb") %>"
+       data-signal-airflow-mass-value="<%= Flight::TUNNEL_FLYING_MASS_KG %>"
+       data-signal-airflow-area-value="<%= Flight::WING_AREA_M2 %>"
        data-signal-airflow-ratio-value="<%= glide_ratio.to_f %>"
        data-signal-airflow-sections-url-value="<%= asset_path("blueprints/exowing-sections.json") %>">
     <div class="signal-airflow-bar">
@@ -32,6 +34,7 @@
       <div><span>Pitch</span><strong data-signal-airflow-target="value" data-reading="pitch">---</strong><small>deg</small></div>
       <div><span>Roll</span><strong data-signal-airflow-target="value" data-reading="roll">---</strong><small>deg</small></div>
       <div><span title="Vortex lattice estimate on the wing surface alone: no viscosity, no separation, no fins. An indication, not a measurement.">Lift coefficient</span><strong data-signal-airflow-target="value" data-reading="lift">---</strong><small>computed</small></div>
+      <div><span title="Lift coefficient the wing must produce to hold this flight: weight across the airflow, divided by the pitot dynamic pressure and the wing area. Assumes a slack tether, <%= Flight::TUNNEL_FLYING_MASS_KG %> kg flying and <%= Flight::WING_AREA_M2 %> m² of wing.">Lift needed</span><strong data-signal-airflow-target="value" data-reading="liftNeeded">---</strong><small>from pitot and mass</small></div>
     </div>
   </div>
 </section>

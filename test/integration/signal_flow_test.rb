@@ -249,6 +249,8 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "[data-signal-environment='tunnel'] [data-widget='airflow'][data-mode='large'] [data-controller='signal-airflow']", count: 1
     assert_select "[data-controller='signal-airflow'][data-signal-airflow-sections-url-value*='exowing-sections']", count: 1
     assert_select "[data-controller='signal-airflow'] button[data-step]", count: 2
+    assert_select "[data-controller='signal-airflow'][data-signal-airflow-mass-value='101'][data-signal-airflow-area-value='1.31']", count: 1
+    assert_select "[data-signal-airflow-target='value'][data-reading='liftNeeded']", count: 1
     assert_select "[data-widget='map'], [data-signal-workspace-target='mapScene'], [data-signal-workspace-target='altitude'], [data-signal-workspace-target='glide'], [data-signal-workspace-target='heading']", count: 0
     assert_select "[data-sensor='gps'], [data-sensor='mag']", count: 0
     assert_select "form[action=?] input[name='environment'][value='tunnel']", signal_sessions_path

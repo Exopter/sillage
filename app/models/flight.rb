@@ -10,6 +10,11 @@ class Flight < ApplicationRecord
   TUNNEL_GLIDE_RATIOS = (1.49..3.98)
   # Where tunnel flights are flown unless another place is entered.
   TUNNEL_LOCATION = "Inclined Slovenia"
+  # Flying mass used to derive the lift a tunnel flight needs: pilot 75 kg, parachute 10 kg,
+  # wing 13 kg, seat 3 kg (values given on 17 November 2026; clothing and helmet not counted).
+  TUNNEL_FLYING_MASS_KG = 101
+  # Projected wing area, from the 2.498 m CAD span and the sections of the wing model.
+  WING_AREA_M2 = 1.31
 
   belongs_to :user
   belongs_to :pilot, class_name: "User", inverse_of: :piloted_flights
