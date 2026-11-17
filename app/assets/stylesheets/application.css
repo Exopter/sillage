@@ -2659,6 +2659,59 @@ body.flight-analysis-theme,
   color: var(--ex-carbon-900);
 }
 
+/* Tunnel flight record: the wing in the airflow replaces the GPS trajectory and the
+   tunnel cameras sit above the telemetry. */
+.flight-tunnel-media {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.flight-tunnel-media > :only-child {
+  grid-column: 1 / -1;
+}
+
+.flight-tunnel-media .video-sync {
+  margin-top: 0;
+}
+
+.flight-tunnel-media .flight-video {
+  max-height: min(48vh, 520px);
+}
+
+.flight-analysis-visuals.is-tunnel .flight-chart-stage,
+.flight-analysis-visuals.is-tunnel .trajectory-compact {
+  height: clamp(380px, 34vw, 460px);
+}
+
+.flight-airflow .trajectory-viewport {
+  overflow: hidden;
+  border-radius: var(--ex-radius-surface);
+  background: var(--ex-carbon-950);
+}
+
+.flight-airflow .signal-airflow-readouts {
+  height: auto;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.flight-airflow .signal-airflow-readouts > div {
+  padding: 7px 8px;
+}
+
+@media (min-width: 1101px) {
+  .flight-analysis-visuals.is-tunnel {
+    grid-template-columns: minmax(0, 1.3fr) minmax(360px, 1fr);
+  }
+}
+
+@media (max-width: 920px) {
+  .flight-tunnel-media {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 1100px) {
   .flight-analysis-visuals {
     grid-template-columns: 1fr;

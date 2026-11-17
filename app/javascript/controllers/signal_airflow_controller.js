@@ -6,13 +6,13 @@ const MIN_RATIO = 1.49, MAX_RATIO = 3.98, RATIO_STEP = 0.5
 const RAD = Math.PI / 180
 const STANDARD_GRAVITY = 9.80665
 
-/** @typedef {{modelUrlValue: string, seatUrlValue: string, pilotUrlValue: string, sectionsUrlValue: string, ratioValue: number, massValue: number, areaValue: number, sceneTarget: HTMLElement, glideOutputTarget: HTMLElement, airflowTarget: HTMLElement, statusTarget: HTMLElement, valueTargets: HTMLElement[], viewTargets: HTMLButtonElement[]}} Bindings */
+/** @typedef {{modelUrlValue: string, seatUrlValue: string, pilotUrlValue: string, sectionsUrlValue: string, ratioValue: number, massValue: number, areaValue: number, recordedValue: boolean, sceneTarget: HTMLElement, glideOutputTarget: HTMLElement, airflowTarget: HTMLElement, statusTarget: HTMLElement, valueTargets: HTMLElement[], viewTargets: HTMLButtonElement[]}} Bindings */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 
 // Signal Tunnel: the wing model follows the attitude measured by the recorder IMU,
 // in an airflow drawn at the angle of the tunnel glide ratio set here.
 export default class extends TypedController {
-  static values = { modelUrl: String, seatUrl: String, pilotUrl: String, sectionsUrl: String, ratio: Number, mass: Number, area: Number }
+  static values = { modelUrl: String, seatUrl: String, pilotUrl: String, sectionsUrl: String, ratio: Number, mass: Number, area: Number, recorded: Boolean }
   static targets = ["scene", "glideOutput", "airflow", "status", "value", "view"]
   /** @type {import("airflow_scene").AirflowScene | null} */
   scene = null
@@ -24,10 +24,11 @@ export default class extends TypedController {
 
   async connect() {
     // A recording keeps the glide ratio it was started with; standby keeps the last one set here.
-    const stored = Number(read(GLIDE_KEY))
-    this.ratio = snap(this.ratioValue || stored || 2.99)
+    // A flight record replays the glide ratio it was flown at and never touches the standby setting.
+    const stored = this.recordedValue ? 0 : Number(read(GLIDE_KEY))
+    this.ratio = this.recordedValue && this.ratioValue ? this.ratioValue : snap(this.ratioValue || stored || 2.99)
     this.renderGlide()
-    this.announce()
+    if (!this.recordedValue) this.announce()
     try {
       const { AirflowScene } = await import("airflow_scene")
       if (!this.element.isConnected) return

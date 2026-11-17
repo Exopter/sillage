@@ -1,0 +1,233 @@
+<%# Tunnel flight record. The tunnel has no GPS, no exit and no landing: the airflow setting,
+    the attitude in the airflow and the lift replace the altitude, phase and route blocks of a sky flight. %>
+<%
+  glide_ratio = flight.tunnel_glide_ratio
+  airflow_angle = flight.tunnel_airflow_angle
+  debrief = flight.flight_debriefs.where.not(flight_comment_id: nil).order(:created_at, :id).last
+  spoken = ->(key) { debrief.checklist[key].presence || "–" }
+%>
+
+<section class="flight-overview-strip" aria-label="Flight overview">
+  <div>
+    <span>Total recording</span>
+    <strong><%= duration(total_duration) %></strong>
+  </div>
+  <div>
+    <span>Flying</span>
+    <strong data-flight-viewer-target="stat" data-stat="flying-duration">–</strong>
+  </div>
+  <div>
+    <span>Glide ratio set</span>
+    <strong><%= glide_ratio ? number_with_precision(glide_ratio, precision: 2) : "–" %></strong>
+  </div>
+  <div>
+    <span>Airflow</span>
+    <strong><%= airflow_angle ? number_with_precision(airflow_angle, precision: 1) : "–" %><small> ° below horizon</small></strong>
+  </div>
+  <div>
+    <span>Airspeed</span>
+    <strong><b data-flight-viewer-target="stat" data-stat="flying-airspeed">–</b><small> km/h avg</small></strong>
+  </div>
+</section>
+
+<div class="flight-tunnel-media">
+  <%= video_section %>
+
+  <% if debrief %>
+    <article class="flight-stat-card" aria-label="Spoken debrief">
+      <header><span>Spoken debrief</span><small>Spoken / measured</small></header>
+      <dl>
+        <div>
+          <dt>Glide ratio</dt>
+          <dd class="flight-speed-values">
+            <span class="flight-speed-pill is-average"><span class="sr-only">Spoken</span><%= spoken.call("glide_ratio") %></span>
+            <span class="flight-speed-pill is-maximum"><span class="sr-only">Set on the tunnel</span><%= glide_ratio ? number_with_precision(glide_ratio, precision: 2) : "–" %></span>
+          </dd>
+        </div>
+        <div>
+          <dt>Speed</dt>
+          <dd class="flight-speed-values">
+            <span class="flight-speed-pill is-average"><span class="sr-only">Spoken</span><%= spoken.call("speed") %></span>
+            <span class="flight-speed-pill is-maximum">
+              <span class="sr-only">Average airspeed while flying</span>
+              <span data-flight-viewer-target="stat" data-stat="flying-airspeed">–</span>
+              <span class="flight-speed-unit">km/h</span>
+            </span>
+          </dd>
+        </div>
+        <% DebriefChecklist::ITEMS.reject { |item| %w[glide_ratio speed].include?(item[:key]) }.each do |item| %>
+          <div><dt><%= item[:label] %></dt><dd><%= spoken.call(item[:key]) %></dd></div>
+        <% end %>
+      </dl>
+    </article>
+  <% end %>
+</div>
+
+<section class="flight-instrument-panel" data-flight-viewer-target="instrumentPanel" aria-labelledby="flight-data-title">
+  <div class="flight-section-heading flight-analysis-heading">
+    <div>
+      <span class="flight-section-kicker">Telemetry</span>
+      <h2 id="flight-data-title" data-flight-viewer-target="analysisTitle">Tunnel flight data</h2>
+      <p>Airspeed, attitude and lift share one timeline with the tunnel cameras.</p>
+    </div>
+    <div class="flight-analysis-toolbar">
+      <output class="flight-phase-range" data-flight-viewer-target="phaseRange">Full recording</output>
+      <nav class="flight-phase-filter" aria-label="Flight phase" role="group">
+        <% [ ["all", "All"], ["flying", "Flying"] ].each do |phase, label| %>
+          <button
+            type="button"
+            class="flight-phase-button<%= " is-active" if phase == "all" %>"
+            data-flight-viewer-target="phaseButton"
+            data-action="flight-viewer#selectPhase"
+            data-phase="<%= phase %>"
+            aria-pressed="<%= phase == "all" %>"><%= label %></button>
+        <% end %>
+      </nav>
+    </div>
+  </div>
+
+  <div class="flight-analysis-visuals is-tunnel" data-flight-viewer-target="analysisVisuals">
+    <div class="flight-chart-stage">
+      <canvas data-flight-viewer-target="unifiedChart" class="unified-analysis-chart" aria-label="Combined tunnel telemetry chart"></canvas>
+    </div>
+
+    <section class="trajectory trajectory-compact flight-airflow" aria-labelledby="airflow-title">
+      <div class="trajectory-header">
+        <div>
+          <span class="flight-section-kicker">Attitude replay</span>
+          <h2 id="airflow-title">Wing in the airflow</h2>
+        </div>
+      </div>
+      <div class="trajectory-viewport signal-airflow" data-controller="signal-airflow"
+           data-action="sillage:flight-attitude@window->signal-airflow#telemetry"
+           data-signal-airflow-recorded-value="true"
+           data-signal-airflow-model-url-value="<%= asset_path("blueprints/exowing-scene.glb") %>"
+           data-signal-airflow-seat-url-value="<%= asset_path("blueprints/exowing-seat.glb") %>"
+           data-signal-airflow-pilot-url-value="<%= asset_path("blueprints/exowing-pilot.glb") %>"
+           data-signal-airflow-mass-value="<%= Flight::TUNNEL_FLYING_MASS_KG %>"
+           data-signal-airflow-area-value="<%= Flight::WING_AREA_M2 %>"
+           data-signal-airflow-ratio-value="<%= glide_ratio.to_f %>"
+           data-signal-airflow-sections-url-value="<%= asset_path("blueprints/exowing-sections.json") %>">
+        <div class="signal-airflow-bar">
+          <span class="signal-airflow-glide"><span><%= glide_ratio ? "Tunnel glide ratio" : "Glide ratio not recorded, drawn at" %></span>
+            <output data-signal-airflow-target="glideOutput">2.99</output></span>
+          <small data-signal-airflow-target="airflow">Airflow 18.5° below the horizon</small>
+          <span class="signal-mode-buttons" role="group" aria-label="Camera">
+            <button type="button" aria-pressed="true" data-view="quarter" data-signal-airflow-target="view" data-action="signal-airflow#view">Quarter</button>
+            <button type="button" aria-pressed="false" data-view="side" data-signal-airflow-target="view" data-action="signal-airflow#view">Side</button>
+          </span>
+        </div>
+        <div class="signal-airflow-scene" data-signal-airflow-target="scene" role="img" aria-label="Wing model in the tunnel airflow">
+          <p class="signal-airflow-status" role="status" data-signal-airflow-target="status">Loading the wing model.</p>
+        </div>
+        <div class="signal-telemetry-strip signal-airflow-readouts" aria-label="Wing attitude in the airflow">
+          <div><span title="Recorded pitch plus the airflow angle of the set glide ratio. It depends on the recorder mounting reference; it is not a measured angle of attack.">To airflow</span><strong data-signal-airflow-target="value" data-reading="toAirflow">---</strong></div>
+          <div><span>Pitch</span><strong data-signal-airflow-target="value" data-reading="pitch">---</strong></div>
+          <div><span>Roll</span><strong data-signal-airflow-target="value" data-reading="roll">---</strong></div>
+          <div><span title="Vortex lattice estimate on the wing surface alone: no viscosity, no separation, no fins. An indication, not a measurement.">Lift</span><strong data-signal-airflow-target="value" data-reading="lift">---</strong></div>
+          <div><span title="Lift coefficient the wing must produce to hold this flight: weight across the airflow, divided by the pitot dynamic pressure and the wing area. Assumes a slack tether, <%= Flight::TUNNEL_FLYING_MASS_KG %> kg flying and <%= Flight::WING_AREA_M2 %> m² of wing.">Needed</span><strong data-signal-airflow-target="value" data-reading="liftNeeded">---</strong></div>
+        </div>
+      </div>
+      <div class="trajectory-playback">
+        <button type="button" class="trajectory-icon-button trajectory-play-button" data-flight-viewer-target="playButton" data-action="flight-viewer#togglePlayback" aria-label="<%= t("flights.charts.play") %>" title="<%= t("flights.charts.play") %>">
+          <span class="play-icon is-play"><%= sillage_icon "play", size: 16 %></span>
+          <span class="play-icon is-pause"><%= sillage_icon "pause", size: 16 %></span>
+        </button>
+        <output data-flight-viewer-target="timeLabel" class="trajectory-time">00:00</output>
+        <input data-flight-viewer-target="scrubber" data-action="input->flight-viewer#scrub" class="scrubber" type="range" min="0" max="1000" value="0" aria-label="Replay position">
+      </div>
+    </section>
+  </div>
+
+  <div class="flight-metric-controls" aria-label="Visible metrics">
+    <% [
+      ["airspeed", "Airspeed", "is-sky", true],
+      ["to-airflow", "Wing to airflow", "is-aqua", true],
+      ["pitch", "Pitch", "is-amber", true],
+      ["roll", "Roll", "is-violet", false],
+      ["lift-needed", "Lift needed", "is-coral", false],
+      ["dynamic-pressure", "Dynamic pressure", "is-lime", false],
+      ["load", "G-force", "is-field", false],
+      ["radio-signal", "Radio signal", "is-violet", radio_signal.any? { |row| row[:ground_dbm] }]
+    ].each do |metric, label, color_class, checked| %>
+      <label class="flight-metric-toggle <%= color_class %>">
+        <input
+          type="checkbox"
+          <%= "checked" if checked %>
+          data-flight-viewer-target="metricToggle"
+          data-action="change->flight-viewer#toggleMetric"
+          data-metric="<%= metric %>">
+        <span class="flight-toggle-track" aria-hidden="true"><span></span></span>
+        <span><%= label %></span>
+      </label>
+    <% end %>
+  </div>
+</section>
+
+<section class="flight-statistics" aria-labelledby="flight-statistics-title">
+  <div class="flight-section-heading">
+    <h2 id="flight-statistics-title"><span data-flight-viewer-target="phaseName">All</span> statistics</h2>
+  </div>
+
+  <div class="flight-stat-grid">
+    <article class="flight-stat-card">
+      <header><span>Phase summary</span><strong data-flight-viewer-target="stat" data-stat="duration">–</strong></header>
+      <dl>
+        <div><dt>Glide ratio set</dt><dd><%= glide_ratio ? number_with_precision(glide_ratio, precision: 2) : "–" %></dd></div>
+        <div><dt>Airflow angle</dt><dd><%= airflow_angle ? "#{number_with_precision(airflow_angle, precision: 1)}°" : "–" %></dd></div>
+        <div><dt>Peak load</dt><dd data-flight-viewer-target="stat" data-stat="peak-load">–</dd></div>
+      </dl>
+    </article>
+
+    <article class="flight-stat-card">
+      <header><span>Attitude and airflow</span><small>Avg / range or max</small></header>
+      <dl>
+        <% [ ["to-airflow", "Wing to airflow"], ["pitch", "Pitch"], ["roll", "Roll"] ].each do |key, label| %>
+          <div>
+            <dt><%= label %></dt>
+            <dd class="flight-speed-values">
+              <span class="flight-speed-pill is-average">
+                <span class="sr-only">Average</span>
+                <span data-flight-viewer-target="stat" data-stat="<%= key %>-average">–</span>
+                <span class="flight-speed-unit">°</span>
+              </span>
+              <span class="flight-speed-pill is-maximum">
+                <span class="sr-only">Range</span>
+                <span data-flight-viewer-target="stat" data-stat="<%= key %>-range">–</span>
+                <span class="flight-speed-unit">°</span>
+              </span>
+            </dd>
+          </div>
+        <% end %>
+        <% [ ["airspeed", "Airspeed", "km/h"], ["dynamic-pressure", "Dynamic pressure", "Pa"], ["lift-needed", "Lift needed", nil] ].each do |key, label, unit| %>
+          <div>
+            <dt><%= label %></dt>
+            <dd class="flight-speed-values">
+              <span class="flight-speed-pill is-average">
+                <span class="sr-only">Average</span>
+                <span data-flight-viewer-target="stat" data-stat="<%= key %>-average">–</span>
+                <% if unit %><span class="flight-speed-unit"><%= unit %></span><% end %>
+              </span>
+              <span class="flight-speed-pill is-maximum">
+                <span class="sr-only">Maximum</span>
+                <span data-flight-viewer-target="stat" data-stat="<%= key %>-maximum">–</span>
+                <% if unit %><span class="flight-speed-unit"><%= unit %></span><% end %>
+              </span>
+            </dd>
+          </div>
+        <% end %>
+      </dl>
+    </article>
+
+    <article class="flight-stat-card">
+      <header><span>Source data</span><small>Samples</small></header>
+      <dl class="flight-source-grid">
+        <div><dt>Airspeed samples</dt><dd><%= sample_count_with_rate(sensor_counts.fetch("AIRSPEED", 0), total_duration) %></dd></div>
+        <div><dt>Barometer samples</dt><dd><%= sample_count_with_rate(sensor_counts.fetch("BARO", 0), total_duration) %></dd></div>
+        <% imu_sample_rows.each do |label, count| %>
+          <div><dt><%= label %></dt><dd><%= sample_count_with_rate(count, total_duration) %></dd></div>
+        <% end %>
+      </dl>
+    </article>
+  </div>
+</section>

@@ -4,10 +4,12 @@
 <% content_for :head do %>
   <meta name="turbo-cache-control" content="no-cache">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="preconnect" href="https://api.cesium.com" crossorigin>
-  <link rel="preconnect" href="https://assets.cesium.com" crossorigin>
-  <link rel="preload" href="<%= Rails.application.config.x.cesium_base_url %>Cesium.js" as="script">
-  <link rel="stylesheet" href="<%= Rails.application.config.x.cesium_base_url %>Widgets/widgets.css">
+  <% unless @flight.tunnel? %>
+    <link rel="preconnect" href="https://api.cesium.com" crossorigin>
+    <link rel="preconnect" href="https://assets.cesium.com" crossorigin>
+    <link rel="preload" href="<%= Rails.application.config.x.cesium_base_url %>Cesium.js" as="script">
+    <link rel="stylesheet" href="<%= Rails.application.config.x.cesium_base_url %>Widgets/widgets.css">
+  <% end %>
 <% end %>
 
 <%
@@ -33,13 +35,104 @@
 
 <h1 class="sr-only"><%= @flight.code %></h1>
 
+<% video_section = capture do %>
+    <section class="flight-instrument-panel video-sync">
+      <div class="video-sync-header">
+        <div>
+          <span class="flight-section-kicker">Visual reference</span>
+          <h2><%= t(@flight.tunnel? ? "flights.video.tunnel_title" : "flights.video.title") %></h2>
+          <p><%= t(@flight.tunnel? ? "flights.video.tunnel_hint" : "flights.video.hint") %></p>
+        </div>
+
+        <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
+          <%= form_with model: @flight, html: { multipart: true, class: "video-upload-form", data: { controller: "upload", turbo: false, action: "submit->upload#start", upload_failed_label_value: t("flights.video.upload_failed"), upload_processing_label_value: t("flights.video.uploading") } } do |form| %>
+            <label class="secondary-button exds-btn exds-btn--secondary video-upload-button">
+              <%= sillage_icon "upload", size: 18 %>
+              <span><%= t(@flight.video.attached? ? "flights.video.replace" : "flights.video.upload") %></span>
+              <%= form.file_field :video_upload, accept: "video/*,.avi,.m4v,.mkv,.mov,.mp4,.webm", data: { upload_target: "input", action: "change->upload#showFiles" } %>
+            </label>
+            <span class="file-summary" data-upload-target="summary"><%= t("flights.video.no_file") %></span>
+            <%= form.button class: "primary-button exds-btn exds-btn--primary", data: { upload_target: "submit" } do %>
+              <%= sillage_icon "settings", size: 18 %>
+              <span><%= t("flights.video.process") %></span>
+            <% end %>
+            <div class="upload-progress" data-upload-target="progress" hidden>
+              <div class="upload-progress-track" role="progressbar" aria-label="<%= t("flights.video.upload_progress") %>" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-upload-target="meter">
+                <span class="upload-progress-bar" data-upload-target="bar"></span>
+              </div>
+              <span class="upload-progress-percent" data-upload-target="percent">0%</span>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+
+      <% if tunnel_videos.any? %>
+        <div class="video-stage">
+          <video data-flight-viewer-target="video" data-action="loadedmetadata->flight-viewer#syncVideoFromFlight play->flight-viewer#videoPlaybackStarted pause->flight-viewer#videoPlaybackPaused seeked->flight-viewer#videoSeeked timeupdate->flight-viewer#videoTimeUpdated" class="flight-video" controls playsinline preload="metadata" src="<%= attachment_path(tunnel_videos.first.file.attachment) %>"></video>
+        </div>
+        <div class="video-sync-controls">
+          <% tunnel_videos.each_with_index do |video, index| %>
+            <% clip_index = tunnel_videos.select { |other| other.camera == video.camera }.index(video) %>
+            <%= button_tag type: "button", class: "secondary-button exds-btn exds-btn--secondary", aria: { pressed: index.zero? },
+              data: { flight_viewer_target: "videoSource", action: "flight-viewer#selectVideoSource",
+                flight_viewer_src_param: attachment_path(video.file.attachment), flight_viewer_start_elapsed_param: video.start_elapsed_seconds } do %>
+              <span><%= t("flights.video.tunnel_camera", camera: video.camera, clip: clip_index + 1, count: clip_index + 1) %></span>
+            <% end %>
+          <% end %>
+          <span class="video-sync-state"><%= t("flights.video.tunnel_synced") %></span>
+        </div>
+        <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
+          <div class="video-sync-controls">
+            <% tunnel_videos.uniq { |video| [ video.timeslot_at, video.clip_number ] }.each_with_index do |video, index| %>
+              <%= button_to flight_tunnel_video_path(@flight, video), method: :delete, class: "exds-btn exds-btn--ghost exds-btn--danger",
+                form: { data: { turbo_confirm: t("flights.video.tunnel_confirm_remove") } } do %>
+                <%= sillage_icon "trash", size: 18 %>
+                <span><%= t("flights.video.tunnel_remove", clip: index + 1, time: l(video.recorded_at.in_time_zone(TunnelMedia::Configuration.from_env.zone), format: "%H:%M:%S")) %></span>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+      <% elsif @flight.video_ready? %>
+        <div class="video-stage">
+          <video data-flight-viewer-target="video" data-action="loadedmetadata->flight-viewer#syncVideoFromFlight play->flight-viewer#videoPlaybackStarted pause->flight-viewer#videoPlaybackPaused seeked->flight-viewer#videoSeeked timeupdate->flight-viewer#videoTimeUpdated" class="flight-video" controls playsinline preload="metadata" src="<%= attachment_path(@flight.video.attachment) %>"></video>
+        </div>
+        <div class="video-sync-controls">
+          <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
+            <%= form_with model: @flight, class: "video-exit-form" do |form| %>
+              <%= form.hidden_field :video_exit_offset_seconds, value: @flight.video_exit_offset_seconds, data: { flight_viewer_target: "videoExitOffsetInput" } %>
+              <%= button_tag type: "button", class: "secondary-button exds-btn exds-btn--secondary", data: { action: "flight-viewer#markVideoExit" } do %>
+                <%= sillage_icon "crosshair", size: 18 %>
+                <span><%= t("flights.video.mark_exit") %></span>
+              <% end %>
+            <% end %>
+          <% end %>
+          <span data-flight-viewer-target="videoExitOffsetLabel" class="video-sync-state">
+            <%= @flight.video_exit_offset_seconds.present? ? t("flights.video.exit_marked", timestamp: duration(@flight.video_exit_offset_seconds)) : t("flights.video.exit_unmarked") %>
+          </span>
+        </div>
+      <% elsif @flight.video_processing? %>
+        <p class="video-status"><%= t("flights.video.processing") %></p>
+      <% elsif @flight.video_failed? %>
+        <p class="video-status error-text"><%= t("flights.video.failed", error: @flight.video_processing_error.presence || t("flights.video.unknown_error")) %></p>
+      <% else %>
+        <p class="video-status"><%= t(@flight.tunnel? ? "flights.video.tunnel_empty" : "flights.video.empty") %></p>
+      <% end %>
+    </section>
+<% end %>
+
 <section
   class="flight-replay-page"
   data-controller="flight-viewer"
   data-flight-viewer-points-value="<%= json_escape(@visualization_points.to_json) %>"
   data-flight-viewer-sensors-value="<%= json_escape(@visualization_sensors.to_json) %>"
   data-flight-viewer-radio-value="<%= json_escape(@radio_signal.to_json) %>"
-  data-flight-viewer-bounds-value="<%= json_escape(@bounds.to_json) %>"
+  data-flight-viewer-bounds-value="<%= json_escape((@flight.tunnel? ? {} : @bounds).to_json) %>"
+  data-flight-viewer-environment-value="<%= @flight.environment %>"
+  <% if @flight.tunnel? %>
+    <% if @flight.tunnel_glide_ratio %>data-flight-viewer-glide-ratio-value="<%= @flight.tunnel_glide_ratio.to_f %>"<% end %>
+    data-flight-viewer-flying-mass-value="<%= Flight::TUNNEL_FLYING_MASS_KG %>"
+    data-flight-viewer-wing-area-value="<%= Flight::WING_AREA_M2 %>"
+  <% end %>
   data-flight-viewer-analysis-value="<%= json_escape(@analysis.to_json) %>"
   data-flight-viewer-cesium-token-value="<%= @cesium_ion_token %>"
   data-flight-viewer-cesium-base-url-value="<%= Rails.application.config.x.cesium_base_url %>"
@@ -91,7 +184,7 @@
       </section>
     <% end %>
 
-    <% if @track_quality[:rejected_count].positive? || @track_quality[:gaps].any? || @track_quality[:source_unavailable] %>
+    <% if @flight.sky? && (@track_quality[:rejected_count].positive? || @track_quality[:gaps].any? || @track_quality[:source_unavailable]) %>
       <section class="analysis-mode-banner" aria-label="GPS quality">
         <strong><%= @track_quality[:gaps].any? { |gap| gap[:reasons].include?("altitude_discontinuity") } ? "GPS altitude uncertain" : "GPS quality" %></strong>
         <span><%= number_with_delimiter(@track_quality[:rejected_count]) %> unreliable GPS samples excluded from analysis. Raw recordings are unchanged.</span>
@@ -104,6 +197,9 @@
       </section>
     <% end %>
 
+    <% if @flight.tunnel? %>
+      <%= render "flights/tunnel_analysis", flight: @flight, video_section:, total_duration:, imu_sample_rows:, sensor_counts: @sensor_counts, radio_signal: @radio_signal %>
+    <% else %>
     <section class="flight-overview-strip" aria-label="Flight overview">
       <div>
         <span>Total recording</span>
@@ -267,94 +363,14 @@
         </article>
       </div>
     </section>
+    <% end %>
     <% @radio_histories.each do |history| %>
       <%= render "signal_radio_histories/chart", session: history.session, rows: history.rows, session_duration: history.duration %>
     <% end %>
     <%= render "flights/imu_quality", events: @imu_quality_events, checks: @imu_checks %>
     </div>
 
-    <section class="flight-instrument-panel video-sync">
-      <div class="video-sync-header">
-        <div>
-          <span class="flight-section-kicker">Visual reference</span>
-          <h2><%= t("flights.video.title") %></h2>
-          <p><%= t("flights.video.hint") %></p>
-        </div>
-
-        <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
-          <%= form_with model: @flight, html: { multipart: true, class: "video-upload-form", data: { controller: "upload", turbo: false, action: "submit->upload#start", upload_failed_label_value: t("flights.video.upload_failed"), upload_processing_label_value: t("flights.video.uploading") } } do |form| %>
-            <label class="secondary-button exds-btn exds-btn--secondary video-upload-button">
-              <%= sillage_icon "upload", size: 18 %>
-              <span><%= t(@flight.video.attached? ? "flights.video.replace" : "flights.video.upload") %></span>
-              <%= form.file_field :video_upload, accept: "video/*,.avi,.m4v,.mkv,.mov,.mp4,.webm", data: { upload_target: "input", action: "change->upload#showFiles" } %>
-            </label>
-            <span class="file-summary" data-upload-target="summary"><%= t("flights.video.no_file") %></span>
-            <%= form.button class: "primary-button exds-btn exds-btn--primary", data: { upload_target: "submit" } do %>
-              <%= sillage_icon "settings", size: 18 %>
-              <span><%= t("flights.video.process") %></span>
-            <% end %>
-            <div class="upload-progress" data-upload-target="progress" hidden>
-              <div class="upload-progress-track" role="progressbar" aria-label="<%= t("flights.video.upload_progress") %>" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-upload-target="meter">
-                <span class="upload-progress-bar" data-upload-target="bar"></span>
-              </div>
-              <span class="upload-progress-percent" data-upload-target="percent">0%</span>
-            </div>
-          <% end %>
-        <% end %>
-      </div>
-
-      <% if tunnel_videos.any? %>
-        <div class="video-stage">
-          <video data-flight-viewer-target="video" data-action="loadedmetadata->flight-viewer#syncVideoFromFlight play->flight-viewer#videoPlaybackStarted pause->flight-viewer#videoPlaybackPaused seeked->flight-viewer#videoSeeked timeupdate->flight-viewer#videoTimeUpdated" class="flight-video" controls playsinline preload="metadata" src="<%= attachment_path(tunnel_videos.first.file.attachment) %>"></video>
-        </div>
-        <div class="video-sync-controls">
-          <% tunnel_videos.each_with_index do |video, index| %>
-            <% clip_index = tunnel_videos.select { |other| other.camera == video.camera }.index(video) %>
-            <%= button_tag type: "button", class: "secondary-button exds-btn exds-btn--secondary", aria: { pressed: index.zero? },
-              data: { flight_viewer_target: "videoSource", action: "flight-viewer#selectVideoSource",
-                flight_viewer_src_param: attachment_path(video.file.attachment), flight_viewer_start_elapsed_param: video.start_elapsed_seconds } do %>
-              <span><%= t("flights.video.tunnel_camera", camera: video.camera, clip: clip_index + 1, count: clip_index + 1) %></span>
-            <% end %>
-          <% end %>
-          <span class="video-sync-state"><%= t("flights.video.tunnel_synced") %></span>
-        </div>
-        <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
-          <div class="video-sync-controls">
-            <% tunnel_videos.uniq { |video| [ video.timeslot_at, video.clip_number ] }.each_with_index do |video, index| %>
-              <%= button_to flight_tunnel_video_path(@flight, video), method: :delete, class: "exds-btn exds-btn--ghost exds-btn--danger",
-                form: { data: { turbo_confirm: t("flights.video.tunnel_confirm_remove") } } do %>
-                <%= sillage_icon "trash", size: 18 %>
-                <span><%= t("flights.video.tunnel_remove", clip: index + 1, time: l(video.recorded_at.in_time_zone(TunnelMedia::Configuration.from_env.zone), format: "%H:%M:%S")) %></span>
-              <% end %>
-            <% end %>
-          </div>
-        <% end %>
-      <% elsif @flight.video_ready? %>
-        <div class="video-stage">
-          <video data-flight-viewer-target="video" data-action="loadedmetadata->flight-viewer#syncVideoFromFlight play->flight-viewer#videoPlaybackStarted pause->flight-viewer#videoPlaybackPaused seeked->flight-viewer#videoSeeked timeupdate->flight-viewer#videoTimeUpdated" class="flight-video" controls playsinline preload="metadata" src="<%= attachment_path(@flight.video.attachment) %>"></video>
-        </div>
-        <div class="video-sync-controls">
-          <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
-            <%= form_with model: @flight, class: "video-exit-form" do |form| %>
-              <%= form.hidden_field :video_exit_offset_seconds, value: @flight.video_exit_offset_seconds, data: { flight_viewer_target: "videoExitOffsetInput" } %>
-              <%= button_tag type: "button", class: "secondary-button exds-btn exds-btn--secondary", data: { action: "flight-viewer#markVideoExit" } do %>
-                <%= sillage_icon "crosshair", size: 18 %>
-                <span><%= t("flights.video.mark_exit") %></span>
-              <% end %>
-            <% end %>
-          <% end %>
-          <span data-flight-viewer-target="videoExitOffsetLabel" class="video-sync-state">
-            <%= @flight.video_exit_offset_seconds.present? ? t("flights.video.exit_marked", timestamp: duration(@flight.video_exit_offset_seconds)) : t("flights.video.exit_unmarked") %>
-          </span>
-        </div>
-      <% elsif @flight.video_processing? %>
-        <p class="video-status"><%= t("flights.video.processing") %></p>
-      <% elsif @flight.video_failed? %>
-        <p class="video-status error-text"><%= t("flights.video.failed", error: @flight.video_processing_error.presence || t("flights.video.unknown_error")) %></p>
-      <% else %>
-        <p class="video-status"><%= t("flights.video.empty") %></p>
-      <% end %>
-    </section>
+    <%= video_section unless @flight.tunnel? %>
 
     </div>
 
@@ -389,15 +405,21 @@
             <%= form.time_field :flown_at %>
             <%= form.label :location, @flight.tunnel? ? "Location (optional)" : "Location *" %>
             <%= form.text_field :location, required: @flight.sky? %>
+            <% if @flight.tunnel? %>
+              <%= form.label :tunnel_glide_ratio, "Tunnel glide ratio (optional)" %>
+              <%= form.number_field :tunnel_glide_ratio, step: 0.01, min: Flight::TUNNEL_GLIDE_RATIOS.min, max: Flight::TUNNEL_GLIDE_RATIOS.max %>
+            <% end %>
             <%= form.label :fdr_id, "FDR (optional)" %>
             <%= form.collection_select :fdr_id, @fdrs, :id, :display_name, { include_blank: "None" } %>
             <%= render "flights/visibility_field", form: form %>
             <%= render "flights/folder_field", form: form %>
+            <% if @flight.sky? %>
             <div class="flight-details-time-grid">
               <div><%= form.label :exit_at, t("flights.form.exit_at") %><%= form.datetime_field :exit_at, value: @flight.exit_at&.strftime("%Y-%m-%dT%H:%M:%S") %></div>
               <div><%= form.label :opening_at, t("flights.form.opening_at") %><%= form.datetime_field :opening_at, value: @flight.opening_at&.strftime("%Y-%m-%dT%H:%M:%S") %></div>
               <div><%= form.label :landing_at, t("flights.form.landing_at") %><%= form.datetime_field :landing_at, value: @flight.landing_at&.strftime("%Y-%m-%dT%H:%M:%S") %></div>
             </div>
+            <% end %>
             <%= form.button class: "primary-button exds-btn exds-btn--primary" do %>
               <%= sillage_icon "check", size: 18 %>
               <span><%= t("flights.form.save") %></span>
@@ -410,7 +432,10 @@
             <div><dt>Description</dt><dd><%= @flight.description %></dd></div>
             <div><dt>Aircraft</dt><dd><%= @flight.display_aircraft %></dd></div>
             <div><dt>Location</dt><dd><%= @flight.display_location %></dd></div>
-            <% { "Exit" => @flight.exit_at, "Opening" => @flight.opening_at, "Landing" => @flight.landing_at }.each do |label, timestamp| %>
+            <% if @flight.tunnel? %>
+              <div><dt>Tunnel glide ratio</dt><dd><%= @flight.tunnel_glide_ratio ? number_with_precision(@flight.tunnel_glide_ratio, precision: 2) : "–" %></dd></div>
+            <% end %>
+            <% (@flight.tunnel? ? {} : { "Exit" => @flight.exit_at, "Opening" => @flight.opening_at, "Landing" => @flight.landing_at }).each do |label, timestamp| %>
               <div><dt><%= label %></dt><dd><%= timestamp ? local_time(timestamp, :seconds) : "—" %></dd></div>
             <% end %>
           </dl>
