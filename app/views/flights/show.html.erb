@@ -54,7 +54,7 @@
       <span><%= @flight.code %><% if @flight.description.present? %> · <%= @flight.description %><% end %></span>
     </div>
     <%= render "flights/pilot", flight: @flight %>
-    <span class="mode-badge is-neutral"><%= @flight.effective_visibility.capitalize %></span>
+    <span class="mode-badge is-neutral"><%= visibility_label(@flight.effective_visibility) %></span>
     <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
       <%= button_to @flight, method: :delete, class: "kit-icon-button exds-iconbtn exds-iconbtn--ghost exds-iconbtn--danger", title: t("flights.show.delete"),
         aria: { label: t("flights.show.delete") }, form: { class: "flight-replay-delete", data: { turbo_confirm: t("flights.show.confirm_delete", code: @flight.code) } } do %>

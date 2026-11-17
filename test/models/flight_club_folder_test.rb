@@ -15,6 +15,8 @@ class FlightClubFolderTest < ActiveSupport::TestCase
     assert_includes Flight.visible_to(member), @flight
     assert_not @folder.contributable_by?(member), "viewing does not let a member file flights"
     assert_equal "club", @flight.effective_visibility
+    assert_equal "Flight Club", ApplicationController.helpers.visibility_label("club")
+    assert_equal "Shared", ApplicationController.helpers.visibility_label("shared")
     assert_includes Flight.with_effective_visibility("shared"), @flight
   end
 

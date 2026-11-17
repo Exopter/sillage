@@ -3,7 +3,7 @@
   <div><dt>Pilot</dt><dd><%= render "flights/pilot", flight: @flight %></dd></div>
   <div><dt>Date</dt><dd><%= logbook_date(@flight) %></dd></div>
   <div><dt>Location</dt><dd><%= @flight.display_location %></dd></div>
-  <div><dt>Visibility</dt><dd><%= @flight.effective_visibility.capitalize %></dd></div>
+  <div><dt>Visibility</dt><dd><%= visibility_label(@flight.effective_visibility) %></dd></div>
   <% if @flight.visible_to?(Current.user) || @flight.folder&.visible_to?(Current.user) %>
     <div><dt>Folder</dt><dd><%= @flight.folder ? link_to(@flight.folder.name, flights_path(folder: @flight.folder_id), data: { turbo_frame: "flight-browser" }) : "Unfiled" %></dd></div>
   <% end %>

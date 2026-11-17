@@ -61,6 +61,11 @@ module FlightBrowserHelper
     [ ("#{hours}h" if hours.positive?), ("#{minutes}m" if minutes.positive? || hours.positive?), "#{seconds}s" ].compact.join(" ")
   end
 
+  # "club" reads as the Flight Club everywhere it is shown.
+  def visibility_label(value)
+    value == "club" ? "Flight Club" : value.to_s.capitalize
+  end
+
   def browser_visibility(entry)
     entry.is_a?(FlightImport) ? "private" : entry.effective_visibility
   end
