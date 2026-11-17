@@ -5,12 +5,16 @@
   airflow_angle = flight.tunnel_airflow_angle
   debrief = flight.flight_debriefs.where.not(flight_comment_id: nil).order(:created_at, :id).last
   spoken = ->(key) { debrief.checklist[key].presence || "–" }
+  # The pitot and the recorder IMU are all a tunnel record charts, with the radio link beside them.
+  charted = sensor_counts.any? { |type, count| count.positive? && (type == "AIRSPEED" || type.start_with?("IMU")) } || radio_signal.any?
+  attitude_recorded = sensor_counts.fetch("IMU:rotation_vector", 0).positive?
+  importable = can_manage_operations? && flight.visible_to?(Current.user) && !flight.recording_expected?
 %>
 
 <section class="flight-overview-strip" aria-label="Flight overview">
   <div>
     <span>Total recording</span>
-    <strong><%= duration(total_duration) %></strong>
+    <strong><%= total_duration.to_f.positive? ? duration(total_duration) : "–" %></strong>
   </div>
   <div>
     <span>Flying</span>
@@ -26,7 +30,7 @@
   </div>
   <div>
     <span>Airspeed</span>
-    <strong><b data-flight-viewer-target="stat" data-stat="flying-airspeed">–</b><small> km/h avg</small></strong>
+    <strong><b data-flight-viewer-target="stat" data-stat="flying-airspeed">–</b><% if charted %><small> km/h avg</small><% end %></strong>
   </div>
 </section>
 
@@ -63,6 +67,7 @@
   <% end %>
 </div>
 
+<% if charted %>
 <section class="flight-instrument-panel" data-flight-viewer-target="instrumentPanel" aria-labelledby="flight-data-title">
   <div class="flight-section-heading flight-analysis-heading">
     <div>
@@ -98,6 +103,7 @@
           <h2 id="airflow-title">Wing in the airflow</h2>
         </div>
       </div>
+      <% if attitude_recorded %>
       <div class="trajectory-viewport signal-airflow" data-controller="signal-airflow"
            data-action="sillage:flight-attitude@window->signal-airflow#telemetry"
            data-signal-airflow-recorded-value="true"
@@ -128,6 +134,13 @@
           <div><span title="Lift coefficient the wing must produce to hold this flight: weight across the airflow, divided by the pitot dynamic pressure and the wing area. Assumes a slack tether, <%= Flight::TUNNEL_FLYING_MASS_KG %> kg flying and <%= Flight::WING_AREA_M2 %> m² of wing.">Needed</span><strong data-signal-airflow-target="value" data-reading="liftNeeded">---</strong></div>
         </div>
       </div>
+      <% else %>
+        <div class="flight-empty-state">
+          <%= sillage_icon "plane", size: 28, stroke_width: 1.6 %>
+          <strong>No attitude recorded</strong>
+          <span>The wing replay needs the orientation samples of the recorder.</span>
+        </div>
+      <% end %>
       <div class="trajectory-playback">
         <button type="button" class="trajectory-icon-button trajectory-play-button" data-flight-viewer-target="playButton" data-action="flight-viewer#togglePlayback" aria-label="<%= t("flights.charts.play") %>" title="<%= t("flights.charts.play") %>">
           <span class="play-icon is-play"><%= sillage_icon "play", size: 16 %></span>
@@ -231,3 +244,24 @@
     </article>
   </div>
 </section>
+<% else %>
+<section class="flight-instrument-panel" aria-labelledby="flight-data-title">
+  <div class="flight-section-heading flight-analysis-heading">
+    <div>
+      <span class="flight-section-kicker">Telemetry</span>
+      <h2 id="flight-data-title">Tunnel flight data</h2>
+    </div>
+  </div>
+  <div class="flight-empty-state is-tall">
+    <%= sillage_icon "activity", size: 28, stroke_width: 1.6 %>
+    <strong>No telemetry recorded</strong>
+    <span>Airspeed, attitude and lift are charted here once the recording of the flight is imported.</span>
+    <% if importable %>
+      <%= link_to new_flight_import_path(flight_id: flight.id), class: "secondary-button exds-btn exds-btn--secondary" do %>
+        <%= sillage_icon "upload", size: 18 %>
+        <span>Import recording</span>
+      <% end %>
+    <% end %>
+  </div>
+</section>
+<% end %>

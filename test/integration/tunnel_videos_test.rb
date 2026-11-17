@@ -18,6 +18,9 @@ class TunnelVideosTest < ActionDispatch::IntegrationTest
     assert_select "button[data-flight-viewer-target='videoSource']", 2
     assert_select "button[aria-pressed='true'][data-flight-viewer-start-elapsed-param='20.0']", text: "Side"
     assert_select "button[data-flight-viewer-src-param='#{attachment_path(@top.file.attachment)}']", text: "Top"
+    assert_select ".video-source-switch", 1
+    assert_select ".video-source-clip span", 0
+    assert_select ".video-upload-form", 0
   end
 
   test "tunnel clips follow the visibility of their flight" do
@@ -40,7 +43,9 @@ class TunnelVideosTest < ActionDispatch::IntegrationTest
     other_camera = tunnel_video("Top", "e", 60, clip_number: 2)
 
     get flight_path(@flight)
-    assert_select "form[action='#{flight_tunnel_video_path(@flight, setup_clip)}'] button", text: /Remove clip 2/
+    assert_select ".video-sync-header .exds-comment-menu form[action='#{flight_tunnel_video_path(@flight, setup_clip)}'] button", text: /Remove clip 2/
+    assert_select ".video-source-clip span", text: "Clip 2"
+    assert_select ".video-source-switch", 2
 
     delete flight_tunnel_video_path(@flight, setup_clip)
 

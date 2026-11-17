@@ -1,0 +1,35 @@
+<%# Player of the tunnel camera clips: one stage, then one camera switch per clip. The flight
+    record drives it from the telemetry timeline (viewer: true); the flight log preview plays it alone. %>
+<%
+  clips = videos.group_by { |video| [ video.timeslot_at, video.clip_number ] }.values
+  video_data = if viewer
+    { flight_viewer_target: "video", action: "loadedmetadata->flight-viewer#syncVideoFromFlight play->flight-viewer#videoPlaybackStarted pause->flight-viewer#videoPlaybackPaused seeked->flight-viewer#videoSeeked timeupdate->flight-viewer#videoTimeUpdated" }
+  else
+    { video_source_target: "video" }
+  end
+%>
+<%= tag.div class: "video-player", data: ({ controller: "video-source" } unless viewer) do %>
+  <div class="video-stage">
+    <%= tag.video class: "flight-video", controls: true, playsinline: true, preload: "metadata", src: attachment_path(videos.first.file.attachment), data: video_data, aria: { label: "Tunnel camera video" } %>
+  </div>
+  <% if videos.many? %>
+    <div class="video-player-bar">
+      <% clips.each_with_index do |cameras, clip| %>
+        <div class="video-source-clip">
+          <% if clips.many? %><span><%= t("flights.video.tunnel_clip", clip: clip + 1) %></span><% end %>
+          <div class="video-source-switch" role="group" aria-label="<%= t("flights.video.tunnel_cameras", clip: clip + 1) %>">
+            <% cameras.each do |video| %>
+              <% source_data = if viewer
+                   { flight_viewer_target: "videoSource", action: "flight-viewer#selectVideoSource", flight_viewer_src_param: attachment_path(video.file.attachment), flight_viewer_start_elapsed_param: video.start_elapsed_seconds }
+                 else
+                   { video_source_target: "source", action: "video-source#select", video_source_src_param: attachment_path(video.file.attachment) }
+                 end %>
+              <%= button_tag video.camera, type: "button", data: source_data,
+                    aria: { pressed: video == videos.first, label: t("flights.video.tunnel_camera", camera: video.camera, clip: clip + 1, count: clips.size) } %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>
