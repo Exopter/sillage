@@ -16,7 +16,8 @@ class FlightPilotFlowTest < ActionDispatch::IntegrationTest
         assert_select "option[selected][value=?]", @creator.id.to_s
         assert_select "option[value=?]", @pilot.id.to_s, text: "Elias Okafor"
         assert_select "option[value=?]", users(:operator).id.to_s, count: 0
-        assert_select "option[value=?]", users(:invited).id.to_s, count: 0
+        # An invited user is offered before accepting the invitation.
+        assert_select "option[value=?]", users(:invited).id.to_s, count: 1
       end
     end
   end
@@ -45,7 +46,8 @@ class FlightPilotFlowTest < ActionDispatch::IntegrationTest
 
   test "invalid pilots are rejected without changing the flight" do
     flight = flights(:one)
-    [ "", User.maximum(:id) + 1, users(:invited).id ].each do |pilot_id|
+    users(:operator).update!(disabled_at: Time.current)
+    [ "", User.maximum(:id) + 1, users(:operator).id ].each do |pilot_id|
       patch flight_path(flight), params: { flight: { pilot_id: } }, as: :json
       assert_response :unprocessable_entity
       assert_equal @creator, flight.reload.pilot

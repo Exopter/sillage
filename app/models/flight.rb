@@ -151,9 +151,9 @@ class Flight < ApplicationRecord
   def pilot_must_be_available
     return unless pilot
     return if new_record? && pilot_id == user_id
-    return if !pilot.disabled? && pilot.invitation_accepted_at.present?
+    return unless pilot.disabled?
 
-    errors.add(:pilot, "must be an active user with an accepted invitation")
+    errors.add(:pilot, "must be an active user")
   end
 
   def create_initial_comment
