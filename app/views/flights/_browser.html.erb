@@ -71,12 +71,12 @@
                   <span class="exds-browser-entry-copy">
                     <span class="exds-browser-entry-heading">
                       <strong><%= browser_name(entry) %></strong>
-                      <% if entry.is_a?(Flight) && entry.tunnel? %><span class="mode-badge is-neutral">Tunnel</span><% end %>
                       <% unless entry_status == "Analysed" %>
                         <span class="status-dot is-<%= entry_state %>" title="<%= entry_status %>"><span></span><%= entry_status %></span>
                       <% end %>
                     </span>
-                    <small class="exds-browser-entry-location" title="<%= entry.location if entry.is_a?(Flight) %>"><%= entry.location if entry.is_a?(Flight) %></small>
+                    <%# The mode reads as part of the muted location line, not as a badge. %>
+                    <small class="exds-browser-entry-location" title="<%= entry.location if entry.is_a?(Flight) %>"><%= [ ("Tunnel" if entry.is_a?(Flight) && entry.tunnel?), (entry.location.presence if entry.is_a?(Flight)) ].compact.join(" · ") %></small>
                     <small class="exds-browser-entry-date" title="<%= entry.is_a?(Flight) && entry.started_at.nil? && !entry.flown_on ? "Creation date and time" : "Flight date and time" %>"><%= browser_date(entry) %></small>
                     <% description = entry.is_a?(Flight) ? entry.description : (entry.failed? ? entry.error_message : entry.import_type.upcase) %>
                     <% description = nil if entry.is_a?(Flight) && description.in?(["Draft flight", "Prepared flight"]) %>

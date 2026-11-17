@@ -9,6 +9,20 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     sign_in_as @owner
   end
 
+  test "the preview opens the flight from the top of the panel" do
+    get preview_flights_path(id: @flight.id, kind: "flight"), headers: { "Turbo-Frame" => "flight-preview" }
+    assert_select ".exds-browser-preview > header + a[href=?]", flight_path(@flight), text: /Open flight/
+  end
+
+  test "a tunnel flight row names its mode in the location line, without a badge" do
+    @flight.update!(environment: "tunnel", location: "Inclined Slovenia")
+    get flights_path(folder: @folder.id)
+    assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
+      assert_select ".exds-browser-entry-location", text: "Tunnel · Inclined Slovenia"
+      assert_select ".exds-browser-entry-heading .mode-badge", count: 0
+    end
+  end
+
   test "flight rows distinguish duration dates descriptions and preparation" do
     @flight.update!(duration_seconds: 4786, description: "Test flight")
     get flights_path(folder: @folder.id)

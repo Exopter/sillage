@@ -21,6 +21,10 @@
         </div>
       <% end %>
     </header>
+    <%# The way into the flight comes first, before the details. %>
+    <% unless flight && entry.logbook_view? %>
+    <%= link_to browser_open_path(entry), class: "button-primary exds-btn exds-btn--primary", data: { turbo_frame: (flight && entry.logbook_view? ? "flight-browser" : "_top") } do %><%= sillage_icon "arrow-up-right", size: 18 %> <%= flight ? "Open flight" : "Open recording" %><% end %>
+    <% end %>
     <% if @preview_points.any? %>
       <div data-controller="flight-preview-map" data-flight-preview-map-points-value="<%= @preview_points.to_json %>">
         <div class="exds-browser-map"><div class="exds-browser-map-canvas" data-flight-preview-map-target="canvas" role="img" aria-label="Recorded flight route"></div></div>
@@ -71,9 +75,6 @@
       <% end %>
       <div><dt>Visibility</dt><dd><%= sillage_icon(browser_visibility(entry) == "private" ? "lock-keyhole" : "users", size: 19) %><%= visibility_label(browser_visibility(entry)) %><% if flight && entry.folder %><small>From folder</small><% elsif can_manage_operations? && flight && accessible %><%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button is-quiet", title: "Edit flight visibility", aria: { label: "Edit flight visibility" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %><% end %><% end %></dd></div>
     </dl>
-    <% unless flight && entry.logbook_view? %>
-    <%= link_to browser_open_path(entry), class: "button-primary exds-btn exds-btn--primary", data: { turbo_frame: (flight && entry.logbook_view? ? "flight-browser" : "_top") } do %><%= sillage_icon "arrow-up-right", size: 18 %> <%= flight ? "Open flight" : "Open recording" %><% end %>
-    <% end %>
   <% else %>
     <div class="exds-browser-empty"><%= sillage_icon "plane", size: 40 %><strong>Select a flight</strong><span>Its comments and details will appear here.</span></div>
   <% end %>
