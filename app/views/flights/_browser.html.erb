@@ -71,7 +71,7 @@
                   <span class="exds-browser-entry-copy">
                     <span class="exds-browser-entry-heading">
                       <strong><%= browser_name(entry) %></strong>
-                      <% unless entry_status == "Analysed" %>
+                      <% if entry_status %>
                         <span class="status-dot is-<%= entry_state %>" title="<%= entry_status %>"><span></span><%= entry_status %></span>
                       <% end %>
                     </span>

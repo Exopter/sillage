@@ -23,20 +23,20 @@ module MetricsHelper
     logbook_value(value.present? ? duration(value) : nil)
   end
 
+  # A status is shown only when something is in progress, awaited or wrong:
+  # a flight that is simply logged or analysed returns nothing.
   def logbook_status(flight)
     return [ "unknown", "Preparation" ] if flight.preparation?
-    return [ "unknown", "Logged" ] if flight.logged?
+    return if flight.logged?
     return [ "live", "Live" ] if flight.live?
     return [ "caution", "Waiting for recording" ] if flight.recording_expected?
-    return [ "unknown", "Logged" ] if flight.waiting_for_recording?
+    return if flight.waiting_for_recording?
     return [ "live", "Processing" ] if flight.processing?
     return [ "caution", "Review" ] if flight.review?
     return [ "live", "Processing" ] if flight.video_processing?
     return [ "fault", "Video fault" ] if flight.video_failed?
     return [ "fault", "Source missing" ] if flight.flight_import&.source_missing?
-    return [ "caution", "Needs review" ] if flight.flight_import&.needs_activity_review?
-
-    [ "ready", "Analysed" ]
+    [ "caution", "Needs review" ] if flight.flight_import&.needs_activity_review?
   end
 
   def meters(value)

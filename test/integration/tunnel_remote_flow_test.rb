@@ -186,8 +186,10 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "section[aria-label='Waiting for recording']", count: 0
     get flights_path
-    assert_select ".status-dot", text: "Waiting for recording", count: 0
-    assert_select ".status-dot[title='Logged']", text: "Logged"
+    # A flight with nothing in progress, awaited or wrong shows no status.
+    assert_select ".exds-browser-entry-heading .status-dot", count: 0
+    get preview_flights_path(id: flight.id, kind: "flight"), headers: { "Turbo-Frame" => "flight-preview" }
+    assert_select ".status-dot", count: 0
     post remote_station_path, params: { key: SecureRandom.uuid, ready: true }, as: :json
     assert_empty response.parsed_body
 

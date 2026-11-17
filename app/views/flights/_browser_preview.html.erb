@@ -78,7 +78,7 @@
       </dd></div><% end %>
       <% if !flight || browser_duration(entry).present? %><div><dt>Duration</dt><dd><%= logbook_duration(browser_duration(entry)) %></dd></div><% end %>
       <% state, label = flight ? logbook_status(entry) : recording_logbook_status(entry) %>
-      <% unless label == "Logged" %><div><dt>Status</dt><dd><span class="status-dot is-<%= state %>"><span></span><%= label %></span></dd></div><% end %>
+      <% if label %><div><dt>Status</dt><dd><span class="status-dot is-<%= state %>"><span></span><%= label %></span></dd></div><% end %>
     </dl>
     <% if flight %>
       <% if can_access_signal? && entry.live? && (live_session = entry.signal_sessions.where(status: %w[live syncing]).first) %>
