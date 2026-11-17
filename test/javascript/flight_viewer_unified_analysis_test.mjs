@@ -69,7 +69,7 @@ assert.doesNotMatch(applicationStyles, /\.chart-panel\[hidden\]/)
 
 const runtimeSource = controllerSource
   .replace('import { Controller } from "@hotwired/stimulus"', "const Controller = class {}")
-  .replace(/from "(flight_geometry|flight_chart_plugins|pressure_altitude|viewer_resources)"/g,
+  .replace(/from "(flight_geometry|flight_chart_plugins|pressure_altitude|tunnel_flight|viewer_resources)"/g,
     (_, name) => `from "${new URL(`../../app/javascript/lib/${name}.js`, import.meta.url).href}"`)
 const { default: Viewer } = await import(`data:text/javascript;base64,${Buffer.from(runtimeSource).toString("base64")}`)
 

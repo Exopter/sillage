@@ -36,6 +36,7 @@
       "pressure_altitude": [
         "./app/javascript/lib/pressure_altitude.js"
       ],
+      "tunnel_flight": ["./app/javascript/lib/tunnel_flight.js"],
       "signal_layout": [
         "./app/javascript/lib/signal_layout.js"
       ],
