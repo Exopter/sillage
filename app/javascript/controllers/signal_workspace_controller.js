@@ -1441,7 +1441,8 @@ export default class extends TypedController {
         if (viewportChanged || oversized) this.applyPreset(this.widgetTargets.find((widget) => widget.dataset.mode === "large")?.dataset.widget || "map")
         else this.clampAllWidgets()
       } else {
-        this.applyPreset("map")
+        // The widget marked large leads: the map in Signal Sky, the wing in the airflow in Signal Tunnel.
+        this.applyPreset(this.widgetTargets.find((widget) => widget.dataset.mode === "large")?.dataset.widget || "map")
       }
       this.updateModeButtons()
     })
