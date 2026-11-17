@@ -19,6 +19,9 @@ class SignalController < ApplicationController
       @read_only_sessions = SignalSession.accessible_to(Current.user).where.not(status: "discarded").includes(:flight).recent.limit(50)
       return render :read_only
     end
+    # A phone cannot hold the ground radio: it opens on the remote and the live view instead of the station.
+    return render_phone_hub(live) if phone_hub?
+
     # Only the computer that started the flight records it. Any other device watches.
     if @active_session && (params[:watch] == "1" || params[:join] == "1" || (params[:session].blank? && !recording_here?(@active_session)))
       return render :watch
@@ -40,6 +43,22 @@ class SignalController < ApplicationController
   end
 
   private
+
+  def phone_hub?
+    request.user_agent.to_s.match?(/Mobi|Android/) && params[:setup] != "1" && params[:watch] != "1" && params[:join] != "1" && params[:session].blank?
+  end
+
+  def render_phone_hub(live)
+    remote = Flight.visible_to(Current.user).where.not(remote_start_requested_at: nil)
+    @hub_live = live
+    # A flight started from a remote is running from the tap on Start, before the ground station joins.
+    @hub_flight = live&.flight || remote.where(status: "preparation", remote_start_requested_at: RemoteController::START_REQUEST_VALIDITY.ago..).order(:remote_start_requested_at).last
+    @hub_station = SignalStation.for_remote(Current.user)
+    today = remote.where(remote_start_requested_at: Time.current.beginning_of_day..).where.not(status: "preparation")
+    @hub_flights_today = today.count
+    @hub_last_flight = today.includes(:pilot).order(:remote_start_requested_at).last
+    render :phone
+  end
 
   def recording_here?(session)
     cookies.signed[STATION_COOKIE] == session.uuid

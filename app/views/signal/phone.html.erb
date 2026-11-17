@@ -1,0 +1,31 @@
+<% content_for :title, "Signal" %>
+<% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><% end %>
+<% station_label = { "ready" => "Ground station ready", "waiting" => "Ground station not ready", "remote_off" => "Ground station not following the remote" }.fetch(@hub_station&.remote_state, "Ground station offline") %>
+<%# Signal on a phone: the remote first, live telemetry second, the station setup one link away. %>
+<div class="signal-phone ex-dark">
+  <header class="signal-phone-head">
+    <% if @hub_flight %>
+      <span class="signal-phone-live"><span></span>Flight in progress</span>
+      <h1><%= @hub_flight.code %></h1>
+      <p><%= [ @hub_flight.display_pilot, @hub_flight.aircraft&.display_name ].compact.join(" \u00b7 ") %></p>
+    <% else %>
+      <span class="signal-phone-station" data-state="<%= @hub_station&.remote_state || "offline" %>"><%= station_label %></span>
+      <h1>Tunnel session</h1>
+      <p><%= pluralize(@hub_flights_today, "flight") %> today.<% if @hub_last_flight %> Last: <%= @hub_last_flight.code %>, <%= @hub_last_flight.display_pilot %>.<% end %></p>
+    <% end %>
+  </header>
+  <%= link_to remote_path, class: "signal-phone-primary", data: { turbo: false } do %>
+    <span class="signal-phone-primary-icon"><%= sillage_icon "play", size: 20 %></span>
+    <span><strong><%= @hub_flight ? "Back to the remote" : "Open the remote" %></strong><small><%= @hub_flight ? "End the flight and record the debrief" : "Start, end and debrief flights from this phone" %></small></span>
+  <% end %>
+  <% if @hub_live %>
+    <%= link_to signal_path(session: @hub_live.uuid, watch: 1), class: "signal-phone-secondary" do %>
+      <span><strong>Follow live telemetry</strong><small><%= @hub_live.flight&.code || "Flight" %> is on air</small></span><%= sillage_icon "chevron-right", size: 18 %>
+    <% end %>
+  <% else %>
+    <div class="signal-phone-secondary" aria-disabled="true">
+      <span><strong>Follow live telemetry</strong><small>Nothing on air right now</small></span>
+    </div>
+  <% end %>
+  <p class="signal-phone-foot"><% if @hub_flight %><%= station_label %>. <% end %>Recording a flight needs the ground radio, plugged into a computer. <%= link_to "Set up on this device", signal_path(setup: 1, view: "home") %></p>
+</div>
