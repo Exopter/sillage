@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_16_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -72,7 +72,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_180000) do
     t.index ["fdr_functional_configuration_id"], name: "index_assemblies_on_fdr_functional_configuration_id"
     t.index ["internal_number"], name: "index_assemblies_on_internal_number", unique: true
     t.index ["parent_id"], name: "index_assemblies_on_parent_id"
-    t.check_constraint "COALESCE((assembly_type IS NULL OR (assembly_type::text = ANY (ARRAY['Parachute'::character varying, 'Exowing'::character varying]::text[]))) AND fdr_component_type IS NULL OR assembly_type::text = 'ExoFDR'::text AND fdr_functional_configuration_id IS NOT NULL AND serial_number IS NOT NULL AND name::text = serial_number::text AND (fdr_component_type IS NULL AND (assembly_method::text = ANY (ARRAY['PERF'::character varying, 'PCB'::character varying]::text[])) OR fdr_component_type::text = 'SYSTEMS'::text AND assembly_method IS NULL OR (fdr_component_type::text = ANY (ARRAY['SEAT'::character varying, 'CENTRAL'::character varying, 'AIRSPEED'::character varying, 'DISPLAY'::character varying, 'LITE'::character varying]::text[])) AND assembly_method::text = 'PCB'::text), false)", name: "assemblies_exofdr_identity"
+    t.check_constraint "COALESCE((assembly_type IS NULL OR (assembly_type::text = ANY (ARRAY['Parachute'::character varying::text, 'Exowing'::character varying::text]))) AND fdr_component_type IS NULL OR assembly_type::text = 'ExoFDR'::text AND fdr_functional_configuration_id IS NOT NULL AND serial_number IS NOT NULL AND name::text = serial_number::text AND (fdr_component_type IS NULL AND (assembly_method::text = ANY (ARRAY['PERF'::character varying::text, 'PCB'::character varying::text])) OR fdr_component_type::text = 'SYSTEMS'::text AND assembly_method IS NULL OR (fdr_component_type::text = ANY (ARRAY['SEAT'::character varying::text, 'CENTRAL'::character varying::text, 'AIRSPEED'::character varying::text, 'DISPLAY'::character varying::text, 'LITE'::character varying::text])) AND assembly_method::text = 'PCB'::text), false)", name: "assemblies_exofdr_identity"
   end
 
   create_table "asset_identifiers", force: :cascade do |t|
@@ -189,7 +189,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_180000) do
     t.index ["module_assembly_id"], name: "one_active_system_per_fdr_module", unique: true, where: "(removed_at IS NULL)"
     t.index ["system_assembly_id", "component_type"], name: "one_active_fdr_module_per_role", unique: true, where: "(removed_at IS NULL)"
     t.index ["system_assembly_id"], name: "index_fdr_system_memberships_on_system_assembly_id"
-    t.check_constraint "component_type::text = ANY (ARRAY['SEAT'::character varying, 'CENTRAL'::character varying, 'AIRSPEED'::character varying, 'DISPLAY'::character varying]::text[])", name: "fdr_membership_module_type"
+    t.check_constraint "component_type::text = ANY (ARRAY['SEAT'::character varying::text, 'CENTRAL'::character varying::text, 'AIRSPEED'::character varying::text, 'DISPLAY'::character varying::text])", name: "fdr_membership_module_type"
     t.check_constraint "removed_at IS NULL OR removed_at >= installed_at", name: "fdr_membership_period"
     t.check_constraint "system_assembly_id <> module_assembly_id", name: "fdr_membership_not_self"
   end
@@ -298,7 +298,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_180000) do
     t.index ["user_id"], name: "index_flight_folders_on_user_id"
     t.index ["visibility"], name: "index_flight_folders_on_visibility"
     t.check_constraint "color::text = ANY (ARRAY['field'::character varying::text, 'sky'::character varying::text, 'aqua'::character varying::text, 'amber'::character varying::text, 'violet'::character varying::text, 'graphite'::character varying::text])", name: "flight_folder_color"
-    t.check_constraint "visibility::text = ANY (ARRAY['private'::character varying::text, 'public'::character varying::text, 'shared'::character varying::text])", name: "flight_folder_visibility"
+    t.check_constraint "visibility::text = ANY (ARRAY['private'::character varying, 'public'::character varying, 'shared'::character varying, 'club'::character varying]::text[])", name: "flight_folder_visibility"
   end
 
   create_table "flight_imports", force: :cascade do |t|

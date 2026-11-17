@@ -42,3 +42,21 @@
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
+
+/* One line under the actions: extends a full-page selection to the whole list. */
+.exds-selection-extend {
+  flex: 1 0 100%;
+  margin: 0;
+  color: var(--text-body);
+}
+
+.exds-selection-extend button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}

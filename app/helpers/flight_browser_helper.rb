@@ -15,6 +15,14 @@ module FlightBrowserHelper
     @flight_pilot_options.include?(flight.pilot) ? @flight_pilot_options : [ flight.pilot, *@flight_pilot_options ]
   end
 
+  # What the selected flights hold today for one field: the shared value, or how many differ.
+  def bulk_current(flights, label, &value)
+    values = flights.map(&value).tally
+    return "Same on all: #{values.keys.first}" if values.one?
+
+    "Now: #{values.size} different #{label.pluralize(values.size)}"
+  end
+
   def browser_path(**options)
     flights_path(browser_context.merge(options))
   end

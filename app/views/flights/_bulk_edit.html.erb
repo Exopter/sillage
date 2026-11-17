@@ -1,0 +1,28 @@
+<% count = @bulk_ids.size %>
+<%= form_with url: bulk_update_flights_path, class: "exds-browser-form", data: { turbo_frame: "_top", turbo_confirm: "Apply these changes to #{pluralize(count, "flight")}?" } do |form| %>
+  <%= render "flights/browser_filters", form: form, include_query: true %>
+  <%= hidden_field_tag :scope, @bulk_scope, id: nil %>
+  <% if @bulk_scope == "page" %><% @bulk_ids.each do |id| %><%= hidden_field_tag "entries[]", "flight:#{id}", id: nil %><% end %><% end %>
+  <div class="exds-browser-form-grid">
+    <label class="exds-browser-field is-wide"><span>Pilot</span>
+      <%= select_tag "changes[pilot_id]", options_for_select([ [ "Keep as is", "" ] ] + @pilots.map { |pilot| [ pilot.full_name || pilot.email_address, pilot.id ] }), id: nil %>
+      <small class="exds-browser-autocomplete-help"><%= bulk_current(@bulk_flights, "pilot") { |flight| flight.display_pilot } %></small></label>
+    <label class="exds-browser-field is-wide"><span>Aircraft</span>
+      <%= select_tag "changes[aircraft_id]", options_for_select([ [ "Keep as is", "" ], [ "No aircraft", "none" ] ] + @aircraft.map { |aircraft| [ aircraft.display_name, aircraft.id ] }), id: nil %>
+      <small class="exds-browser-autocomplete-help"><%= bulk_current(@bulk_flights, "aircraft") { |flight| flight.aircraft&.display_name || "No aircraft" } %></small></label>
+    <label class="exds-browser-field is-wide"><span>Location</span>
+      <%= text_field_tag "changes[location]", nil, id: nil, placeholder: "Keep as is", autocomplete: "off", list: "bulk-location-suggestions", maxlength: 200 %>
+      <datalist id="bulk-location-suggestions"><% @location_suggestions.each do |location| %><option value="<%= location %>"></option><% end %></datalist>
+      <small class="exds-browser-autocomplete-help"><%= bulk_current(@bulk_flights, "location") { |flight| flight.display_location } %></small></label>
+    <label class="exds-browser-field is-wide"><span>Date</span>
+      <%= date_field_tag "changes[flown_on]", nil, id: nil %>
+      <small class="exds-browser-autocomplete-help">Leave empty to keep each date. Times are never changed here.</small></label>
+    <label class="exds-browser-field is-wide"><span>Folder</span>
+      <%= select_tag "changes[folder_id]", options_for_select([ [ "Keep as is", "" ], [ "Unfiled", "unfiled" ] ] + @destination_folders.map { |folder| [ folder.name, folder.id ] }), id: nil %>
+      <small class="exds-browser-autocomplete-help"><%= bulk_current(@bulk_flights, "folder") { |flight| flight.folder&.name || "Unfiled" } %> · Visibility follows the folder.</small></label>
+  </div>
+  <div class="exds-browser-form-actions">
+    <%= link_to "Cancel", browser_path, class: "button-secondary exds-btn exds-btn--secondary", data: { turbo_frame: "flight-browser" } %>
+    <%= form.submit "Apply to #{pluralize(count, "flight")}", class: "button-primary exds-btn exds-btn--primary" %>
+  </div>
+<% end %>

@@ -54,14 +54,15 @@
           <div><h2><%= @browser_title %></h2><p class="exds-browser-caption"><% if @folder %><% total = @folder_counts.fetch(@folder.id, 0) %><%= "#{@flights.length} of " if @flights.length != total %><%= pluralize(total, "flight") %><% else %><%= "#{@flights.length} entries#{' on this page' if @next_page || @page > 1}" %><% end %> · Newest first</p></div>
         </header>
         <% if @filter == "set_aside" %><p class="exds-browser-explanation">Static tests and technical recordings excluded from flights. Original files are kept here.</p><% end %>
-        <%= form_with url: (can_manage_operations? ? bulk_action_flights_path : flights_path), method: (can_manage_operations? ? :post : :get), class: "exds-browser-selection", data: { controller: ("table-selection" if can_manage_operations?), action: ("submit->table-selection#submit" if can_manage_operations?), turbo_frame: "_top", flight_browser_target: "selection" } do |form| %>
+        <%= form_with url: (can_manage_operations? ? bulk_action_flights_path : flights_path), method: (can_manage_operations? ? :post : :get), class: "exds-browser-selection", data: { controller: ("table-selection" if can_manage_operations?), action: ("submit->table-selection#submit" if can_manage_operations?), table_selection_total_value: @flight_total.to_i, turbo_frame: "_top", flight_browser_target: "selection" } do |form| %>
+          <%= hidden_field_tag :scope, @bulk_scope || "page", id: nil, data: { table_selection_target: "scope" } %>
           <%= render "flights/browser_filters", form: form, include_query: true %>
           <div class="exds-browser-entries">
             <% @flights.each do |entry| %>
               <% accessible = entry.is_a?(FlightImport) || entry.visible_to?(Current.user) %>
               <% selected = entry == @selected_entry %>
               <div class="exds-browser-entry" aria-current="<%= selected %>" draggable="<%= can_manage_operations? && accessible && entry.is_a?(Flight) %>" data-entry="<%= browser_key(entry) %>" data-action="dragstart->flight-browser#startDrag">
-                <% if can_manage_operations? && accessible %><label><input type="checkbox" name="entries[]" value="<%= browser_key(entry) %>" data-table-selection-target="item" data-action="change->table-selection#update"><span class="sr-only">Select <%= browser_name(entry) %></span></label><% end %>
+                <% if can_manage_operations? && accessible %><label><input type="checkbox" name="entries[]" value="<%= browser_key(entry) %>" <%= "checked" if entry.is_a?(Flight) && @bulk_ids&.include?(entry.id) %> data-table-selection-target="item" data-action="change->table-selection#update"><span class="sr-only">Select <%= browser_name(entry) %></span></label><% end %>
                 <%= link_to browser_preview_path(entry), class: "exds-browser-entry-link", draggable: false, data: { turbo_frame: "flight-preview", flight_browser_target: "entry", open_url: browser_open_path(entry), selected: selected, name: browser_name(entry), action: "click->flight-browser#select dblclick->flight-browser#open" }, aria: { label: "Preview #{browser_name(entry)}" } do %>
                   <% entry_state, entry_status = entry.is_a?(Flight) ? logbook_status(entry) : recording_logbook_status(entry) %>
                   <%= render "flights/pilot", flight: entry, show_name: false if entry.is_a?(Flight) %>
@@ -95,10 +96,12 @@
           <div class="exds-selection-toolbar" data-table-selection-target="toolbar" hidden role="group" aria-label="Selection actions">
             <label><input type="checkbox" data-table-selection-target="all" data-action="change->table-selection#toggleAll"><span class="sr-only">Select all entries on this page</span></label>
             <span role="status" aria-live="polite" data-table-selection-target="count">0 selected</span>
+            <button type="submit" formaction="<%= bulk_edit_flights_path %>" formmethod="get" class="button-primary exds-btn exds-btn--primary" disabled data-table-selection-target="edit">Edit</button>
             <label class="exds-selection-field"><span class="sr-only">Move to</span><%= form.select :destination_folder_id, [["Move to…", ""], ["Unfiled", "unfiled"]] + @destination_folders.map { |folder| [folder.name, folder.id] }, {}, data: { table_selection_target: "destination", action: "change->table-selection#update" } %></label>
             <button type="submit" name="operation" value="move" class="button-secondary exds-btn exds-btn--secondary" disabled data-table-selection-target="move">Move</button>
             <button type="button" class="button-secondary exds-btn exds-btn--secondary" disabled data-table-selection-target="clear" data-action="table-selection#reset">Clear</button>
             <button type="submit" name="operation" value="delete" class="button-danger exds-btn exds-btn--danger" disabled data-table-selection-target="delete">Delete selected</button>
+            <p class="exds-selection-extend" data-table-selection-target="extend" hidden><span data-table-selection-target="extendText"></span> <button type="button" data-table-selection-target="extendButton" data-action="table-selection#selectAll"></button></p>
           </div>
           <% end %>
         <% end %>

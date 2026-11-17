@@ -24,10 +24,10 @@
         <%= select_tag :aircraft_id, options_from_collection_for_select(@aircraft, :id, :display_name, default_aircraft), include_blank: "No aircraft", data: { remote_target: "aircraft" } %>
       </label>
       <label class="remote-pick"><span>Pilot</span>
-        <%= select_tag :pilot_id, options_for_select(@pilots.map { |pilot| [ pilot.full_name || pilot.email_address, pilot.id ] }, default_pilot), data: { remote_target: "pilot" } %>
+        <%= select_tag :pilot_id, options_for_select(@pilots.map { |pilot| [ pilot.full_name || pilot.email_address, pilot.id ] }, default_pilot), data: { remote_target: "pilot", action: "change->remote#filterDestinations" } %>
       </label>
       <label class="remote-pick"><span>Save to</span>
-        <%= select_tag :destination, grouped_options_for_select([ [ "Visibility", [ [ "Public \u00b7 whole team", "team" ], [ "Private \u00b7 only me", "private" ] ] ], ([ "Folders", @folders.map { |folder| [ folder.name, "folder:#{folder.id}" ] } ] if @folders.any?) ].compact, @destination), data: { remote_target: "destination" } %>
+        <%= select_tag :destination, grouped_options_for_select([ [ "Visibility", [ [ "Public \u00b7 whole team", "team" ], [ "Private \u00b7 only me", "private" ] ] ], ([ "Folders", @folders.map { |folder| [ folder.name, "folder:#{folder.id}", { data: { pilots: @pilots.select { |pilot| folder.visible_to?(pilot) }.map(&:id).join(",") } } ] } ] if @folders.any?) ].compact, @destination), data: { remote_target: "destination" } %>
       </label>
       <p class="remote-station" role="status" data-remote-target="station" data-state="offline">Checking the ground station.</p>
       <p class="remote-hint">Aircraft, pilot and destination stay as they were on the last flight.</p>
