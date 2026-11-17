@@ -13,6 +13,7 @@ import {
   sampleSensorValue
 } from "flight_geometry"
 import { pressureAltitudeFromPascals } from "pressure_altitude"
+import { airflowAngle, attitudeFromReadings, dynamicPressure, flyingRange, liftNeeded, nearestSample, signed } from "tunnel_flight"
 
 import { loadCesiumLibrary, withTimeout } from "viewer_resources"
 
@@ -67,6 +68,11 @@ const CESIUM_TILE_PROVIDER = "CESIUM_ION"
  * @property {number} videoStartElapsedValue
  * @property {boolean} hasVideoStartElapsedValue
  * @property {HTMLButtonElement[]} videoSourceTargets
+ * @property {string} environmentValue
+ * @property {number} glideRatioValue
+ * @property {boolean} hasGlideRatioValue
+ * @property {number} flyingMassValue
+ * @property {number} wingAreaValue
  */
 const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller & StimulusBindings} */ (/** @type {unknown} */ (Controller))
 
@@ -129,8 +135,10 @@ export default class extends TypedController {
   playbackFrame = null
   /** @type {number|null} */
   videoSyncFrame = null
-  /** @type {"all"|"plane"|"jump"|"canopy"} */
+  /** @type {"all"|"plane"|"jump"|"canopy"|"flying"} */
   activePhase = "all"
+  /** Recorded attitude of a tunnel flight, sorted by time. @type {{t:number, pitch:number, roll:number}[]} */
+  attitudeRows = []
   timelineStart = 0
   flightDuration = 0
   currentElapsed = 0
@@ -190,8 +198,18 @@ export default class extends TypedController {
     cesiumBaseUrl: String,
     labels: Object,
     videoExitOffset: Number,
-    videoStartElapsed: Number
+    videoStartElapsed: Number,
+    environment: String,
+    glideRatio: Number,
+    flyingMass: Number,
+    wingArea: Number
   }
+
+  /** The tunnel has no GPS, no exit and no landing: its record is read from the pitot and the IMU. */
+  get isTunnel() { return this.environmentValue === "tunnel" }
+
+  /** Airflow angle below the horizon in degrees, when the tunnel glide ratio is recorded. */
+  get airflowAngle() { return this.hasGlideRatioValue ? airflowAngle(this.glideRatioValue) : null }
 
   async connect() {
     const generation = this.connectionGeneration = Symbol("flight-viewer")
@@ -214,6 +232,7 @@ export default class extends TypedController {
     this.timelineStart = this.timelineStartFromData()
     this.flightDuration = this.timelineEndFromData()
     this.trimTelemetryToTimeline()
+    this.attitudeRows = this.isTunnel ? this.recordedAttitudeRows() : []
     this.activePhase = "all"
     this.currentElapsed = this.timelineStart
     this.isPlaying = false
@@ -569,6 +588,8 @@ export default class extends TypedController {
   }
 
   setupUnifiedChart() {
+    if (this.isTunnel) return this.setupTunnelChart()
+
     const totalSpeedRows = this.points.map((point) => ({
       ...point,
       totalSpeed: this.totalSpeedMetersPerSecond(point)
@@ -604,6 +625,51 @@ export default class extends TypedController {
     this.syncMetricControls()
   }
 
+  /** Tunnel record: airflow, attitude and lift replace altitude, ground speeds and distance. */
+  setupTunnelChart() {
+    const airspeedRows = this.sensorRows("AIRSPEED")
+    const angle = this.airflowAngle
+    const loadRows = this.sensorRows("IMU:accelerometer").map((sample) => ({
+      ...sample,
+      load: this.accelerationLoadFactor(sample.readings)
+    }))
+
+    const datasets = [
+      this.metricDataset("airspeed", "Airspeed", airspeedRows, (sample) => this.kilometersPerHour(sample.readings?.airspeed_m_s, { absolute: true }), this.colors.sky, "speed", "km/h", true),
+      this.metricDataset("to-airflow", "Wing to airflow", angle == null ? [] : this.attitudeRows, (row) => row.pitch + (angle ?? 0), this.colors.aqua, "angle", "°", true),
+      this.metricDataset("pitch", "Pitch", this.attitudeRows, (row) => row.pitch, this.colors.amber, "angle", "°", true),
+      this.metricDataset("roll", "Roll", this.attitudeRows, (row) => row.roll, this.colors.violet, "angle", "°", false),
+      this.metricDataset("lift-needed", "Lift needed", airspeedRows, (sample) => this.liftNeededFor(sample.readings), this.colors.coral, "lift", "", false),
+      this.metricDataset("dynamic-pressure", "Dynamic pressure", airspeedRows, (sample) => dynamicPressure(sample.readings), this.colors.lime, "pressure", "Pa", false),
+      this.metricDataset("load", "G-force", loadRows, (sample) => sample.load, this.colors.field, "load", "g", false),
+      this.radioDataset()
+    ]
+
+    this.unifiedChart = this.createTimeChart(this.unifiedChartTarget, datasets, {
+      speed: this.axis("left", "Airspeed · km/h"),
+      angle: this.axis("right", "Angle · °", false),
+      lift: this.axis("right", "Lift coefficient", false),
+      pressure: this.axis("right", "Dynamic pressure · Pa", false),
+      load: this.axis("right", "Load · g", false),
+      radio: this.axis("right", "Ground RX · dBm", false)
+    })
+    this.refreshUnifiedAxes()
+    this.syncMetricControls()
+  }
+
+  /** @returns {{t:number, pitch:number, roll:number}[]} */
+  recordedAttitudeRows() {
+    return this.sensorRows("IMU:rotation_vector").flatMap((sample) => {
+      const attitude = attitudeFromReadings(sample.readings)
+      return attitude ? [{ t: sample.t, ...attitude }] : []
+    })
+  }
+
+  /** @param {Record<string, unknown>|undefined} readings */
+  liftNeededFor(readings) {
+    return liftNeeded(dynamicPressure(readings), this.airflowAngle, this.flyingMassValue, this.wingAreaValue)
+  }
+
   /** @returns {import("../types/flight").FlightDataset} */
   radioDataset() {
     const rows = (this.radioValue || []).filter((row) => this.timeInsideRange(row.t, this.timelineStart, this.flightDuration))
@@ -627,7 +693,7 @@ export default class extends TypedController {
   /** @param {string|undefined} requestedPhase @param {{movePlayhead?:boolean}} [options] */
   applyPhase(requestedPhase, options = {}) {
     const ranges = this.phaseRanges()
-    const phase = requestedPhase === "plane" || requestedPhase === "jump" || requestedPhase === "canopy" ? requestedPhase : "all"
+    const phase = /** @type {typeof this.activePhase} */ (requestedPhase && Object.hasOwn(ranges, requestedPhase) ? requestedPhase : "all")
     this.activePhase = phase
 
     this.phaseButtonTargets.forEach((button) => {
@@ -637,7 +703,7 @@ export default class extends TypedController {
     })
 
     if (this.unifiedChart) {
-      const [ start, end ] = ranges[phase]
+      const [ start, end ] = ranges[phase] || ranges.all
       const axis = this.unifiedChart.options.scales?.x
       if (axis) { axis.min = start; axis.max = end }
       this.unifiedChart.update("none")
@@ -654,9 +720,14 @@ export default class extends TypedController {
     if (options.movePlayhead !== false) this.updateScrubbedElapsed(this.phaseStart())
   }
 
+  /** @returns {Record<string, number[]>} */
   phaseRanges() {
     const start = this.timelineStart
     const end = this.flightDuration
+    if (this.isTunnel) {
+      const flying = flyingRange(this.sensorRows("AIRSPEED"))
+      return { all: [ start, end ], flying: flying ? this.validPhaseRange(Math.max(flying[0], start), Math.min(flying[1], end), start, end) : [ start, end ] }
+    }
     const exit = this.boundaryWithinTimeline(this.boundsValue?.exit, start)
     const opening = this.boundaryWithinTimeline(this.boundsValue?.opening, exit)
     const landing = this.boundaryWithinTimeline(this.boundsValue?.landing, opening, end)
@@ -685,11 +756,13 @@ export default class extends TypedController {
   }
 
   phaseStart() {
-    return this.phaseRanges()[this.activePhase || "all"][0]
+    const ranges = this.phaseRanges()
+    return (ranges[this.activePhase] || ranges.all)[0]
   }
 
   phaseEnd() {
-    return this.phaseRanges()[this.activePhase || "all"][1]
+    const ranges = this.phaseRanges()
+    return (ranges[this.activePhase] || ranges.all)[1]
   }
 
   phaseSpan() {
@@ -709,13 +782,16 @@ export default class extends TypedController {
       all: "All",
       plane: "Plane",
       jump: "Jump",
-      canopy: "Canopy"
+      canopy: "Canopy",
+      flying: "Flying"
     }[this.activePhase] || "All"
   }
 
   updatePhaseStatistics() {
     const start = this.phaseStart()
     const end = this.phaseEnd()
+    if (this.isTunnel) return this.updateTunnelStatistics(start, end)
+
     const points = this.points.filter((point) => this.timeInsideRange(point.t, start, end))
     const airspeedRows = this.sensorRows("AIRSPEED").filter((sample) => this.timeInsideRange(sample.t, start, end))
     const loadRows = this.sensorRows("IMU:accelerometer").filter((sample) => this.timeInsideRange(sample.t, start, end))
@@ -738,6 +814,57 @@ export default class extends TypedController {
     this.setStat("glide", this.formatAverage(glideRatios, 1))
     this.setAverageMaximumStat("total-speed", totalSpeeds, 0)
     this.setStat("peak-load", loads.length > 0 ? this.formatUnit(Math.max(...loads), "g", 1) : "—")
+  }
+
+  /** @param {number} start @param {number} end */
+  updateTunnelStatistics(start, end) {
+    const angle = this.airflowAngle
+    const airspeedOf = (/** @type {import("../types/flight").SensorSample} */ sample) => this.kilometersPerHour(sample.readings?.airspeed_m_s, { absolute: true })
+    const allAirspeedRows = this.sensorRows("AIRSPEED")
+    const airspeedRows = allAirspeedRows.filter((sample) => this.timeInsideRange(sample.t, start, end))
+    const attitudeRows = this.attitudeRows.filter((row) => this.timeInsideRange(row.t, start, end))
+    const loadRows = this.sensorRows("IMU:accelerometer").filter((sample) => this.timeInsideRange(sample.t, start, end))
+    const airspeeds = this.finiteValues(airspeedRows, airspeedOf).filter((value) => value <= 600)
+    const loads = this.finiteValues(loadRows, (sample) => this.accelerationLoadFactor(sample.readings)).filter((value) => value <= 20)
+
+    this.setStat("duration", this.formatDuration(end - start))
+    this.setStat("peak-load", loads.length > 0 ? this.formatUnit(Math.max(...loads), "g", 1) : "\u2013")
+    this.setAverageMaximumStat("airspeed", airspeeds, 0)
+    this.setAverageMaximumStat("dynamic-pressure", this.finiteValues(airspeedRows, (sample) => dynamicPressure(sample.readings)), 0)
+    this.setAverageMaximumStat("lift-needed", this.finiteValues(airspeedRows, (sample) => this.liftNeededFor(sample.readings)), 2)
+    this.setAverageRangeStat("to-airflow", angle == null ? [] : attitudeRows.map((row) => row.pitch + angle))
+    this.setAverageRangeStat("pitch", attitudeRows.map((row) => row.pitch))
+    this.setAverageRangeStat("roll", attitudeRows.map((row) => row.roll))
+
+    // The overview always describes the flying part of the recording, whichever phase is shown.
+    const flying = flyingRange(allAirspeedRows)
+    const flyingAirspeeds = flying
+      ? this.finiteValues(allAirspeedRows.filter((sample) => this.timeInsideRange(sample.t, flying[0], flying[1])), airspeedOf).filter((value) => value <= 600)
+      : []
+    this.setStat("flying-duration", flying ? this.formatSeconds(flying[1] - flying[0]) : "\u2013")
+    this.setStat("flying-airspeed", flyingAirspeeds.length > 0 ? (flyingAirspeeds.reduce((sum, value) => sum + value, 0) / flyingAirspeeds.length).toFixed(0) : "\u2013")
+  }
+
+  /** Signed average and extent of an angle, in degrees. @param {string} key @param {number[]} values */
+  setAverageRangeStat(key, values) {
+    if (values.length === 0) {
+      this.setStat(`${key}-average`, "\u2013")
+      this.setStat(`${key}-range`, "\u2013")
+      return
+    }
+
+    const average = values.reduce((sum, value) => sum + value, 0) / values.length
+    this.setStat(`${key}-average`, signed(average))
+    this.setStat(`${key}-range`, `${signed(Math.min(...values))} to ${signed(Math.max(...values))}`)
+  }
+
+  /** Replays the recorded attitude and dynamic pressure on the wing in the airflow. @param {number} elapsed */
+  publishTunnelAttitude(elapsed) {
+    const attitude = nearestSample(this.attitudeRows, elapsed)
+    const pitot = nearestSample(this.sensorRows("AIRSPEED"), elapsed)
+    window.dispatchEvent(new CustomEvent("sillage:flight-attitude", {
+      detail: { roll: attitude?.roll ?? null, pitch: attitude?.pitch ?? null, pressure: pitot ? dynamicPressure(pitot.readings) : null }
+    }))
   }
 
   /** @param {unknown} value @param {number} start @param {number} end */
@@ -1995,6 +2122,7 @@ export default class extends TypedController {
 
     if (this.hasTimeLabelTarget) this.timeLabelTarget.textContent = this.playbackTimeLabel(clampedElapsed)
     this.updateChartsPlaybackCursor(clampedElapsed)
+    if (this.isTunnel) this.publishTunnelAttitude(clampedElapsed)
     if (syncVideo) this.syncVideoToElapsed(clampedElapsed)
   }
 

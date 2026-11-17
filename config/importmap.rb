@@ -16,6 +16,7 @@ pin "viewer_resources", to: "lib/viewer_resources.js"
 pin "leaflet", to: "/vendor/leaflet/1.9.4/leaflet-src.esm.js", preload: false
 pin "flight_geometry", to: "lib/flight_geometry.js"
 pin "pressure_altitude", to: "lib/pressure_altitude.js"
+pin "tunnel_flight", to: "lib/tunnel_flight.js"
 pin "signal_layout", to: "lib/signal_layout.js"
 pin "signal_telemetry", to: "lib/signal_telemetry.js"
 pin "signal_instruments", to: "lib/signal_instruments.js"
