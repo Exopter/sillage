@@ -10,10 +10,22 @@
     <label class="exds-browser-field is-wide"><span>Aircraft</span>
       <%= select_tag "changes[aircraft_id]", options_for_select([ [ "Keep as is", "" ], [ "No aircraft", "none" ] ] + @aircraft.map { |aircraft| [ aircraft.display_name, aircraft.id ] }), id: nil %>
       <small class="exds-browser-autocomplete-help"><%= bulk_current(@bulk_flights, "aircraft") { |flight| flight.aircraft&.display_name || "No aircraft" } %></small></label>
-    <label class="exds-browser-field is-wide"><span>Location</span>
-      <%= text_field_tag "changes[location]", nil, id: nil, placeholder: "Keep as is", autocomplete: "off", list: "bulk-location-suggestions", maxlength: 200 %>
-      <datalist id="bulk-location-suggestions"><% @location_suggestions.each do |location| %><option value="<%= location %>"></option><% end %></datalist>
-      <small class="exds-browser-autocomplete-help"><%= bulk_current(@bulk_flights, "location") { |flight| flight.display_location } %></small></label>
+    <%# Same shared autocomplete as the flight form; the browser's own datalist is not used. %>
+    <div class="exds-browser-field is-wide" data-controller="location-suggestions" data-action="focusout->location-suggestions#leave">
+      <%= label_tag "bulk-location", "Location" %>
+      <div class="exds-browser-autocomplete">
+        <%= text_field_tag "changes[location]", nil, id: "bulk-location", placeholder: "Keep as is", autocomplete: "off", maxlength: 200, role: "combobox",
+              aria: { autocomplete: "list", expanded: "false", controls: "bulk-location-suggestions", describedby: "bulk-location-help" },
+              data: { location_suggestions_target: "input", action: "input->location-suggestions#search focus->location-suggestions#search keydown->location-suggestions#navigate" } %>
+        <div id="bulk-location-suggestions" class="exds-browser-autocomplete-results" role="listbox" aria-label="Existing locations" data-location-suggestions-target="results" hidden>
+          <% @location_suggestions.each_with_index do |location, index| %>
+            <button type="button" id="bulk-location-option-<%= index %>" class="exds-browser-autocomplete-option" role="option" aria-selected="false" tabindex="-1" data-location-suggestions-target="option" data-action="mousedown->location-suggestions#keepFocus click->location-suggestions#select"><%= location %></button>
+          <% end %>
+        </div>
+      </div>
+      <small id="bulk-location-help" class="exds-browser-autocomplete-help"><%= bulk_current(@bulk_flights, "location") { |flight| flight.display_location } %></small>
+      <span class="sr-only" role="status" aria-live="polite" data-location-suggestions-target="status"></span>
+    </div>
     <label class="exds-browser-field is-wide"><span>Date</span>
       <%= date_field_tag "changes[flown_on]", nil, id: nil %>
       <small class="exds-browser-autocomplete-help">Leave empty to keep each date. Times are never changed here.</small></label>
