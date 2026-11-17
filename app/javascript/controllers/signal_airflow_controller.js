@@ -4,20 +4,23 @@ const GLIDE_KEY = "signal-tunnel-glide-ratio"
 // The tunnel angle is set in steps: 1.49, 1.99, 2.49, 2.99, 3.49 and its limit, 3.98.
 const MIN_RATIO = 1.49, MAX_RATIO = 3.98, RATIO_STEP = 0.5
 const RAD = Math.PI / 180
+const STANDARD_GRAVITY = 9.80665
 
-/** @typedef {{modelUrlValue: string, seatUrlValue: string, pilotUrlValue: string, sectionsUrlValue: string, ratioValue: number, sceneTarget: HTMLElement, glideOutputTarget: HTMLElement, airflowTarget: HTMLElement, statusTarget: HTMLElement, valueTargets: HTMLElement[], viewTargets: HTMLButtonElement[]}} Bindings */
+/** @typedef {{modelUrlValue: string, seatUrlValue: string, pilotUrlValue: string, sectionsUrlValue: string, ratioValue: number, massValue: number, areaValue: number, sceneTarget: HTMLElement, glideOutputTarget: HTMLElement, airflowTarget: HTMLElement, statusTarget: HTMLElement, valueTargets: HTMLElement[], viewTargets: HTMLButtonElement[]}} Bindings */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 
 // Signal Tunnel: the wing model follows the attitude measured by the recorder IMU,
 // in an airflow drawn at the angle of the tunnel glide ratio set here.
 export default class extends TypedController {
-  static values = { modelUrl: String, seatUrl: String, pilotUrl: String, sectionsUrl: String, ratio: Number }
+  static values = { modelUrl: String, seatUrl: String, pilotUrl: String, sectionsUrl: String, ratio: Number, mass: Number, area: Number }
   static targets = ["scene", "glideOutput", "airflow", "status", "value", "view"]
   /** @type {import("airflow_scene").AirflowScene | null} */
   scene = null
   ratio = 2.99
   /** @type {{roll: number, pitch: number} | null} */
   attitude = null
+  /** Pitot differential pressure in pascals, the dynamic pressure of the airflow. @type {number | null} */
+  pressure = null
 
   async connect() {
     // A recording keeps the glide ratio it was started with; standby keeps the last one set here.
@@ -48,9 +51,10 @@ export default class extends TypedController {
     this.scene = null
   }
 
-  /** @param {CustomEvent<{roll: number | null, pitch: number | null}>} event */
+  /** @param {CustomEvent<{roll: number | null, pitch: number | null, pressure: number | null}>} event */
   telemetry(event) {
-    const { roll, pitch } = event.detail
+    const { roll, pitch, pressure } = event.detail
+    this.pressure = pressure
     this.attitude = roll == null || pitch == null ? null : { roll, pitch }
     this.scene?.setAttitude(this.attitude)
     this.render()
@@ -82,6 +86,15 @@ export default class extends TypedController {
 
   get airflowAngle() { return Math.atan(1 / this.ratio) / RAD }
 
+  /** Lift coefficient needed to hold a steady flight on a slack tether: the part of the weight
+   * across the airflow over dynamic pressure times wing area. Derived from measurements, not modelled.
+   * Below 200 Pa (about 65 km/h) the wing cannot be flying and the value is withheld.
+   */
+  get liftNeeded() {
+    if (this.pressure == null || this.pressure < 200 || !this.massValue || !this.areaValue) return null
+    return this.massValue * STANDARD_GRAVITY * Math.cos(this.airflowAngle * RAD) / (this.pressure * this.areaValue)
+  }
+
   renderGlide() {
     this.glideOutputTarget.textContent = this.ratio.toFixed(2)
     this.airflowTarget.textContent = `Airflow ${this.airflowAngle.toFixed(1)}° below the horizon`
@@ -98,7 +111,8 @@ export default class extends TypedController {
       toAirflow: attitude ? signed(attitude.pitch + this.airflowAngle) : "---",
       pitch: attitude ? signed(attitude.pitch) : "---",
       roll: attitude ? signed(attitude.roll) : "---",
-      lift: forces ? signed(forces.cl, 2) : "---"
+      lift: forces ? signed(forces.cl, 2) : "---",
+      liftNeeded: this.liftNeeded == null ? "---" : signed(this.liftNeeded, 2)
     }
     this.valueTargets.forEach((target) => { target.textContent = values[target.dataset.reading || ""] ?? "---" })
   }
