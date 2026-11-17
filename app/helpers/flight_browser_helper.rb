@@ -30,7 +30,7 @@ module FlightBrowserHelper
   end
 
   def browser_date(entry)
-    return logbook_date(entry) if entry.is_a?(Flight) && entry.flown_on
+    return logbook_date(entry) if entry.is_a?(Flight) && entry.flown_on && !entry.time_from_recording?
 
     timestamp = entry.is_a?(FlightImport) ? entry.log_started_at : entry.display_started_at
     return "Date not recorded" unless timestamp

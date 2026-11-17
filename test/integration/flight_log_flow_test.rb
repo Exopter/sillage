@@ -60,6 +60,22 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     assert_select "input[name='flight[flown_at]'][data-controller=local-time]", count: 0
   end
 
+  test "saving a date without a time keeps the recorded time and the browser order" do
+    earlier = @owner.flights.create!(started_at: Time.utc(2026, 11, 16, 9, 14))
+    later = @owner.flights.create!(started_at: Time.utc(2026, 11, 16, 16, 12))
+    # The flight form resubmits the derived date with an empty time when another field changes.
+    patch flight_path(later), params: { flight: { flown_on: "2026-11-16", flown_at: "", location: "Tunnel" } }
+    assert_response :redirect
+    assert later.reload.time_from_recording?
+    assert_equal ApplicationController.helpers.logbook_date(@owner.flights.create!(started_at: later.started_at)),
+      ApplicationController.helpers.logbook_date(later)
+    entries = Flights::Logbook.new(user: @owner, filter: "flights").page(1)
+    assert_operator entries.index(later), :<, entries.index(earlier)
+    later.update!(flown_on: Date.new(2026, 11, 10))
+    assert_not later.time_from_recording?
+    assert_equal "10 Nov 2026", ApplicationController.helpers.logbook_date(later)
+  end
+
   test "preparation can be logged only after required details are supplied" do
     flight = @owner.flights.create!(status: "preparation", description: "Upcoming flight")
     get edit_flight_path(flight, intent: "log")

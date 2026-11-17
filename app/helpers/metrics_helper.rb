@@ -12,7 +12,7 @@ module MetricsHelper
   end
 
   def logbook_date(entry)
-    if entry.is_a?(Flight) && entry.flown_on
+    if entry.is_a?(Flight) && entry.flown_on && !entry.time_from_recording?
       return [ entry.flown_on.strftime("%d %b %Y"), entry.flown_at&.strftime("%H:%M") ].compact.join(" · ")
     end
     timestamp = entry.is_a?(FlightImport) ? entry.log_started_at : entry.display_started_at
