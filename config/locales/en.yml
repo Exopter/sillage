@@ -90,6 +90,13 @@ en:
       mark_exit: "Mark exit"
       exit_marked: "Video exit at %{timestamp}"
       exit_unmarked: "Play the video to the exit, then mark that point."
+      tunnel_camera:
+        one: "%{camera}"
+        other: "%{camera} · clip %{clip}"
+      tunnel_synced: "Tunnel cameras, aligned on the recording clock."
+      tunnel_remove: "Remove clip %{clip} (%{time})"
+      tunnel_confirm_remove: "Remove every camera of this clip from the flight? It will not be downloaded again."
+      tunnel_removed: "Tunnel clip removed."
     charts:
       profile: "Height / speed profile"
       ground: "2D ground track"

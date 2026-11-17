@@ -28,6 +28,7 @@
     ["Magnetometer samples (IMU)", @sensor_counts.fetch("IMU:magnetic_field_calibrated", 0) + @sensor_counts.fetch("IMU:magnetometer", 0)],
     ["Orientation samples (IMU)", @sensor_counts.fetch("IMU:rotation_vector", 0)]
   ]
+  tunnel_videos = @flight.started_at ? @flight.tunnel_videos.ready.with_attached_file.playback_order.select(&:ready?) : []
 %>
 
 <h1 class="sr-only"><%= @flight.code %></h1>
@@ -43,7 +44,9 @@
   data-flight-viewer-cesium-token-value="<%= @cesium_ion_token %>"
   data-flight-viewer-cesium-base-url-value="<%= Rails.application.config.x.cesium_base_url %>"
   data-flight-viewer-labels-value="<%= json_escape(t("flights.charts").to_json) %>"
-  <% if @flight.video_exit_offset_seconds.present? %>
+  <% if tunnel_videos.any? %>
+    data-flight-viewer-video-start-elapsed-value="<%= tunnel_videos.first.start_elapsed_seconds %>"
+  <% elsif @flight.video_exit_offset_seconds.present? %>
     data-flight-viewer-video-exit-offset-value="<%= @flight.video_exit_offset_seconds %>"
   <% end %>>
   <header class="flight-replay-header">
@@ -300,7 +303,33 @@
         <% end %>
       </div>
 
-      <% if @flight.video_ready? %>
+      <% if tunnel_videos.any? %>
+        <div class="video-stage">
+          <video data-flight-viewer-target="video" data-action="loadedmetadata->flight-viewer#syncVideoFromFlight play->flight-viewer#videoPlaybackStarted pause->flight-viewer#videoPlaybackPaused seeked->flight-viewer#videoSeeked timeupdate->flight-viewer#videoTimeUpdated" class="flight-video" controls playsinline preload="metadata" src="<%= attachment_path(tunnel_videos.first.file.attachment) %>"></video>
+        </div>
+        <div class="video-sync-controls">
+          <% tunnel_videos.each_with_index do |video, index| %>
+            <% clip_index = tunnel_videos.select { |other| other.camera == video.camera }.index(video) %>
+            <%= button_tag type: "button", class: "secondary-button exds-btn exds-btn--secondary", aria: { pressed: index.zero? },
+              data: { flight_viewer_target: "videoSource", action: "flight-viewer#selectVideoSource",
+                flight_viewer_src_param: attachment_path(video.file.attachment), flight_viewer_start_elapsed_param: video.start_elapsed_seconds } do %>
+              <span><%= t("flights.video.tunnel_camera", camera: video.camera, clip: clip_index + 1, count: clip_index + 1) %></span>
+            <% end %>
+          <% end %>
+          <span class="video-sync-state"><%= t("flights.video.tunnel_synced") %></span>
+        </div>
+        <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
+          <div class="video-sync-controls">
+            <% tunnel_videos.uniq { |video| [ video.timeslot_at, video.clip_number ] }.each_with_index do |video, index| %>
+              <%= button_to flight_tunnel_video_path(@flight, video), method: :delete, class: "exds-btn exds-btn--ghost exds-btn--danger",
+                form: { data: { turbo_confirm: t("flights.video.tunnel_confirm_remove") } } do %>
+                <%= sillage_icon "trash", size: 18 %>
+                <span><%= t("flights.video.tunnel_remove", clip: index + 1, time: l(video.recorded_at.in_time_zone(TunnelMedia::Configuration.from_env.zone), format: "%H:%M:%S")) %></span>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+      <% elsif @flight.video_ready? %>
         <div class="video-stage">
           <video data-flight-viewer-target="video" data-action="loadedmetadata->flight-viewer#syncVideoFromFlight play->flight-viewer#videoPlaybackStarted pause->flight-viewer#videoPlaybackPaused seeked->flight-viewer#videoSeeked timeupdate->flight-viewer#videoTimeUpdated" class="flight-video" controls playsinline preload="metadata" src="<%= attachment_path(@flight.video.attachment) %>"></video>
         </div>

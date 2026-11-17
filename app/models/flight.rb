@@ -27,6 +27,7 @@ class Flight < ApplicationRecord
   has_many :operator_events, dependent: :delete_all
   has_many :flight_debriefs, dependent: :destroy
   has_many :comments, class_name: "FlightComment", dependent: :destroy, inverse_of: :flight
+  has_many :tunnel_videos, dependent: :destroy
   attr_accessor :initial_comment, :initial_comment_images
   has_one_attached :video_upload
   has_one_attached :video
