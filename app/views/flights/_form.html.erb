@@ -11,7 +11,7 @@
     <label class="exds-browser-field is-wide">
       <span>Mode *</span>
       <%= form.select :environment, [["Sky", "sky"], ["Tunnel", "tunnel"]], {}, required: true, aria: { describedby: "flight-mode-help" } %>
-      <small id="flight-mode-help" class="exds-browser-autocomplete-help">Tunnel flights have no GPS track and need no location.</small>
+      <small id="flight-mode-help" class="exds-browser-autocomplete-help">Tunnel flights have no GPS track. Their location is Inclined Slovenia unless another one is entered.</small>
     </label>
     <label class="exds-browser-field is-wide">
       <span>Pilot *</span>

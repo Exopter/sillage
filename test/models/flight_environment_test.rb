@@ -15,6 +15,17 @@ class FlightEnvironmentTest < ActiveSupport::TestCase
     assert flight.errors[:environment].any?
   end
 
+  test "a tunnel flight is at Inclined Slovenia unless another place is entered" do
+    flight = @user.flights.create!(status: "preparation", environment: "tunnel")
+    assert_equal "Inclined Slovenia", flight.location
+    assert_equal "manual", flight.location_source
+    assert_equal "Elsewhere", @user.flights.create!(status: "preparation", environment: "tunnel", location: "Elsewhere").location
+    sky = @user.flights.create!(status: "preparation", location: "Drop zone")
+    sky.update!(environment: "tunnel")
+    assert_equal "Drop zone", sky.location
+    assert_nil @user.flights.create!(status: "preparation").location
+  end
+
   test "a logged tunnel flight needs no location, a sky flight does" do
     assert @user.flights.new(status: "logged", flown_on: Date.new(2026, 11, 16), environment: "tunnel").valid?
     sky = @user.flights.new(status: "logged", flown_on: Date.new(2026, 11, 16), environment: "sky")

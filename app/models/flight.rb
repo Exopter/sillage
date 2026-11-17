@@ -8,6 +8,8 @@ class Flight < ApplicationRecord
   # Where the flight is flown. The tunnel has no GPS, no exit and no landing.
   ENVIRONMENTS = %w[sky tunnel].freeze
   TUNNEL_GLIDE_RATIOS = (1.49..3.98)
+  # Where tunnel flights are flown unless another place is entered.
+  TUNNEL_LOCATION = "Inclined Slovenia"
 
   belongs_to :user
   belongs_to :pilot, class_name: "User", inverse_of: :piloted_flights
@@ -31,6 +33,7 @@ class Flight < ApplicationRecord
 
   before_validation :assign_code
   before_validation :assign_default_pilot, on: :create
+  before_validation :assign_tunnel_location
   after_create :create_initial_comment
   validates :initial_comment, length: { maximum: FlightComment::MAX_LENGTH }, allow_blank: true
   validate :validate_initial_comment_images, if: :new_record?
@@ -162,6 +165,13 @@ class Flight < ApplicationRecord
   end
 
   private
+
+  def assign_tunnel_location
+    return unless tunnel? && location.blank?
+
+    self.location = TUNNEL_LOCATION
+    self.location_source = "manual"
+  end
 
   def assign_default_pilot
     self.pilot = user if pilot_id.nil?

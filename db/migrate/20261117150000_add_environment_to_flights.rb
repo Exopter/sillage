@@ -11,6 +11,8 @@ class AddEnvironmentToFlights < ActiveRecord::Migration[8.1]
     add_check_constraint :signal_stations, "environment IN ('sky', 'tunnel')", name: "signal_stations_environment_check"
     # Every flight started from the phone remote so far was a tunnel flight.
     execute "UPDATE flights SET environment = 'tunnel' WHERE remote_start_requested_at IS NOT NULL"
+    # A tunnel flight is at Inclined Slovenia unless another place was entered.
+    execute "UPDATE flights SET location = 'Inclined Slovenia', location_source = 'manual' WHERE environment = 'tunnel' AND (location IS NULL OR btrim(location) = '')"
   end
 
   def down
