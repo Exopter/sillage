@@ -10,6 +10,7 @@ class FlightDebriefJobTest < ActiveSupport::TestCase
     client = Object.new
     calls = []
     client.define_singleton_method(:summarize) { |text| calls << text; "Stable flight." }
+    client.define_singleton_method(:checklist) { |_| {} }
     client.define_singleton_method(:transcribe) { |_| raise "Must reuse the complete live transcript" }
     replace_method(Debriefs::OpenAi, :new, -> { client }) do
       2.times { FlightDebriefJob.perform_now(record.id) }
@@ -22,6 +23,7 @@ class FlightDebriefJobTest < ActiveSupport::TestCase
   test "fills the published Pilot log entry and keeps an entry its author rewrote" do
     client = Object.new
     client.define_singleton_method(:summarize) { |_| "I held a steady glide." }
+    client.define_singleton_method(:checklist) { |_| {} }
     client.define_singleton_method(:transcribe) { |_| "Spoken words." }
     records = 2.times.map do
       record = FlightDebrief.create!(flight: flights(:one), user: users(:julien), uuid: SecureRandom.uuid, status: "uploaded")
@@ -54,9 +56,22 @@ class FlightDebriefJobTest < ActiveSupport::TestCase
     assert_equal({ "pilot" => "Julien", "speed" => "165 km/h" }, fallback.reload.checklist)
   end
 
+  test "reads the checklist of a debrief that arrived without one" do
+    # FLT-2026-111: the audio was resent by a reopened page, with no ticks from the phone.
+    client = Object.new
+    client.define_singleton_method(:summarize) { |_| "Summary." }
+    client.define_singleton_method(:transcribe) { |_| "Glide ratio 3, vitesse 150." }
+    client.define_singleton_method(:checklist) { |_| { "glide_ratio" => "3", "speed" => "150 km/h" } }
+    record = FlightDebrief.create!(flight: flights(:one), user: users(:julien), uuid: SecureRandom.uuid, status: "uploaded")
+    record.audio.attach(io: StringIO.new("audio"), filename: "debrief.webm", content_type: "audio/webm")
+    replace_method(Debriefs::OpenAi, :new, -> { client }) { FlightDebriefJob.perform_now(record.id) }
+    assert_equal({ "glide_ratio" => "3", "speed" => "150 km/h" }, record.reload.checklist)
+  end
+
   test "transcribes the stored recording even when a live transcript exists, and falls back to it" do
     client = Object.new
     client.define_singleton_method(:summarize) { |text| text }
+    client.define_singleton_method(:checklist) { |_| {} }
     client.define_singleton_method(:transcribe) { |_| "Glide ratio 4.0, speed 150." }
     build = lambda do
       record = FlightDebrief.create!(flight: flights(:one), user: users(:julien), uuid: SecureRandom.uuid, status: "uploaded", transcript: "Three 4.0 speed one five zero")

@@ -156,6 +156,32 @@ class SharedFlightDebriefTest < ActionDispatch::IntegrationTest
     assert_equal "audio evidence", debrief.audio.download
   end
 
+  test "the author corrects the checklist cells in the entry's edit form" do
+    flight = flights(:one)
+    debrief = flight.flight_debriefs.create!(uuid: SecureRandom.uuid, user: users(:julien), status: "published", summary: "Summary.",
+      checklist: { "glide_ratio" => "150", "aoa" => "3.2", "speed" => "150 km/h" })
+    comment = debrief.publish_entry!(users(:julien))
+
+    get edit_flight_comment_path(flight, comment)
+    assert_response :success
+    assert_select "form.exds-comment-edit .flight-debrief-checklist input", count: DebriefChecklist::ITEMS.size
+    assert_select "input[name='checklist[glide_ratio]'][value='150']"
+    assert_select "input[name='checklist[cg]']:not([value])"
+
+    patch flight_comment_path(flight, comment), params: { flight_comment: { body: "Summary." }, checklist: { glide_ratio: "4", aoa: "", speed: "150 km/h", cg: "5", feelings: "", special: "" } }
+    assert_redirected_to flight_comments_path(flight, result: "updated")
+    assert_equal({ "speed" => "150 km/h", "glide_ratio" => "4", "cg" => "5", "edited" => %w[glide_ratio cg aoa] }, debrief.reload.checklist)
+    follow_redirect!
+    assert_select ".flight-debrief-checklist dd", text: "4"
+    assert_select ".flight-debrief-checklist dd", text: "3.2", count: 0
+
+    # Another member cannot edit the entry, nor its cells.
+    sign_in_as_admin(users(:operator))
+    patch flight_comment_path(flight, comment), params: { flight_comment: { body: "Summary." }, checklist: { glide_ratio: "9" } }
+    assert_response :not_found
+    assert_equal "4", debrief.reload.checklist["glide_ratio"]
+  end
+
   test "refuses a second recorder and hides a private debrief" do
     flight = flights(:one)
     elsewhere = flight.flight_debriefs.create!(uuid: SecureRandom.uuid, user: users(:operator))

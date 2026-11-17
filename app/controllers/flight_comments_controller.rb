@@ -26,7 +26,7 @@ class FlightCommentsController < ApplicationController
     saved = @comment.with_lock do
       @comment.assign_attributes(comment_params)
       assign_images(@comment)
-      @comment.save
+      @comment.save && update_checklist
     end
     if saved
       redirect_to flight_comments_path(@flight, result: "updated"), status: :see_other
@@ -57,6 +57,16 @@ class FlightCommentsController < ApplicationController
 
   def comment_params
     params.require(:flight_comment).permit(:body)
+  end
+
+  # The debrief checklist is corrected in the same form as its entry.
+  def update_checklist
+    debrief = @comment.flight_debrief
+    values = params[:checklist]&.permit(*DebriefChecklist::KEYS)&.to_h
+    return true unless debrief && values
+
+    debrief.with_lock { debrief.update!(checklist: DebriefChecklist.edit(debrief.checklist, values)) }
+    true
   end
 
   def assign_images(comment)
