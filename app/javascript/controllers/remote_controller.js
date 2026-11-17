@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 /**
  * @typedef {{id: number, code: string, pilot: string, aircraft: string, aircraft_id: number | null, pilot_id: number, destination?: string, started_at: string | null, recording: boolean, debrief_url: string, cancel_url: string, end_url: string}} RemoteFlight
  * @typedef {{gateway_connected: boolean, stop_requested: boolean, close_url: string}} RemoteSession
- * @typedef {{state: "ready" | "waiting" | "remote_off" | "offline", aircraft?: string | null}} RemoteStation
+ * @typedef {{state: "ready" | "waiting" | "offline", aircraft?: string | null}} RemoteStation
  * @typedef {{phase: string, flights_today: number, server_time?: number, station?: RemoteStation, flight?: RemoteFlight, session?: RemoteSession | null, error?: string}} RemoteState
  * @typedef {Object} Bindings
  * @property {string} stateUrlValue
@@ -152,7 +152,6 @@ export default class extends TypedController {
     this.stationTarget.dataset.state = state
     this.stationTarget.textContent = state === "ready" ? `Ground station ready${station?.aircraft ? ` \u00b7 ${station.aircraft} heard` : ""}. It records when you start.`
       : state === "waiting" ? "Ground station on, but it hears no aircraft. The flight would only be timed."
-      : state === "remote_off" ? "Ground station on with its phone remote switched off. Turn it on in Signal to record."
       : "No ground station. The flight will be timed on this phone so you can still debrief."
   }
 

@@ -65,10 +65,10 @@ class FlightEnvironmentTest < ActiveSupport::TestCase
 
   test "a ground station reports its mode and glide ratio and ignores values outside the tunnel range" do
     key = SecureRandom.uuid
-    station = SignalStation.check_in!(user: @user, key:, remote_enabled: true, ready: true, environment: "tunnel", tunnel_glide_ratio: "2.99")
+    station = SignalStation.check_in!(user: @user, key:, ready: true, environment: "tunnel", tunnel_glide_ratio: "2.99")
     assert_equal "tunnel", station.environment
     assert_equal 2.99, station.tunnel_glide_ratio.to_f
-    station = SignalStation.check_in!(user: @user, key:, remote_enabled: true, ready: true, environment: "space", tunnel_glide_ratio: "9.5")
+    station = SignalStation.check_in!(user: @user, key:, ready: true, environment: "space", tunnel_glide_ratio: "9.5")
     assert_equal "tunnel", station.environment
     assert_equal 2.99, station.tunnel_glide_ratio.to_f
   end

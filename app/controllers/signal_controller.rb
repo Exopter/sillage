@@ -41,7 +41,6 @@ class SignalController < ApplicationController
     @assignment_configurations = FdrFunctionalConfiguration.ordered
     @assignable_assemblies = Assembly.not_retired.connectable_fdrs.includes(:fdr_functional_configuration,
       active_fdr_board_installation: :embedded_controller).ordered.reject(&:embedded_controller)
-    @remote_qr = remote_qr
   end
 
   private
@@ -75,10 +74,5 @@ class SignalController < ApplicationController
 
   def recording_here?(session)
     cookies.signed[STATION_COOKIE] == session.uuid
-  end
-
-  def remote_qr
-    svg = RQRCode::QRCode.new(remote_url).as_svg(color: "000", shape_rendering: "crispEdges", module_size: 5, standalone: true, use_path: true)
-    "data:image/svg+xml;base64,#{Base64.strict_encode64(svg)}"
   end
 end

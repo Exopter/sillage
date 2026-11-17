@@ -1,6 +1,6 @@
 <% content_for :title, "Signal" %>
 <% content_for :head do %><meta name="turbo-cache-control" content="no-cache"><% end %>
-<% station_label = { "ready" => "Ground station ready", "waiting" => "Ground station not ready", "remote_off" => "Ground station not following the remote" }.fetch(@hub_station&.remote_state, "Ground station offline") %>
+<% station_label = { "ready" => "Ground station ready", "waiting" => "Ground station not ready" }.fetch(@hub_station&.remote_state, "Ground station offline") %>
 <%# Signal on a phone: the remote first, live telemetry second, the station setup one link away. %>
 <div class="signal-phone ex-dark">
   <header class="signal-phone-head">

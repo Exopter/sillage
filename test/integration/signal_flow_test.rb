@@ -210,9 +210,12 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "form[action=?] select[name='flight_id'] option", signal_sessions_path, text: "New flight"
     assert_select "select[name='flight_id'] option[value='#{flight.id}']", text: /#{flight.code}/
     assert_select "button[data-signal-workspace-target='startButton'][disabled]", text: /Start flight/
-    assert_select "#signal-start-hint[role='status']", text: /Connect the link/
-    assert_select "[data-controller='signal-station'] button[aria-pressed='false']", text: /Phone remote off/
-    assert_select "img.signal-remote-qr[src^='data:image/svg+xml;base64,']"
+    assert_select "#signal-start-hint[role='status']", text: /Not connected to the recorder/
+    assert_select "[data-controller='signal-station'][role='status'][hidden]", text: /Phone remote ready/
+    assert_select "[data-controller='signal-station'] button", count: 0
+    assert_select ".signal-remote-qr", count: 0
+    assert_select ".signal-command-group[hidden] button[data-mode='ground']", text: /Restart in ground mode/
+    assert_select "form.signal-start .signal-environment a[aria-current='true']"
 
     post signal_sessions_path, params: { device_id: signal_recorder.device_id, flight_id: flight.id, transport: "ground-radio" }
     session = users(:julien).signal_sessions.order(:id).last
