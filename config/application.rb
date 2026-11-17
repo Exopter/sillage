@@ -21,6 +21,9 @@ module Sillage
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.1
+
+    # Tunnel videos go to the object storage bucket when one is configured, else the default service.
+    config.x.tunnel_video_storage_service = ENV["OBJECT_STORAGE_BUCKET"].present? ? :tunnel_videos : nil
     # Serve attachments only through authenticated, record-authorized downloads.
     config.active_storage.draw_routes = false
     config.active_storage.content_types_allowed_inline += %w[video/mp4]

@@ -4,6 +4,7 @@ set -Eeuo pipefail
 readonly POSTGRES_CONTAINER="sillage-postgres"
 readonly STATE_DIRECTORY="${SILLAGE_OPERATIONS_STATE_DIRECTORY:-/var/lib/sillage-operations}"
 readonly RESTIC_IMAGE="restic/restic:0.18.0@sha256:28f29bcc3d38a061e09f825600244cf9854f09dd59443e9cd1dfa038c22b43d2"
+readonly RCLONE_IMAGE="rclone/rclone:1.69.1@sha256:600f51856285df1ae5d91c8bb2682cbbe31bf109ebeeef9ecead6ca8c0ff6138"
 readonly POSTGRES_BACKUP_STAMP="${STATE_DIRECTORY}/postgresql-backup.success"
 
 require_variable() {
@@ -175,6 +176,57 @@ prune_storage() {
   echo "Active Storage retention pruning completed."
 }
 
+# Copies the live object storage bucket to the R2 backup bucket. Both remotes are
+# configured through the environment; no credential is written to disk.
+run_rclone() {
+  require_variable R2_ACCOUNT_ID || return
+  require_variable R2_ACCESS_KEY_ID || return
+  require_variable R2_SECRET_ACCESS_KEY || return
+  require_variable R2_BACKUP_BUCKET || return
+  require_variable OBJECT_STORAGE_ENDPOINT || return
+  require_variable OBJECT_STORAGE_REGION || return
+  require_variable OBJECT_STORAGE_BUCKET || return
+  require_variable OBJECT_STORAGE_ACCESS_KEY_ID || return
+  require_variable OBJECT_STORAGE_SECRET_ACCESS_KEY || return
+
+  docker run --rm \
+    --cpu-shares 2 \
+    --cpus 0.50 \
+    --memory 512m \
+    --pids-limit 128 \
+    --security-opt no-new-privileges \
+    --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+    --env RCLONE_CONFIG_LIVE_TYPE=s3 \
+    --env RCLONE_CONFIG_LIVE_PROVIDER=Other \
+    --env RCLONE_CONFIG_LIVE_ENDPOINT="$OBJECT_STORAGE_ENDPOINT" \
+    --env RCLONE_CONFIG_LIVE_REGION="$OBJECT_STORAGE_REGION" \
+    --env RCLONE_CONFIG_LIVE_ACCESS_KEY_ID="$OBJECT_STORAGE_ACCESS_KEY_ID" \
+    --env RCLONE_CONFIG_LIVE_SECRET_ACCESS_KEY="$OBJECT_STORAGE_SECRET_ACCESS_KEY" \
+    --env RCLONE_CONFIG_BACKUP_TYPE=s3 \
+    --env RCLONE_CONFIG_BACKUP_PROVIDER=Cloudflare \
+    --env RCLONE_CONFIG_BACKUP_ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
+    --env RCLONE_CONFIG_BACKUP_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
+    --env RCLONE_CONFIG_BACKUP_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
+    --env RCLONE_CONFIG_BACKUP_NO_CHECK_BUCKET=true \
+    "$RCLONE_IMAGE" "$@" --transfers 2 --checkers 4 --s3-chunk-size 16M --stats 0
+}
+
+# Objects are immutable. Checking only recent source objects one by one keeps
+# the hourly run free of destination listings.
+backup_object_storage() {
+  run_rclone copy "live:${OBJECT_STORAGE_BUCKET}" "backup:${R2_BACKUP_BUCKET}/object-storage/current" \
+    --max-age 72h --no-traverse --immutable || return
+  echo "Object storage incremental backup completed."
+}
+
+# Weekly full comparison: catches anything the hourly window missed and moves
+# objects deleted from the live bucket under deleted/, which R2 expires.
+reconcile_object_storage() {
+  run_rclone sync "live:${OBJECT_STORAGE_BUCKET}" "backup:${R2_BACKUP_BUCKET}/object-storage/current" \
+    --backup-dir "backup:${R2_BACKUP_BUCKET}/object-storage/deleted" || return
+  echo "Object storage backup reconciliation completed."
+}
+
 main() {
 mkdir -p "$STATE_DIRECTORY" || return
 
@@ -213,8 +265,23 @@ case "${1:-}" in
     fi
     printf '%s\n' "$output"
     ;;
+  object-storage-backup)
+    require_variable HEALTHCHECKS_OBJECT_STORAGE_BACKUP_PING_URL
+    acquire_lock object-storage
+    run_monitored "$HEALTHCHECKS_OBJECT_STORAGE_BACKUP_PING_URL" yes backup_object_storage
+    ;;
+  object-storage-reconcile)
+    require_variable HEALTHCHECKS_OBJECT_STORAGE_BACKUP_PING_URL
+    acquire_lock object-storage
+    if ! output=$(reconcile_object_storage 2>&1); then
+      ping_healthcheck "$HEALTHCHECKS_OBJECT_STORAGE_BACKUP_PING_URL" "/log" "$output"
+      printf '%s\n' "$output" >&2
+      exit 1
+    fi
+    printf '%s\n' "$output"
+    ;;
   *)
-    echo "Usage: $0 {ready|postgresql-monitor|postgresql-backup|storage-init|storage-backup|storage-prune}" >&2
+    echo "Usage: $0 {ready|postgresql-monitor|postgresql-backup|storage-init|storage-backup|storage-prune|object-storage-backup|object-storage-reconcile}" >&2
     exit 64
     ;;
 esac

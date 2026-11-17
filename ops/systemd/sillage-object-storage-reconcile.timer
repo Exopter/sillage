@@ -1,0 +1,10 @@
+[Unit]
+Description=Reconcile the Sillage object storage backup every week
+
+[Timer]
+OnCalendar=Sun 03:40
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -14,6 +14,11 @@ REQUIRED = %w[
   HEALTHCHECKS_READY_PING_URL HEALTHCHECKS_POSTGRESQL_ARCHIVE_PING_URL
   HEALTHCHECKS_POSTGRESQL_BACKUP_PING_URL HEALTHCHECKS_STORAGE_BACKUP_PING_URL
 ].freeze
+# Required together once the object storage bucket is configured.
+OBJECT_STORAGE = %w[
+  OBJECT_STORAGE_ENDPOINT OBJECT_STORAGE_REGION OBJECT_STORAGE_BUCKET
+  OBJECT_STORAGE_ACCESS_KEY_ID OBJECT_STORAGE_SECRET_ACCESS_KEY HEALTHCHECKS_OBJECT_STORAGE_BACKUP_PING_URL
+].freeze
 
 abort "PRODUCTION_OPERATIONS_CONFIRM must equal #{CONFIRMATION}" unless ENV["PRODUCTION_OPERATIONS_CONFIRM"] == CONFIRMATION
 abort "Missing #{ENV_PATH}" unless File.file?(ENV_PATH)
@@ -21,7 +26,8 @@ abort "Missing #{ENV_PATH}" unless File.file?(ENV_PATH)
 require_relative "../config/environment_file"
 Sillage::EnvironmentFile.load(ENV_PATH)
 
-missing = REQUIRED.select { |key| ENV[key].to_s.strip.empty? }
+object_storage = !ENV["OBJECT_STORAGE_BUCKET"].to_s.strip.empty?
+missing = (REQUIRED + (object_storage ? OBJECT_STORAGE : [])).select { |key| ENV[key].to_s.strip.empty? }
 abort "Missing production operation variables: #{missing.join(', ')}" if missing.any?
 
 def run!(*command)
@@ -49,6 +55,8 @@ operations_env = {
   "HEALTHCHECKS_POSTGRESQL_BACKUP_PING_URL" => ENV.fetch("HEALTHCHECKS_POSTGRESQL_BACKUP_PING_URL"),
   "HEALTHCHECKS_STORAGE_BACKUP_PING_URL" => ENV.fetch("HEALTHCHECKS_STORAGE_BACKUP_PING_URL")
 }
+OBJECT_STORAGE.each { |key| operations_env[key] = ENV.fetch(key) } if object_storage
+object_storage_timers = "sillage-object-storage-backup.timer sillage-object-storage-reconcile.timer"
 
 run!(*ssh, "install -d -m 0700 #{Shellwords.escape(stage)}")
 
@@ -89,6 +97,8 @@ install_command = <<~SHELL
     sillage-postgresql-backup.timer \
     sillage-active-storage-backup.timer \
     sillage-active-storage-prune.timer
+  #{object_storage ? "docker pull rclone/rclone:1.69.1@sha256:600f51856285df1ae5d91c8bb2682cbbe31bf109ebeeef9ecead6ca8c0ff6138 >/dev/null" : "true"}
+  systemctl #{object_storage ? "enable" : "disable"} --now #{object_storage_timers}
 SHELL
 run!(*ssh, install_command)
 puts "Production backup and monitoring units are installed and enabled on #{host}."
