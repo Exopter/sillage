@@ -25,6 +25,9 @@ export default class extends TypedController {
   static targets = ["item", "all", "count", "delete", "clear", "move", "destination", "toolbar", "scope", "edit", "extend", "extendText", "extendButton"]
   static values = { total: Number }
 
+  // Entry last clicked, where a shift-click range starts.
+  anchor = -1
+
   connect() {
     // A selection being edited is rendered ticked by the server and stays as it is.
     if (this.itemTargets.some((item) => item.defaultChecked)) this.update()
@@ -41,6 +44,20 @@ export default class extends TypedController {
   toggleAll() {
     this.itemTargets.forEach((item) => { item.checked = this.allTarget.checked })
     this.update()
+  }
+
+  // Shift-click ticks or unticks every entry between the previous click and this one.
+  /** @param {MouseEvent} event */
+  range(event) {
+    const index = this.itemTargets.indexOf(/** @type {HTMLInputElement} */ (event.target))
+    if (index < 0) return
+    if (event.shiftKey && this.anchor >= 0 && this.anchor < this.itemTargets.length) {
+      const [from, to] = [Math.min(this.anchor, index), Math.max(this.anchor, index)]
+      const checked = this.itemTargets[index].checked
+      this.itemTargets.slice(from, to + 1).forEach((item) => { item.checked = checked })
+      this.update()
+    }
+    this.anchor = index
   }
 
   // Extends the selection from the page to every flight of the list, across its pages.

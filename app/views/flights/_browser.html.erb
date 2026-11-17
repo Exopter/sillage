@@ -54,7 +54,7 @@
           <div><h2><%= @browser_title %></h2><p class="exds-browser-caption"><% if @folder %><% total = @folder_counts.fetch(@folder.id, 0) %><%= "#{@flights.length} of " if @flights.length != total %><%= pluralize(total, "flight") %><% else %><%= "#{@flights.length} entries#{' on this page' if @next_page || @page > 1}" %><% end %> · Newest first</p></div>
         </header>
         <% if @filter == "set_aside" %><p class="exds-browser-explanation">Static tests and technical recordings excluded from flights. Original files are kept here.</p><% end %>
-        <%= form_with url: (can_manage_operations? ? bulk_action_flights_path : flights_path), method: (can_manage_operations? ? :post : :get), class: "exds-browser-selection", data: { controller: ("table-selection" if can_manage_operations?), action: ("submit->table-selection#submit" if can_manage_operations?), table_selection_total_value: @flight_total.to_i, turbo_frame: "_top", flight_browser_target: "selection" } do |form| %>
+        <%= form_with url: (can_manage_operations? ? bulk_action_flights_path : flights_path), method: (can_manage_operations? ? :post : :get), class: "exds-browser-selection", data: { controller: ("table-selection" if can_manage_operations?), action: ("submit->table-selection#submit click->table-selection#range" if can_manage_operations?), table_selection_total_value: @flight_total.to_i, turbo_frame: "_top", flight_browser_target: "selection" } do |form| %>
           <%= hidden_field_tag :scope, @bulk_scope || "page", id: nil, data: { table_selection_target: "scope" } %>
           <%= render "flights/browser_filters", form: form, include_query: true %>
           <div class="exds-browser-entries">

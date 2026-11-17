@@ -57,7 +57,7 @@
   </div>
 
   <%= form_with url: bulk_action_flights_path, method: :post, class: "flights-table-wrap",
-    data: { controller: "table-selection", action: "submit->table-selection#submit turbo:before-cache@document->table-selection#reset" } do |form| %>
+    data: { controller: "table-selection", action: "submit->table-selection#submit click->table-selection#range turbo:before-cache@document->table-selection#reset" } do |form| %>
     <%= form.hidden_field :view, value: "list", id: nil %>
       <%= form.hidden_field :filter, value: @filter || "flights", id: nil %>
     <%= form.hidden_field :q, value: local_assigns[:query], id: nil %>
