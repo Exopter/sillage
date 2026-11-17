@@ -27,11 +27,24 @@
         <p class="exds-browser-map-status" data-flight-preview-map-target="status" role="status">Loading recorded route…</p>
       </div>
     <% end %>
+    <% editable = can_manage_operations? && flight && accessible && !entry.live? %>
     <dl class="exds-browser-metadata">
-      <% if flight %><div><dt>Pilot</dt><dd><%= render "flights/pilot", flight: entry %></dd></div><% end %>
+      <% if flight %><div><dt>Pilot</dt><dd>
+        <% if editable %>
+          <%= render layout: "flights/inline_edit", locals: { flight: entry, label: "pilot", fields: ->(form) { form.collection_select :pilot_id, flight_pilot_options(entry), :id, ->(pilot) { pilot.full_name || pilot.email_address }, {}, required: true, aria: { label: "Pilot" }, data: { action: "change->inline-edit#submit" } } } do %><%= render "flights/pilot", flight: entry %><% end %>
+        <% else %><%= render "flights/pilot", flight: entry %><% end %>
+      </dd></div><% end %>
       <% unless flight %><div><dt>Aircraft</dt><dd><%= logbook_value(entry.aircraft&.registration) %></dd></div><% end %>
-      <div><dt>Date</dt><dd><%= logbook_date(entry) %></dd></div>
-      <% if flight %><div><dt>Location</dt><dd><%= entry.display_location %></dd></div><% end %>
+      <div><dt>Date</dt><dd>
+        <% if editable %>
+          <%= render layout: "flights/inline_edit", locals: { flight: entry, label: "date", save: true, fields: ->(form) { safe_join([ form.date_field(:flown_on, value: entry.display_flown_on, required: true, aria: { label: "Date" }), form.time_field(:flown_at, aria: { label: "Time (optional)" }) ]) } } do %><%= logbook_date(entry) %><% end %>
+        <% else %><%= logbook_date(entry) %><% end %>
+      </dd></div>
+      <% if flight %><div><dt>Location</dt><dd>
+        <% if editable %>
+          <%= render layout: "flights/inline_edit", locals: { flight: entry, label: "location", save: true, fields: ->(form) { form.text_field :location, required: !entry.preparation?, autocomplete: "off", aria: { label: "Location" }, placeholder: "Airfield, drop zone or operating location" } } do %><%= entry.display_location %><% end %>
+        <% else %><%= entry.display_location %><% end %>
+      </dd></div><% end %>
       <% if !flight || browser_duration(entry).present? %><div><dt>Duration</dt><dd><%= logbook_duration(browser_duration(entry)) %></dd></div><% end %>
       <% state, label = flight ? logbook_status(entry) : recording_logbook_status(entry) %>
       <% unless label == "Logged" %><div><dt>Status</dt><dd><span class="status-dot is-<%= state %>"><span></span><%= label %></span></dd></div><% end %>

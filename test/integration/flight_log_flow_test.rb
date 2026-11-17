@@ -76,6 +76,20 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     assert_equal "10 Nov 2026", ApplicationController.helpers.logbook_date(later)
   end
 
+  test "the flight preview edits pilot, date and location in place" do
+    flight = @owner.flights.create!(status: "review", started_at: Time.utc(2026, 11, 16, 16, 12), location: "Tunnel")
+    get flights_path(selected: "flight:#{flight.id}")
+    assert_select "#flight-preview details.exds-inline-edit", count: 3
+    assert_select "#flight-preview details.exds-inline-edit form[data-turbo-frame='flight-browser'] select[name='flight[pilot_id]']", count: 1
+    assert_select "#flight-preview details.exds-inline-edit input[name='flight[location]'][value='Tunnel']", count: 1
+    # Changing the pilot alone leaves the recorded date and time untouched.
+    patch flight_path(flight), params: { intent: "log", return_to_browser: "1", flight: { pilot_id: @owner.id } }
+    assert_redirected_to flights_path(selected: "flight:#{flight.id}")
+    assert_nil flight.reload.flown_on
+    patch flight_path(flight), params: { intent: "log", return_to_browser: "1", flight: { location: "Inclined Slovenia" } }
+    assert_equal "Inclined Slovenia", flight.reload.location
+  end
+
   test "preparation can be logged only after required details are supplied" do
     flight = @owner.flights.create!(status: "preparation", description: "Upcoming flight")
     get edit_flight_path(flight, intent: "log")

@@ -9,6 +9,12 @@ module FlightBrowserHelper
     entry.is_a?(FlightImport) ? entry.source_filename.presence || "Recording" : entry.code
   end
 
+  # Pilots offered when the pilot is changed in place: active users plus the current pilot.
+  def flight_pilot_options(flight)
+    @flight_pilot_options ||= User.available_as_pilot.order(:first_name, :last_name, :email_address).to_a
+    @flight_pilot_options.include?(flight.pilot) ? @flight_pilot_options : [ flight.pilot, *@flight_pilot_options ]
+  end
+
   def browser_path(**options)
     flights_path(browser_context.merge(options))
   end

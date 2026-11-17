@@ -21,7 +21,7 @@ class FlightDebriefJob < ApplicationJob
     end
     debrief.with_lock do
       # The whole recording is read more accurately than the live stream, so its values win;
-      # the phone keeps what only it knows: the pilot and the points ticked by hand.
+      # the phone keeps what only it knows: the points ticked by hand.
       debrief.checklist = debrief.checklist.merge(understood) if debrief.checklist.present?
       comment = debrief.flight_comment
       if comment
