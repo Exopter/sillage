@@ -10,6 +10,7 @@ export default class extends TypedController {
     const value = this.visibilityTarget.value
     this.membersTarget.hidden = value === "private"
     this.descriptionTarget.textContent = value === "public" ? "Everyone signed in to Sillage can view this folder. Members can contribute their own flights." :
+      value === "club" ? "Every Flight Club member can view this folder and its flights, including members who join later. Selected members can add their own flights." :
       value === "shared" ? "Only you and the selected members can view this folder and its flights." : "Only you can view this folder. Flight owners always keep access to their own flights."
   }
 }

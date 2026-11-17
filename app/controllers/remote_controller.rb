@@ -11,7 +11,7 @@ class RemoteController < ApplicationController
     @aircraft = Aircraft.active.ordered
     @pilots = User.available_as_pilot.order(:first_name, :email_address)
     @last_flight = remote_flights.order(:id).last
-    @folders = FlightFolder.contributable_to(Current.user).ordered
+    @folders = FlightFolder.contributable_to(Current.user).includes(:memberships).ordered
     @destination = destination_of(@last_flight, @folders)
     @state = state_payload
   end
@@ -25,12 +25,16 @@ class RemoteController < ApplicationController
 
     destination = params[:destination].to_s
     folder = FlightFolder.contributable_to(Current.user).find_by(id: destination.delete_prefix("folder:")) if destination.start_with?("folder:")
+    pilot = User.available_as_pilot.find_by(id: params[:pilot_id]) || Current.user
+    # A flight is filed where its pilot can find it.
+    return render json: { error: "#{pilot.full_name || pilot.email_address} cannot access this folder." }, status: :unprocessable_entity if folder && !folder.visible_to?(pilot)
+
     flight = Current.user.flights.create!(
       status: "preparation",
       # A tunnel flight is team work: it is shared unless the operator asks to keep it private.
       folder:, visibility: destination == "private" ? "private" : "team",
       aircraft: Aircraft.active.find_by(id: params[:aircraft_id]),
-      pilot: User.available_as_pilot.find_by(id: params[:pilot_id]) || Current.user,
+      pilot:,
       remote_start_requested_at: Time.current
     )
     render json: state_payload(flight), status: :created

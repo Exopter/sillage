@@ -55,7 +55,7 @@ class Flight < ApplicationRecord
   }
   scope :with_effective_visibility, ->(value) {
     value == "private" ? where(folder_id: nil, visibility: "private").or(where(folder_id: FlightFolder.where(visibility: "private").select(:id))) :
-      value == "shared" ? where(folder_id: FlightFolder.where(visibility: "shared").select(:id)) :
+      value == "shared" ? where(folder_id: FlightFolder.where(visibility: %w[shared club]).select(:id)) :
       where(folder_id: nil, visibility: "team").or(where(folder_id: FlightFolder.where(visibility: "public").select(:id)))
   }
 

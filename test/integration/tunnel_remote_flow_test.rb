@@ -6,6 +6,29 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
 
   setup { sign_in_as users(:julien) }
 
+  test "the remote offers each pilot only the folders that pilot can open" do
+    club = FlightFolder.create!(user: users(:julien), name: "FlightClub", visibility: "club")
+    mine = FlightFolder.create!(user: users(:julien), name: "Only mine", visibility: "private")
+    member, outsider = users(:member), users(:operator)
+
+    get remote_path
+    assert_select "select[name='pilot_id'][data-action='change->remote#filterDestinations']", count: 1
+    assert_select "option[value='folder:#{club.id}']" do |options|
+      pilots = options.first["data-pilots"].split(",")
+      assert_includes pilots, member.id.to_s
+      assert_includes pilots, users(:julien).id.to_s
+      assert_not_includes pilots, outsider.id.to_s
+    end
+    assert_select "option[value='folder:#{mine.id}'][data-pilots='#{users(:julien).id}']", count: 1
+
+    post remote_flights_path, params: { destination: "folder:#{mine.id}", pilot_id: member.id }, as: :json
+    assert_response :unprocessable_entity
+    assert_match(/cannot access this folder/, response.parsed_body["error"])
+    post remote_flights_path, params: { destination: "folder:#{club.id}", pilot_id: member.id }, as: :json
+    assert_response :created
+    assert_equal club, Flight.find(response.parsed_body.dig("flight", "id")).folder
+  end
+
   test "the operator chooses where the flight is saved and the choice carries to the next flight" do
     folder = FlightFolder.create!(user: users(:julien), name: "Tunnel campaign", visibility: "shared")
     foreign = FlightFolder.create!(user: users(:member), name: "Not mine", visibility: "private")

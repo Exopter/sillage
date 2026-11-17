@@ -47,10 +47,29 @@ export default class extends TypedController {
   savedTimer = 0
   busy = false
 
+  /** @type {HTMLOptionElement[]} */
+  folderOptions = []
+  /** @type {HTMLOptGroupElement | null} */
+  folderGroup = null
+
   connect() {
+    this.folderGroup = this.destinationTarget.querySelector('optgroup[label="Folders"]')
+    this.folderOptions = Array.from(this.folderGroup?.querySelectorAll("option") || [])
+    this.filterDestinations()
     this.apply(this.initialValue)
     this.pollTimer = window.setInterval(() => { void this.refresh() }, 2000)
     this.clockTimer = window.setInterval(() => this.renderClock(), 500)
+  }
+
+  // Lists only the folders the selected pilot can open, so a flight is never filed out of their reach.
+  filterDestinations() {
+    if (!this.folderGroup) return
+    const pilot = this.pilotTarget.value
+    const chosen = this.destinationTarget.value
+    const allowed = this.folderOptions.filter((option) => (option.dataset.pilots || "").split(",").includes(pilot))
+    this.folderGroup.replaceChildren(...allowed)
+    this.folderGroup.hidden = allowed.length === 0
+    this.destinationTarget.value = allowed.some((option) => option.value === chosen) || !chosen.startsWith("folder:") ? chosen : "team"
   }
 
   disconnect() {

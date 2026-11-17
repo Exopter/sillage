@@ -1,5 +1,6 @@
 class FlightFolder < ApplicationRecord
-  VISIBILITIES = %w[private public shared].freeze
+  # "club" is the Flight Club folder: every Flight Club member sees it, without being added one by one.
+  VISIBILITIES = %w[private public shared club].freeze
   COLORS = %w[field sky aqua amber violet graphite].freeze
   belongs_to :user
   has_many :flights, foreign_key: :folder_id, inverse_of: :folder, dependent: :nullify
@@ -13,10 +14,14 @@ class FlightFolder < ApplicationRecord
 
   scope :ordered, -> { order(Arel.sql("LOWER(flight_folders.name)"), :id) }
   scope :visible_to, ->(user) {
-    user ? where(user_id: user.id).or(where(visibility: "public")).or(where(visibility: "shared", id: FlightFolderMembership.where(user_id: user.id).select(:flight_folder_id))) : none
+    next none unless user
+
+    added = FlightFolderMembership.where(user_id: user.id).select(:flight_folder_id)
+    scope = where(user_id: user.id).or(where(visibility: "public")).or(where(visibility: %w[shared club], id: added))
+    user.member? || user.admin? ? scope.or(where(visibility: "club")) : scope
   }
   scope :contributable_to, ->(user) {
-    user ? where(user_id: user.id).or(where(visibility: %w[public shared], id: FlightFolderMembership.where(user_id: user.id).select(:flight_folder_id))) : none
+    user ? where(user_id: user.id).or(where(visibility: %w[public shared club], id: FlightFolderMembership.where(user_id: user.id).select(:flight_folder_id))) : none
   }
 
   def owned_by?(person)
@@ -24,7 +29,8 @@ class FlightFolder < ApplicationRecord
   end
 
   def visible_to?(person)
-    person.present? && (owned_by?(person) || visibility == "public" || (visibility == "shared" && member?(person)))
+    person.present? && (owned_by?(person) || visibility == "public" || (visibility == "shared" && member?(person)) ||
+      (visibility == "club" && (person.member? || person.admin? || member?(person))))
   end
 
   def contributable_by?(person)
