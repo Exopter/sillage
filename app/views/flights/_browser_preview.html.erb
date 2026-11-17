@@ -64,7 +64,7 @@
           <% end %>
         </dd></div>
       <% end %>
-      <div><dt>Visibility</dt><dd><%= sillage_icon(browser_visibility(entry) == "private" ? "lock-keyhole" : "users", size: 19) %><%= browser_visibility(entry).capitalize %><% if flight && entry.folder %><small>From folder</small><% elsif can_manage_operations? && flight && accessible %><%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button is-quiet", title: "Edit flight visibility", aria: { label: "Edit flight visibility" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %><% end %><% end %></dd></div>
+      <div><dt>Visibility</dt><dd><%= sillage_icon(browser_visibility(entry) == "private" ? "lock-keyhole" : "users", size: 19) %><%= visibility_label(browser_visibility(entry)) %><% if flight && entry.folder %><small>From folder</small><% elsif can_manage_operations? && flight && accessible %><%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button is-quiet", title: "Edit flight visibility", aria: { label: "Edit flight visibility" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %><% end %><% end %></dd></div>
     </dl>
     <% unless flight && entry.logbook_view? %>
     <%= link_to browser_open_path(entry), class: "button-primary exds-btn exds-btn--primary", data: { turbo_frame: (flight && entry.logbook_view? ? "flight-browser" : "_top") } do %><%= sillage_icon "arrow-up-right", size: 18 %> <%= flight ? "Open flight" : "Open recording" %><% end %>
