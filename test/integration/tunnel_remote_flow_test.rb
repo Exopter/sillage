@@ -189,7 +189,7 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
 
   test "a reservation opened early and never used does not block the next recording" do
     flight = flights(:one)
-    stale = flight.flight_debriefs.create!(uuid: SecureRandom.uuid, user: users(:julien))
+    stale = flight.flight_debriefs.create!(uuid: SecureRandom.uuid, user: users(:operator))
     fresh = SecureRandom.uuid
     post flight_debriefs_path(flight), params: { uuid: fresh }, as: :json
     assert_response :conflict
@@ -201,6 +201,33 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
 
     delete flight_debrief_path(flight, FlightDebrief.find_by!(uuid: fresh))
     assert_response :no_content
+  end
+
+  test "the operator's own unused reservation gives way at once, a recording does not" do
+    flight = flights(:one)
+    # The phone records first and reserves in the background: its own leftover must not strand the audio.
+    unused = flight.flight_debriefs.create!(uuid: SecureRandom.uuid, user: users(:julien))
+    post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
+    assert_response :success
+    assert_not FlightDebrief.exists?(unused.id)
+
+    recorded = FlightDebrief.find(response.parsed_body.fetch("id"))
+    recorded.audio.attach(io: StringIO.new("audio"), filename: "debrief.webm", content_type: "audio/webm")
+    post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
+    assert_response :conflict
+    assert FlightDebrief.exists?(recorded.id)
+  end
+
+  test "the phone builds the debrief screen from a copy already on the remote" do
+    get remote_path
+    assert_response :success
+    assert_select "template[data-remote-target='debriefTemplate']" do |templates|
+      copy = templates.first.inner_html
+      assert_includes copy, 'data-flight-debrief-url-value="/flights/FLIGHT_ID/debriefs"'
+      assert_includes copy, %(data-flight-debrief-key-value="#{users(:julien).id}:FLIGHT_ID")
+      assert_includes copy, 'data-flight-debrief-autosend-value="true"'
+      assert_includes copy, 'data-flight-code="FLIGHT_CODE"'
+    end
   end
 
   test "reads the checklist from a live transcript through the model" do

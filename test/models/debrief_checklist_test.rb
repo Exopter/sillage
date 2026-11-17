@@ -16,9 +16,27 @@ class DebriefChecklistTest < ActiveSupport::TestCase
     assert_equal({ "aoa" => "none", "feelings" => "bonnes" }, DebriefChecklist.extract("Pas d'incidence, les sensations sont bonnes"))
   end
 
-  test "ticks the field debriefs of 16 November 2026 without the model, like the phone does" do
+  test "keeps each figure with its own label and mends figures cut by a live line break" do
+    assert_equal({ "glide_ratio" => "3.5", "speed" => "150 km/h", "cg" => "3.5", "aoa" => "0" }, DebriefChecklist.extract("Glide ratio 3.5 speed 150 CG 3.5 AoA 0"))
+    assert_equal({ "glide_ratio" => "3.2", "speed" => "155 km/h", "cg" => "3.5" }, DebriefChecklist.extract("Glide ratio 3.2, speed 155, CG 3.5 AoA setting"))
+    assert_equal({ "glide_ratio" => "4", "speed" => "150 km/h", "cg" => "3.5", "aoa" => "0", "feelings" => "bon" },
+      DebriefChecklist.extract("Glide ratio quatre, speed 150, CG trois point five, AoA z\u00e9ro, bon feeling"))
+    assert_equal "Glide ratio 3.2, speed", DebriefChecklist.spoken_numbers("Glide ratio 3 point\nTwo, speed")
+    assert_equal "Glide ratio  3.2\nSpeed", DebriefChecklist.spoken_numbers("Glide ratio  3.\nTwo\nSpeed")
+    assert_equal "speed 150.\nUn peu instable", DebriefChecklist.spoken_numbers("speed 150.\nUn peu instable")
+  end
+
+  test "the reading of the whole recording replaces live guesses and keeps hand ticks" do
+    live = { "pilot" => "Julien", "cg" => "3.5", "aoa" => "3.5", "special" => "symmetrical leg", "feelings" => "Noted" }
+    assert_equal({ "pilot" => "Julien", "feelings" => "Noted", "cg" => "3.5", "special" => "asymmetrical leg" },
+      DebriefChecklist.settle(live, "CG 3.5", { "cg" => "3.5", "special" => "asymmetrical leg" }))
+    # Without the model, word patterns complete what the phone sent.
+    assert_equal live.merge("glide_ratio" => "3.2"), DebriefChecklist.settle(live, "Glide ratio 3.2", nil)
+  end
+
+  test "ticks the field debriefs of 16 and 17 November 2026 without the model, like the phone does" do
     field = JSON.parse(file_fixture("debrief_field_transcripts.json").read)
-    assert_equal 7, field.size
+    assert_equal 11, field.size
     field.each { |entry| assert_equal entry["expected"], DebriefChecklist.extract(entry["transcript"]), entry["flight"] }
   end
 

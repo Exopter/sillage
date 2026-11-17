@@ -14,8 +14,11 @@ class FlightDebriefsController < ApplicationController
     @flight.with_lock do
       @debrief = @flight.flight_debriefs.find_by(uuid:)
       unless @debrief
-        # A reservation opened ahead of a recording that never came must not block the next one.
-        @flight.flight_debriefs.where(status: "recording").where(updated_at: ...30.minutes.ago).find_each { |stale| stale.destroy! unless stale.audio.attached? }
+        # A reservation opened ahead of a recording that never came must not block the next one. The
+        # operator's own unused reservation gives way at once: the phone records first and reserves
+        # in the background, so a refusal here would strand audio already captured on it.
+        unused = @flight.flight_debriefs.where(status: "recording")
+        unused.where(updated_at: ...30.minutes.ago).or(unused.where(user: Current.user)).find_each { |stale| stale.destroy! unless stale.audio.attached? }
         if @flight.flight_debriefs.where(status: "recording").exists?
           return render json: { error: "A debrief is already recording on another device." }, status: :conflict
         end

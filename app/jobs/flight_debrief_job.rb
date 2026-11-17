@@ -12,17 +12,9 @@ class FlightDebriefJob < ApplicationJob
     transcript = final_transcript(debrief, client)
     debrief.update!(transcript:)
     summary = client.summarize(transcript)
-    understood = if debrief.checklist.present?
-      begin
-        DebriefChecklist.extract(transcript).merge(client.checklist(transcript))
-      rescue Debriefs::OpenAi::Error
-        DebriefChecklist.extract(transcript)
-      end
-    end
+    understood = read_checklist(client, transcript) if debrief.checklist.present?
     debrief.with_lock do
-      # The whole recording is read more accurately than the live stream, so its values win;
-      # the phone keeps what only it knows: the points ticked by hand.
-      debrief.checklist = debrief.checklist.merge(understood) if debrief.checklist.present?
+      debrief.checklist = DebriefChecklist.settle(debrief.checklist, transcript, understood) if debrief.checklist.present?
       comment = debrief.flight_comment
       if comment
         # Fill the entry published at upload time, unless its author has already rewritten it.
@@ -37,6 +29,16 @@ class FlightDebriefJob < ApplicationJob
   end
 
   private
+
+  # One retry: a checklist left to the live guesses is worse than a few more seconds.
+  def read_checklist(client, transcript)
+    attempts = 0
+    begin
+      client.checklist(transcript)
+    rescue Debriefs::OpenAi::Error
+      retry if (attempts += 1) < 2
+    end
+  end
 
   # The live stream starts a moment after the recording and loses the first words,
   # so the stored audio is transcribed whenever it exists. The live text is the fallback.

@@ -7,12 +7,19 @@ const source = (await readFile(new URL("../../app/javascript/controllers/flight_
   .replace(/^import .*$/gm, "")
   .replace(/const TypedController = .*$/m, "const TypedController = class {}")
 const { default: Recorder } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`)
+const listeners = { addEventListener() {}, removeEventListener() {} }
+globalThis.window = { ...listeners, setInterval, clearInterval }
+globalThis.document = { ...listeners, visibilityState: "visible", querySelector: () => null }
 function recorder(key) {
   const value = new Recorder()
-  value.element = { dataset: {}, querySelectorAll: () => [], querySelector: () => null }
+  const events = []
+  value.element = { dataset: {}, style: { setProperty() {} }, querySelectorAll: () => [], querySelector: () => null, events, dispatchEvent(event) { events.push(event.type); return true } }
   value.keyValue = key
+  value.urlValue = "/debriefs"
   value.statusTarget = { textContent: "" }
   value.transcriptTarget = { textContent: "" }
+  value.durationTarget = { textContent: "" }
+  value.levelTarget = { value: 0 }
   return value
 }
 const first = recorder("owner:flight")
@@ -25,13 +32,14 @@ assert.equal(await reopened.saved.parts[0].text(), "original audio bytes")
 assert.match(reopened.statusTarget.textContent, /saved debrief/)
 const other = recorder("different-owner:flight")
 await other.connect()
-assert.equal(other.saved, undefined)
-// A failed upload must preserve the original, including after a fresh controller opens.
-reopened.api = async () => { throw new Error("network unavailable") }
+assert.equal(other.saved, null)
+// A refused upload must preserve the original, including after a fresh controller opens.
+reopened.api = async () => { throw Object.assign(new Error("not accepted"), { status: 422 }) }
 await reopened.recover()
 assert.equal(reopened.element.dataset.state, "recovery")
 assert.equal(await (await reopened.store("get")).parts[0].text(), "original audio bytes")
-assert.equal(reopened.statusTarget.textContent, "network unavailable")
+assert.equal(reopened.statusTarget.textContent, "not accepted")
+assert.deepEqual(reopened.element.events, [], "a refusal is not retried and audio that exists is never reported missing")
 // Once the audio is stored and processing is requested, the device copy is released and the Pilot log refreshes.
 const calls = []
 let refreshed = 0
@@ -43,19 +51,88 @@ assert.equal(reopened.element.dataset.state, "published")
 assert.equal(await reopened.store("get"), undefined)
 assert.equal(refreshed, 1)
 first.database.close(); reopened.database.close(); other.database.close()
-console.log("Audio recovery, account isolation, failed upload preservation and automatic publication passed")
+console.log("Audio recovery, account isolation, refused upload preservation and automatic publication passed")
+
+// A lost connection (FLT-2026-100, 17 November 2026: the audio never left the phone) is not an
+// answer: the recording stays on the device and is sent again by itself until it is through.
+const flaky = recorder("flaky:flight")
+await flaky.connect()
+await flaky.store("put", { uuid: "kept", parts: [original], type: "audio/webm", url: null })
+flaky.saved = await flaky.store("get")
+let attempts = 0
+const sent = []
+flaky.api = async (url) => {
+  if (url === "/debriefs" && (attempts += 1) < 3) throw new TypeError("Load failed")
+  sent.push(url)
+  return { url: "/debriefs/9", status: url === "/debriefs" ? "recording" : "uploaded" }
+}
+flaky.wait = async () => { assert.equal((await flaky.store("get")).uuid, "kept", "the audio stays on the device between attempts") }
+flaky.refreshLog = () => {}
+await flaky.send()
+assert.equal(attempts, 3)
+assert.deepEqual(sent, ["/debriefs", "/debriefs/9/upload", "/debriefs/9/process_audio"])
+assert.deepEqual(flaky.element.events, ["flight-debrief:waiting", "flight-debrief:waiting"])
+assert.equal(flaky.element.dataset.state, "published")
+assert.equal(await flaky.store("get"), undefined)
+// A page that opens with a debrief still on the device sends it without being asked.
+const resumed = recorder("resumed:flight")
+resumed.autosendValue = true
+resumed.api = async (url) => ({ url: "/debriefs/10", status: url === "/debriefs" ? "recording" : "uploaded" })
+resumed.refreshLog = () => {}
+await resumed.connect()
+await resumed.store("put", { uuid: "left", parts: [original], type: "audio/webm", url: null })
+resumed.database.close()
+await resumed.connect()
+while (resumed.sending) await new Promise(resolve => setTimeout(resolve, 5))
+assert.equal(resumed.element.dataset.state, "published")
+assert.equal(await resumed.store("get"), undefined)
+flaky.database.close(); resumed.database.close()
+console.log("Automatic resend after a lost connection and on return passed")
+
+// Recording starts with the tap and never waits for the server: the reservation and the live
+// transcription join in the background, and a server that cannot be reached costs neither.
+const tracks = [{ enabled: true, stopped: false, stop() { this.stopped = true } }]
+const stream = { getAudioTracks: () => tracks, getTracks: () => tracks }
+let microphones = 0
+Object.defineProperty(globalThis, "navigator", { configurable: true, value: { mediaDevices: { getUserMedia: async () => { microphones += 1; return stream } } } })
+globalThis.MediaRecorder = class {
+  static isTypeSupported = () => true
+  state = "inactive"
+  mimeType = "audio/webm;codecs=opus"
+  start() { this.state = "recording" }
+  stop() { this.state = "inactive"; this.onstop?.() }
+}
+globalThis.AudioContext = class {
+  state = "running"
+  createAnalyser() { return { frequencyBinCount: 4, getByteTimeDomainData() {} } }
+  createMediaStreamSource() { return { connect() {} } }
+  async close() { this.state = "closed" }
+}
+const offline = recorder("offline:flight")
+offline.api = async () => { throw new TypeError("Load failed") }
+offline.wait = () => new Promise(() => {})
+await offline.connect()
+await offline.start()
+assert.equal(offline.element.dataset.state, "recording", "the recorder runs with no server at all")
+assert.equal(offline.recorder.state, "recording")
+assert.match(offline.saved.uuid, /^[0-9a-f-]{36}$/)
+offline.recorder.ondataavailable({ data: original })
+await offline.writeQueue
+assert.equal((await offline.store("get")).parts.length, 1, "the audio is on the device while it records")
+await new Promise(resolve => setTimeout(resolve, 5))
+assert.match(offline.statusTarget.textContent, /Recording on this phone/)
+clearInterval(offline.meterTimer)
+offline.database.close()
 
 // The live connection opens with the screen. The microphone stays muted until the
 // tap, and a connection that is never used gives its reservation back.
-const tracks = [{ enabled: true, stopped: false, stop() { this.stopped = true } }]
-Object.defineProperty(globalThis, "navigator", { configurable: true, value: { mediaDevices: { getUserMedia: async () => ({ getAudioTracks: () => tracks, getTracks: () => tracks }) } } })
 const early = recorder("early:flight")
 early.prewarmValue = true
-early.urlValue = "/debriefs"
 const requests = []
 early.api = async (url, _body, method = "POST") => { requests.push(`${method} ${url}`); return { uuid: "reserved", url: "/debriefs/1" } }
 let connected = 0
 early.live = async () => { connected += 1; early.peer = { connectionState: "connected", close() {} } }
+microphones = 0
 await early.connect()
 await early.preparation
 assert.equal(early.warm, true)
@@ -63,33 +140,67 @@ assert.equal(connected, 1)
 assert.equal(tracks[0].enabled, false, "nothing is sent before the operator records")
 assert.equal(early.element.dataset.state, "idle")
 assert.deepEqual(requests, ["POST /debriefs"])
-assert.equal((await early.store("get")).uuid, "reserved")
-early.element.dispatchEvent = () => true
-await early.dropSaved()
-assert.equal(early.warm, false)
+assert.equal(await early.store("get"), undefined, "nothing is kept on the device before a recording exists")
+// The tap reuses the open microphone and connection: no second request of either kind.
+await early.start()
+assert.equal(tracks[0].enabled, true)
+assert.equal(microphones, 1)
+await new Promise(resolve => setTimeout(resolve, 5))
+assert.equal(connected, 1)
+assert.deepEqual(requests, ["POST /debriefs"])
+assert.equal(early.saved.url, "/debriefs/1")
+// Skipping gives the reservation back and leaves nothing on the device.
+early.abandoned = true
+early.recorder.stop()
+while (early.element.dataset.state !== "idle") await new Promise(resolve => setTimeout(resolve, 20))
 assert.equal(tracks[0].stopped, true)
 assert.deepEqual(requests, ["POST /debriefs", "DELETE /debriefs/1"])
 assert.equal(await early.store("get"), undefined)
-// A reservation left by a closed page is released when the screen opens again.
+assert.deepEqual(early.element.events, ["flight-debrief:abandoned"])
+// An entry with nothing recorded, left by a closed page, is dropped on this device only:
+// it never deletes a reservation another screen may be using.
 await early.store("put", { uuid: "left-behind", parts: [], type: "", url: "/debriefs/2" })
 const returning = recorder("early:flight")
 returning.api = early.api
 await returning.connect()
 assert.equal(returning.element.dataset.state, "idle")
-assert.equal(requests.at(-1), "DELETE /debriefs/2")
-// Without microphone access the screen stays ready and the reservation is given back.
+assert.equal(await returning.store("get"), undefined)
+assert.equal(requests.at(-1), "DELETE /debriefs/1")
+// Without microphone access the screen stays ready and says why on the tap.
 globalThis.navigator.mediaDevices.getUserMedia = async () => { throw new DOMException("denied", "NotAllowedError") }
 const refused = recorder("refused:flight")
 refused.prewarmValue = true
-refused.urlValue = "/debriefs"
 refused.api = early.api
 await refused.connect()
 await refused.preparation
 assert.equal(refused.warm, false)
 assert.equal(refused.saved, null)
-assert.equal(requests.at(-1), "DELETE /debriefs/1")
+await refused.start()
+assert.equal(refused.element.dataset.state, "idle")
+assert.match(refused.statusTarget.textContent, /Microphone access is blocked/)
+// A refusal is not remembered: once access is given, the next tap records.
+globalThis.navigator.mediaDevices.getUserMedia = async () => stream
+refused.link = async () => {}
+await refused.start()
+assert.equal(refused.element.dataset.state, "recording")
+clearInterval(refused.meterTimer)
 early.database.close(); returning.database.close(); refused.database.close()
-console.log("Early live connection, muted microphone and reservation release passed")
+console.log("Immediate local recording, early live connection, muted microphone and reservation release passed")
+
+// A send needs a real pause: a short breath inside a figure no longer cuts the phrase.
+const pacing = recorder("pacing")
+const commits = []
+pacing.channel = { readyState: "open", send: message => commits.push(JSON.parse(message).type) }
+pacing.recorder = { state: "recording" }
+pacing.floor = 0.02
+const hear = (level, from, to) => { for (let now = from; now < to; now += 200) pacing.phrase(level, now) }
+hear(0.5, 1000, 2000); hear(0.02, 2000, 2600); hear(0.5, 2600, 3400)
+assert.deepEqual(commits, [], "600 ms of quiet inside a sentence is not a pause")
+hear(0.02, 3400, 4600)
+assert.deepEqual(commits, ["input_audio_buffer.commit"])
+hear(0.5, 4600, 13000)
+assert.equal(commits.length, 2, "speech without a pause is sent after eight seconds")
+console.log("Phrase pacing passed")
 
 const controls = ["idle", "recording paused", "recovery", "busy"].map(states => ({ dataset: { debriefStates: states }, hidden: false }))
 const pauseButton = { textContent: "" }

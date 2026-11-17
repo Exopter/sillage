@@ -69,7 +69,7 @@ class RemoteController < ApplicationController
 
   def debrief
     @flight = remote_flights.find(params[:id])
-    render partial: "remote/debrief", locals: { flight: @flight }
+    render partial: "remote/debrief", locals: { flight_id: @flight.id, code: @flight.code }
   end
 
   # Check-in of a ground computer in standby. It reports what it hears, and is
