@@ -7,6 +7,9 @@
     <label class="exds-browser-field is-wide"><span>Pilot</span>
       <%= select_tag "changes[pilot_id]", options_for_select([ [ "Keep as is", "" ] ] + @pilots.map { |pilot| [ pilot.full_name || pilot.email_address, pilot.id ] }), id: nil %>
       <small class="exds-browser-autocomplete-help"><%= bulk_current(@bulk_flights, "pilot") { |flight| flight.display_pilot } %></small></label>
+    <label class="exds-browser-field is-wide"><span>Mode</span>
+      <%= select_tag "changes[environment]", options_for_select([ [ "Keep as is", "" ], [ "Tunnel", "tunnel" ], [ "Sky", "sky" ] ]), id: nil %>
+      <small class="exds-browser-autocomplete-help"><%= bulk_current(@bulk_flights, "mode") { |flight| flight.environment_label } %></small></label>
     <label class="exds-browser-field is-wide"><span>Aircraft</span>
       <%= select_tag "changes[aircraft_id]", options_for_select([ [ "Keep as is", "" ], [ "No aircraft", "none" ] ] + @aircraft.map { |aircraft| [ aircraft.display_name, aircraft.id ] }), id: nil %>
       <small class="exds-browser-autocomplete-help"><%= bulk_current(@bulk_flights, "aircraft") { |flight| flight.aircraft&.display_name || "No aircraft" } %></small></label>

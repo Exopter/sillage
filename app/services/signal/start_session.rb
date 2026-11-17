@@ -3,7 +3,10 @@ module Signal
     InvalidFlight = Class.new(StandardError)
 
     def initialize(user:, flight_id: nil, uuid: nil, started_at: nil, station_metadata: {},
-      mavlink_system_id: nil, mavlink_component_id: nil, device_id: nil)
+      mavlink_system_id: nil, mavlink_component_id: nil, device_id: nil, environment: nil, tunnel_glide_ratio: nil)
+      @environment = environment.presence_in(Flight::ENVIRONMENTS)
+      ratio = tunnel_glide_ratio.to_s[/\A\d(?:\.\d{1,2})?\z/]&.to_d
+      @tunnel_glide_ratio = ratio if ratio && Flight::TUNNEL_GLIDE_RATIOS.cover?(ratio)
       @device_id = device_id
       @user = user
       @flight_id = flight_id
@@ -41,7 +44,7 @@ module Signal
           flight:,
           started_at: @started_at,
           station_metadata: @station_metadata.merge("recorder_device_id" => @recorder.device_id,
-            "recorder_assembly_id" => @assembly&.id)
+            "recorder_assembly_id" => @assembly&.id, "environment" => flight.environment)
         )
         IdentifySource.new(
           signal_session: session,
@@ -56,7 +59,8 @@ module Signal
 
     def prepare_flight
       if @flight_id.blank?
-        return @user.flights.create!(status: "live", started_at: @started_at,
+        return @user.flights.create!(status: "live", started_at: @started_at, environment: @environment || "sky",
+          tunnel_glide_ratio: (@tunnel_glide_ratio if @environment == "tunnel"),
           fdr: @assembly&.fdr_system_at || @assembly, aircraft: @recorder.aircraft).tap do |flight|
           flight.capture_configuration!(at: nil)
         end
@@ -74,6 +78,8 @@ module Signal
         raise RecorderAccess::Denied, "The connected recorder is installed on a different aircraft."
       end
       flight.fdr ||= owner
+      # The glide ratio set on the station is the test condition of a tunnel flight.
+      flight.tunnel_glide_ratio ||= @tunnel_glide_ratio if flight.tunnel?
       flight.update!(status: "live", started_at: flight.started_at || @started_at)
       flight.capture_configuration!(at: nil)
       flight

@@ -1,0 +1,37 @@
+<%# Signal Tunnel: the wing in the tunnel airflow, driven by the attitude the recorder IMU sends over the link. %>
+<section class="signal-widget" data-signal-workspace-target="widget" data-widget="airflow" data-mode="large">
+  <header class="signal-widget-head">
+    <button type="button" class="signal-drag-handle" aria-label="Move Wing in the airflow" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget"><%= sillage_icon "menu", size: 13 %></button>
+    <span class="signal-head-icon"><%= sillage_icon "plane", size: 15 %></span><strong>Wing in the airflow</strong><span class="signal-widget-subtitle">Measured attitude · set airflow</span>
+    <span class="signal-live-badge" data-signal-workspace-target="streamBadge" data-state="waiting">Waiting</span>
+    <span class="signal-mode-buttons"><%= render "signal/widget_modes" %></span>
+  </header>
+  <div class="signal-widget-body signal-airflow" data-controller="signal-airflow"
+       data-action="sillage:signal-telemetry@window->signal-airflow#telemetry"
+       data-signal-airflow-model-url-value="<%= asset_path("blueprints/exowing-scene.glb") %>"
+       data-signal-airflow-seat-url-value="<%= asset_path("blueprints/exowing-seat.glb") %>"
+       data-signal-airflow-pilot-url-value="<%= asset_path("blueprints/exowing-pilot.glb") %>"
+       data-signal-airflow-ratio-value="<%= glide_ratio.to_f %>"
+       data-signal-airflow-sections-url-value="<%= asset_path("blueprints/exowing-sections.json") %>">
+    <div class="signal-airflow-bar">
+      <span class="signal-airflow-glide" role="group" aria-label="Tunnel glide ratio"><span>Tunnel glide ratio</span>
+        <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" aria-label="Lower the glide ratio by 0.5" data-step="down" data-action="signal-airflow#stepGlide">−</button>
+        <output aria-live="polite" data-signal-airflow-target="glideOutput">2.99</output>
+        <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" aria-label="Raise the glide ratio by 0.5" data-step="up" data-action="signal-airflow#stepGlide">+</button></span>
+      <small data-signal-airflow-target="airflow">Airflow 18.5° below the horizon</small>
+      <span class="signal-mode-buttons" role="group" aria-label="Camera">
+        <button type="button" aria-pressed="true" data-view="quarter" data-signal-airflow-target="view" data-action="signal-airflow#view">Quarter</button>
+        <button type="button" aria-pressed="false" data-view="side" data-signal-airflow-target="view" data-action="signal-airflow#view">Side</button>
+      </span>
+    </div>
+    <div class="signal-airflow-scene" data-signal-airflow-target="scene" role="img" aria-label="Wing model in the tunnel airflow">
+      <p class="signal-airflow-status" role="status" data-signal-airflow-target="status">Loading the wing model.</p>
+    </div>
+    <div class="signal-telemetry-strip signal-airflow-readouts" aria-label="Wing attitude in the airflow">
+      <div><span title="Measured pitch plus the airflow angle of the set glide ratio. It depends on the recorder mounting reference; it is not a measured angle of attack.">Wing to airflow</span><strong data-signal-airflow-target="value" data-reading="toAirflow">---</strong><small>deg</small></div>
+      <div><span>Pitch</span><strong data-signal-airflow-target="value" data-reading="pitch">---</strong><small>deg</small></div>
+      <div><span>Roll</span><strong data-signal-airflow-target="value" data-reading="roll">---</strong><small>deg</small></div>
+      <div><span title="Vortex lattice estimate on the wing surface alone: no viscosity, no separation, no fins. An indication, not a measurement.">Lift coefficient</span><strong data-signal-airflow-target="value" data-reading="lift">---</strong><small>computed</small></div>
+    </div>
+  </div>
+</section>

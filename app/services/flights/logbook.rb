@@ -3,7 +3,8 @@ module Flights
     FILTERS = %w[flights set_aside all].freeze
     PER_PAGE = 30
 
-    def initialize(user:, filter:, query: nil, visibility: nil, folder: nil)
+    def initialize(user:, filter:, query: nil, visibility: nil, folder: nil, environment: nil)
+      @environment = environment.presence_in(Flight::ENVIRONMENTS)
       @user, @filter, @query = user, filter, query.to_s.strip
       @visibility = (visibility == "team" ? "public" : visibility).presence_in(Flight::EFFECTIVE_VISIBILITIES)
       @folder = folder.presence
@@ -54,6 +55,7 @@ module Flights
         end
       end
       scope = scope.none if @filter == "set_aside"
+      scope = scope.where(environment: @environment) if @environment
       if @query.present?
         scope = scope.left_joins(:aircraft, :flight_import).where(
           "flights.name ILIKE :q OR EXISTS (SELECT 1 FROM flight_comments WHERE flight_comments.flight_id = flights.id AND flight_comments.body ILIKE :q) OR flights.code ILIKE :q OR flights.location ILIKE :q OR aircraft.registration ILIKE :q OR (flight_imports.id IN (:import_ids) AND flight_imports.source_filename ILIKE :q)", q: pattern, import_ids: FlightImport.accessible_to(@user).select(:id))
@@ -65,6 +67,8 @@ module Flights
       scope = FlightImport.accessible_to(@user)
       scope = scope.none if @folder
       scope = scope.none if @visibility.in?(%w[public shared])
+      # A recording without a flight has no mode yet.
+      scope = scope.none if @environment
       with_flights = Flight.where.not(flight_import_id: nil).select(:flight_import_id)
       scope = scope.where.not(id: with_flights).or(scope.set_aside)
       scope = scope.set_aside if @filter == "set_aside"

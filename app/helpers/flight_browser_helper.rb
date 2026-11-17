@@ -29,7 +29,7 @@ module FlightBrowserHelper
 
   def browser_context
     { filter: (@filter unless @filter == "flights"), q: @query.presence,
-      visibility: @visibility.presence_in(Flight::EFFECTIVE_VISIBILITIES), folder: @folder_filter,
+      visibility: @visibility.presence_in(Flight::EFFECTIVE_VISIBILITIES), folder: @folder_filter, environment: @environment,
       page: (@page if @page.to_i > 1) }.compact
   end
 

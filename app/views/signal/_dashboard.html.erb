@@ -1,6 +1,10 @@
+<% tunnel = local_assigns[:environment] == "tunnel" %>
 <div class="signal-storage-warning" data-signal-workspace-target="warning" hidden></div>
 
 <main class="signal-dashboard" data-signal-workspace-target="board" aria-label="Movable live Signal widgets">
+  <% if tunnel %>
+  <%= render "signal/airflow", glide_ratio: local_assigns[:glide_ratio] %>
+  <% else %>
   <section class="signal-widget" data-signal-workspace-target="widget" data-widget="map" data-mode="large">
     <header class="signal-widget-head">
       <button type="button" class="signal-drag-handle" aria-label="Move GPS track" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget"><%= sillage_icon "menu", size: 13 %></button>
@@ -18,6 +22,7 @@
     </div>
   </section>
 
+  <% end %>
   <section class="signal-widget" data-signal-workspace-target="widget" data-widget="instruments" data-mode="mini">
     <header class="signal-widget-head">
       <button type="button" class="signal-drag-handle" aria-label="Move Instruments" data-action="pointerdown->signal-workspace#startDrag keydown->signal-workspace#nudgeWidget dblclick->signal-workspace#resetWidget"><%= sillage_icon "menu", size: 13 %></button>
@@ -47,19 +52,21 @@
   </button>
   <div id="signal-telemetry-readings">
     <div class="signal-telemetry-strip signal-sensor-strip" aria-label="Live sensor measurements">
-      <% [["accel", "Acceleration", "m/s²"], ["gyro", "Gyroscope", "rad/s"], ["mag", "Magnetometer", "µT"], ["pressure", "Pitot differential", "Pa"], ["temperature", "Pitot temperature", "°C"], ["gps", "GPS", "Fix / satellites"]].each do |key, label, unit| %>
+      <% [["accel", "Acceleration", "m/s²"], ["gyro", "Gyroscope", "rad/s"], ["mag", "Magnetometer", "µT"], ["pressure", "Pitot differential", "Pa"], ["temperature", "Pitot temperature", "°C"], ["gps", "GPS", "Fix / satellites"]].reject { |key, _, _| tunnel && key.in?(%w[mag gps]) }.each do |key, label, unit| %>
         <div><span><%= label %><% if %w[accel gyro mag].include?(key) %> <span data-signal-workspace-target="sensorAxes" title="F/R/D: forward, right, down. X/Y/Z: native sensor axes.">X/Y/Z</span><% end %></span><strong data-signal-workspace-target="sensorValue" data-sensor="<%= key %>">---</strong><small><%= unit %></small></div>
       <% end %>
     </div>
     <footer class="signal-telemetry-strip" aria-label="Shared live telemetry">
-      <div><span>Heading</span><strong data-signal-workspace-target="heading">---</strong><small>deg</small></div>
+      <% unless tunnel %><div><span>Heading</span><strong data-signal-workspace-target="heading">---</strong><small>deg</small></div><% end %>
       <div><span title="Estimated from pitot pressure using standard air density (1.225 kg/m³); sensor calibration is not corrected.">IAS estimate</span><strong data-signal-workspace-target="airspeed">---</strong><small>km/h</small></div>
       <div><span title="Total accelerometer magnitude across all three axes. Approximately 1 g at rest, regardless of orientation.">G load</span><strong data-signal-workspace-target="sensorValue" data-sensor="gLoad">---</strong><small>g</small></div>
+      <% unless tunnel %>
       <div><span>GPS altitude</span><strong data-signal-workspace-target="altitude">---</strong><small>m AMSL</small></div>
       <div><span>GPS vertical speed</span><strong data-signal-workspace-target="verticalSpeed">---</strong><small>m/s</small></div>
       <div><span>GPS glide ratio</span><strong data-signal-workspace-target="glide">---</strong><small>L/D</small></div>
+      <% end %>
       <div class="signal-telemetry-health"><span>Data</span><strong data-signal-workspace-target="dataStatus">Waiting for telemetry</strong><small data-signal-workspace-target="parserStatus">No valid MAVLink frames</small></div>
     </footer>
   </div>
 </section>
-<div data-signal-workspace-target="mapCredits" hidden></div>
+<% unless tunnel %><div data-signal-workspace-target="mapCredits" hidden></div><% end %>

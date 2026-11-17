@@ -1,6 +1,7 @@
 <%# With the remote on, this computer starts and ends flights when a phone asks. %>
 <div class="signal-remote" data-controller="signal-station" data-signal-station-url-value="<%= remote_station_path %>"
-     data-action="sillage:signal-standby@window->signal-station#standby">
+     data-signal-station-environment-value="<%= @environment %>"
+     data-action="sillage:signal-standby@window->signal-station#standby sillage:signal-glide-ratio@window->signal-station#glideRatio">
   <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" aria-pressed="false"
           data-signal-station-target="toggle" data-action="signal-station#toggle"><%= sillage_icon "smartphone", size: 14 %><span data-signal-station-target="label">Phone remote off</span></button>
   <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" aria-label="Show the remote QR code" title="Show the remote QR code"

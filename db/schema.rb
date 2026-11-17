@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_17_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -370,8 +370,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_090000) do
     t.string "visibility", default: "private", null: false
     t.bigint "pilot_id", null: false
     t.datetime "remote_start_requested_at"
+    t.string "environment", default: "sky", null: false
+    t.decimal "tunnel_glide_ratio", precision: 4, scale: 2
     t.index ["aircraft_id"], name: "index_flights_on_aircraft_id"
     t.index ["code"], name: "index_flights_on_code", unique: true
+    t.index ["environment"], name: "index_flights_on_environment"
     t.index ["exit_at"], name: "index_flights_on_exit_at"
     t.index ["fdr_id"], name: "index_flights_on_fdr_id"
     t.index ["flight_import_id"], name: "index_flights_on_flight_import_id"
@@ -383,6 +386,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_090000) do
     t.index ["user_id"], name: "index_flights_on_user_id"
     t.index ["video_processing_status"], name: "index_flights_on_video_processing_status"
     t.index ["visibility"], name: "index_flights_on_team_visibility", where: "((visibility)::text = 'team'::text)"
+    t.check_constraint "environment::text = ANY (ARRAY['sky'::character varying, 'tunnel'::character varying]::text[])", name: "flights_environment_check"
     t.check_constraint "visibility::text = ANY (ARRAY['private'::character varying::text, 'team'::character varying::text])", name: "flights_visibility_check"
   end
 
@@ -589,9 +593,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_090000) do
     t.datetime "seen_at", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "environment", default: "sky", null: false
+    t.decimal "tunnel_glide_ratio", precision: 4, scale: 2
     t.index ["key"], name: "index_signal_stations_on_key", unique: true
     t.index ["seen_at"], name: "index_signal_stations_on_seen_at"
     t.index ["user_id"], name: "index_signal_stations_on_user_id"
+    t.check_constraint "environment::text = ANY (ARRAY['sky'::character varying, 'tunnel'::character varying]::text[])", name: "signal_stations_environment_check"
   end
 
   create_table "solid_cable_messages", force: :cascade do |t|

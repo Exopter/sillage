@@ -40,6 +40,8 @@
         "./app/javascript/lib/signal_layout.js"
       ],
       "signal_radio_link": ["./app/javascript/lib/signal_radio_link.js"],
+      "wing_aero": ["./app/javascript/lib/wing_aero.js"],
+      "airflow_scene": ["./app/javascript/lib/airflow_scene.js"],
       "signal_telemetry": [
         "./app/javascript/lib/signal_telemetry.js"
       ],

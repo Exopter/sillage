@@ -5,9 +5,9 @@ module Flights
     class Invalid < StandardError; end
     MAX = 500
 
-    def self.flight_ids(user:, scope:, entries:, filter:, query:, visibility:, folder:)
+    def self.flight_ids(user:, scope:, entries:, filter:, query:, visibility:, folder:, environment: nil)
       if scope == "all"
-        ids = Logbook.new(user:, filter:, query:, visibility:, folder:).flight_ids(limit: MAX + 1)
+        ids = Logbook.new(user:, filter:, query:, visibility:, folder:, environment:).flight_ids(limit: MAX + 1)
         raise Invalid, "Narrow the list to #{MAX} flights or fewer to edit them together." if ids.size > MAX
         raise Invalid, "No flights match this list." if ids.empty?
         return ids

@@ -20,7 +20,8 @@ files = {
   "assets/blueprints/exowing-scene.glb" => "app/assets/images/blueprints/exowing-scene.glb",
   "assets/blueprints/exowing-seat.glb" => "app/assets/images/blueprints/exowing-seat.glb",
   "assets/blueprints/exowing-pilot.glb" => "app/assets/images/blueprints/exowing-pilot.glb",
-  "assets/blueprints/exowing-flow.json" => "app/assets/images/blueprints/exowing-flow.json"
+  "assets/blueprints/exowing-flow.json" => "app/assets/images/blueprints/exowing-flow.json",
+  "assets/blueprints/exowing-sections.json" => "app/assets/images/blueprints/exowing-sections.json"
 }
 %w[axonometric plan front profile].each do |view|
   files["assets/blueprints/exowing-#{view}.svg"] = "app/assets/images/blueprints/exowing-#{view}.svg"

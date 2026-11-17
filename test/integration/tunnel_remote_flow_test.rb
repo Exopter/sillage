@@ -92,11 +92,11 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     get remote_state_path, as: :json
     assert_equal "remote_off", response.parsed_body.dig("station", "state")
 
-    post remote_station_path, params: { key: station, remote: true, ready: true, device_id: "ECU-0123456789AB", aircraft: "Freak 6" }, as: :json
+    post remote_station_path, params: { key: station, remote: true, ready: true, device_id: "ECU-0123456789AB", aircraft: "Freak 6", environment: "tunnel", tunnel_glide_ratio: "2.99" }, as: :json
     assert_equal flight.id, response.parsed_body["flight_id"]
     assert_equal 1, SignalStation.count
     get remote_state_path, as: :json
-    assert_equal({ "state" => "ready", "aircraft" => "Freak 6" }, response.parsed_body["station"])
+    assert_equal({ "state" => "ready", "aircraft" => "Freak 6", "environment" => "tunnel", "tunnel_glide_ratio" => 2.99 }, response.parsed_body["station"])
     travel SignalStation::FRESHNESS + 1.second do
       get remote_state_path, as: :json
       assert_equal "offline", response.parsed_body.dig("station", "state")
