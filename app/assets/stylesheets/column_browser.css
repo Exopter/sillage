@@ -108,7 +108,9 @@
 @container (max-width: 380px) {
   .exds-browser-form-grid { grid-template-columns: minmax(0, 1fr); }
 }
-.exds-browser-preview-heading { display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+/* The title keeps a readable width; the actions drop under it, still right-aligned, when the panel is narrow. */
+.exds-browser-preview-heading { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.exds-browser-preview-heading > div:first-child { flex: 1 1 12rem; min-width: 0; }
 .exds-browser-preview-heading p { margin: 6px 0 0; font-size: var(--fs-text); }
 .exds-browser-preview-heading .exds-browser-caption { font-family: var(--ex-font-mono); letter-spacing: .04em; }
 .exds-browser-map { position: relative; height: clamp(220px, 32vh, 350px); background: var(--surface-panel); border-radius: var(--ex-radius-instrument); overflow: hidden; }
@@ -214,7 +216,7 @@
   .exds-browser-entry-copy > .exds-browser-entry-duration { grid-row: 3; }
 }
 
-.exds-browser-preview-actions { display: flex; flex: 0 0 auto; gap: var(--ex-space-2); }
+.exds-browser-preview-actions { display: flex; flex: 0 0 auto; align-items: center; gap: var(--ex-space-2); margin-left: auto; }
 /* The overflow menu of the preview header opens under its own button. */
 .exds-browser-preview-menu { position: relative; margin: 0; }
 .exds-browser-preview-menu > .exds-comment-menu { top: calc(100% + 4px); }
