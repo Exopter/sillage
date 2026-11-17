@@ -60,6 +60,7 @@ module ApplicationHelper
     "settings" => '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
     "plus" => '<path d="M5 12h14"/><path d="M12 5v14"/>',
     "x" => '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+    "video" => '<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
     "clock" => '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
     "file-text" => '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
     "log-out" => '<path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>',
@@ -74,7 +75,7 @@ module ApplicationHelper
   }.freeze
 
   LOCAL_TIME_FORMATS = { long: "%d %b %Y, %H:%M", seconds: "%d %b %Y, %H:%M:%S", list: "%d %b %Y \u00b7 %H:%M", short: "%d %b \u00b7 %H:%M",
-    time: "%H:%M:%S", date: "%d %b %Y" }.freeze
+    time: "%H:%M:%S", date: "%d %b %Y", clock: "%H:%M", day: "%a %d %b %Y" }.freeze
 
   # An instant shown in the viewer's time zone. The UTC text is the fallback until
   # the page script replaces it, and stays available as the tooltip.

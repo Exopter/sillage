@@ -62,25 +62,35 @@
 .exds-browser-collection-header h2, .exds-browser-preview h2 { margin: 0; font-size: var(--fs-section); line-height: 1.2; overflow-wrap: anywhere; }
 .exds-browser-caption { margin: 6px 0 0; font-size: var(--fs-sm); line-height: 1.5; color: var(--text-muted); }
 .exds-browser-selection { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; margin: 0; }
-.exds-browser-entries { flex: 1; min-height: 0; overflow-y: auto; }
+/* Flight log ledger: the day is a sticky group header and each flight is one line led by its time. */
+.exds-browser-entries { container-type: inline-size; flex: 1; min-height: 0; overflow-y: auto; }
+.exds-browser-day { position: sticky; top: 0; z-index: 1; padding: 7px 16px 6px 15px; border-bottom: 1px solid var(--surface-panel); background: var(--surface-app); color: var(--text-strong); font: 600 var(--fs-caption)/18px var(--ex-font-sans); }
 .exds-browser-entry { position: relative; display: flex; align-items: center; border-left: 3px solid transparent; border-bottom: 1px solid var(--surface-panel); }
 .exds-browser-entry[aria-current="true"] { background: var(--surface-selected); border-left-color: var(--selection-marker); }
 .exds-browser-entry[data-selected] { box-shadow: inset 0 0 0 1px var(--selection-marker); }
-.exds-browser-entry > label { padding: 8px 0 8px 12px; }
+.exds-browser-entry > label { display: flex; align-self: stretch; align-items: center; padding: 0 0 0 12px; }
 .exds-browser-entry input, .exds-browser-collection-header input { accent-color: var(--selection-marker); width: 15px; height: 15px; }
-.exds-browser-entry-link { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; height: var(--ex-list-row-height); min-height: var(--ex-list-row-height); padding: 10px 16px 10px 10px; color: var(--text-body); }
-.exds-browser-entry-copy { display: grid; grid-template-columns: minmax(0, 1fr) max-content; grid-template-rows: 19px 18px 18px; column-gap: 20px; row-gap: 4px; flex: 1; min-width: 0; }
-.exds-browser-entry-copy strong { display: block; font-size: var(--fs-text); line-height: 19px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.exds-browser-entry-copy small { display: block; margin: 0; color: var(--text-muted); font-size: var(--fs-caption); line-height: 18px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.exds-browser-entry-heading { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
-.exds-browser-entry-heading strong { flex: 0 0 auto; }
-.exds-browser-entry-heading .status-dot { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 var(--fs-xs)/var(--fs-card) var(--ex-font-sans); letter-spacing: 0; text-transform: none; color: var(--text-muted); }
-.exds-browser-entry-heading .status-dot > span { flex-shrink: 0; width: 6px; height: 6px; }
-.exds-browser-entry-location { grid-column: 1; grid-row: 2; }
-.exds-browser-entry-date { grid-column: 2; grid-row: 1; text-align: right; font-variant-numeric: tabular-nums; }
-.exds-browser-entry-description { grid-column: 1; grid-row: 3; }
-.exds-browser-entry-copy > .exds-browser-entry-duration { grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-variant-numeric: tabular-nums; }
-.exds-browser-entry-duration svg { flex-shrink: 0; }
+.exds-browser-entry-link { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; height: var(--ex-list-row-height); min-height: var(--ex-list-row-height); padding: 0 16px 0 12px; color: var(--text-body); }
+.exds-browser-entry-time { flex: none; min-width: 5ch; color: var(--text-body); font: 400 var(--fs-sm)/1 var(--ex-font-mono); font-variant-numeric: tabular-nums; }
+.exds-browser-entry-time:not(:has(time)) { color: var(--text-muted); }
+.exds-browser-entry .sillage-avatar, .exds-browser-entry-kind { width: 24px; height: 24px; margin: 0; font-size: var(--fs-xs); }
+.exds-browser-entry .sillage-avatar-insignia { right: -3px; top: -3px; width: 10px; height: 12px; }
+.exds-browser-entry-kind { display: grid; flex: none; place-items: center; color: var(--text-muted); }
+.exds-browser-entry-copy { display: flex; align-items: baseline; gap: 10px; flex: 1; min-width: 0; }
+.exds-browser-entry-copy strong { flex: 0 1 auto; min-width: 0; max-width: 60%; font-size: var(--fs-text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.exds-browser-entry-detail { flex: 1; min-width: 0; margin: 0; color: var(--text-muted); font-size: var(--fs-sm); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.exds-browser-entry-meta { display: flex; align-items: center; gap: 12px; flex: none; color: var(--text-muted); font-size: var(--fs-caption); font-variant-numeric: tabular-nums; }
+.exds-browser-entry-meta:empty { display: none; }
+.exds-browser-entry-meta > span, .exds-browser-entry-cameras { display: inline-flex; align-items: center; gap: 4px; }
+.exds-browser-entry-meta .status-dot { gap: 6px; white-space: nowrap; font: 500 var(--fs-xs)/var(--fs-card) var(--ex-font-sans); letter-spacing: 0; text-transform: none; color: var(--text-muted); }
+.exds-browser-entry-meta .status-dot > span { flex-shrink: 0; width: 6px; height: 6px; }
+/* Narrow column or phone: the name is never truncated and its detail moves to a second line. */
+@container (max-width: 460px) {
+  .exds-browser-entry-link { height: 56px; min-height: 56px; }
+  .exds-browser-entry-copy { flex-direction: column; align-items: stretch; gap: 1px; }
+  .exds-browser-entry-copy strong { max-width: none; }
+  .exds-browser-entry-detail { flex: none; font-size: var(--fs-caption); }
+}
 .exds-browser-selection .exds-selection-toolbar { border-radius: 0; box-shadow: none; padding: 12px; gap: 8px; flex-wrap: wrap; font-size: var(--fs-caption); }
 .exds-browser-selection .exds-selection-toolbar button, .exds-browser-selection .exds-selection-toolbar select { font-size: var(--fs-caption); }
 .exds-browser-pagination { padding: 12px 20px; }
@@ -205,16 +215,6 @@
 .exds-browser-autocomplete-option:hover, .exds-browser-autocomplete-option[aria-selected="true"] { background: var(--surface-selected); color: var(--text-strong); }
 .exds-browser-field > .exds-browser-autocomplete-help { margin: 0; color: var(--text-muted); font: 400 var(--fs-caption)/1.4 var(--ex-font-sans); }
 @media (pointer: coarse) { .exds-browser-autocomplete-option { min-height: 44px; } }
-/* Phone: the flight code is never truncated; status wraps under it and the date takes its own line. */
-@media (max-width: 560px) {
-  .exds-browser-entry-copy { grid-template-rows: auto; grid-auto-rows: auto; }
-  .exds-browser-entry-heading { grid-column: 1 / -1; flex-wrap: wrap; row-gap: 2px; }
-  .exds-browser-entry-heading strong { flex: none; overflow: visible; }
-  .exds-browser-entry-date { grid-column: 1 / -1; grid-row: 2; text-align: left; }
-  .exds-browser-entry-location { grid-row: 3; }
-  .exds-browser-entry-description { grid-row: 4; }
-  .exds-browser-entry-copy > .exds-browser-entry-duration { grid-row: 3; }
-}
 
 .exds-browser-preview-actions { display: flex; flex: 0 0 auto; align-items: center; gap: var(--ex-space-2); margin-left: auto; }
 /* The overflow menu of the preview header opens under its own button. */

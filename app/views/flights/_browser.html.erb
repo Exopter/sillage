@@ -59,39 +59,35 @@
           <% if @filter == "set_aside" %><p class="exds-browser-explanation">Static tests and technical recordings excluded from flights. Original files are kept here.</p><% end %>
           <%= hidden_field_tag :scope, @bulk_scope || "page", id: nil, data: { table_selection_target: "scope" } %>
           <%= render "flights/browser_filters", form: form, include_query: true %>
-          <div class="exds-browser-entries">
+          <div class="exds-browser-entries" data-local-days="exds-browser-day">
+            <% day = nil %>
             <% @flights.each do |entry| %>
-              <% accessible = entry.is_a?(FlightImport) || entry.visible_to?(Current.user) %>
+              <% flight = entry.is_a?(Flight) %>
+              <% accessible = !flight || entry.visible_to?(Current.user) %>
               <% selected = entry == @selected_entry %>
-              <div class="exds-browser-entry" aria-current="<%= selected %>" draggable="<%= can_manage_operations? && accessible && entry.is_a?(Flight) %>" data-entry="<%= browser_key(entry) %>" data-action="dragstart->flight-browser#startDrag">
-                <% if can_manage_operations? && accessible %><label><input type="checkbox" name="entries[]" value="<%= browser_key(entry) %>" <%= "checked" if entry.is_a?(Flight) && @bulk_ids&.include?(entry.id) %> data-table-selection-target="item" data-action="change->table-selection#update"><span class="sr-only">Select <%= browser_name(entry) %></span></label><% end %>
+              <% instant = browser_instant(entry) %>
+              <% entry_day = browser_day(entry) %>
+              <% if entry_day != day %><div class="exds-browser-day" data-day-header><%= entry_day %></div><% end %>
+              <% day = entry_day %>
+              <%= tag.div class: "exds-browser-entry", aria: { current: selected.to_s }, draggable: (can_manage_operations? && accessible && flight).to_s, data: { entry: browser_key(entry), day_at: instant&.utc&.iso8601, day: (entry_day unless instant), action: "dragstart->flight-browser#startDrag" } do %>
+                <% if can_manage_operations? && accessible %><label><input type="checkbox" name="entries[]" value="<%= browser_key(entry) %>" <%= "checked" if flight && @bulk_ids&.include?(entry.id) %> data-table-selection-target="item" data-action="change->table-selection#update"><span class="sr-only">Select <%= browser_name(entry) %></span></label><% end %>
                 <%= link_to browser_preview_path(entry), class: "exds-browser-entry-link", draggable: false, data: { turbo_frame: "flight-preview", flight_browser_target: "entry", open_url: browser_open_path(entry), selected: selected, name: browser_name(entry), action: "click->flight-browser#select dblclick->flight-browser#open" }, aria: { label: "Preview #{browser_name(entry)}" } do %>
-                  <% entry_state, entry_status = entry.is_a?(Flight) ? logbook_status(entry) : recording_logbook_status(entry) %>
-                  <%= render "flights/pilot", flight: entry, show_name: false if entry.is_a?(Flight) %>
+                  <% entry_state, entry_status = flight ? logbook_status(entry) : recording_logbook_status(entry) %>
+                  <%# The time leads: it is what tells consecutive flights apart. The day is the group header. %>
+                  <span class="exds-browser-entry-time" title="<%= "Creation time" if flight && entry.started_at.nil? && !entry.flown_on %>"><%= browser_time(entry) || "--:--" %></span>
+                  <% if flight %><%= render "flights/pilot", flight: entry, show_name: false %><% else %><span class="exds-browser-entry-kind"><%= sillage_icon "file-text", size: 16 %></span><% end %>
                   <span class="exds-browser-entry-copy">
-                    <span class="exds-browser-entry-heading">
-                      <strong><%= browser_name(entry) %></strong>
-                      <% if entry_status %>
-                        <span class="status-dot is-<%= entry_state %>" title="<%= entry_status %>"><span></span><%= entry_status %></span>
-                      <% end %>
-                    </span>
-                    <%# The mode reads as part of the muted location line, not as a badge. %>
-                    <small class="exds-browser-entry-location" title="<%= entry.location if entry.is_a?(Flight) %>"><%= [ ("Tunnel" if entry.is_a?(Flight) && entry.tunnel?), (entry.location.presence if entry.is_a?(Flight)), ((cameras = entry.is_a?(Flight) && @camera_counts&.fetch(entry.id, nil)) ? pluralize(cameras, "camera") : nil) ].compact.join(" · ") %></small>
-                    <small class="exds-browser-entry-date" title="<%= entry.is_a?(Flight) && entry.started_at.nil? && !entry.flown_on ? "Creation date and time" : "Flight date and time" %>"><%= browser_date(entry) %></small>
-                    <% description = entry.is_a?(Flight) ? entry.description : (entry.failed? ? entry.error_message : entry.import_type.upcase) %>
-                    <% description = nil if entry.is_a?(Flight) && description.in?(["Draft flight", "Prepared flight"]) %>
-                    <% description = "FlySight recording" if description&.match?(/\AFlySight \d{4}-\d{2}-\d{2} \d{2}:\d{2}\z/) %>
-                    <small class="exds-browser-entry-description" title="<%= description %>"><%= description %></small>
-                    <% if (duration_label = browser_duration_label(entry)) %>
-                      <small class="exds-browser-entry-duration" aria-label="Duration: <%= duration_label %>" title="Recorded duration"><%= sillage_icon "clock", size: 12 %><%= duration_label %></small>
-                    <% elsif entry.is_a?(Flight) && entry.started_at.nil? && !entry.flown_on %>
-                      <small class="exds-browser-entry-duration">Created</small>
-                    <% end %>
+                    <strong><%= browser_name(entry) %></strong>
+                    <% detail = browser_detail(entry) %>
+                    <small class="exds-browser-entry-detail" title="<%= detail %>"><%= detail %></small>
                   </span>
-                  <span title="<%= visibility_label(browser_visibility(entry)) %>"><%= sillage_icon(browser_visibility(entry) == "private" ? "lock-keyhole" : "users", size: 17) %><span class="sr-only"><%= visibility_label(browser_visibility(entry)) %></span></span>
-                  <%= sillage_icon "chevron-right", size: 15 %>
+                  <span class="exds-browser-entry-meta">
+                    <% if flight && browser_visibility(entry) == "private" %><span title="Private"><%= sillage_icon "lock-keyhole", size: 14 %><span class="sr-only">Private</span></span><% end %>
+                    <% if flight && (cameras = @camera_counts&.fetch(entry.id, nil)) %><span class="exds-browser-entry-cameras" title="<%= pluralize(cameras, "camera") %>"><%= sillage_icon "video", size: 14 %><%= cameras %><span class="sr-only"> <%= "camera".pluralize(cameras) %></span></span><% end %>
+                    <% if entry_status %><span class="status-dot is-<%= entry_state %>" title="<%= entry_status %>"><span></span><%= entry_status %></span><% end %>
+                  </span>
                 <% end %>
-              </div>
+              <% end %>
             <% end %>
             <% if @flights.empty? %><div class="exds-browser-empty"><%= sillage_icon "folder", size: 40 %><strong><%= @query.present? ? "No matching flights" : "This folder is empty" %></strong><span><%= @folder_filter ? "No flights match this folder and the current filters." : can_manage_operations? ? "Create a flight or import a recording to get started." : "No accessible flights or recordings." %></span></div><% end %>
           </div>

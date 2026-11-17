@@ -83,7 +83,7 @@ class FlightSelectionFlowTest < ActionDispatch::IntegrationTest
     [ first, second ].each { |entry| assert_equal "data", entry.reload.source_files.first.download }
   end
 
-  test "missing column values share one placeholder while zero duration remains visible" do
+  test "missing column values share one placeholder and rows carry no duration" do
     missing = recording("Missing fields")
     zero = recording("Zero duration", activity_summary: { "duration_seconds" => 0 })
     get flights_path(filter: "set_aside", selected: "import:#{missing.id}")
@@ -92,7 +92,7 @@ class FlightSelectionFlowTest < ActionDispatch::IntegrationTest
       assert_select ".sr-only", text: "Data unavailable", count: 3
       assert_select "span[aria-hidden='true']", text: "—", count: 3
     end
-    assert_select ".exds-browser-entry[data-entry='import:#{zero.id}']", text: /0s/
+    assert_select ".exds-browser-entry[data-entry='import:#{zero.id}']", text: /0s/, count: 0
     [ "To complete", "Date unknown", "Not recorded", "No data yet" ].each { |text| assert_not_includes response.body, text }
     assert_select "button[type='submit'][disabled]", text: "Delete selected"
     assert_select "input[data-table-selection-target='all']"

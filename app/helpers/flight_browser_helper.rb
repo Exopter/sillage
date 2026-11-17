@@ -43,22 +43,34 @@ module FlightBrowserHelper
     entry.is_a?(FlightImport) ? entry.activity_summary["duration_seconds"] || entry.details.to_h["duration_seconds"] : entry.duration_seconds
   end
 
-  def browser_date(entry)
-    return logbook_date(entry) if entry.is_a?(Flight) && entry.flown_on && !entry.time_from_recording?
+  # The instant a row is dated by; nil when the flight only carries its logbook date.
+  def browser_instant(entry)
+    return entry.log_started_at if entry.is_a?(FlightImport)
 
-    timestamp = entry.is_a?(FlightImport) ? entry.log_started_at : entry.display_started_at
-    return "Date not recorded" unless timestamp
-
-    local_time(timestamp, :list)
+    entry.display_started_at unless entry.flown_on && !entry.time_from_recording?
   end
 
-  def browser_duration_label(entry)
-    value = browser_duration(entry)
-    return if value.blank?
+  # Day header text. Instants are written in UTC, then regrouped in the viewer's zone by local_time.js.
+  def browser_day(entry)
+    date = browser_instant(entry)&.utc&.to_date || (entry.flown_on if entry.is_a?(Flight))
+    date ? date.strftime(ApplicationHelper::LOCAL_TIME_FORMATS.fetch(:day)) : "Date not recorded"
+  end
 
-    minutes, seconds = value.to_i.divmod(60)
-    hours, minutes = minutes.divmod(60)
-    [ ("#{hours}h" if hours.positive?), ("#{minutes}m" if minutes.positive? || hours.positive?), "#{seconds}s" ].compact.join(" ")
+  def browser_time(entry)
+    instant = browser_instant(entry)
+    return local_time(instant, :clock) if instant
+
+    entry.flown_at.strftime("%H:%M") if entry.is_a?(Flight) && entry.flown_at
+  end
+
+  # Muted text after the name: where the flight took place, then what was flown.
+  def browser_detail(entry)
+    return entry.failed? ? entry.error_message : entry.import_type.upcase if entry.is_a?(FlightImport)
+
+    description = entry.description
+    description = nil if description.in?([ "Draft flight", "Prepared flight" ])
+    description = "FlySight recording" if description&.match?(/\AFlySight \d{4}-\d{2}-\d{2} \d{2}:\d{2}\z/)
+    [ ("Tunnel" if entry.tunnel?), entry.location.presence, description.presence ].compact.join(" \u00b7 ")
   end
 
   # "club" reads as the Flight Club everywhere it is shown.
