@@ -1505,3 +1505,37 @@ textarea {
 @media (max-width: 920px) {
   .signal-watch { padding: var(--sp-5) var(--sp-4); }
 }
+
+/* Signal on a phone: the remote first, live telemetry second. */
+.signal-phone {
+  display: flex;
+  min-height: calc(100dvh - var(--ex-shell-header-height));
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-4);
+  background: var(--ex-carbon-950);
+  color: var(--ex-vapor-50);
+}
+.signal-phone > * { min-width: 0; margin-block: 0; }
+.signal-phone-head { display: grid; gap: 6px; margin-bottom: var(--sp-2); }
+.signal-phone-head h1 { margin: 0; font-size: var(--fs-page); font-weight: 600; line-height: 1.17; letter-spacing: var(--ls-tight); }
+.signal-phone-head p { margin: 0; color: var(--ex-graphite-400); font-size: var(--fs-sm); line-height: 1.55; }
+.signal-phone-station, .signal-phone-live { font: 600 var(--fs-xs)/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ex-graphite-400); }
+.signal-phone-station[data-state="ready"], .signal-phone-live { color: var(--status-live-text); }
+.signal-phone-live { display: inline-flex; align-items: center; gap: 8px; }
+.signal-phone-live > span { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.signal-phone-primary, .signal-phone-secondary { display: flex; align-items: center; gap: var(--sp-4); border-radius: 12px; text-decoration: none; }
+.signal-phone-primary { min-height: 88px; padding: var(--sp-4); background: var(--control-primary); color: var(--control-primary-text); }
+.signal-phone-primary-icon { display: grid; width: 44px; height: 44px; flex-shrink: 0; place-items: center; border-radius: 50%; background: var(--control-primary-text); color: var(--control-primary); }
+.signal-phone-secondary { min-height: 64px; justify-content: space-between; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--ex-carbon-700); color: inherit; }
+.signal-phone-secondary[aria-disabled="true"] { color: var(--ex-graphite-400); }
+.signal-phone :is(.signal-phone-primary, .signal-phone-secondary) strong { display: block; font-size: var(--fs-card); font-weight: 700; line-height: 1.25; }
+.signal-phone :is(.signal-phone-primary, .signal-phone-secondary) small { display: block; margin-top: 2px; font-size: var(--fs-sm); line-height: 1.4; opacity: .8; }
+.signal-phone-foot { margin-top: auto; color: var(--ex-graphite-400); font-size: var(--fs-caption); line-height: 1.5; text-align: center; }
+.signal-phone-foot a { color: var(--ex-vapor-50); }
+.signal-watch-remote { display: none; }
+@media (max-width: 920px) {
+  .signal-watch-remote { display: inline-flex; }
+  /* The room navigation sits under the page on a phone. */
+  .signal-phone { min-height: calc(100dvh - var(--ex-shell-header-height) - 60px - env(safe-area-inset-bottom)); }
+}

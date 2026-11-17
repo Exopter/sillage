@@ -13,6 +13,7 @@
       <p role="status" data-signal-watch-target="status">Connecting…</p>
     </div>
     <div class="signal-command-actions">
+      <% if can_manage_operations? %><%= link_to "Remote", remote_path, class: "signal-tool-button exds-btn exds-btn--secondary signal-watch-remote", data: { turbo: false } %><% end %>
       <span data-signal-watch-target="flightLink"><% if session.flight %><%= link_to "Open flight", flight_path(session.flight), class: "signal-tool-button exds-btn exds-btn--secondary" %><% end %></span>
       <button type="button" class="signal-tool-button exds-btn exds-btn--danger is-danger" data-signal-watch-target="stop" data-action="signal-watch#stop">End flight</button>
     </div>
