@@ -71,4 +71,19 @@ assert.equal(wide.extendTarget.hidden, true)
 page[0].defaultChecked = true
 wide.connect()
 assert.equal(page[1].checked, true, "a selection rendered ticked by the server is kept")
+// Shift-click selects, or clears, the whole section between two clicks.
+const list = [ 1, 2, 3, 4, 5 ].map((id) => ({ value: `flight:${id}`, checked: false, defaultChecked: false, closest: () => null }))
+const ranged = new TableSelection()
+Object.assign(ranged, { itemTargets: list, allTarget: {}, countTarget: {}, deleteTarget: { dataset: {} }, clearTarget: {}, moveTarget: {}, destinationTarget: { value: "" }, element: { dataset: {} } })
+list[1].checked = true
+ranged.range({ target: list[1], shiftKey: false })
+list[3].checked = true
+ranged.range({ target: list[3], shiftKey: true })
+assert.deepEqual(list.map((item) => item.checked), [ false, true, true, true, false ])
+assert.equal(ranged.countTarget.textContent, "3 selected")
+list[2].checked = false
+ranged.range({ target: list[2], shiftKey: true })
+assert.deepEqual(list.map((item) => item.checked), [ false, true, false, false, false ], "a shift-click on a ticked entry clears the section")
+ranged.range({ target: {}, shiftKey: true })
+assert.equal(ranged.anchor, 2, "a click outside the entries is ignored")
 console.log("Table selection, mixed state, navigation reset and confirmation tests passed")
