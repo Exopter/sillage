@@ -43,10 +43,19 @@ export default class extends TypedController {
   sending = false
   keptLive = ""
   keptAt = 0
+  // Counts the times the connection was given back, so an early connection still opening knows it is void.
+  epoch = 0
+  finishing = false
+  /** The stream the live transcription listens to. @type {MediaStream | null} */
+  liveStream = null
   stopped = false
   /** @type {(() => void) | null} */
   wake = null
-  kick = () => { if (document.visibilityState !== "hidden") this.wake?.() }
+  kick = () => {
+    if (document.visibilityState === "hidden") return
+    this.wake?.()
+    this.checkCapture()
+  }
   floor = 1
   spokeAt = 0
   pending = 0
@@ -106,12 +115,17 @@ export default class extends TypedController {
   // the first words are heard. The microphone track stays disabled until the tap:
   // nothing said before it is sent or kept. Recording never depends on this.
   async prepare() {
+    const epoch = this.epoch
     try {
-      this.stream = await this.microphone()
-      if (!this.recorder) this.stream.getAudioTracks().forEach(track => { track.enabled = false })
+      const stream = await this.microphone()
+      // The screen was left and came back meanwhile: this early connection belongs to the past.
+      if (epoch !== this.epoch) return
+      this.stream = stream
+      if (!this.recorder) stream.getAudioTracks().forEach(track => { track.enabled = false })
       await this.reserve()
+      if (epoch !== this.epoch) return
       await this.live()
-      this.warm = true
+      if (epoch === this.epoch) this.warm = true
     } catch { /* The tap on the microphone records anyway; the connection is retried from there. */ }
   }
 
@@ -136,6 +150,7 @@ export default class extends TypedController {
 
   // Gives back a connection or reservation that holds no recording.
   async release() {
+    this.epoch += 1
     this.warm = false
     this.stream?.getTracks().forEach(track => track.stop())
     this.stream = null
@@ -196,8 +211,14 @@ export default class extends TypedController {
     if (this.recorder && this.recorder.state !== "inactive") return
     if (this.saved) { this.statusTarget.textContent = "Recover the saved debrief first."; return }
     try {
+      // A microphone the system took back while the screen waited is asked for again.
+      if (this.stream?.getAudioTracks().some(track => track.readyState === "ended")) { this.mic = null; this.warm = false }
       this.stream = await this.microphone()
-      this.stream.getAudioTracks().forEach(track => { track.enabled = true })
+      this.stream.getAudioTracks().forEach(track => {
+        track.enabled = true
+        track.onended = () => this.checkCapture()
+      })
+      this.finishing = false
       // Nothing said before the tap is transcribed.
       if (this.channel?.readyState === "open") this.channel.send(JSON.stringify({ type: "input_audio_buffer.clear" }))
       this.uuid ||= crypto.randomUUID()
@@ -216,6 +237,7 @@ export default class extends TypedController {
         this.writeQueue = this.writeQueue.then(() => this.store("put", snapshot)).catch(() => { this.statusTarget.textContent = "Local saving failed. Finish and download or upload before leaving." })
       }
       this.recorder.onstop = () => { void this.finish() }
+      this.recorder.onerror = () => { void this.finish() }
       this.recorder.start(2000)
       this.showState("recording")
       this.statusTarget.textContent = "Recording\u2026 Keep this screen open."
@@ -240,7 +262,7 @@ export default class extends TypedController {
       try {
         if (this.preparation) { await this.preparation; this.preparation = null }
         await this.reserve()
-        const alive = this.peer && !["failed", "closed", "disconnected"].includes(this.peer.connectionState)
+        const alive = this.peer && this.liveStream === this.stream && !["failed", "closed", "disconnected"].includes(this.peer.connectionState)
         if (!alive) { this.peer?.close(); await this.live() }
         return
       } catch {
@@ -286,6 +308,7 @@ export default class extends TypedController {
     if (!this.debriefUrl || !this.stream) return
     const secret = await this.api(`${this.debriefUrl}/realtime`)
     this.peer = new RTCPeerConnection()
+    this.liveStream = this.stream
     for (const track of this.stream.getAudioTracks()) this.peer.addTrack(track, this.stream)
     this.channel = this.peer.createDataChannel("oai-events")
     this.channel.onmessage = event => {
@@ -343,19 +366,39 @@ export default class extends TypedController {
     else if (this.recorder?.state === "paused") { this.stream?.getAudioTracks().forEach(track => { track.enabled = true }); this.recorder.resume(); this.showState("recording"); this.statusTarget.textContent = "Recording…" }
   }
 
-  stop() { if (this.recorder && this.recorder.state !== "inactive") this.recorder.stop() }
+  // Ends the recording and sends it. FLT-2026-100 and 105 (17 November 2026) ended with this
+  // tap and nothing left the phone while it was online: the recorder had been interrupted, or
+  // its stop never came back. The tap now reaches the send whatever state the recorder is in.
+  stop() {
+    if (!this.recorder || this.finishing) return
+    try { if (this.recorder.state !== "inactive") this.recorder.stop() } catch { /* Already stopped by the system. */ }
+    // The recorder answers at once when it is healthy; the send does not wait for one that is not.
+    window.setTimeout(() => { void this.finish() }, this.recorder.state === "inactive" ? 0 : 1500)
+  }
+
+  // The system took the microphone back (a call, the screen locked, another app): what was
+  // recorded so far is saved and sent rather than left behind a screen that still says "recording".
+  checkCapture() {
+    if (!this.recorder || this.finishing || this.element.dataset.state !== "recording") return
+    const lost = this.recorder.state === "inactive" || Boolean(this.stream?.getAudioTracks().every(track => track.readyState === "ended"))
+    if (lost) this.stop()
+  }
 
   async finish() {
+    if (this.finishing) return
+    this.finishing = true
     this.showState("busy")
     this.statusTarget.textContent = "Saving your recording\u2026"
     clearInterval(this.commitTimer)
     clearInterval(this.meterTimer)
-    // Nothing here may keep the recording from being sent.
-    try { if (this.audioContext?.state !== "closed") await this.audioContext?.close() } catch { /* Already closed. */ }
-    try { await this.wakeLock?.release() } catch { /* Already released. */ }
+    // Never awaited: closing an interrupted audio context can stay pending for ever, and
+    // nothing here may keep the recording from being sent.
+    if (this.audioContext && this.audioContext.state !== "closed") void this.audioContext.close().catch(() => {})
+    void this.wakeLock?.release().catch(() => {})
     this.keepLive(true)
     const live = this.settleLive()
-    await this.writeQueue
+    // The last pieces are normally written within milliseconds; the copy in memory is sent regardless.
+    await Promise.race([this.writeQueue, new Promise(resolve => setTimeout(resolve, 3000))])
     if (this.abandoned) { await live; await this.dropSaved(); return }
     await this.send(live)
   }
@@ -423,7 +466,8 @@ export default class extends TypedController {
     const debrief = await this.api(this.urlValue, { uuid: this.saved.uuid })
     this.saved.url = debrief.url
     try { await this.store("put", this.saved) } catch { /* The copy in memory is still sent. */ }
-    if (debrief.status === "recording") {
+    // The server may already have written this debrief from the live words: the audio still goes up.
+    if (!debrief.audio) {
       const form = new FormData()
       form.append("audio", new Blob(this.saved.parts, { type: this.saved.type }), this.saved.type.includes("mp4") ? "debrief.mp4" : this.saved.type.includes("ogg") ? "debrief.ogg" : "debrief.webm")
       await this.api(`${debrief.url}/upload`, form)
@@ -450,7 +494,7 @@ export default class extends TypedController {
     const recording = Boolean(this.recorder && this.recorder.state !== "inactive")
     if (recording && !window.confirm("Skip this debrief? What was recorded is discarded.")) return
     this.abandoned = true
-    if (this.recorder && this.recorder.state !== "inactive") this.recorder.stop()
+    if (this.recorder && !this.finishing) this.stop()
     else await this.dropSaved()
   }
 

@@ -148,6 +148,6 @@ class FlightDebriefsController < ApplicationController
 
   def payload
     @debrief.as_json(only: %i[id uuid status transcript summary error_message]).merge(
-      url: flight_debrief_path(@flight, @debrief), published: @debrief.flight_comment_id.present?)
+      url: flight_debrief_path(@flight, @debrief), published: @debrief.flight_comment_id.present?, audio: @debrief.audio.attached?)
   end
 end

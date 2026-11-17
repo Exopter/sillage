@@ -8,7 +8,7 @@ const source = (await readFile(new URL("../../app/javascript/controllers/flight_
   .replace(/const TypedController = .*$/m, "const TypedController = class {}")
 const { default: Recorder } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`)
 const listeners = { addEventListener() {}, removeEventListener() {} }
-globalThis.window = { ...listeners, setInterval, clearInterval }
+globalThis.window = { ...listeners, setInterval, clearInterval, setTimeout }
 globalThis.document = { ...listeners, visibilityState: "visible", querySelector: () => null }
 function recorder(key) {
   const value = new Recorder()
@@ -43,7 +43,7 @@ assert.deepEqual(reopened.element.events, [], "a refusal is not retried and audi
 // Once the audio is stored and processing is requested, the device copy is released and the Pilot log refreshes.
 const calls = []
 let refreshed = 0
-reopened.api = async (url) => { calls.push(url); return { url: "/debrief", status: "uploaded" } }
+reopened.api = async (url) => { calls.push(url); return { url: "/debrief", status: "uploaded", audio: true } }
 reopened.refreshLog = () => { refreshed += 1 }
 await reopened.recover()
 assert.deepEqual(calls.slice(-1), [ "/debrief/process_audio" ])
@@ -131,7 +131,7 @@ early.prewarmValue = true
 const requests = []
 early.api = async (url, _body, method = "POST") => { requests.push(`${method} ${url}`); return { uuid: "reserved", url: "/debriefs/1" } }
 let connected = 0
-early.live = async () => { connected += 1; early.peer = { connectionState: "connected", close() {} } }
+early.live = async () => { connected += 1; early.liveStream = early.stream; early.peer = { connectionState: "connected", close() {} } }
 microphones = 0
 await early.connect()
 await early.preparation
@@ -186,6 +186,48 @@ assert.equal(refused.element.dataset.state, "recording")
 clearInterval(refused.meterTimer)
 early.database.close(); returning.database.close(); refused.database.close()
 console.log("Immediate local recording, early live connection, muted microphone and reservation release passed")
+
+// FLT-2026-100 and 105 (17 November 2026): the tap that ends the debrief must send it even when
+// the recorder was interrupted and never reports its stop, and when closing audio never completes.
+const stalled = recorder("stalled:flight")
+stalled.wait = () => new Promise(() => {})
+await stalled.connect()
+globalThis.navigator.mediaDevices.getUserMedia = async () => stream
+stalled.link = async () => {}
+await stalled.start()
+stalled.recorder.ondataavailable({ data: original })
+stalled.recorder.stop = function () { this.state = "inactive" }
+stalled.audioContext.close = () => new Promise(() => {})
+const delivered = []
+stalled.api = async (url) => { delivered.push(url); return { url: "/debriefs/11", audio: url !== "/debriefs" } }
+stalled.refreshLog = () => {}
+stalled.stop()
+stalled.stop()
+while (stalled.element.dataset.state !== "published") await new Promise(resolve => setTimeout(resolve, 20))
+assert.deepEqual(delivered, ["/debriefs", "/debriefs/11/upload", "/debriefs/11/live", "/debriefs/11/process_audio"].filter(url => !url.endsWith("/live")))
+// A recorder the system stopped while the screen still said "recording" is saved and sent on return.
+const interrupted = recorder("interrupted:flight")
+interrupted.wait = () => new Promise(() => {})
+await interrupted.connect()
+interrupted.link = async () => {}
+await interrupted.start()
+interrupted.recorder.ondataavailable({ data: original })
+interrupted.recorder.state = "inactive"
+interrupted.api = async (url) => ({ url: "/debriefs/12", audio: url !== "/debriefs" })
+interrupted.refreshLog = () => {}
+interrupted.kick()
+while (interrupted.element.dataset.state !== "published") await new Promise(resolve => setTimeout(resolve, 20))
+// A debrief the server already wrote from the live words still receives its audio.
+const late = recorder("late:flight")
+await late.connect()
+late.saved = { uuid: "late", parts: [original], type: "audio/webm", url: null }
+const lateCalls = []
+late.api = async (url) => { lateCalls.push(url); return { url: "/debriefs/13", status: "published", audio: false } }
+late.refreshLog = () => {}
+await late.send()
+assert.deepEqual(lateCalls, ["/debriefs", "/debriefs/13/upload", "/debriefs/13/process_audio"])
+stalled.database.close(); interrupted.database.close(); late.database.close()
+console.log("Send after an interrupted or silent recorder and late audio passed")
 
 // What is heard live is handed to the server while recording, a few seconds apart, so a
 // debrief whose audio never arrives still has its words (FLT-2026-100).
