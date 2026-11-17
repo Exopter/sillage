@@ -31,6 +31,9 @@ class FlightBulkEditFlowTest < ActionDispatch::IntegrationTest
       assert_select "input[name='entries[]']", count: 2
       assert_select "select[name='changes[pilot_id]'] option[selected]", count: 0
       assert_select "small", text: /Same on all: Tunnel/
+      assert_select "datalist", count: 0
+      assert_select "[data-controller='location-suggestions'] input[name='changes[location]'][role=combobox]", count: 1
+      assert_select "#bulk-location-suggestions [role=option]", text: "Tunnel"
     end
     assert_select ".exds-browser-entry input[name='entries[]'][checked]", count: 2
 
