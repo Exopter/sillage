@@ -39,6 +39,8 @@ export default class extends TypedController {
   showFiles() {
     const files = Array.from(this.inputTarget.files || [])
     this.submitTarget.disabled = files.length === 0
+    // Lets a compact form keep its file name and confirmation out of the way until a file is chosen.
+    this.element.toggleAttribute("data-upload-has-files", files.length > 0)
     this.summaryTarget.textContent = files.length === 0
       ? this.emptyLabel
       : `${files.map((file) => file.name).join(", ")} · ${this.formatBytes(this.totalBytes(files))}`

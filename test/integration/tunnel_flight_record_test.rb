@@ -6,8 +6,16 @@ class TunnelFlightRecordTest < ActionDispatch::IntegrationTest
     sign_in_as users(:julien)
   end
 
+  def record_samples(*types)
+    types.each do |type|
+      @flight.sensor_samples.create!(sensor_type: type, recorded_at: @flight.started_at || Time.current, elapsed_seconds: 1,
+        readings: { "airspeed_m_s" => 38, "pitchDeg" => -12, "rollDeg" => 3 })
+    end
+  end
+
   test "a tunnel record replaces the sky blocks with the airflow, attitude and lift" do
     @flight.update!(environment: "tunnel", tunnel_glide_ratio: 2.49)
+    record_samples "AIRSPEED", "IMU:rotation_vector"
 
     get flight_path(@flight)
 
@@ -33,12 +41,40 @@ class TunnelFlightRecordTest < ActionDispatch::IntegrationTest
 
   test "a tunnel record without a glide ratio withholds the airflow angle" do
     @flight.update!(environment: "tunnel", tunnel_glide_ratio: nil)
+    record_samples "AIRSPEED", "IMU:rotation_vector"
 
     get flight_path(@flight)
 
     assert_response :success
     assert_select "section[data-flight-viewer-glide-ratio-value]", 0
     assert_select ".signal-airflow-glide", text: /Glide ratio not recorded/
+  end
+
+  test "a tunnel record without telemetry states it instead of drawing empty charts" do
+    @flight.update!(environment: "tunnel", tunnel_glide_ratio: 2.49)
+
+    get flight_path(@flight)
+
+    assert_response :success
+    assert_select ".flight-empty-state strong", text: "No telemetry recorded"
+    assert_select ".flight-empty-state a[href='#{new_flight_import_path(flight_id: @flight.id)}']", text: /Import recording/
+    assert_select ".flight-empty-state strong", text: I18n.t("flights.video.tunnel_empty_title")
+    assert_select "[data-flight-viewer-target='unifiedChart']", 0
+    assert_select "[data-controller='signal-airflow']", 0
+    assert_select ".flight-statistics", 0
+  end
+
+  test "a tunnel record without orientation samples keeps its chart and states the missing attitude" do
+    @flight.update!(environment: "tunnel", tunnel_glide_ratio: 2.49)
+    record_samples "AIRSPEED"
+
+    get flight_path(@flight)
+
+    assert_response :success
+    assert_select "[data-flight-viewer-target='unifiedChart']"
+    assert_select ".flight-airflow .flight-empty-state strong", text: "No attitude recorded"
+    assert_select "[data-controller='signal-airflow']", 0
+    assert_select ".flight-airflow [data-flight-viewer-target='scrubber']"
   end
 
   test "the spoken debrief sits beside the tunnel cameras" do

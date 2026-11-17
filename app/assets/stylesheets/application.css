@@ -1646,6 +1646,139 @@ body {
   margin: 0;
 }
 
+/* The file name and the confirmation of a compact upload stay out of the header until a file is chosen. */
+.video-upload-form:not([data-upload-has-files]) :is(.file-summary, .video-upload-submit) {
+  display: none;
+}
+
+.video-upload-form .file-summary {
+  overflow: hidden;
+  max-width: 32ch;
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-sync-header > .exds-comment-actions {
+  flex: 0 0 auto;
+  align-self: start;
+}
+
+.video-sync-header .exds-comment-menu {
+  white-space: nowrap;
+}
+
+/* Camera player: the stage, then one camera switch per clip. */
+.video-player {
+  display: grid;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.video-player-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-5);
+}
+
+.video-source-clip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.video-source-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border-rule);
+  border-radius: var(--radius);
+  background: var(--surface-app);
+}
+
+.video-source-switch button {
+  min-width: 58px;
+  min-height: 28px;
+  padding: 5px 12px;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  transition: background var(--dur) var(--ease-out), color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+}
+
+.video-source-switch button:hover {
+  background: var(--surface-selected);
+  color: var(--text-body);
+}
+
+.video-source-switch button[aria-pressed="true"] {
+  border-color: var(--ex-line-300);
+  background: var(--surface-card);
+  color: var(--link);
+  box-shadow: var(--shadow-sm);
+}
+
+.video-source-switch button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Empty block of a flight record: what is missing, why, and the way to add it. */
+.flight-empty-state {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--sp-1);
+  min-height: 168px;
+  padding: var(--sp-6) var(--sp-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-app);
+  color: var(--text-muted);
+  font-size: var(--fs-text);
+  line-height: 1.45;
+  text-align: center;
+}
+
+.flight-empty-state.is-tall {
+  min-height: 260px;
+}
+
+.flight-empty-state > svg {
+  margin-bottom: var(--sp-2);
+}
+
+.flight-empty-state strong {
+  color: var(--text-body);
+  font-size: var(--fs-card);
+  font-weight: 600;
+}
+
+.flight-empty-state span {
+  max-width: 46ch;
+}
+
+.flight-empty-state .exds-btn {
+  margin-top: var(--sp-3);
+}
+
+.trajectory-compact > .flight-empty-state {
+  min-height: 0;
+  margin-top: var(--sp-2);
+}
+
 .details-form {
   display: grid;
   max-width: 640px;
@@ -2840,6 +2973,24 @@ body.flight-analysis-theme,
     justify-content: stretch;
   }
 
+  .video-upload-form .video-upload-button {
+    flex: 1 1 auto;
+  }
+
+  .video-sync-header > .exds-comment-actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
+  .video-sync-header {
+    position: relative;
+  }
+
+  .video-source-switch button {
+    min-height: 36px;
+  }
+
 
   .workspace-panel.is-flush .workspace-table.is-stacked .core-user-row td.workspace-table-actions {
     grid-column: 1 / -1;
@@ -2912,6 +3063,18 @@ body.flight-analysis-theme,
 }
 
 @media (max-width: 620px) {
+  .video-source-switch {
+    flex: 1 1 auto;
+  }
+
+  .video-source-switch button {
+    flex: 1 1 0;
+  }
+
+  .video-source-clip {
+    flex: 1 1 100%;
+  }
+
   /* The avatar carries the pilot name as its label; a clipped name adds nothing. */
   .flight-replay-header .flight-pilot-name {
     display: none;
