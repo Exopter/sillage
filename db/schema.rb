@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_17_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -777,6 +777,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_150000) do
     t.index ["source_blob_id"], name: "index_track_points_on_source_blob_id", where: "(source_blob_id IS NOT NULL)"
   end
 
+  create_table "tunnel_videos", force: :cascade do |t|
+    t.bigint "flight_id"
+    t.string "media_token", null: false
+    t.string "filename", null: false
+    t.string "source_url", null: false
+    t.string "camera", null: false
+    t.integer "clip_number"
+    t.datetime "timeslot_at"
+    t.datetime "recorded_at", null: false
+    t.float "duration_seconds"
+    t.string "status", default: "pending", null: false
+    t.string "match_method"
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["flight_id"], name: "index_tunnel_videos_on_flight_id"
+    t.index ["media_token"], name: "index_tunnel_videos_on_media_token", unique: true
+    t.index ["recorded_at"], name: "index_tunnel_videos_on_recorded_at"
+    t.index ["status"], name: "index_tunnel_videos_on_status"
+  end
+
   create_table "users", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "disabled_at"
@@ -883,5 +904,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_150000) do
   add_foreign_key "track_points", "active_storage_blobs", column: "source_blob_id"
   add_foreign_key "track_points", "fdr_recordings"
   add_foreign_key "track_points", "flights"
+  add_foreign_key "tunnel_videos", "flights"
   add_foreign_key "wifi_credentials", "users", column: "created_by_id"
 end

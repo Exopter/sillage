@@ -10,7 +10,7 @@ class AttachmentsController < ApplicationController
     blob = attachment.blob
     inline = attachment.record_type == "FlightDebrief" || (attachment.record_type == "Flight" && attachment.name == "video") ||
       attachment.record_type == "Feedback" || (attachment.record_type == "FlightComment" && attachment.name == "images") ||
-      (attachment.record_type == "User" && attachment.name == "avatar")
+      (attachment.record_type == "User" && attachment.name == "avatar") || attachment.record_type == "TunnelVideo"
     disposition = inline ? "inline" : "attachment"
     response.headers["Accept-Ranges"] = "bytes"
     if blob.service.is_a?(ActiveStorage::Service::DiskService)
@@ -42,6 +42,8 @@ class AttachmentsController < ApplicationController
       attachment.name == "audio" && record.flight.visible_to?(Current.user) && (record.user_id == Current.user.id || record.status == "published")
     when FlightComment
       attachment.name == "images" && record.flight.visible_to?(Current.user)
+    when TunnelVideo
+      record.flight&.visible_to?(Current.user) || false
     when FlightImport
       FlightImport.accessible_to(Current.user).exists?(record.id)
     when SignalSession

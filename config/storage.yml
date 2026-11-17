@@ -6,6 +6,17 @@ local:
   service: Disk
   root: <%= Rails.root.join("storage") %>
 
+# Tunnel videos in the shared Sillage object storage bucket, under their own
+# prefix; selected when OBJECT_STORAGE_BUCKET is set.
+tunnel_videos:
+  service: PrefixedS3
+  prefix: tunnel-videos
+  endpoint: <%= ENV["OBJECT_STORAGE_ENDPOINT"] %>
+  region: <%= ENV["OBJECT_STORAGE_REGION"] %>
+  bucket: <%= ENV["OBJECT_STORAGE_BUCKET"] %>
+  access_key_id: <%= ENV["OBJECT_STORAGE_ACCESS_KEY_ID"] %>
+  secret_access_key: <%= ENV["OBJECT_STORAGE_SECRET_ACCESS_KEY"] %>
+
 # Use bin/rails credentials:edit to set the AWS secrets (as aws:access_key_id|secret_access_key)
 # amazon:
 #   service: S3

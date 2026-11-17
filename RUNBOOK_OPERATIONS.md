@@ -22,6 +22,15 @@ Storage backup signals through the account's existing alert channels.
 - Active Storage: restic makes an encrypted incremental snapshot every 15
   minutes. It keeps every snapshot for 24 hours, one hourly snapshot for seven
   days, and one daily snapshot for 30 days.
+- Object storage: rclone copies the live Hetzner bucket to
+  `object-storage/current/` in the R2 backup bucket every hour. Objects are
+  immutable, so the hourly run checks only objects written in the last 72 hours
+  and never lists the destination. A weekly reconciliation compares both sides
+  and moves objects deleted from the live bucket to `object-storage/deleted/`.
+  The hourly interval is a documented exception to the 15-minute objective:
+  tunnel clips stay available on the tunnel portal while they are being
+  collected. This copy relies on R2 encryption at rest; it is not client-side
+  encrypted like the restic repository.
 - Backup processes use one worker, maximum niceness, idle I/O scheduling, and
   constrained container CPU. Application recording and upload work remains the
   priority.
@@ -161,12 +170,33 @@ docker run --rm --env-file /etc/sillage/operations.env \
 Compare the restored file count and byte total with the production volume,
 then remove the disposable restore volume.
 
+## Object storage restore
+
+The backup mirrors the live bucket key for key. Restore a prefix, or the whole
+bucket, with the pinned rclone image and both remotes defined as in
+`ops/bin/sillage-operations`:
+
+```sh
+rclone copy "backup:${R2_BACKUP_BUCKET}/object-storage/current/tunnel-videos" \
+  "live:${OBJECT_STORAGE_BUCKET}/tunnel-videos" --immutable
+```
+
+Objects removed from the live bucket less than 30 days ago are under
+`object-storage/deleted/` with the same keys. Compare object count and byte
+total on both sides with `rclone size` after a restore.
+
+Before enabling the object storage timers, add an R2 lifecycle rule that
+deletes `object-storage/deleted/` objects after 30 days, and create the
+Healthchecks.io check behind `HEALTHCHECKS_OBJECT_STORAGE_BACKUP_PING_URL` with
+a one-hour period.
+
 ## Disaster recovery
 
 1. Provision Docker and Kamal on the replacement host.
 2. Recreate the PostgreSQL and Active Storage volumes with their original
    names.
 3. Restore PostgreSQL with pgBackRest to the required point in time.
-4. Restore the latest Active Storage snapshot with restic.
+4. Restore the latest Active Storage snapshot with restic, and the object
+   storage bucket with rclone when the live bucket itself is lost.
 5. Boot PostgreSQL, deploy Sillage, and verify `/ready` before routing traffic.
-6. Confirm all four Healthchecks.io checks receive fresh successful pings.
+6. Confirm every Healthchecks.io check receives fresh successful pings.

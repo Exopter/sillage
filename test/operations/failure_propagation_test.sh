@@ -46,6 +46,14 @@ run_restic() { return 43; }
 assert_failure backup_storage
 assert_failure prune_storage
 assert_failure initialize_storage_repository
+# A missing live-bucket credential fails before any container starts.
+R2_ACCOUNT_ID=a R2_ACCESS_KEY_ID=b R2_SECRET_ACCESS_KEY=c R2_BACKUP_BUCKET=d OBJECT_STORAGE_ENDPOINT=e
+OBJECT_STORAGE_REGION=f OBJECT_STORAGE_BUCKET=g OBJECT_STORAGE_ACCESS_KEY_ID=h
+unset OBJECT_STORAGE_SECRET_ACCESS_KEY
+assert_failure backup_object_storage
+run_rclone() { return 44; }
+assert_failure backup_object_storage
+assert_failure reconcile_object_storage
 
 ready_body='{"status":"ok"}'
 : > "$STATE_DIRECTORY/pings"

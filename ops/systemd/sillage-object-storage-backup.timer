@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up Sillage object storage every hour
+
+[Timer]
+OnCalendar=*:40
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -307,6 +307,43 @@ preferred before falling back to the address at the landing point.
 `NOMINATIM_LANGUAGE` override the safe defaults. The dedicated geocoding worker
 is single-threaded and results are cached before being persisted on the flight.
 
+
+## Tunnel media synchronization
+
+`TunnelMediaSyncJob` runs hourly in production and stays inert until
+`TUNNEL_MEDIA_URL` (the portal's `/proflyer` page), `TUNNEL_MEDIA_LOGIN`,
+`TUNNEL_MEDIA_PASSWORD` and `TUNNEL_MEDIA_LOCATION` (the flight location of
+that tunnel) are set. It only reaches the portal while a flight in Tunnel mode
+at that location from the last three days has no clip. Run it on demand with:
+
+```sh
+bin/rails tunnel_media:sync
+```
+
+The portal has no API: the client signs in, reads each 30-minute timeslot page
+and catalogues every clip by its media token. File names such as
+`#2_20261117_103824_Side.mp4` carry the recording start in portal local time
+(`TUNNEL_MEDIA_TIME_ZONE`, default `Europe/Ljubljana`). A clip is attached to
+the flight whose interval contains its start. The median delay between clip
+start and flight end within the timeslot then recovers flights whose recorded
+start is wrong; unmatched clips stay catalogued for a later run. Candidates
+are flights in Tunnel mode at `TUNNEL_MEDIA_LOCATION` only.
+
+In production the optimized clips are stored under `tunnel-videos/` in the
+private Sillage object storage bucket (Hetzner Object Storage), through the
+`tunnel_videos` Active Storage service. `OBJECT_STORAGE_BUCKET` selects it,
+with `OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_REGION` and the
+`OBJECT_STORAGE_*` key. Deployment refuses a portal URL without that bucket,
+because the VPS volume cannot hold the clips. Without a bucket, as in
+development, clips use the default service. Playback stays proxied through the
+application, which checks flight visibility on every request.
+
+Only the cameras in `TUNNEL_MEDIA_CAMERAS` (default `Side,Top`) are downloaded,
+one clip at a time, through the web optimizer. Clips shorter than 10 seconds
+are ignored. The flight page switches cameras on the synced video stage and
+lets an administrator remove a clip filmed outside the flight; removed clips
+are not downloaded again.
+
 ## Recording imports
 
 After migrating an existing installation, classify retained ExoFDR sources with

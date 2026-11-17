@@ -160,6 +160,7 @@ Rails.application.routes.draw do
       end
     end
     resources :comments, controller: "flight_comments", only: [ :index, :create, :edit, :update, :destroy ]
+    resources :tunnel_videos, only: :destroy
     collection do
       get :preview
       delete :bulk_destroy

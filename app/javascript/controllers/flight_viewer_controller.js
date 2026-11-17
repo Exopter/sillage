@@ -64,6 +64,9 @@ const CESIUM_TILE_PROVIDER = "CESIUM_ION"
  * @property {Record<string,string>} labelsValue
  * @property {number} videoExitOffsetValue
  * @property {boolean} hasVideoExitOffsetValue
+ * @property {number} videoStartElapsedValue
+ * @property {boolean} hasVideoStartElapsedValue
+ * @property {HTMLButtonElement[]} videoSourceTargets
  */
 const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller & StimulusBindings} */ (/** @type {unknown} */ (Controller))
 
@@ -120,6 +123,8 @@ export default class extends TypedController {
   groundAltitude = null
   /** @type {number|null} */
   videoExitOffset = null
+  /** @type {number|null} Flight timeline position of the first frame of a clock-aligned video. */
+  videoStartElapsed = null
   /** @type {number|null} */
   playbackFrame = null
   /** @type {number|null} */
@@ -171,7 +176,8 @@ export default class extends TypedController {
     "expandButton",
     "video",
     "videoExitOffsetInput",
-    "videoExitOffsetLabel"
+    "videoExitOffsetLabel",
+    "videoSource"
   ]
 
   static values = {
@@ -183,7 +189,8 @@ export default class extends TypedController {
     cesiumToken: String,
     cesiumBaseUrl: String,
     labels: Object,
-    videoExitOffset: Number
+    videoExitOffset: Number,
+    videoStartElapsed: Number
   }
 
   async connect() {
@@ -216,6 +223,7 @@ export default class extends TypedController {
     this.playbackLastRenderAt = 0
     this.playbackLastCameraAt = 0
     this.videoExitOffset = this.hasVideoExitOffsetValue ? this.videoExitOffsetValue : null
+    this.videoStartElapsed = this.hasVideoStartElapsedValue ? this.videoStartElapsedValue : null
     this.videoSyncFrame = null
     this.videoSyncLastRenderAt = 0
     this.syncingVideo = false
@@ -498,7 +506,28 @@ export default class extends TypedController {
     this.syncingVideo = false
   }
 
+  /**
+   * Switches the stage to another clock-aligned clip, keeping the flight playhead.
+   * @param {Event & {params: {src?: string, startElapsed?: number}}} event
+   */
+  selectVideoSource(event) {
+    const { src, startElapsed } = event.params
+    if (!this.hasVideoTarget || !src || !isFiniteNumber(this.number(startElapsed))) return
+
+    const resume = this.isPlaying
+    this.pausePlayback()
+    this.videoStartElapsed = this.number(startElapsed)
+    this.videoSourceTargets.forEach((button) => button.setAttribute("aria-pressed", String(button === event.currentTarget)))
+    this.videoTarget.addEventListener("loadedmetadata", () => {
+      this.syncVideoFromFlight()
+      if (resume) this.playSyncedVideo()
+    }, { once: true })
+    this.videoTarget.src = src
+  }
+
   videoCanSync() {
+    if (this.hasVideoTarget && this.videoStartElapsed !== null) return isFiniteNumber(this.videoStartElapsed)
+
     return this.hasVideoTarget &&
       isFiniteNumber(this.videoExitOffset) &&
       this.videoExitOffset !== null && this.videoExitOffset >= 0
@@ -507,9 +536,11 @@ export default class extends TypedController {
   /** @param {number} elapsed */
   videoTimeForElapsed(elapsed) {
     const elapsedSeconds = this.number(elapsed)
-    if (!isFiniteNumber(elapsedSeconds) || !this.videoCanSync() || this.videoExitOffset === null) return null
+    if (!isFiniteNumber(elapsedSeconds) || !this.videoCanSync()) return null
 
-    const targetTime = elapsedSeconds - this.exitElapsed() + this.videoExitOffset
+    const targetTime = this.videoStartElapsed !== null
+      ? elapsedSeconds - this.videoStartElapsed
+      : elapsedSeconds - this.exitElapsed() + (this.videoExitOffset ?? 0)
     const duration = this.number(this.videoTarget.duration)
     return this.clamp(targetTime, 0, isFiniteNumber(duration) ? duration : Math.max(targetTime, 0))
   }
@@ -517,9 +548,10 @@ export default class extends TypedController {
   /** @param {number} currentTime */
   elapsedForVideoTime(currentTime) {
     const videoTime = this.number(currentTime)
-    if (!isFiniteNumber(videoTime) || !this.videoCanSync() || this.videoExitOffset === null) return this.currentElapsed
+    if (!isFiniteNumber(videoTime) || !this.videoCanSync()) return this.currentElapsed
+    if (this.videoStartElapsed !== null) return videoTime + this.videoStartElapsed
 
-    return videoTime - this.videoExitOffset + this.exitElapsed()
+    return videoTime - (this.videoExitOffset ?? 0) + this.exitElapsed()
   }
 
   updateVideoExitLabel() {

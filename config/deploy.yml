@@ -27,6 +27,8 @@
         HEALTHCHECKS_POSTGRESQL_ARCHIVE_PING_URL HEALTHCHECKS_POSTGRESQL_BACKUP_PING_URL
         HEALTHCHECKS_STORAGE_BACKUP_PING_URL
       ]
+      # The live object storage bucket has its own backup signal.
+      required_monitoring << "HEALTHCHECKS_OBJECT_STORAGE_BACKUP_PING_URL" unless ENV["OBJECT_STORAGE_BUCKET"].to_s.strip.empty?
     end
     missing_monitoring = required_monitoring.select { |key| ENV[key].to_s.strip.empty? }
     raise "MONITORING_ENABLED=true requires #{missing_monitoring.join(', ')}" if missing_monitoring.any?
@@ -39,6 +41,17 @@
     ]
     missing_backup = required_backup.select { |key| ENV[key].to_s.strip.empty? }
     raise "BACKUPS_ENABLED=true requires #{missing_backup.join(', ')}" if missing_backup.any?
+  end
+
+  # Tunnel videos are large: the sync is deployable only with its object storage bucket.
+  if ENV["TUNNEL_MEDIA_URL"].to_s.strip != ""
+    required_tunnel = %w[
+      TUNNEL_MEDIA_LOGIN TUNNEL_MEDIA_PASSWORD TUNNEL_MEDIA_LOCATION
+      OBJECT_STORAGE_ENDPOINT OBJECT_STORAGE_REGION OBJECT_STORAGE_BUCKET
+      OBJECT_STORAGE_ACCESS_KEY_ID OBJECT_STORAGE_SECRET_ACCESS_KEY
+    ]
+    missing_tunnel = required_tunnel.select { |key| ENV[key].to_s.strip.empty? }
+    raise "TUNNEL_MEDIA_URL requires #{missing_tunnel.join(', ')}" if missing_tunnel.any?
   end
 %>
 
@@ -102,6 +115,13 @@ env:
     MAIL_FROM_NAME: "<%= ENV.fetch("MAIL_FROM_NAME", "") %>"
     MAIL_REPLY_TO: "<%= ENV.fetch("MAIL_REPLY_TO", "") %>"
     POSTMARK_MESSAGE_STREAM: "<%= ENV.fetch("POSTMARK_MESSAGE_STREAM", "") %>"
+    TUNNEL_MEDIA_URL: "<%= ENV.fetch("TUNNEL_MEDIA_URL", "") %>"
+    TUNNEL_MEDIA_LOGIN: "<%= ENV.fetch("TUNNEL_MEDIA_LOGIN", "") %>"
+    TUNNEL_MEDIA_LOCATION: "<%= ENV.fetch("TUNNEL_MEDIA_LOCATION", "") %>"
+    TUNNEL_MEDIA_CAMERAS: "<%= ENV.fetch("TUNNEL_MEDIA_CAMERAS", "Side,Top") %>"
+    OBJECT_STORAGE_ENDPOINT: "<%= ENV.fetch("OBJECT_STORAGE_ENDPOINT", "") %>"
+    OBJECT_STORAGE_REGION: "<%= ENV.fetch("OBJECT_STORAGE_REGION", "") %>"
+    OBJECT_STORAGE_BUCKET: "<%= ENV.fetch("OBJECT_STORAGE_BUCKET", "") %>"
   secret:
     - RAILS_MASTER_KEY
     - OPENAI_API_KEY
@@ -110,6 +130,9 @@ env:
     - SILLAGE_LANDING_BASIC_AUTH_PASSWORD
     - POSTMARK_SERVER_TOKEN
     - POSTGRES_PASSWORD
+    - TUNNEL_MEDIA_PASSWORD
+    - OBJECT_STORAGE_ACCESS_KEY_ID
+    - OBJECT_STORAGE_SECRET_ACCESS_KEY
 
 # Persist local Active Storage uploads across deploys.
 volumes:
