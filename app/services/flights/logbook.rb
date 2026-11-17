@@ -21,6 +21,7 @@ module Flights
       rows = ApplicationRecord.connection.select_all(query)
       flights = Flight.visible_to(@user).where(id: rows.select { |row| row["kind"] == "flight" }.map { |row| row["id"] })
         .includes(:flight_import, :aircraft, :fdr, pilot: :avatar_attachment, folder: :memberships).index_by(&:id)
+      resolve_recording_expectations(flights.values)
       imports = FlightImport.accessible_to(@user).where(id: rows.select { |row| row["kind"] == "import" }.map { |row| row["id"] })
         .includes(:aircraft).index_by(&:id)
       rows.filter_map { |row| (row["kind"] == "flight" ? flights : imports)[row["id"]] }
@@ -41,6 +42,15 @@ module Flights
     end
 
     private
+
+    # Two queries for the page instead of two per waiting flight.
+    def resolve_recording_expectations(flights)
+      waiting = flights.select(&:waiting_for_recording?)
+      unlinked = waiting.reject { |flight| flight.fdr_id || flight.flight_import_id }.map(&:id)
+      capturing = unlinked.empty? ? [] :
+        SignalSession.where(flight_id: unlinked).distinct.pluck(:flight_id) | ImuCheck.where(flight_id: unlinked).distinct.pluck(:flight_id)
+      waiting.each { |flight| flight.recording_expected = !unlinked.include?(flight.id) || capturing.include?(flight.id) }
+    end
 
     def flight_scope
       visible = Flight.visible_to(@user)

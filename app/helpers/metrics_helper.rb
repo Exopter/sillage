@@ -27,7 +27,8 @@ module MetricsHelper
     return [ "unknown", "Preparation" ] if flight.preparation?
     return [ "unknown", "Logged" ] if flight.logged?
     return [ "live", "Live" ] if flight.live?
-    return [ "caution", "Waiting for recording" ] if flight.waiting_for_recording?
+    return [ "caution", "Waiting for recording" ] if flight.recording_expected?
+    return [ "unknown", "Logged" ] if flight.waiting_for_recording?
     return [ "live", "Processing" ] if flight.processing?
     return [ "caution", "Review" ] if flight.review?
     return [ "live", "Processing" ] if flight.video_processing?
