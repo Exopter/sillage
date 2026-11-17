@@ -164,6 +164,8 @@ Rails.application.routes.draw do
       get :preview
       delete :bulk_destroy
       post :bulk_action
+      get :bulk_edit
+      post :bulk_update
     end
   end
   resources :attachments, only: :show

@@ -30,6 +30,15 @@ module Flights
       flight_scope.unscope(:select).count + import_scope.unscope(:select).count
     end
 
+    # Flights of the whole list, across pages: what "select all" acts on. Recordings are not included.
+    def flight_ids(limit: nil)
+      flight_scope.unscope(:select).limit(limit).pluck("flights.id")
+    end
+
+    def flight_count
+      flight_scope.unscope(:select).count
+    end
+
     private
 
     def flight_scope

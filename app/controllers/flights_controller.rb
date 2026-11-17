@@ -140,7 +140,38 @@ class FlightsController < ApplicationController
     redirect_to selection_return_path, status: :see_other, alert: error.message
   end
 
+  # Opens the edit panel for the ticked flights, or for every flight of the list.
+  def bulk_edit
+    load_browser(panel: "bulk_edit")
+    @bulk_scope = params[:scope] == "all" ? "all" : "page"
+    @bulk_ids = selected_flight_ids
+    @bulk_flights = Flight.where(id: @bulk_ids).includes(:pilot, :aircraft, :folder).to_a
+    load_form_options
+  rescue Flights::Selection::Invalid => error
+    redirect_to selection_return_path, status: :see_other, alert: error.message
+  end
+
+  def bulk_update
+    changes = params.fetch(:changes, {}).permit(:pilot_id, :aircraft_id, :location, :flown_on, :folder_id)
+    result = Flights::EditSelection.new(user: Current.user, flight_ids: selected_flight_ids, changes:).call
+    notice = "#{result.updated} #{'flight'.pluralize(result.updated)} updated."
+    notice += " #{result.unchanged} already matched." if result.unchanged.positive?
+    if result.skipped.any?
+      redirect_to selection_return_path, status: :see_other, alert: "#{notice} Skipped: #{result.skipped.first(10).to_sentence}#{' and more' if result.skipped.size > 10}."
+    else
+      redirect_to selection_return_path, status: :see_other, notice:
+    end
+  rescue Flights::Selection::Invalid, Flights::EditSelection::Invalid => error
+    redirect_to selection_return_path, status: :see_other, alert: error.message
+  end
+
   private
+
+  def selected_flight_ids
+    Flights::Selection.flight_ids(user: Current.user, scope: params[:scope], entries: params[:entries],
+      filter: params[:filter].presence_in(Flights::Logbook::FILTERS) || "flights", query: params[:q],
+      visibility: params[:visibility], folder: requested_folder)
+  end
 
   def replay_payload
     processed = Flights::ProcessedTrack.call(@flight, version: @telemetry_version)
