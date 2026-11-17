@@ -37,6 +37,11 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_select "button[data-video-source-target='source']", 2
     assert_select "button[aria-pressed='true']", text: "Side"
     assert_select "button[data-video-source-src-param=?]", attachment_path(top.file.attachment), text: "Top"
+    # The cameras sit in their own section, right under the comments.
+    assert_select ".exds-comments + section[aria-label='Flight videos']" do
+      assert_select ".exds-comments-heading", text: "Videos2"
+      assert_select "> .video-player", 1
+    end
 
     top.destroy!
     get preview_flights_path(id: @flight.id, kind: "flight"), headers: { "Turbo-Frame" => "flight-preview" }
