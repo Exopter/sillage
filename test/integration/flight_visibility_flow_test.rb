@@ -151,9 +151,11 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
     get flights_path(visibility: "team", filter: "all", q: "Review")
     assert_select ".exds-browser-entry", count: 30
     assert_select "a[rel='next'][href*='visibility=public'][href*='filter=all'][href*='q=Review']"
+    assert_select "nav[aria-label='Pagination'] span", text: "Page 1/2"
     get flights_path(visibility: "team", filter: "all", q: "Review", page: 2)
     assert_select ".exds-browser-entry", count: 1
     assert_select "a[rel='next']", count: 0
+    assert_select "nav[aria-label='Pagination'] span", text: "Page 2/2"
   end
 
   test "bulk deletion returns to the selected visibility" do
