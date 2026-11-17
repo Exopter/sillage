@@ -118,6 +118,27 @@ class SharedFlightDebriefTest < ActionDispatch::IntegrationTest
     assert_select ".flight-debrief-summary", count: 0
   end
 
+  test "shows every checklist cell, filled or not" do
+    flight = flights(:one)
+    debrief = FlightDebrief.create!(flight:, user: users(:julien), uuid: SecureRandom.uuid, status: "published", summary: "Stable flight.")
+    debrief.publish_entry!(users(:julien))
+    labels = DebriefChecklist::ITEMS.map { |item| item[:label] }
+
+    get flight_comments_path(flight)
+    assert_response :success
+    assert_empty debrief.reload.checklist
+    assert_equal labels, css_select(".flight-debrief-checklist dt").map(&:text)
+    assert_select ".flight-debrief-checklist dd .sr-only", text: "Not recorded", count: labels.size
+
+    debrief.update!(checklist: { "glide_ratio" => "2.8", "speed" => "165 km/h" })
+    get flight_comments_path(flight)
+    assert_equal labels, css_select(".flight-debrief-checklist dt").map(&:text)
+    assert_includes labels, "AoA setting"
+    assert_select ".flight-debrief-checklist dd", text: "2.8", count: 1
+    assert_select ".flight-debrief-checklist dd", text: "165 km/h", count: 1
+    assert_select ".flight-debrief-checklist dd .sr-only", text: "Not recorded", count: labels.size - 2
+  end
+
   test "publishes a debrief once and retains the original audio" do
     flight = flights(:one)
     post flight_debriefs_path(flight), params: { device_id: signal_recorder.device_id, uuid: SecureRandom.uuid }, as: :json

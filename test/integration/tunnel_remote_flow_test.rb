@@ -164,6 +164,9 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     assert_in_delta Time.current.to_f * 1000, response.parsed_body["server_time"], 5_000
     get flight_comments_path(flight)
     assert_select ".flight-debrief-checklist dd", text: "165 km/h"
+    # Points the pilot did not cover keep their cell.
+    assert_select ".flight-debrief-checklist > div", count: DebriefChecklist::ITEMS.size
+    assert_select ".flight-debrief-checklist dt", text: "AoA setting", count: 1
 
     assert_difference "Flight.count", 1 do
       post remote_flights_path, params: { pilot_id: users(:julien).id }, as: :json

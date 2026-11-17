@@ -15,6 +15,13 @@ module FlightCommentsHelper
     end
   end
 
+  # A checklist cell stays in the grid when its point was not captured.
+  def debrief_checklist_value(value)
+    return value if value.present?
+
+    safe_join([ tag.span("\u2014", aria: { hidden: true }), tag.span("Not recorded", class: "sr-only") ])
+  end
+
   private
 
   def debrief_line(line)
