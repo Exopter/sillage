@@ -14,6 +14,8 @@ class FlightBulkEditFlowTest < ActionDispatch::IntegrationTest
     get flights_path(folder: @folder.id)
     assert_select "form[data-controller='table-selection'][data-table-selection-total-value='32']" do
       assert_select "input[type=hidden][name=scope][value=page]", count: 1
+      assert_select ".exds-browser-collection-header input[data-table-selection-target='all']", count: 1
+      assert_select ".exds-selection-toolbar input[data-table-selection-target='all']", count: 0
       assert_select "button[formaction='#{bulk_edit_flights_path}'][formmethod=get]", text: "Edit"
       assert_select "[data-table-selection-target='extend'][hidden] button[data-action='table-selection#selectAll']", count: 1
     end
