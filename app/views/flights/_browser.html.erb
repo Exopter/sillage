@@ -8,7 +8,7 @@
         <%= render "flights/browser_filters", form: form %>
         <label class="exds-input-wrap"><%= sillage_icon "search", size: 18 %><span class="sr-only">Search flights and recordings</span><%= form.search_field :q, class: "exds-input", value: @query, placeholder: "Search flight, description, location", autocomplete: "off" %></label>
       <% end %>
-      <%= form_with url: flights_path, method: :get, data: { action: "change->flight-browser#filter" } do |form| %>
+      <%= form_with url: flights_path, method: :get, class: "exds-browser-filters", data: { action: "change->flight-browser#filter" } do |form| %>
         <%= form.hidden_field :folder, value: @folder_filter, id: nil %><%= form.hidden_field :q, value: @query, id: nil %><%= form.hidden_field :filter, value: @filter, id: nil %>
         <label class="exds-select-wrap"><span class="sr-only">Mode</span><%= form.select :environment, [["Mode: All", ""], ["Tunnel", "tunnel"], ["Sky", "sky"]], { selected: @environment }, class: "exds-select", aria: { label: "Mode" } %><span class="exds-select-wrap__chev"><%= sillage_icon "chevron-down", size: 16 %></span></label>
         <label class="exds-select-wrap"><span class="sr-only">Visibility</span><%= form.select :visibility, [["Visibility: All", "all"], ["Private", "private"], ["Public", "public"], ["Shared", "shared"]], { selected: @visibility }, class: "exds-select", aria: { label: "Visibility" } %><span class="exds-select-wrap__chev"><%= sillage_icon "chevron-down", size: 16 %></span></label>

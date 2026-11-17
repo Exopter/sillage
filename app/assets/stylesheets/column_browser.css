@@ -2,8 +2,9 @@
 .exds-browser { color: var(--text-body); font-family: var(--ex-font-sans); background: var(--surface-app); height: calc(100dvh - var(--ex-shell-header-height)); display: flex; flex-direction: column; }
 .exds-browser [hidden] { display: none !important; }
 .exds-browser-header { display: flex; align-items: center; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--border-rule); }
-.exds-browser-header h1 { margin: 0 auto 0 0; font-size: var(--fs-page); letter-spacing: -.025em; }
+.exds-browser-header h1 { margin: 0 auto 0 0; font-size: var(--fs-page); letter-spacing: -.025em; white-space: nowrap; }
 .exds-browser-search { width: min(40%, 560px); }
+.exds-browser-filters { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .exds-browser-create { position: relative; flex-shrink: 0; }
 .exds-browser-create > summary { list-style: none; cursor: pointer; }
 .exds-browser-create > summary::-webkit-details-marker { display: none; }
