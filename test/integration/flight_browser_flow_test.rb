@@ -9,6 +9,46 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     sign_in_as @owner
   end
 
+  test "the preview opens the flight from the top of the panel" do
+    get preview_flights_path(id: @flight.id, kind: "flight"), headers: { "Turbo-Frame" => "flight-preview" }
+    assert_select ".exds-browser-preview > header + a[href=?]", flight_path(@flight), text: /Open flight/
+  end
+
+  test "a flight with tunnel cameras shows them in the list and plays them in the preview" do
+    @flight.update!(environment: "tunnel", location: "Inclined Slovenia")
+    side, top = %w[Side Top].map do |camera|
+      TunnelVideo.create!(flight: @flight, media_token: camera.downcase * 10, filename: "#1_20260515_200219_#{camera}.mp4", camera:, clip_number: 1,
+        source_url: "https://shop.example.test/#{camera}", recorded_at: @flight.started_at, status: "ready").tap do |video|
+        video.file.attach(io: StringIO.new("0123456789"), filename: "clip.mp4", content_type: "video/mp4", identify: false)
+      end
+    end
+    TunnelVideo.create!(flight: @flight, media_token: "front" * 8, filename: "#1_20260515_200219_Front.mp4", camera: "Front", clip_number: 1,
+      source_url: "https://shop.example.test/front", recorded_at: @flight.started_at)
+
+    get flights_path(folder: @folder.id)
+    assert_select ".exds-browser-entry[data-entry=?] .exds-browser-entry-location", "flight:#{@flight.id}", text: "Tunnel · Inclined Slovenia · 2 cameras"
+
+    get preview_flights_path(id: @flight.id, kind: "flight"), headers: { "Turbo-Frame" => "flight-preview" }
+    assert_select "[data-controller='video-source'] video[preload='metadata'][src=?]", attachment_path(side.file.attachment)
+    assert_select "button[data-video-source-target='source']", 2
+    assert_select "button[aria-pressed='true']", text: "Side"
+    assert_select "button[data-video-source-src-param=?]", attachment_path(top.file.attachment), text: "Top"
+
+    top.destroy!
+    get preview_flights_path(id: @flight.id, kind: "flight"), headers: { "Turbo-Frame" => "flight-preview" }
+    assert_select "video.flight-video", 1
+    assert_select "button[data-video-source-target='source']", 0
+  end
+
+  test "a tunnel flight row names its mode in the location line, without a badge" do
+    @flight.update!(environment: "tunnel", location: "Inclined Slovenia")
+    get flights_path(folder: @folder.id)
+    assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
+      assert_select ".exds-browser-entry-location", text: "Tunnel · Inclined Slovenia"
+      assert_select ".exds-browser-entry-heading .mode-badge", count: 0
+    end
+  end
+
   test "flight rows distinguish duration dates descriptions and preparation" do
     @flight.update!(duration_seconds: 4786, description: "Test flight")
     get flights_path(folder: @folder.id)

@@ -61,6 +61,23 @@ class TunnelVideoDownloadJobTest < ActiveSupport::TestCase
     assert_not @video.file.attached?
   end
 
+  test "resumes a download interrupted by a restart" do
+    @video.update!(status: "downloading")
+    optimizer = Object.new
+    optimizer.define_singleton_method(:call) do
+      output = Tempfile.new([ "tunnel-test", ".mp4" ], binmode: true)
+      output.write("optimized")
+      output.rewind
+      Videos::WebOptimizer::Result.new(io: output, filename: "clip-web.mp4", duration_seconds: 120.5)
+    end
+
+    replace_method(TunnelMedia::Client, :download, ->(_url, io) { io.write("source") }) do
+      replace_method(Videos::WebOptimizer, :new, ->(*) { optimizer }) { TunnelVideoDownloadJob.perform_now(@video) }
+    end
+
+    assert @video.reload.ready?
+  end
+
   test "skips unmatched clips" do
     @video.update!(flight: nil)
 

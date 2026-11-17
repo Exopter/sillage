@@ -6,7 +6,9 @@ class TunnelVideoDownloadJob < ApplicationJob
   discard_on ActiveJob::DeserializationError
 
   def perform(video)
-    return unless video.flight_id && video.status.in?(%w[pending failed])
+    # "downloading" is resumable: a restart can interrupt a download, and the
+    # concurrency limit guarantees no other execution is working on it.
+    return unless video.flight_id && video.status.in?(%w[pending downloading failed])
 
     video.update!(status: "downloading", error_message: nil)
     source_blob = download(video)

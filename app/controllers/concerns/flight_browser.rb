@@ -26,6 +26,8 @@ module FlightBrowser
     @total_pages = [ (logbook.count.to_f / Flights::Logbook::PER_PAGE).ceil, 1 ].max if @next_page || @page > 1
     @flight_total = logbook.flight_count if @next_page || @page > 1
     @flights = entries.first(Flights::Logbook::PER_PAGE)
+    # One grouped query for the whole page: which flights have tunnel cameras ready.
+    @camera_counts = TunnelVideo.ready.where(flight_id: @flights.grep(Flight).map(&:id)).group(:flight_id).distinct.count(:camera)
     visible = Flight.visible_to(Current.user)
     @folder_counts = visible.where.not(flight_import_id: FlightImport.set_aside.select(:id)).or(visible.where(flight_import_id: nil)).group(:folder_id).count
     @unfiled_count = visible.where(folder_id: nil).count
