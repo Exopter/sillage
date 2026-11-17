@@ -19,8 +19,10 @@ module FlightBrowser
     @destination_folders = FlightFolder.contributable_to(Current.user).ordered
     @folder_filter ||= focus.folder_id.to_s if focus&.folder&.visible_to?(Current.user)
     @folder = @folders.find(@folder_filter) if @folder_filter && @folder_filter != "unfiled"
-    entries = Flights::Logbook.new(user: Current.user, filter: @filter, query: @query, visibility: @visibility, folder: @folder_filter).page(@page)
+    logbook = Flights::Logbook.new(user: Current.user, filter: @filter, query: @query, visibility: @visibility, folder: @folder_filter)
+    entries = logbook.page(@page)
     @next_page = @page + 1 if entries.size > Flights::Logbook::PER_PAGE
+    @total_pages = [ (logbook.count.to_f / Flights::Logbook::PER_PAGE).ceil, 1 ].max if @next_page || @page > 1
     @flights = entries.first(Flights::Logbook::PER_PAGE)
     visible = Flight.visible_to(Current.user)
     @folder_counts = visible.where.not(flight_import_id: FlightImport.set_aside.select(:id)).or(visible.where(flight_import_id: nil)).group(:folder_id).count

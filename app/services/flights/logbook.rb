@@ -25,6 +25,11 @@ module Flights
       rows.filter_map { |row| (row["kind"] == "flight" ? flights : imports)[row["id"]] }
     end
 
+    # Entries across every page, so the browser can state how many pages exist.
+    def count
+      flight_scope.unscope(:select).count + import_scope.unscope(:select).count
+    end
+
     private
 
     def flight_scope
