@@ -89,6 +89,8 @@ const CHART_WINDOW_MS = 30_000
  * @property {HTMLButtonElement} startButtonTarget
  * @property {HTMLElement} startHintTarget
  * @property {HTMLButtonElement[]} modeButtonTargets
+ * @property {HTMLElement} modeGroupTarget
+ * @property {boolean} hasModeGroupTarget
  */
 const LINK_TYPE_KEY = "signal-link-type"
 const LINK_TYPES = ["ground-radio", "usb-c", "ble", "wifi"]
@@ -238,7 +240,7 @@ export default class extends TypedController {
     "qualityAttitude", "qualityHeading", "attitudeDetail", "headingDetail", "preflightDetail", "preflightStatus",
     "exitDialog", "exitError", "exitStatus", "flightName", "exitAction",
     "parserStatus", "aircraftMarker", "aircraftLabel", "latestEvent", "sensorValue", "streamBadge", "mountLabel", "sensorAxes",
-    "aircraftStatus", "standbyAircraft", "startForm", "startDevice", "startTransport", "startFlight", "startButton", "startHint", "modeButton", "startGlideRatio"
+    "aircraftStatus", "standbyAircraft", "startForm", "startDevice", "startTransport", "startFlight", "startButton", "startHint", "modeButton", "modeGroup", "startGlideRatio"
   ]
 
   static values = {
@@ -1241,7 +1243,7 @@ export default class extends TypedController {
     const ready = live && identity?.canAcquire === true && !this.starting
     const [aircraft, hint] = this.starting ? [name || "Starting", "Starting the flight."]
       : !connected ? ["Waiting for the link", this.connectionKind === "ground-radio" && !navigator.serial
-        ? "The radio needs Chrome or Edge on desktop." : "Connect the link in the top bar to hear the aircraft."]
+        ? "The radio needs Chrome or Edge on desktop." : "Not connected to the recorder. Connect with the link button in the top bar to enable Start flight."]
       : !this.lastFrameAt ? ["Listening", "Link open, no telemetry yet. Power the recorder and check that both radios share the same settings."]
       : !live ? ["Link lost", "No recent telemetry. Check the aircraft and the link."]
       : !deviceId ? ["Identifying", "Telemetry received. Waiting for the recorder identity."]
@@ -1255,6 +1257,7 @@ export default class extends TypedController {
     // Only an initialized module holds the key that makes a mode change acceptable.
     const modeAvailable = live && identity?.modeControl === true && !this.starting
     for (const button of this.modeButtonTargets) { button.hidden = !modeAvailable; button.disabled = this.modeChanging }
+    if (this.hasModeGroupTarget) this.modeGroupTarget.hidden = !modeAvailable
     const detail = {connected, live, ready, deviceId, label: name, identified: Boolean(identity),
       registered: identity?.registered === true, assemblyId: identity?.assemblyId ?? null}
     const signature = JSON.stringify(detail)

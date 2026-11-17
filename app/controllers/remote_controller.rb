@@ -73,17 +73,16 @@ class RemoteController < ApplicationController
   end
 
   # Check-in of a ground computer in standby. It reports what it hears, and is
-  # handed the oldest start request still waiting when it follows the remote
-  # and can record.
+  # handed the oldest start request still waiting as soon as it can record.
   def station
     key = params[:key].to_s
     return head :unprocessable_entity unless key.match?(SignalStation::KEY_FORMAT)
 
     cast = ActiveModel::Type::Boolean.new
-    station = SignalStation.check_in!(user: Current.user, key:, remote_enabled: cast.cast(params[:remote]) == true,
+    station = SignalStation.check_in!(user: Current.user, key:,
       ready: cast.cast(params[:ready]) == true, device_id: params[:device_id], aircraft_label: params[:aircraft],
       environment: params[:environment], tunnel_glide_ratio: params[:tunnel_glide_ratio])
-    flight = pending_flight if station.remote_enabled && station.ready
+    flight = pending_flight if station.ready
     render json: flight ? { flight_id: flight.id, code: flight.code, pilot: flight.display_pilot, aircraft: flight.display_aircraft } : {}
   end
 

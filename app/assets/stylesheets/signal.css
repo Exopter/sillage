@@ -1463,14 +1463,14 @@ textarea {
 }
 .signal-start { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 7px; }
 .signal-start .exds-selection-field select { width: auto; max-width: 15rem; }
-.signal-remote { display: flex; align-items: center; gap: 7px; }
-.signal-remote [hidden] { display: none; }
-.signal-remote[data-state="armed"] [aria-pressed="true"] { border-color: var(--state-ready); color: var(--ex-field-500); }
-.signal-remote[data-state="blocked"] [aria-pressed="true"] { border-color: var(--state-caution); color: var(--ex-amber-500); }
-.signal-remote-pairing { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-4); }
-.signal-remote-pairing > div { display: grid; min-width: 0; flex: 1 1 220px; gap: var(--sp-3); }
-.signal-remote-pairing p { margin: 0; }
-.signal-remote-qr { flex: none; padding: var(--sp-2); border-radius: var(--radius); background: var(--ex-vapor-50); }
+/* Standby commands sit in labelled groups: what will be recorded, then what acts on the recorder. */
+.signal-command-group { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 7px; }
+.signal-command-group[hidden] { display: none; }
+.signal-command-group:not([hidden]) ~ .signal-start,
+.signal-remote:not([hidden]) ~ .signal-start { padding-left: var(--sp-3); border-left: 1px solid var(--ex-carbon-700); }
+/* A status, not a control: this computer records the flights a phone starts. */
+.signal-remote { display: flex; align-items: center; gap: 7px; color: var(--ex-field-500); font-size: var(--fs-caption); white-space: nowrap; }
+.signal-remote[hidden] { display: none; }
 
 /* One line under the command bar: why Start flight is or is not available. */
 .signal-standby-hint,

@@ -1,0 +1,7 @@
+<%# A computer in standby records the flights a phone starts as soon as it hears an aircraft. This is a status, not a control. %>
+<div class="signal-remote" role="status" hidden title="Flights started from the phone remote are recorded on this computer."
+     data-controller="signal-station" data-signal-station-url-value="<%= remote_station_path %>"
+     data-signal-station-environment-value="<%= @environment %>"
+     data-action="sillage:signal-standby@window->signal-station#standby sillage:signal-glide-ratio@window->signal-station#glideRatio">
+  <%= sillage_icon "smartphone", size: 14 %><span data-signal-station-target="label">Phone remote ready</span>
+</div>

@@ -77,20 +77,24 @@
           <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" aria-label="Mark event" data-action="signal-workspace#markEvent"><%= sillage_icon "plus", size: 14 %><span>Mark event</span></button>
           <button type="button" class="signal-tool-button exds-btn exds-btn--danger is-danger" data-action="signal-workspace#endSession">End flight</button>
         <% else %>
-          <%# A distributed Seat changes mode only on a command signed with its Sillage key. %>
-          <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" data-signal-workspace-target="modeButton" data-action="signal-workspace#changeMode" data-mode="ground" hidden><%= sillage_icon "wifi", size: 14 %><span>Ground mode (Wi-Fi)</span></button>
-          <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" data-signal-workspace-target="modeButton" data-action="signal-workspace#changeMode" data-mode="flight" hidden><%= sillage_icon "plane", size: 14 %><span>Flight mode</span></button>
-          <nav class="signal-mode-buttons signal-environment" aria-label="Signal mode">
-            <% Flight::ENVIRONMENTS.reverse_each do |value| %>
-              <%= link_to value.capitalize, signal_path(view: "home", environment: value, flight_id: @selected_flight&.id), aria: { current: ("true" if @environment == value) }, data: { turbo: false } %>
-            <% end %>
-          </nav>
-          <%= render "signal/remote_switch" %>
+          <%# A distributed Seat changes mode only on a command signed with its Sillage key. These restart the recorder: they are commands, not states. %>
+          <div class="signal-command-group" role="group" aria-label="Recorder" data-signal-workspace-target="modeGroup" hidden>
+            <span class="signal-k">Recorder</span>
+            <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" data-signal-workspace-target="modeButton" data-action="signal-workspace#changeMode" data-mode="ground" hidden><%= sillage_icon "wifi", size: 14 %><span>Restart in ground mode</span></button>
+            <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" data-signal-workspace-target="modeButton" data-action="signal-workspace#changeMode" data-mode="flight" hidden><%= sillage_icon "plane", size: 14 %><span>Restart in flight mode</span></button>
+          </div>
+          <%= render "signal/remote_status" %>
           <%= form_with url: signal_sessions_path, class: "signal-start", data: { signal_workspace_target: "startForm" } do |form| %>
             <%= form.hidden_field :device_id, value: "", id: nil, data: { signal_workspace_target: "startDevice" } %>
             <%= form.hidden_field :transport, value: "", id: nil, data: { signal_workspace_target: "startTransport" } %>
             <%= form.hidden_field :environment, value: @environment, id: nil %>
             <%= form.hidden_field :tunnel_glide_ratio, value: "", id: nil, data: { signal_workspace_target: "startGlideRatio" } %>
+            <span class="signal-k">Flight to record</span>
+            <nav class="signal-mode-buttons signal-environment" aria-label="Signal mode">
+              <% Flight::ENVIRONMENTS.reverse_each do |value| %>
+                <%= link_to value.capitalize, signal_path(view: "home", environment: value, flight_id: @selected_flight&.id), aria: { current: ("true" if @environment == value) }, data: { turbo: false } %>
+              <% end %>
+            </nav>
             <span class="exds-selection-field">
               <%= form.select :flight_id, options_for_select([ [ "New flight", "" ] ] + @prepared_flights.map { |prepared| [ "#{prepared.code} · #{prepared.display_aircraft}", prepared.id ] }, @selected_flight&.id),
                     {}, id: nil, class: "exds-select", aria: { label: "Flight to record" }, data: { signal_workspace_target: "startFlight" } %>
@@ -103,7 +107,7 @@
     </header>
 
     <% unless @active_session %>
-      <p id="signal-start-hint" class="signal-standby-hint" role="status" data-signal-workspace-target="startHint">Connect the link to hear the aircraft.</p>
+      <p id="signal-start-hint" class="signal-standby-hint" role="status" data-signal-workspace-target="startHint">Not connected to the recorder. Connect with the link button in the top bar to enable Start flight.</p>
       <%= render "signal/standby_notices" %>
     <% end %>
     <%= render "signal/dashboard", code: flight&.code || (@active_session ? "Flight" : "Standby"), environment: @environment, glide_ratio: flight&.tunnel_glide_ratio %>

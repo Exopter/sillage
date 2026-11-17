@@ -81,18 +81,14 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     assert_equal users(:julien), flight.pilot
     assert_nil flight.name, "a flight carries a description only when someone writes one"
 
-    # A station that hears nothing, or whose remote is off, is not handed the flight.
+    # A station that hears nothing is not handed the flight; hearing an aircraft is all it takes.
     station = SecureRandom.uuid
-    post remote_station_path, params: { key: station, remote: true, ready: false }, as: :json
+    post remote_station_path, params: { key: station, ready: false }, as: :json
     assert_empty response.parsed_body
     get remote_state_path, as: :json
     assert_equal "waiting", response.parsed_body.dig("station", "state")
-    post remote_station_path, params: { key: station, remote: false, ready: true, device_id: "ECU-0123456789AB", aircraft: "Freak 6" }, as: :json
-    assert_empty response.parsed_body
-    get remote_state_path, as: :json
-    assert_equal "remote_off", response.parsed_body.dig("station", "state")
 
-    post remote_station_path, params: { key: station, remote: true, ready: true, device_id: "ECU-0123456789AB", aircraft: "Freak 6", environment: "tunnel", tunnel_glide_ratio: "2.99" }, as: :json
+    post remote_station_path, params: { key: station, ready: true, device_id: "ECU-0123456789AB", aircraft: "Freak 6", environment: "tunnel", tunnel_glide_ratio: "2.99" }, as: :json
     assert_equal flight.id, response.parsed_body["flight_id"]
     assert_equal 1, SignalStation.count
     get remote_state_path, as: :json
@@ -101,7 +97,7 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
       get remote_state_path, as: :json
       assert_equal "offline", response.parsed_body.dig("station", "state")
     end
-    post remote_station_path, params: { key: "not-a-key", remote: true, ready: true }, as: :json
+    post remote_station_path, params: { key: "not-a-key", ready: true }, as: :json
     assert_response :unprocessable_entity
 
     assert_no_difference "Flight.count" do
@@ -112,7 +108,7 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     delete remote_flight_path(flight), as: :json
     assert_response :success
     assert_equal "ready", response.parsed_body["phase"]
-    post remote_station_path, params: { key: station, remote: true, ready: true }, as: :json
+    post remote_station_path, params: { key: station, ready: true }, as: :json
     assert_empty response.parsed_body
   end
 
@@ -184,7 +180,7 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     assert_equal "debrief", response.parsed_body["phase"]
     assert flight.reload.waiting_for_recording?
     assert flight.ended_at
-    post remote_station_path, params: { key: SecureRandom.uuid, remote: true, ready: true }, as: :json
+    post remote_station_path, params: { key: SecureRandom.uuid, ready: true }, as: :json
     assert_empty response.parsed_body
 
     post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json

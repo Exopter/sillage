@@ -11,12 +11,12 @@ class SignalStation < ApplicationRecord
 
   scope :online, -> { where(seen_at: FRESHNESS.ago..) }
 
-  def self.check_in!(user:, key:, remote_enabled:, ready:, device_id: nil, aircraft_label: nil, environment: nil, tunnel_glide_ratio: nil)
+  def self.check_in!(user:, key:, ready:, device_id: nil, aircraft_label: nil, environment: nil, tunnel_glide_ratio: nil)
     station = find_or_initialize_by(key: key.to_s)
     ratio = tunnel_glide_ratio.to_s[/\A\d(?:\.\d{1,2})?\z/]&.to_d
     station.environment = environment if environment.in?(Flight::ENVIRONMENTS)
     station.tunnel_glide_ratio = ratio if ratio && Flight::TUNNEL_GLIDE_RATIOS.cover?(ratio)
-    station.update!(user:, remote_enabled:, ready:, seen_at: Time.current,
+    station.update!(user:, ready:, seen_at: Time.current,
       device_id: device_id.presence&.first(120), aircraft_label: aircraft_label.presence&.first(120))
     station
   rescue ActiveRecord::RecordNotUnique
@@ -26,12 +26,10 @@ class SignalStation < ApplicationRecord
   # The station a phone should expect to record its next flight: its own
   # operator's first, then one that is ready, then the most recent.
   def self.for_remote(user)
-    online.max_by { |station| [ station.user_id == user.id ? 1 : 0, station.remote_enabled ? 1 : 0, station.ready ? 1 : 0, station.seen_at ] }
+    online.max_by { |station| [ station.user_id == user.id ? 1 : 0, station.ready ? 1 : 0, station.seen_at ] }
   end
 
   def remote_state
-    return "remote_off" unless remote_enabled
-
     ready ? "ready" : "waiting"
   end
 end
