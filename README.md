@@ -136,12 +136,14 @@ already share the same SiK configuration. The current
 recorder-to-assembly-to-aircraft installation chain determines the displayed
 aircraft name and registration.
 
-The **Phone remote** switch in standby makes the computer start and end flights
-asked from `/remote`; its dialog shows a QR code opening the remote. A computer
-in standby checks in every two seconds (`POST /remote/station`, table
-`signal_stations`, fresh for 10 seconds) with what it hears, so the phone states
-before a flight whether a ground station will record it. A start request is
-handed only to a station whose switch is on and that hears an aircraft.
+A computer in standby starts and ends the flights asked from `/remote` as soon
+as it hears an aircraft; there is no switch. It checks in every two seconds
+(`POST /remote/station`, table `signal_stations`, fresh for 10 seconds) with
+what it hears, so the phone states before a flight whether a ground station
+will record it. A start request is handed only to a station that hears an
+aircraft; without one the flight is timed on the phone and can still be
+debriefed. The standby bar shows **Phone remote ready** while the computer
+would record.
 
 Saving an unassigned session commits its flight and a Solid Queue job together.
 The imports worker materializes retained batches using bounded bulk inserts and
