@@ -31,6 +31,26 @@
         <p class="exds-browser-map-status" data-flight-preview-map-target="status" role="status">Loading recorded route…</p>
       </div>
     <% end %>
+    <% preview_videos = accessible ? Array(@preview_videos) : [] %>
+    <% if preview_videos.any? %>
+      <%# A tunnel flight has no route: its cameras take the place of the map. Nothing loads until the flight is selected. %>
+      <div data-controller="video-source">
+        <div class="video-stage">
+          <video class="flight-video" controls playsinline preload="metadata" src="<%= attachment_path(preview_videos.first.file.attachment) %>" data-video-source-target="video" aria-label="Tunnel camera video"></video>
+        </div>
+        <% if preview_videos.many? %>
+          <div class="video-sync-controls">
+            <% preview_videos.each_with_index do |video, index| %>
+              <% clip_index = preview_videos.select { |other| other.camera == video.camera }.index(video) %>
+              <%= button_tag type: "button", class: "secondary-button exds-btn exds-btn--secondary", aria: { pressed: index.zero? },
+                data: { video_source_target: "source", action: "video-source#select", video_source_src_param: attachment_path(video.file.attachment) } do %>
+                <span><%= t("flights.video.tunnel_camera", camera: video.camera, clip: clip_index + 1, count: clip_index + 1) %></span>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
     <% editable = can_manage_operations? && flight && accessible && !entry.live? %>
     <dl class="exds-browser-metadata">
       <% if flight %><div><dt>Pilot</dt><dd>

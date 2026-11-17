@@ -26,6 +26,7 @@ class FlightsController < ApplicationController
     end
     @destination_folders = FlightFolder.contributable_to(Current.user).ordered
     @preview_points = Flights::RoutePreview.call(@selected_entry)
+    @preview_videos = @selected_entry.is_a?(Flight) ? @selected_entry.tunnel_videos.ready.with_attached_file.playback_order.select(&:ready?) : []
     render partial: "flights/browser_preview", locals: { entry: @selected_entry }
   end
 
