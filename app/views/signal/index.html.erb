@@ -28,6 +28,7 @@
      data-signal-workspace-mount-zeros-value="<%= @imu_mount_zeros.to_json %>"
      data-signal-workspace-home-url-value="<%= signal_path(view: "home") %>"
      <% if @active_session %>
+       data-signal-workspace-trigger-value="<%= @active_session.station_metadata["flight_trigger"] %>"
        data-signal-workspace-review-value="<%= params[:review] == "1" %>"
        data-signal-workspace-completed-value="<%= @active_session.status == "completed" %>"
        data-signal-workspace-session-value="<%= @active_session.uuid %>"
@@ -47,15 +48,16 @@
     <%= render "signal/exit_dialog", flight: flight %>
   <% end %>
   <div class="signal-live-shell">
-    <header class="signal-command-bar" data-signal-state="<%= @active_session ? "recording" : "standby" %>">
+    <header class="signal-command-bar" data-signal-state="<%= @active_session ? (@active_session.station_metadata["flight_trigger"] ? "pending" : "recording") : "standby" %>">
       <div class="signal-session-identity">
         <% if @active_session %>
-          <span class="signal-k signal-recording-label">Recording · <%= flight&.code || "Flight" %> · <%= @environment.capitalize %></span>
+          <span class="signal-k <%= "signal-recording-label" unless @active_session.station_metadata["flight_trigger"] %>" data-flight-session-label><%= @active_session.station_metadata["flight_trigger"] ? "Signal" : "Recording" %> · <%= flight&.code || "Flight" %> · <%= @environment.capitalize %></span>
           <small><%= flight&.display_aircraft || "No aircraft" %></small>
         <% else %>
           <span class="signal-k">Signal <%= @environment.capitalize %> · Standby · Not recording</span>
           <small data-signal-workspace-target="standbyAircraft">No aircraft heard</small>
         <% end %>
+        <small data-flight-trigger-status data-signal-workspace-target="triggerStatus" role="status"></small>
         <small data-signal-workspace-target="mountLabel">Waiting for recorder mounting</small>
       </div>
       <div class="signal-link-stack" aria-label="Signal link status">
@@ -90,16 +92,31 @@
             <%= form.hidden_field :transport, value: "", id: nil, data: { signal_workspace_target: "startTransport" } %>
             <%= form.hidden_field :environment, value: @environment, id: nil %>
             <%= form.hidden_field :tunnel_glide_ratio, value: "", id: nil, data: { signal_workspace_target: "startGlideRatio" } %>
-            <span class="signal-k">Flight to record</span>
-            <nav class="signal-mode-buttons signal-environment" aria-label="Signal mode">
-              <% Flight::ENVIRONMENTS.reverse_each do |value| %>
-                <%= link_to value.capitalize, signal_path(view: "home", environment: value, flight_id: @selected_flight&.id), aria: { current: ("true" if @environment == value) }, data: { turbo: false } %>
-              <% end %>
-            </nav>
-            <span class="exds-selection-field">
-              <%= form.select :flight_id, options_for_select([ [ "New flight", "" ] ] + @prepared_flights.map { |prepared| [ "#{prepared.code} · #{prepared.display_aircraft}", prepared.id ] }, @selected_flight&.id),
-                    {}, id: nil, class: "exds-select", aria: { label: "Flight to record" }, data: { signal_workspace_target: "startFlight" } %>
-            </span>
+            <div class="signal-start-field">
+              <span class="signal-k">Environment</span>
+              <nav class="signal-mode-buttons signal-environment" aria-label="Signal mode">
+                <% Flight::ENVIRONMENTS.each do |value| %>
+                  <%= link_to value.capitalize, signal_path(view: "home", environment: value, flight_id: @selected_flight&.id), aria: { current: ("true" if @environment == value) }, data: { turbo: false } %>
+                <% end %>
+              </nav>
+            </div>
+            <div class="signal-start-field">
+              <span class="signal-k">FDR trigger</span>
+              <div class="signal-mode-buttons" role="group" aria-label="FDR trigger">
+                <% { "signal" => "Signal", "power" => "Power-on" }.each do |value, label| %>
+                  <button type="button" disabled aria-pressed="false" data-trigger-mode="<%= value %>"
+                          data-action="signal-workspace#chooseTrigger"><%= label %></button>
+                <% end %>
+              </div>
+              <%= form.hidden_field :flight_trigger, value: "", id: nil %>
+            </div>
+            <label class="signal-start-field">
+              <span class="signal-k">Flight to record</span>
+              <span class="exds-selection-field">
+                <%= form.select :flight_id, options_for_select([ [ "New flight", "" ] ] + @prepared_flights.map { |prepared| [ "#{prepared.code} · #{prepared.display_aircraft}", prepared.id ] }, @selected_flight&.id),
+                      {}, id: nil, class: "exds-select", aria: { label: "Flight to record" }, data: { signal_workspace_target: "startFlight" } %>
+              </span>
+            </label>
             <button type="button" class="signal-tool-button exds-btn exds-btn--primary is-primary" disabled aria-describedby="signal-start-hint"
                     data-signal-workspace-target="startButton" data-action="signal-workspace#startFlight"><%= sillage_icon "play", size: 14 %><span>Start flight</span></button>
           <% end %>

@@ -4,7 +4,7 @@ module FdrSync
   class Ingest
     Result = Data.define(:flight_import, :duplicate, :sha256)
 
-    FILENAME_PATTERN = /\AFDR\d{6}\.BIN\z/i
+    FILENAME_PATTERN = /\A(?:FDR\d{6}|(?:FL)?[1-9]\d{0,9}-[0-9A-Z]{4})\.BIN\z/i
     SHA256_PATTERN = /\A[0-9a-f]{64}\z/
 
     TRANSPORTS = %w[usb_cdc wifi_https].freeze
@@ -66,6 +66,12 @@ module FdrSync
     end
 
     def validate_header!(header)
+      if header["flight_id"] || filename.include?("-")
+        flight = header["flight_id"]
+        expected = "#{flight.to_i <= 99_999_999 ? "FL" : ""}#{flight}-#{@file_index.to_s(36).upcase.rjust(4, "0")}.BIN"
+        raise Error, "Flight filename and header disagree." unless flight && filename.casecmp?(expected)
+        raise Error, "Recording is from a different recorder." unless header["device_id"] == FdrIdentity::DeviceId.normalize(@metadata["device_id"])
+      end
       raise Error, "The ExoFDR boot identifier does not match the manifest." unless header.fetch("boot_id") == declared_boot_id
       raise Error, "The ExoFDR format does not match the manifest." unless header.fetch("format_version") == declared_format_version
     end

@@ -12,6 +12,18 @@ module Signal
         return unless sources.one?
 
         source = sources.first
+        headers = Array(@import.details.to_h["files"]).filter_map { |file| file["header"] }
+        ids = headers.pluck("flight_id").uniq
+        if ids.any?(&:present?)
+          return unless ids.one? && headers.all? { |header| header["device_id"] == @import.device_id }
+          session = @import.user.signal_sessions.where(status: "completed", flight_id: ids.first)
+            .where("station_metadata ->> 'recorder_device_id' = ?", @import.device_id).first
+          target = session&.flight
+          if target&.waiting_for_recording? && target.flight_import_id.nil?
+            Flights::MergeRecording.new(flight_import: @import, target_flight: target).call
+          end
+          return
+        end
         return unless source.started_at && source.ended_at && source.ended_at > source.started_at
 
         boot_ids = Array(@import.details.to_h["files"]).filter_map { |file| file.dig("header", "boot_id") }.uniq

@@ -176,6 +176,14 @@
         <%= link_to "Record debrief", "#pilot-log", data: { action: "section-tabs#select", section_tabs_name_param: "pilot-log" } if can_manage_operations? %>
       </section>
     <% end %>
+    <% if @seat_segments.any? %>
+      <section class="analysis-mode-banner" aria-label="SEAT recordings">
+        <strong>SEAT recordings</strong>
+        <% @seat_segments.each do |segment| %>
+          <%= link_to segment.source_filename, rails_blob_path(segment.source_files.first, disposition: "attachment") if segment.source_files.attached? %>
+        <% end %>
+      </section>
+    <% end %>
     <% if @flight.recording_expected? %>
       <section class="analysis-mode-banner" aria-label="Waiting for recording">
         <strong>Waiting for recording</strong>

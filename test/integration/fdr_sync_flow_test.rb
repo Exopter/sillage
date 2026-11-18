@@ -46,6 +46,26 @@ class FdrSyncFlowTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "a flight-labelled file carries the same flight and recorder in its CRC-protected header" do
+    id = 161
+    with_upload do |upload, binary|
+      firmware = "v1_distributed/4".ljust(18, "\0") + "FL" + [ id ].pack("V")
+      binary[24, 24] = firmware
+      binary[48, 12] = "441BF685BEC8"
+      binary[60, 4] = [ Zlib.crc32(binary.byteslice(0, 60)) ].pack("V")
+      File.binwrite(upload.path, binary)
+      meta = sync_params(upload, binary).merge(filename: "FL161-0001.BIN", file_index: 1, device_id: "ECU-441BF685BEC8")
+      header = ExoFdr::Decoder.new(StringIO.new(binary)).header
+      assert_equal id, header.fetch("flight_id")
+      assert_equal "v1_distributed/4", header.fetch("firmware")
+      assert_raises(FdrSync::Error) do
+        FdrSync::Ingest.new(user: users(:julien), upload:, metadata: meta.merge(filename: "FL162-0001.BIN")).call
+      end
+      result = FdrSync::Ingest.new(user: users(:julien), upload:, metadata: meta, enqueue: false).call
+      assert_equal "FL161-0001.BIN", result.flight_import.source_filename
+    end
+  end
+
   test "stores, verifies and acknowledges an idempotent USB synchronized file" do
     asset = Assembly.create!(name: "Synchronized recorder")
     create_embedded_controller(assembly: asset, device_id: "ECU-ABC123")

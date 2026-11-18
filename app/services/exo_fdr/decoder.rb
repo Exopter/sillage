@@ -172,8 +172,9 @@ module ExoFdr
       raise Error, "ExoFDR file header CRC mismatch." unless Zlib.crc32(raw.byteslice(0, FILE_HEADER_SIZE - 4)) == stored_crc
 
       device_id = "ECU-#{mac}" if mac != "000000000000" && mac.match?(/\A[0-9A-F]{12}\z/)
+      flight_id = firmware.byteslice(20, 4).unpack1("V") if firmware.byteslice(0, 18).include?("\0") && firmware.byteslice(18, 2) == "FL"
       { "format_version" => version, "boot_id" => boot_id,
-        "boot_monotonic_us" => boot_us, "firmware" => decode_string(firmware), "device_id" => device_id }
+        "boot_monotonic_us" => boot_us, "firmware" => decode_string(firmware), "device_id" => device_id }.tap { |header| header["flight_id"] = flight_id if flight_id&.positive? }
     end
 
     # Returns the records an envelope or a clock exchange makes ready, in Seat time.

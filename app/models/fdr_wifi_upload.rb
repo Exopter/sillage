@@ -3,7 +3,7 @@ require "fileutils"
 class FdrWifiUpload < ApplicationRecord
   STATUSES = %w[receiving verifying complete failed retryable].freeze
   TOKEN_PATTERN = /\A[0-9a-f]{32}\z/
-  FILENAME_PATTERN = /\AFDR\d{6}\.BIN\z/i
+  FILENAME_PATTERN = FdrSync::Ingest::FILENAME_PATTERN
   SHA256_PATTERN = /\A[0-9a-f]{64}\z/
 
   class OffsetMismatch < StandardError

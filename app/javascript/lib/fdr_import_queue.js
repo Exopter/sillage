@@ -4,7 +4,7 @@ import { PartialFdrFile } from "fdr_partial_file"
 const ACTIONS = { priority: 1, skip: 2, restore: 3, pause: 4, resume: 5, catalog: 7 }
 /** @param {number} ms */
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-/** @typedef {{fileIndex: number, bootId: number, sizeBytes: number, flags: number, durationMs?: number | null, startedAtUnixMs?: number | null}} Entry */
+/** @typedef {{fileIndex: number, bootId: number, sizeBytes: number, flags: number, flightId?: number, durationMs?: number | null, startedAtUnixMs?: number | null}} Entry */
 /** @typedef {import("./fdr_sync_protocol").UsbFdrClient} Client */
 /** @typedef {Awaited<ReturnType<Client["nextImport"]>>} Preparation */
 
@@ -107,7 +107,7 @@ export class FdrImportQueue {
     this.resetIdentity(deviceId, queue.boot_id)
     if (queue.before_index === 0) this.entries.clear()
     for (const file of queue.files || []) this.entries.set(file.file_index, {
-      fileIndex: file.file_index, bootId: file.boot_id, sizeBytes: file.size_bytes, flags: file.flags,
+      flightId: file.flight_id || undefined, fileIndex: file.file_index, bootId: file.boot_id, sizeBytes: file.size_bytes, flags: file.flags,
       durationMs: file.duration_ms ?? null, startedAtUnixMs: file.started_at_unix_ms ?? null
     })
     this.cursor = queue.next_before_index
@@ -379,7 +379,7 @@ export function formatRecordingSize(bytes) {
 
 /** @param {Entry} entry */
 export function isShortRecording(entry) {
-  return typeof entry.durationMs === "number" && entry.durationMs >= 0 && entry.durationMs < 60000
+  return !entry.flightId && typeof entry.durationMs === "number" && entry.durationMs >= 0 && entry.durationMs < 60000
 }
 
 /** @param {number | null | undefined} timestamp */
@@ -395,7 +395,9 @@ export function isFilteredRecording(entry) {
 }
 
 /** @param {Entry} entry */
-function recordingFilename(entry) { return `FDR${String(entry.fileIndex).padStart(6, "0")}.BIN` }
+function recordingFilename(entry) {
+  if (entry.flightId) return `${entry.flightId <= 99999999 ? "FL" : ""}${entry.flightId}-${entry.fileIndex.toString(36).toUpperCase().padStart(4, "0")}.BIN`
+  return `FDR${String(entry.fileIndex).padStart(6, "0")}.BIN` }
 /** @param {Entry} entry */
 function recordingCategory(entry) {
   return entry.flags & 1 ? "recording" : entry.flags & 16 ? "damaged" : entry.flags & 2 ? "imported" : entry.flags & 4 ? "skipped" : "available"

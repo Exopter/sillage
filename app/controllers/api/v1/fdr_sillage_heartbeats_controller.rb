@@ -83,6 +83,7 @@ module Api
         files = queue["files"]
         files.is_a?(Array) && files.size <= 8 && files.all? do |file|
           file.is_a?(Hash) && %w[file_index boot_id size_bytes flags].all? { |key| file[key].is_a?(Integer) && file[key] >= 0 } && file["file_index"].between?(1, 999_999) &&
+            (file["flight_id"].nil? || (file["flight_id"].is_a?(Integer) && file["flight_id"].between?(0, 0xffff_ffff))) &&
             (file["started_at_unix_ms"].nil? || (file["started_at_unix_ms"].is_a?(Integer) && file["started_at_unix_ms"].between?(1_577_836_800_000, 7_258_118_399_999))) &&
             (file["duration_ms"].nil? || (file["duration_ms"].is_a?(Integer) && file["duration_ms"].between?(0, 18_446_744_073_709_551)))
         end

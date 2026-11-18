@@ -139,6 +139,7 @@ function importQueuePayload(value) {
       if (index < 1 || index > 999999) throw new Error("Sillage returned an invalid recorder file index.")
       return {
         file_index: index, boot_id: integer(file.boot_id), size_bytes: integer(file.size_bytes), flags: integer(file.flags),
+        ...(file.flight_id ? { flight_id: integer(file.flight_id) } : {}),
         duration_ms: file.duration_ms == null ? null : integer(file.duration_ms),
         started_at_unix_ms: file.started_at_unix_ms == null ? null : integer(file.started_at_unix_ms)
       }

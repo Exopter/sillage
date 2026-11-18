@@ -76,6 +76,7 @@ class FlightsController < ApplicationController
     @cesium_ion_token = cesium_ion_token
     @radio_histories = can_access_signal? ? Signal::RadioHistory.for_flight(@flight) : []
     @radio_signal = Signal::RadioHistory.ground_signal_for(@flight, histories: @radio_histories)
+    @seat_segments = FlightImport.accessible_to(Current.user).where("details ->> 'signal_flight_id' = ?", @flight.id.to_s).with_attached_source_files.order(:id)
     @imu_quality_events = @flight.operator_events.where("metadata ->> 'source' = ?", "imu_health").order(occurred_at: :desc, id: :desc).to_a
     @imu_checks = @flight.imu_checks.recent.limit(10).to_a
   end

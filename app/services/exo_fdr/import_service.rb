@@ -44,6 +44,11 @@ module ExoFdr
       @next_sequence_by_boot = {}
       # Lock all recorder boots in a stable order, without retaining decoded records.
       headers = blobs.map { |blob| Decoder.new(StringIO.new(blob.download_chunk(0...Decoder::FILE_HEADER_SIZE))).header }
+      # A copied or renamed segment retains both identities in its CRC-protected header.
+      devices = headers.pluck("device_id").uniq
+      if @flight_import.device_id.blank? && devices.one? && devices.first && headers.all? { |header| header["flight_id"] }
+        @flight_import.update!(device_id: devices.first)
+      end
       recordings = headers.to_h do |header|
         boot_id = header.fetch("boot_id")
         [ boot_id, FdrRecording.create_or_find_by!(user: @flight_import.user, recorder_key:, boot_id:) ]
@@ -55,6 +60,13 @@ module ExoFdr
       end
       activity = RecordingActivity.new(@flight_import).summarize(sources.map { |source| source.fetch(:activity) })
       @flight_import.update!(activity_classification: activity.fetch("classification"), activity_summary: activity)
+      flight_ids = headers.pluck("flight_id").uniq
+      if flight_ids.one? && flight_ids.first && headers.all? { |h| h["device_id"] == @flight_import.device_id } &&
+          @flight_import.user.signal_sessions.where(flight_id: flight_ids.first)
+            .where("station_metadata ->> 'recorder_device_id' = ?", @flight_import.device_id).exists?
+        @flight_import.update!(included_in_flights_at: @flight_import.included_in_flights_at || Time.current,
+          details: @flight_import.details.to_h.merge("signal_flight_id" => flight_ids.first))
+      end
       set_aside = @flight_import.automatically_set_aside?
       @flight_import.flights.where.not(id: @flight_import.target_flight_id).destroy_all unless set_aside
       sources.each.with_index(1) do |source, index|

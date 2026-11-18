@@ -277,11 +277,13 @@ export class UsbFdrClient {
     const frame = await this.request(UsbMessage.HELLO, new Uint8Array(), [UsbMessage.DEVICE_INFO], { resendMs: USB_HELLO_RESEND_MS })
     const device = parseDeviceInfo(frame.payload)
     this.capabilities = device.capabilities
+    this.flightCatalog = /^v1_distributed\/(\d+)$/.test(device.firmware) && Number(device.firmware.split("/")[1]) >= 4
     return device
   }
 
   async importCatalog(beforeIndex = 0) {
-    const payload = new Uint8Array(4)
+    const payload = new Uint8Array(this.flightCatalog ? 5 : 4)
+    if (this.flightCatalog) payload[4] = 1
     new DataView(payload.buffer).setUint32(0, beforeIndex, true)
     const frame = await this.request(UsbMessage.IMPORT_CATALOG, payload, [UsbMessage.IMPORT_CATALOG_DATA])
     return parseImportCatalog(frame.payload)
@@ -1304,9 +1306,10 @@ export function protocolError(value) { return value instanceof Error ? value : n
 /** @param {BinaryValue} value */
 export function parseImportCatalog(value) {
   const bytes = exactBytes(value)
-  const view = dataView(bytes, [24, 32].includes(bytes.length) ? bytes.length : Exs1Layout.IMPORT_CATALOG_ENTRY, "import catalog")
+  const view = dataView(bytes, [24, 32, 44].includes(bytes.length) ? bytes.length : Exs1Layout.IMPORT_CATALOG_ENTRY, "import catalog")
   return { fileIndex: view.getUint32(0, true), bootId: view.getUint32(4, true),
     sizeBytes: Number(view.getBigUint64(8, true)), flags: view.getUint8(16),
+    ...(bytes.length === 44 ? {flightId: view.getUint32(40, true)} : {}),
     revision: view.getUint32(20, true),
     durationMs: bytes.length >= 32 && view.getUint8(17) === 1 ? Number(view.getBigUint64(24, true)) : null,
     startedAtUnixMs: bytes.length >= 40 && view.getBigUint64(32, true) > 0n ? Number(view.getBigUint64(32, true)) : null }

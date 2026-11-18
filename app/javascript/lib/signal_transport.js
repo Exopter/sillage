@@ -51,9 +51,9 @@ export class PollingTelemetryPort {
   closed = false
   /** @type {Promise<Uint8Array>|null} */ pending = null
   /** @type {null|(() => Promise<void>)} */ cleanup = null
-  /** @type {{poll: () => Promise<Uint8Array>, close: () => Promise<void>}|null} */ connection = null
+  /** @type {{command?: (payload: Uint8Array) => Promise<void>, poll: () => Promise<Uint8Array>, close: () => Promise<void>}|null} */ connection = null
   packets = new LivePacketReader()
-  /** @param {() => Promise<{poll: () => Promise<Uint8Array>, close: () => Promise<void>}>} setup */
+  /** @param {() => Promise<{command?: (payload: Uint8Array) => Promise<void>, poll: () => Promise<Uint8Array>, close: () => Promise<void>}>} setup */
   constructor(setup) { this.setup = setup }
 
   /** Like a serial port, a cancelled reader leaves the link open and a fresh stream to read:
@@ -144,7 +144,9 @@ export async function directTelemetryPort(kind, options) {
         const challenge = await client.usbAuthenticationChallenge()
         if (!challenge.configured) throw new Error("Register this recorder in Forge over USB-C first.")
         await client.authenticateUsbSession(await proof(device.deviceId, challenge.nonce, "usb"))
-        return {poll: async () => (await client.request(UsbMessage.LIVE_TELEMETRY, Uint8Array.of(1), [UsbMessage.LIVE_TELEMETRY_DATA], {timeoutMs: 3000})).payload,
+        return {command: async (payload) => {
+          await client.request(UsbMessage.LIVE_TELEMETRY, Uint8Array.of(2, ...payload), [UsbMessage.LIVE_TELEMETRY_DATA])
+        }, poll: async () => (await client.request(UsbMessage.LIVE_TELEMETRY, Uint8Array.of(1), [UsbMessage.LIVE_TELEMETRY_DATA], {timeoutMs: 3000})).payload,
           close: async () => { await client.close() }}
       } catch (error) { await client.close(); throw error }
     }))
