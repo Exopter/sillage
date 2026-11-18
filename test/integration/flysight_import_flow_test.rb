@@ -286,6 +286,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "link[rel='icon'][href='/icon.svg?v=exopter-20261115'][type='image/svg+xml']"
+    assert_select "link[rel='apple-touch-icon'][href='/apple-touch-icon.png?v=exopter-20261115']"
     assert_select "h1", "Flight log"
     assert_sillage_header title: "Flights"
     assert_select ".sillage-mode-switcher", count: 0
