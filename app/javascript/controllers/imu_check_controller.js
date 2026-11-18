@@ -9,8 +9,9 @@ const Base = /** @type {new (c:import('@hotwired/stimulus').Context) => Controll
 export default class extends Base {
   static targets = ["scene", "sceneLabel", "sceneHint", "visual", "stepLabel", "hold", "holdRing", "countdown", "confirmation", "title", "instruction", "qualityReason", "attitude", "heading", "connectButton", "actionButton", "cancelButton", "confirmed", "progress", "result"]
   static values = { device: String, kind: String, flight: String, mountProfile: { type: String, default: "sensor_native" } }
-  get referenceFace() { return this.mountProfileValue === BELLY_MOUNT ? "z-" : "z+" }
-  get levelInstruction() { return this.mountProfileValue === BELLY_MOUNT ? "Place the enclosure level in its flight mounting, with +Z toward the ground and +Y forward." : "Place the enclosure on a level reference." }
+  get installed() { return (this.mountProfileValue || NATIVE_MOUNT) !== NATIVE_MOUNT }
+  get referenceFace() { return this.installed ? "z-" : "z+" }
+  get levelInstruction() { return this.installed ? `Place the enclosure level in its flight mounting, with +Z toward the ground and ${this.mountProfileValue === BELLY_MOUNT ? "+Y" : "+X"} forward.` : "Place the enclosure on a level reference." }
   health = new ImuHealth()
   faces = new SixFaceCapture()
   /** @type {import('../lib/imu_health').ReferenceSample[]} */ samples = []

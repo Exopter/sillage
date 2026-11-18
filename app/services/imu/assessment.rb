@@ -35,7 +35,7 @@ module Imu
       gravity_consistent = samples.all? do |sample|
         roll, pitch = sample.values_at("roll", "pitch").map { |v| v * Math::PI / 180 }
         gravity = [ Math.sin(pitch), Math.sin(roll) * Math.cos(pitch), Math.cos(roll) * Math.cos(pitch) ]
-        gravity = [ gravity[0], -gravity[1], -gravity[2] ] if mount_profile == Mount::BELLY
+        gravity = [ gravity[0], -gravity[1], -gravity[2] ] if Mount.installed?(mount_profile)
         cosine = gravity.zip(sample["accel"]).sum { |a, b| a * b } / norm.call(sample["accel"])
         cosine.finite? && cosine >= Math.cos(5 * Math::PI / 180)
       end

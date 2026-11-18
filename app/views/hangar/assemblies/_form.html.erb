@@ -45,7 +45,7 @@
   <% if assembly.new_record? || (assembly.controlled_fdr? && !assembly.fdr_system?) %>
     <fieldset class="workspace-fieldset" data-assembly-form-target="mounting" <%= "hidden disabled" unless assembly.controlled_fdr? %>>
       <label><span>IMU mounting</span><%= form.select :imu_mount_profile, Imu::Mount::LABELS.map { |id, label| [label, id] } %></label>
-      <p class="workspace-muted">None keeps native sensor axes without a mounting correction. Wingsuit belly pocket: +Y forward, +X left, +Z down. Changing the mounting requires a new reference and preflight check.</p>
+      <p class="workspace-muted">None keeps native sensor axes without a mounting correction. Wingsuit belly pocket: +Y forward, +X left, +Z down. Upside down: +X forward, +Y right, +Z down. Changing the mounting requires a new reference and preflight check.</p>
     </fieldset>
   <% end %>
   <p class="workspace-muted"><%= assembly.persisted? ? "Asset ID #{assembly.internal_number}" : "The asset ID is assigned when you save." %></p>

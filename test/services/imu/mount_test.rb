@@ -7,7 +7,13 @@ class Imu::MountTest < ActiveSupport::TestCase
       assert_in_delta pose["roll"], result["roll"], 1e-5
       assert_in_delta pose["pitch"], result["pitch"], 1e-5
       assert_in_delta 0, (result["heading"] - pose["heading"] + 540) % 360 - 180, 1e-5
+      flipped = Imu::Mount.attitude(pose.dig("upside_down", "quaternion"), Imu::Mount::UPSIDE_DOWN)
+      assert_in_delta pose["roll"], flipped["roll"], 1e-5
+      assert_in_delta pose["pitch"], flipped["pitch"], 1e-5
+      assert_in_delta 0, (flipped["heading"] - pose["heading"] + 540) % 360 - 180, 1e-5
+      Imu::Mount.vector(pose["accel"], Imu::Mount::BELLY).zip(Imu::Mount.vector(pose.dig("upside_down", "accel"), Imu::Mount::UPSIDE_DOWN)) { |body, other| assert_in_delta body, other, 1e-5 }
     end
+    assert_equal [ 1, 2, 3 ], Imu::Mount.vector([ 1, 2, 3 ], Imu::Mount::UPSIDE_DOWN)
     assert_equal [ 2, -1, 3 ], Imu::Mount.vector([ 1, 2, 3 ], Imu::Mount::BELLY)
     assert_nil Imu::Mount.attitude([ 0, 0, 0, 0 ])
   end
@@ -25,6 +31,24 @@ class Imu::MountTest < ActiveSupport::TestCase
     assert_equal before, Marshal.dump([ radio, sd ])
     assert_equal radio_result, Imu::Mount.readings("ATTITUDE", radio_result)
     assert_equal radio.except("mount_profile"), Imu::Mount.readings("ATTITUDE", radio.except("mount_profile")), "historical samples do not inherit a new mounting"
+  end
+
+  test "upside down mounting derives body attitude from radio and SD evidence" do
+    half = Math.sqrt(0.5)
+    metadata = { "mount_profile" => Imu::Mount::UPSIDE_DOWN, "coordinate_frame" => "sensor_native" }
+    radio = metadata.merge("quaternion" => [ 0, half, half, 0 ], "rollDeg" => 180, "pitchDeg" => 0, "yawDeg" => 90, "rollSpeed" => 1, "pitchSpeed" => 2, "yawSpeed" => 3)
+    radio_result = Imu::Mount.readings("ATTITUDE", radio)
+    sd_result = Imu::Mount.readings("IMU:rotation_vector", metadata.merge("w" => 0, "x" => half, "y" => half, "z" => 0))
+    [ radio_result, sd_result ].each do |result|
+      assert_in_delta 0, result["rollDeg"], 1e-6
+      assert_in_delta 0, result["pitchDeg"], 1e-6
+      assert_in_delta 0, (result["yawDeg"] + 180) % 360 - 180, 1e-6
+      assert_equal "body_frd_ned", result["coordinate_frame"]
+    end
+    assert_equal [ 1, 2, 3 ], radio_result.values_at("rollSpeed", "pitchSpeed", "yawSpeed")
+    assert_equal [ 1, 2, 3 ], Imu::Mount.readings("IMU:accelerometer", metadata.merge("x" => 1, "y" => 2, "z" => 3)).values_at("x", "y", "z")
+    assert_equal radio_result, Imu::Mount.readings("ATTITUDE", radio_result)
+    assert_equal "+X forward · +Y right · +Z down", Imu::Mount.description(Imu::Mount::UPSIDE_DOWN)
   end
 
   test "mount changes are dated, assembly-specific and change reference configuration" do
