@@ -31,7 +31,9 @@ class SignalController < ApplicationController
 
     @cesium_ion_token = ENV["CESIUM_ION_TOKEN"].presence || Rails.application.credentials.dig(:cesium, :ion_token).presence
     @live_recorders = EmbeddedController.order(:device_id)
-    @imu_mount_profiles = EmbeddedController.where.not(device_id: nil).includes(part: :assembly).to_h { |controller| [ controller.device_id, controller.imu_mount_profile ] }
+    controllers = EmbeddedController.where.not(device_id: nil).includes(part: :assembly).to_a
+    @imu_mount_profiles = controllers.to_h { |controller| [ controller.device_id, controller.imu_mount_profile ] }
+    @imu_mount_zeros = controllers.to_h { |controller| [ controller.device_id, controller.imu_zero ] }.compact
     return if @active_session
 
     @live_elsewhere = live

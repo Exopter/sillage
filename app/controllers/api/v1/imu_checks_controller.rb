@@ -8,8 +8,8 @@ module Api
         reference = ImuCheck.reference_for(@fdr, firmware:)
         check = @flight && @flight.imu_checks.where(embedded_controller: @fdr, kind: "preflight",
           configuration_digest: ImuCheck.configuration_digest_for(@fdr), firmware:).recent.first
-        check = nil if check && (!reference || check.calibration_id != reference.id)
-        render json: { reference: reference && payload(reference), preflight: check && payload(check), mount_profile: @fdr.imu_mount_profile }
+        check = nil if check && (!reference || check.calibration_id != reference.id || check.summary["mount_zero"] != @fdr.imu_zero)
+        render json: { reference: reference && payload(reference), preflight: check && payload(check), mount_profile: @fdr.imu_mount_profile, mount_zero: @fdr.imu_zero }
       end
 
       def create
@@ -29,7 +29,10 @@ module Api
         unless (params[:mount_profile].presence || Imu::Mount::NATIVE) == mount_profile
           return render_error("IMU mounting changed. Reload the page and start a new check.")
         end
-        summary = Imu::Assessment.call(samples, firmware:, mount_profile:)
+        # The wing zero defines level for preflight only; the calibration reference stays in the mounting frame.
+        zero = kind == "preflight" ? @fdr.imu_zero : nil
+        return render_error("IMU zero changed. Reload the page and start a new check.") unless params[:mount_zero]&.as_json == zero
+        summary = Imu::Assessment.call(samples, firmware:, mount_profile:, zero:)
         reference = ImuCheck.reference_for(@fdr, firmware:)
         if kind == "calibration"
           faces = params[:faces]&.as_json

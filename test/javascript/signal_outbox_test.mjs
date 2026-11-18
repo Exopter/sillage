@@ -11,7 +11,7 @@ const outboxURL = new URL("../../app/javascript/lib/signal_outbox.js", import.me
 const healthURL = new URL("../../app/javascript/lib/imu_health.js", import.meta.url).href
 const telemetryURL = new URL("../../app/javascript/lib/signal_telemetry.js", import.meta.url).href
 const { transactionRequest } = await import(outboxURL)
-const { default: Workspace } = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountName, mountedReference} from "${mountURL}";\nimport {ImuHealth} from "${healthURL}";\nimport { SignalTelemetry } from "${telemetryURL}"\nimport { OUTBOX_STORE, META_STORE, transactionRequest, putOutbox, readOutbox, oldestOutbox, deleteOutbox, readMetadata, writeMetadata, writeOutbox } from "${outboxURL}"\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString("base64")}`)
+const { default: Workspace } = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountName, mountZero, mountedReference} from "${mountURL}";\nimport {ImuHealth} from "${healthURL}";\nimport { SignalTelemetry } from "${telemetryURL}"\nimport { OUTBOX_STORE, META_STORE, transactionRequest, putOutbox, readOutbox, oldestOutbox, deleteOutbox, readMetadata, writeMetadata, writeOutbox } from "${outboxURL}"\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString("base64")}`)
 globalThis.localStorage = { getItem: () => null }
 globalThis.IDBKeyRange = { bound: () => ({}) }
 const tick = () => new Promise((resolve) => setImmediate(resolve))

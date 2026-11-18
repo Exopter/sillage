@@ -25,6 +25,7 @@
      data-signal-workspace-cesium-token-value="<%= @cesium_ion_token %>"
      data-signal-workspace-cesium-base-url-value="<%= Rails.application.config.x.cesium_base_url %>"
      data-signal-workspace-mount-profiles-value="<%= @imu_mount_profiles.to_json %>"
+     data-signal-workspace-mount-zeros-value="<%= @imu_mount_zeros.to_json %>"
      data-signal-workspace-home-url-value="<%= signal_path(view: "home") %>"
      <% if @active_session %>
        data-signal-workspace-review-value="<%= params[:review] == "1" %>"

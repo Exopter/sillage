@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import {readFile} from "node:fs/promises"
-import {BELLY_MOUNT, NATIVE_MOUNT, UPSIDE_DOWN_MOUNT, bellyAttitude, mountedAttitude, mountName, mountedVector, mountedReference, interpretImu} from "../../app/javascript/lib/imu_mount.js"
+import {BELLY_MOUNT, NATIVE_MOUNT, UPSIDE_DOWN_MOUNT, bellyAttitude, mountedAttitude, mountName, mountZero, multiplyQuaternion, mountedVector, mountedReference, interpretImu} from "../../app/javascript/lib/imu_mount.js"
 import {referenceIssue} from "../../app/javascript/lib/imu_health.js"
 
 // Golden poses were generated from body-to-NED rotation matrices, independently of the quaternion implementation.
@@ -55,4 +55,22 @@ assert.equal(referenceIssue(mountedReference(flippedSample, UPSIDE_DOWN_MOUNT)),
 assert.ok(referenceIssue(mountedReference({...flippedSample, quaternion: [1, 0, 0, 0], accel: [0, 0, 9.80665]}, UPSIDE_DOWN_MOUNT)), "the upright board is not the upside down level reference")
 assert.equal(mountedReference({...flippedSample, quaternion: undefined}, UPSIDE_DOWN_MOUNT), null)
 assert.deepEqual([NATIVE_MOUNT, BELLY_MOUNT, UPSIDE_DOWN_MOUNT, "unknown"].map(mountName), ["Native sensor axes", "Wingsuit belly pocket", "Upside down", "Native sensor axes"])
-console.log("IMU belly and upside down mounts: golden poses, rotation signs, vectors, frame guards and reference passed")
+// Wing zero: an upside down IMU tilted 4 degrees in roll while the wing lies flat, heading east.
+const half = 4 * Math.PI / 360, east = Math.PI / 4
+const tilt = [Math.cos(half), Math.sin(half), 0, 0]
+const installedEast = multiplyQuaternion([Math.cos(east), 0, 0, Math.sin(east)], tilt)
+const tiltedNative = multiplyQuaternion([0, -Math.SQRT1_2, -Math.SQRT1_2, 0], installedEast)
+const tiltedRaw = Object.freeze({name: "attitude", coordinateFrame: "sensor_native", quaternion: tiltedNative, rollDeg: 176, pitchDeg: 0, yawDeg: 0, rollSpeed: 0, pitchSpeed: 0, yawSpeed: 1})
+const unzeroed = interpretImu(tiltedRaw, UPSIDE_DOWN_MOUNT)
+close(unzeroed.rollDeg, 4); close(unzeroed.yawDeg, 90)
+const zeroed = interpretImu(tiltedRaw, UPSIDE_DOWN_MOUNT, tilt)
+close(zeroed.rollDeg, 0); close(zeroed.pitchDeg, 0); close(zeroed.yawDeg, 90)
+const tiltedGravity = [0, -9.80665 * Math.sin(2 * half), -9.80665 * Math.cos(2 * half)]
+mountedVector(tiltedGravity, UPSIDE_DOWN_MOUNT, tilt).forEach((value, axis) => close(value, [0, 0, -9.80665][axis]))
+const tiltedSample = {...sample, roll: 176, quaternion: tiltedNative, accel: tiltedGravity}
+assert.match(referenceIssue(mountedReference(tiltedSample, UPSIDE_DOWN_MOUNT)), /level/, "the tilted IMU is not level in its mounting")
+assert.equal(referenceIssue(mountedReference(tiltedSample, UPSIDE_DOWN_MOUNT, tilt)), null, "the wing zero defines level")
+assert.equal(interpretImu(tiltedRaw, NATIVE_MOUNT, tilt), tiltedRaw, "native axes never take a zero")
+assert.equal(mountZero(tilt), tilt)
+assert.deepEqual([[], null, [1, 0, 0], [2, 0, 0, 0], [NaN, 0, 0, 1]].map(mountZero), [null, null, null, null, null])
+console.log("IMU belly and upside down mounts: wing zero, golden poses, rotation signs, vectors, frame guards and reference passed")

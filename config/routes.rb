@@ -108,6 +108,7 @@ Rails.application.routes.draw do
       get "recorder-connections", to: "recorder_connections#index"
       resource :signal_recorder_assignment, only: :create, path: "signal-recorder-assignment"
       resources :imu_checks, only: %i[index create], path: "imu-checks"
+      resource :imu_zero, only: %i[create destroy], path: "imu-zero"
       resource :fdr_registration, only: %i[show create], path: "fdr-registration"
       resource :fdr_live_telemetry, controller: "fdr_live_telemetry", only: :create, path: "fdr-live-telemetry"
       resource :fdr_sillage_heartbeat, only: :create, path: "fdr-sillage-heartbeat"

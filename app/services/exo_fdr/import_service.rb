@@ -192,6 +192,8 @@ module ExoFdr
           sample = sensor_sample("IMU:#{record['sensor']}", record, recorded_at, elapsed, %w[accuracy frame_id coordinate_frame x y z w]).merge(provenance(record, recording, blob))
           profile = imu_mount_profile_for(recorded_at)
           sample[:readings]["mount_profile"] = profile if profile
+          zero = imu_installation_for(recorded_at)&.assembly&.imu_zero_at(recorded_at) if profile
+          sample[:readings]["mount_zero"] = zero if zero
           sensors << sample
         when "airspeed"
           sensors << sensor_sample("AIRSPEED", record, recorded_at, elapsed,
@@ -238,13 +240,16 @@ module ExoFdr
 
     def imu_mount_profile_for(recorded_at)
       return unless recorded_at && @flight_import.device_id.present?
+      imu_installation_for(recorded_at)&.assembly&.imu_mount_profile_at(recorded_at) || Imu::Mount::NATIVE
+    end
+
+    def imu_installation_for(recorded_at)
       # Fetch installation history once; large imports must not query per sample.
       @imu_mount_installations ||= begin
         controller = EmbeddedController.find_by(device_id: @flight_import.device_id)
         controller&.part&.part_installations&.includes(:assembly)&.recent&.to_a || []
       end
-      installation = @imu_mount_installations.find { |row| row.installed_at <= recorded_at && (!row.removed_at || row.removed_at > recorded_at) }
-      installation&.assembly&.imu_mount_profile_at(recorded_at) || Imu::Mount::NATIVE
+      @imu_mount_installations.find { |row| row.installed_at <= recorded_at && (!row.removed_at || row.removed_at > recorded_at) }
     end
 
     def provenance(record, recording, blob)

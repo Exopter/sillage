@@ -82,6 +82,10 @@ class EmbeddedController < ApplicationRecord
     (at ? assembly_at(at) : assembly)&.imu_mount_profile_at(at) || Imu::Mount::NATIVE
   end
 
+  def imu_zero(at: nil)
+    (at ? assembly_at(at) : assembly)&.imu_zero_at(at)
+  end
+
   def assembly_at(time)
     fdr_board_installations.covering(time).recent.first&.assembly ||
       (part&.assembly_at(time) unless fdr_board_installations.exists?)

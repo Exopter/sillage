@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection, observeRecorderConnection } from "aircraft_connection"
 import { clamp, signalLayoutPreset, parseSignalLayout } from "signal_layout"
 import { ImuHealth } from "imu_health"
-import { NATIVE_MOUNT, interpretImu, mountName } from "imu_mount"
+import { NATIVE_MOUNT, interpretImu, mountName, mountZero } from "imu_mount"
 import { SignalTelemetry, groundStationHeartbeat, seatModeCommand } from "signal_telemetry"
 import { directTelemetryPort, parkTelemetryLink, claimTelemetryLink, closeTelemetryLink } from "signal_transport"
 import { resolveRadioIdentity } from "signal_radio_link"
@@ -41,6 +41,7 @@ const CHART_WINDOW_MS = 30_000
  * @property {HTMLElement} preflightStatusTarget
  * @property {string} flightIdValue
  * @property {Record<string,string>} mountProfilesValue
+ * @property {Record<string,number[]|null>} mountZerosValue
  * @property {HTMLElement} mountLabelTarget
  * @property {boolean} hasMountLabelTarget
  * @property {HTMLElement[]} sensorAxesTargets
@@ -178,6 +179,8 @@ export default class extends TypedController {
   miniSizes = new Map()
   /** @type {Record<string,string>} */
   mountProfileOverrides = {}
+  /** @type {Record<string, number[]|null>} */
+  mountZeroOverrides = {}
   /** An open link set aside while a flight starts or ends, so it is never reconnected.
    * @type {import("signal_transport").TelemetryLink|null} */
   parkedLink = null
@@ -252,6 +255,7 @@ export default class extends TypedController {
     recorderDeviceId: String,
     recorderAssemblyId: Number,
     mountProfiles: Object,
+    mountZeros: Object,
     flightCode: String,
     flightId: String,
     batchUrl: String,
@@ -737,7 +741,7 @@ export default class extends TypedController {
     this.imuHealth.apply(decoded, now)
     if (decoded.name === "imu_quality") observeRecorderConnection(this.connectionKind, decoded, now)
     if (this.imuHealth.generation !== generation) this.measurements = new SignalTelemetry()
-    this.measurements.apply(interpretImu(decoded, this.activeMountProfile), now)
+    this.measurements.apply(interpretImu(decoded, this.activeMountProfile, this.activeMountZero), now)
     this.telemetry = this.measurements.snapshot(now)
     if (this.standby) return
     const recordedAt = new Date(Number(BigInt(frame.receivedAtUs) / 1000n)).toISOString()
@@ -825,7 +829,12 @@ export default class extends TypedController {
   sensorSample(recordedAt, sensorType, readings) {
     const source = this.imuHealth.quality?.deviceId
     return { kind: "sensor", sensor_type: sensorType, recorded_at: recordedAt,
-      readings: source ? {...readings, mount_profile: this.activeMountProfile, device_id: source} : readings }
+      readings: source ? {...readings, mount_profile: this.activeMountProfile, ...(this.activeMountZero ? {mount_zero: this.activeMountZero} : {}), device_id: source} : readings }
+  }
+
+  get activeMountZero() {
+    const id = this.imuHealth.quality?.deviceId
+    return id ? mountZero(id in this.mountZeroOverrides ? this.mountZeroOverrides[id] : this.mountZerosValue?.[id]) : null
   }
 
   get activeMountProfile() {
@@ -853,7 +862,7 @@ export default class extends TypedController {
   renderValues() {
     this.renderQuality()
     if (this.hasMountLabelTarget) this.mountLabelTarget.textContent = this.imuHealth.quality
-      ? `${mountName(this.activeMountProfile)} · MAG`
+      ? `${mountName(this.activeMountProfile)}${this.activeMountZero ? " · wing zero" : ""} · MAG`
       : "Waiting for recorder mounting"
     for (const target of this.sensorAxesTargets || []) target.textContent = this.telemetry.bodyFrame ? "F/R/D" : "X/Y/Z"
     this.airspeedTarget.textContent = formatNumber(this.telemetry.airspeed, 1)
@@ -979,8 +988,9 @@ export default class extends TypedController {
       const locallyInvalidated = result?.preflight && await readMetadata(this.database, `imu-check:${result.preflight.id}:invalidated`)
       const current = this.imuHealth.quality
       if (connection !== this.connectionGeneration || !current || `${current.deviceId}/${current.bootId}/${current.imuEpoch}/${current.firmware}` !== key) return
-      if (result?.mount_profile && result.mount_profile !== this.activeMountProfile) {
+      if (result?.mount_profile && (result.mount_profile !== this.activeMountProfile || JSON.stringify(mountZero(result.mount_zero)) !== JSON.stringify(this.activeMountZero))) {
         this.mountProfileOverrides[current.deviceId] = result.mount_profile
+        this.mountZeroOverrides[current.deviceId] = mountZero(result.mount_zero)
         this.measurements = new SignalTelemetry()
       }
       if (result?.preflight?.id !== this.preflight?.id) this.preflightInvalidated = false

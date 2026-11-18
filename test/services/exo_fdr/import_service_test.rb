@@ -168,6 +168,9 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
     travel_to Time.utc(2026, 7, 28) do
       original.update!(imu_mount_profile: Imu::Mount::BELLY)
     end
+    travel_to Time.utc(2026, 7, 28, 12) do
+      original.record_imu_zero!({ "quaternion" => [ 1, 0, 0, 0 ], "roll" => 0.0, "pitch" => 0.0 }, user: users(:julien))
+    end
     travel_to Time.utc(2026, 7, 30) do
       original.update!(imu_mount_profile: Imu::Mount::NATIVE)
     end
@@ -198,6 +201,9 @@ class ExoFdr::ImportServiceTest < ActiveSupport::TestCase
     assert_equal [ flight.started_at, flight.started_at + 7 ], flight.sensor_samples.ordered.pluck(:recorded_at)
     assert_equal [ Imu::Mount::BELLY ], flight.sensor_samples.map { |s| s.readings["mount_profile"] }.uniq,
       "SD import resolves the capture-time mounting and installation, not the current assembly or profile"
+    assert_equal [ [ 1, 0, 0, 0 ] ], flight.sensor_samples.map { |s| s.readings["mount_zero"] }.uniq,
+      "SD import tags samples with the wing zero active at capture time"
+    assert_nil original.reload.imu_zero_at, "returning to native axes ended the zero"
     assert_equal 7, flight.duration_seconds
     assert_equal original.serial_number, flight_import.details.dig("files", 0, "recorder_identity", "assembly", "serial_number")
     assert_equal "ECU-ABC123", flight_import.details.dig("files", 0, "recorder_identity", "device_id")

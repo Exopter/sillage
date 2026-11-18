@@ -7,7 +7,7 @@ const source = (await readFile(new URL('../../app/javascript/controllers/imu_che
   .replace(/^const Base = .*$/m,'const Base = class {}')
 const healthURL = new URL('../../app/javascript/lib/imu_health.js',import.meta.url).href
 const identityURL = new URL('../../app/javascript/lib/recorder_identity.js',import.meta.url).href
-const {default: Guide} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountName, mountedReference} from "${mountURL}";\nimport {ImuHealth, SixFaceCapture, ReferenceCapture, imuQualityLabel, FACE_NAMES, FACE_HOLD_RULES, referenceIssue} from '${healthURL}';\nimport {recorderTechnicalLabel} from '${identityURL}';\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString('base64')}`)
+const {default: Guide} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountName, mountZero, mountedReference} from "${mountURL}";\nimport {ImuHealth, SixFaceCapture, ReferenceCapture, imuQualityLabel, FACE_NAMES, FACE_HOLD_RULES, referenceIssue} from '${healthURL}';\nimport {recorderTechnicalLabel} from '${identityURL}';\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString('base64')}`)
 function makeGuide() {
  const guide = new Guide()
  for(const name of ['attitude','heading','qualityReason','actionButton','title','instruction','progress','result','connectButton']) guide[`${name}Target`]={textContent:'',dataset:{},value:0}
@@ -209,5 +209,47 @@ flipped.health.sample=()=>({t:now,roll:180,pitch:0,quaternion:[0,Math.SQRT1_2,Ma
 flipped.tick()
 assert.match(flipped.resultTarget.textContent,/0.00° roll/)
 assert.equal(flipped.samples[0].roll,180,'upside down evidence stays native')
+const zeroGuide=makeGuide()
+zeroGuide.mountProfileValue='upside_down_v1'; zeroGuide.zeroValue=[]
+for(const name of ['zeroButton','zeroClearButton','zeroStatus','zeroLive']) zeroGuide[`${name}Target`]={textContent:'',disabled:false,hidden:false}
+zeroGuide.hasZeroButtonTarget=true
+zeroGuide.port={}; feed(zeroGuide)
+const tiltedSample=()=>({t:now,roll:176,pitch:0,quaternion:[0,Math.SQRT1_2,Math.SQRT1_2,0],accel:[0,0,-9.80665],gyro:[0,0,0],mag:[20,0,25],accuracy:[3,0,3,3],heading_accuracy:3,quality_age:10})
+zeroGuide.health.sample=tiltedSample
+const zeroRequests=[]
+const zeroFetch=globalThis.fetch, zeroDocument=globalThis.document
+globalThis.document={querySelector:()=>null}
+globalThis.fetch=async(url,options)=>{zeroRequests.push({url,options}); return {ok:true,json:async()=>options.method==='DELETE'?{zero:null}:{zero:{quaternion:[1,0,0,0],roll:0,pitch:0}}}}
+zeroGuide.tick()
+assert.equal(zeroGuide.zeroButtonTarget.disabled,false,'the zero needs fresh measurements only, not the calibration procedure')
+assert.equal(zeroGuide.zeroClearButtonTarget.hidden,true)
+assert.match(zeroGuide.zeroLiveTarget.textContent,/roll 0\.0° · pitch 0\.0° in the mounting/)
+assert.equal(zeroGuide.levelZero,null,'the calibration reference ignores the zero')
+zeroGuide.setZero()
+for(let step=0;step<=20;step++){now+=100;zeroGuide.tick()}
+await new Promise(resolve=>setTimeout(resolve,0))
+assert.equal(zeroRequests.length,1)
+assert.equal(zeroRequests[0].url,'/api/v1/imu-zero')
+const zeroBody=JSON.parse(zeroRequests[0].options.body)
+assert.equal(zeroBody.mount_profile,'upside_down_v1')
+assert.ok(zeroBody.samples.length>=10&&zeroBody.samples.every(row=>row.quaternion.length===4&&row.accel.length===3&&row.gyro.length===3))
+assert.deepEqual(zeroGuide.zeroValue,[1,0,0,0])
+assert.match(zeroGuide.zeroStatusTarget.textContent,/Zero set just now/)
+assert.equal(zeroGuide.phase,'ready','setting the zero does not start the calibration procedure')
+zeroGuide.tick()
+assert.equal(zeroGuide.zeroClearButtonTarget.hidden,false)
+assert.match(zeroGuide.zeroLiveTarget.textContent,/from the wing zero/)
+zeroGuide.setZero(); now+=100; zeroGuide.health.sample=()=>null; zeroGuide.tick()
+assert.match(zeroGuide.zeroStatusTarget.textContent,/interrupted/)
+assert.equal(zeroRequests.length,1,'an interrupted measurement saves nothing')
+zeroGuide.health.sample=tiltedSample
+zeroGuide.clearZero()
+await new Promise(resolve=>setTimeout(resolve,0))
+assert.equal(zeroRequests[1].options.method,'DELETE')
+assert.deepEqual(zeroGuide.zeroValue,[])
+zeroGuide.kindValue='preflight'; zeroGuide.zeroValue=[1,0,0,0]
+assert.deepEqual(zeroGuide.levelZero,[1,0,0,0])
+assert.match(zeroGuide.levelInstruction,/Lay the wing flat/)
+globalThis.fetch=zeroFetch; globalThis.document=zeroDocument
 Date.now=originalNow
 console.log('IMU recorder identity, freshness, disconnect, save guards, diagnostic recovery and reset tests passed')

@@ -104,6 +104,68 @@ class ImuChecksFlowTest < ActionDispatch::IntegrationTest
     assert_not Imu::Assessment.call(@samples.as_json, mount_profile: Imu::Mount::UPSIDE_DOWN)["passed"], "upright sensor is inverted relative to the flight mounting"
   end
 
+  test "a wing zero is set without a calibration and defines the preflight level" do
+    assembly = create_exofdr_assembly
+    FdrIdentity::BindBoard.new(assembly:, controller: @fdr).call
+    assembly.update!(imu_mount_profile: Imu::Mount::UPSIDE_DOWN)
+    get calibration_forge_fdr_path(assembly.serial_number)
+    assert_select "[data-imu-check-target=zeroStatus]", /No wing zero set/
+    assert_select "button[data-action='imu-check#setZero']"
+    assert_select "button[data-action='imu-check#clearZero'][hidden]"
+
+    # Upside down IMU tilted 4 degrees in roll while the wing lies flat, heading north.
+    half = Math.sqrt(0.5)
+    roll = 4 * Math::PI / 360
+    tilted = Imu::Mount.multiply([ 0, -half, -half, 0 ], [ Math.cos(roll), Math.sin(roll), 0, 0 ])
+    gravity = [ 0, -9.80665 * Math.sin(2 * roll), -9.80665 * Math.cos(2 * roll) ]
+    zero_payload = { expected_device_id: @fdr.device_id, device_id: @fdr.device_id, firmware: "fdr_integrated/56",
+      mount_profile: Imu::Mount::UPSIDE_DOWN, samples: Array.new(20) { { quaternion: tilted, accel: gravity, gyro: [ 0, 0, 0 ] } } }
+    @samples.each { |s| s.merge!(roll: 176, pitch: 0, quaternion: tilted, accel: gravity) }
+    post api_v1_imu_checks_path, params: @payload.merge(mount_profile: Imu::Mount::UPSIDE_DOWN), as: :json
+    assert_equal "failed", response.parsed_body["outcome"], "the calibration reference stays in the mounting frame"
+    @samples.each { |s| s.merge!(roll: 180, quaternion: [ 0, half, half, 0 ], accel: [ 0, 0, -9.80665 ]) }
+    post api_v1_imu_checks_path, params: @payload.merge(uuid: SecureRandom.uuid, mount_profile: Imu::Mount::UPSIDE_DOWN), as: :json
+    assert_equal "passed", response.parsed_body["outcome"]
+
+    post api_v1_imu_zero_path, params: zero_payload.merge(mount_profile: Imu::Mount::BELLY), as: :json
+    assert_response :unprocessable_entity
+    post api_v1_imu_zero_path, params: zero_payload.merge(device_id: "ECU-DEF456"), as: :json
+    assert_response :not_found
+    assert_no_difference "ImuCheck.count" do
+      post api_v1_imu_zero_path, params: zero_payload, as: :json
+    end
+    assert_response :created
+    zero = response.parsed_body.dig("zero", "quaternion")
+    assert_in_delta 4, response.parsed_body.dig("zero", "roll"), 1e-6
+    assert_equal zero, assembly.reload.imu_zero_at
+    assert ImuCheck.reference_for(@fdr.reload, firmware: @payload[:firmware]), "the calibration reference remains valid"
+    get calibration_forge_fdr_path(assembly.serial_number)
+    assert_select "[data-imu-check-target=zeroStatus]", /Zero set .* installed tilt 4\.0° roll/m
+    assert_select "button[data-action='imu-check#clearZero']:not([hidden])"
+    get hangar_assembly_path(assembly)
+    assert_select "dd", /Wing zero · 4\.0° roll/
+
+    preflight = @payload.merge(kind: "preflight", flight_id: @flight.id, mount_profile: Imu::Mount::UPSIDE_DOWN)
+    @samples.each { |s| s.merge!(roll: 176, quaternion: tilted, accel: gravity) }
+    post api_v1_imu_checks_path, params: preflight.merge(uuid: SecureRandom.uuid), as: :json
+    assert_response :unprocessable_entity
+    assert_match(/IMU zero changed/, response.parsed_body["error"])
+    post api_v1_imu_checks_path, params: preflight.merge(uuid: SecureRandom.uuid, mount_zero: zero), as: :json
+    assert_response :created
+    assert_equal "passed", response.parsed_body["outcome"], response.parsed_body.dig("summary", "reason")
+    assert_in_delta 0, response.parsed_body.dig("summary", "roll_mean"), 1e-6
+    get api_v1_imu_checks_path, params: { device_id: @fdr.device_id, firmware: @payload[:firmware], flight_id: @flight.id }
+    assert_equal zero, response.parsed_body["mount_zero"]
+    assert response.parsed_body["preflight"]
+
+    delete api_v1_imu_zero_path, params: { device_id: @fdr.device_id }, as: :json
+    assert_response :success
+    assert_nil assembly.reload.imu_zero_at
+    get api_v1_imu_checks_path, params: { device_id: @fdr.device_id, firmware: @payload[:firmware], flight_id: @flight.id }
+    assert_nil response.parsed_body["preflight"], "a preflight measured against another zero is stale"
+    assert response.parsed_body["reference"]
+  end
+
   test "preflight requires a matching reference and belongs to the signed-in user" do
     post api_v1_imu_checks_path, params: @payload.merge(kind: "preflight", flight_id: @flight.id), as: :json
     assert_response :unprocessable_entity
