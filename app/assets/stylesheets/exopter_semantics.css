@@ -126,7 +126,7 @@
   --status-live-text: var(--ex-state-live-text); /* @kind color */
   --status-caution-text: var(--ex-state-caution-text); /* @kind color */
   --status-fault-text: var(--ex-state-fault-text); /* @kind color */
-  --status-onair-text: var(--ex-state-onair-text); /* @kind color */
+  --status-nominal-text: var(--ex-state-nominal-text); /* @kind color */
   --status-info-text: #1668a8; /* @kind color */
   --surface-selected: rgba(98, 102, 74, 0.08);
   --selection-marker: var(--ex-khaki-600); /* @kind color */
@@ -180,7 +180,7 @@
   --status-live-text: var(--ex-khaki-300); /* @kind color */
   --status-caution-text: var(--ex-amber-500); /* @kind color */
   --status-fault-text: #ff8b83; /* @kind color */
-  --status-onair-text: #ff6b61; /* @kind color */
+  --status-nominal-text: var(--ex-nominal-500); /* @kind color */
   --status-info-text: #91cfff; /* @kind color */
   --ex-sky-100: #102936;
   --surface-selected: rgba(181, 185, 154, 0.10);
@@ -207,8 +207,14 @@
   :root { --control-h: 44px; }
 }
 
-/* On-air treatment: anything broadcasting live or recording glows red and breathes. */
-@keyframes ex-onair-breathe {
-  0%, 100% { box-shadow: var(--ex-shadow-onair); }
-  50% { box-shadow: var(--ex-shadow-onair-peak); }
+/* Running treatment: a live session or an active recorder is nominal, so it glows green. */
+@keyframes ex-nominal-breathe {
+  0%, 100% { box-shadow: var(--ex-shadow-nominal); }
+  50% { box-shadow: var(--ex-shadow-nominal-peak); }
+}
+
+/* Open microphone: the one confirmed exception that uses red outside alerting. */
+@keyframes ex-openmic-breathe {
+  0%, 100% { box-shadow: var(--ex-shadow-openmic); }
+  50% { box-shadow: var(--ex-shadow-openmic-peak); }
 }

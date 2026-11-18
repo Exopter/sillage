@@ -823,7 +823,9 @@ export default class extends TypedController {
     // SiK can repeat RF statistics after Air telemetry is lost.
     const report = this.connectionKind === "ground-radio" && live && this.port && !this.ended ? this.telemetry.radio : null
     const state = this.ended ? "Ended" : !this.port ? "Offline" : this.connectionKind !== "ground-radio" ? "No SiK radio" : !live ? "No telemetry" : "Unavailable"
-    window.dispatchEvent(new CustomEvent("sillage:radio-quality", {detail: {report, state, now}}))
+    // Telemetry that was flowing and stopped is a lost link, not an idle one.
+    const lost = state === "No telemetry" && Boolean(this.lastFrameAt)
+    window.dispatchEvent(new CustomEvent("sillage:radio-quality", {detail: {report, state, lost, now}}))
   }
 
   /** @param {string} recordedAt @param {string} sensorType @param {import("../types/signal").DecodedMessage} readings @returns {import("../types/signal").SignalSample} */

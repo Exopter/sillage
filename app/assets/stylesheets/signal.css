@@ -237,10 +237,10 @@
 .signal-live-badge {
   margin-left: auto;
   padding: 4px 7px;
-  border: 1px solid var(--ex-onair-500);
+  border: 1px solid var(--ex-nominal-500);
   border-radius: var(--ex-radius-surface);
-  box-shadow: var(--ex-shadow-onair-soft);
-  color: var(--status-onair-text);
+  box-shadow: var(--ex-shadow-nominal-soft);
+  color: var(--status-nominal-text);
   font: 600 var(--fs-micro)/1 var(--font-mono);
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -987,8 +987,8 @@
 }
 
 .signal-fdr-recording-control[data-state="on"] {
-  border-left-color: var(--ex-onair-500);
-  background: color-mix(in srgb, var(--ex-state-onair-bg) 70%, var(--surface-card));
+  border-left-color: var(--ex-nominal-500);
+  background: color-mix(in srgb, var(--ex-state-nominal-bg) 70%, var(--surface-card));
 }
 
 .signal-fdr-recording-control[data-state="paused"],
@@ -1089,10 +1089,10 @@
 }
 
 .signal-fdr-recording-control[data-state="on"] .signal-fdr-recording-switch[aria-checked="true"] .signal-fdr-recording-switch-track {
-  border-color: var(--ex-onair-500);
-  background: var(--ex-onair-500);
-  box-shadow: var(--ex-shadow-onair);
-  animation: ex-onair-breathe 2s var(--ease-in-out) infinite;
+  border-color: var(--ex-nominal-500);
+  background: var(--ex-nominal-500);
+  box-shadow: var(--ex-shadow-nominal);
+  animation: ex-nominal-breathe 2s var(--ease-in-out) infinite;
 }
 
 .signal-fdr-recording-control[data-state="on"] .signal-fdr-recording-switch[aria-checked="true"] .signal-fdr-recording-switch-thumb {
@@ -1102,7 +1102,7 @@
 .signal-fdr-recording-control[data-state="on"] .signal-fdr-recording-switch-track::after {
   position: absolute;
   inset: -3px;
-  border: 1px solid var(--ex-onair-500);
+  border: 1px solid var(--ex-nominal-500);
   border-radius: inherit;
   animation: signal-fdr-recording-pulse 1.8s var(--ease-out) infinite;
   content: "";
