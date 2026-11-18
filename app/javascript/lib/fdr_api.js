@@ -183,3 +183,19 @@ export function identityProvisioning(value) {
   }
   return {command: payload.command, signature: payload.signature}
 }
+
+/** @param {import("./fdr_sync_protocol").BleWifiClient} client
+ * @param {{command:string,signature:string}} identity
+ * @param {string} deviceId @param {string} registrationUrl */
+export async function provisionRecorderName(client, identity, deviceId, registrationUrl) {
+  await client.configureIdentity(identity)
+  const stored = await client.readIdentity()
+  if (stored.commandHex !== identity.command) throw new Error("The name read from the recorder differs from its assigned name.")
+  const response = await fetch(registrationUrl, {
+    method: "PATCH", credentials: "same-origin",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "" },
+    body: JSON.stringify({ device_id: deviceId, observed_identity: stored.commandHex }),
+    signal: AbortSignal.timeout(5000)
+  })
+  if (!response.ok) throw new Error("Sillage could not confirm the name read from the board.")
+}

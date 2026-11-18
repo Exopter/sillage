@@ -109,7 +109,7 @@ Rails.application.routes.draw do
       resource :signal_recorder_assignment, only: :create, path: "signal-recorder-assignment"
       resources :imu_checks, only: %i[index create], path: "imu-checks"
       resource :imu_zero, only: %i[create destroy], path: "imu-zero"
-      resource :fdr_registration, only: %i[show create], path: "fdr-registration"
+      resource :fdr_registration, only: %i[show create update], path: "fdr-registration"
       resource :fdr_live_telemetry, controller: "fdr_live_telemetry", only: :create, path: "fdr-live-telemetry"
       resource :fdr_sillage_heartbeat, only: :create, path: "fdr-sillage-heartbeat"
       resources :fdr_sillage_heartbeats, only: :index, path: "fdr-sillage-heartbeats"

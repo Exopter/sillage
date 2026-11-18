@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_18_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_18_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -122,6 +122,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_110000) do
     t.datetime "installed_at", null: false
     t.datetime "removed_at"
     t.datetime "updated_at", null: false
+    t.string "confirmed_name"
     t.index ["assembly_id"], name: "index_fdr_board_installations_on_assembly_id"
     t.index ["assembly_id"], name: "one_active_board_per_fdr", unique: true, where: "(removed_at IS NULL)"
     t.index ["embedded_controller_id"], name: "index_fdr_board_installations_on_embedded_controller_id"

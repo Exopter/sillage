@@ -725,8 +725,7 @@ await assert.rejects(importClient.controlImport(1, 277, 42), /rejected this sele
   assert.ok(Date.now() - started < protocol.USB_PORT_RELEASE_TIMEOUT_MS + 1000)
 }
 
-// A module on the distributed tunnel firmware prints diagnostics and never answers.
-// Lines captured from the Seat module on 2026-11-16: the operator is told so in seconds.
+// Console text gives context at the handshake deadline, including on an EXS1-capable Seat.
 {
   const consoleText = "SD logger: committed batch bytes=4020 records=47 durable=41902\nDIST channel=6 send_error=ESP_OK\nDIST delivered=2458 delivery_failed=53\nDIST group_connected=1 group_time_us=152991251\nLED state=1 mode=4 local_us=260001487 group_us=260001474\n"
   let open = true
@@ -736,11 +735,22 @@ await assert.rejects(importClient.controlImport(1, 277, 42), /rejected this sele
   }, cancel() { open = false } })
   const tunnel = new protocol.UsbFdrClient({ readable, writable: new WritableStream(), open: async () => {}, close: async () => {} })
   const began = Date.now()
-  const failure = await tunnel.connect().then(() => null, error => error)
-  assert.match(failure.message, /distributed tunnel firmware, which has no USB-C control/)
-  assert.equal(failure.usbConnectionTimedOut, undefined, "a board that only prints text is not retried")
-  assert.ok(Date.now() - began < protocol.USB_CONNECTION_TIMEOUT_MS / 2)
+  const failure = await tunnel.connect({ timeoutMs: 600 }).then(() => null, error => error)
+  assert.match(failure.message, /sent diagnostics/)
+  assert.equal(failure.usbConnectionTimedOut, true)
+  assert.ok(Date.now() - began >= 600)
   assert.match(protocol.formatUsbErrorDetails(failure), /no EXS1 answer · .*DIST/)
+}
+// The USB identity readback contains the exact signed command body, including the installation revision.
+{
+  const stored = Uint8Array.from({ length: 41 }, (_, index) => index)
+  const client = new protocol.UsbWifiClient({
+    async wifi(request) {
+      assert.deepEqual([...request], [1, 12])
+      return Uint8Array.of(1, 0x86, 0, ...stored)
+    }
+  })
+  assert.equal((await client.readIdentity()).commandHex, Buffer.from(stored).toString("hex"))
 }
 console.log("FDR synchronization protocol tests passed")
 

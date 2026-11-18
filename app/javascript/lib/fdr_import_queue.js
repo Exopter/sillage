@@ -318,7 +318,7 @@ export class FdrImportQueue {
         if (manifest.state === 0 || manifest.state === 3) break
         if (manifest.state === 4) { this.notice(`${manifest.filename}: preparation failed; retained on the microSD.`); continue }
         callbacks.progress(manifest, 0)
-        if (manifest.state === 1) { this.notice(`Preparing ${manifest.filename}…`); await wait(50); continue }
+        if (manifest.state === 1) { this.notice(`Preparing ${manifest.filename}…`); await wait(500); continue }
         const partial = await PartialFdrFile.open(device.deviceId, manifest)
         const interrupted = () => epoch !== this.epoch || !callbacks.active()
         const abort = new AbortController()

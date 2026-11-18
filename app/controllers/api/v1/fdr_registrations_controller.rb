@@ -23,6 +23,20 @@ module Api
         render json: { error: error.record.errors.full_messages.to_sentence }, status: :unprocessable_entity
       end
 
+      def update
+        recorder = EmbeddedController.find_by!(device_id: device_id)
+        installation = recorder.fdr_board_installations.active.first
+        return head :conflict unless installation
+
+        installation.with_lock do
+          expected = FdrIdentity::NameProvisioning.payload(recorder)
+          return head :conflict unless installation.removed_at.nil? && expected && expected[:command] == params.require(:observed_identity)
+
+          installation.update!(confirmed_name: installation.assembly.serial_number) unless installation.confirmed_name == installation.assembly.serial_number
+        end
+        head :no_content
+      end
+
       private
 
       def device_id

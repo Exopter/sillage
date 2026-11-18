@@ -30,8 +30,6 @@ export const USB_HELLO_RESEND_MS = 800
 // A recorder that is not reading must not fill its small USB receive buffer: a blocked write keeps the port from closing.
 export const USB_HELLO_RESENDS = 2
 export const USB_SECURITY_TIMEOUT_MS = 8_000
-// A board that streams this much text and no EXS1 frame within this delay runs firmware without USB control.
-export const USB_TEXT_ONLY_AFTER_MS = 3_000
 export const USB_TEXT_ONLY_MIN_BYTES = 256
 // ExoFDR boards enumerate under Espressif or Seeed. The port chooser lists only these.
 export const USB_FDR_PORT_FILTERS = Object.freeze([{ usbVendorId: 0x303a }, { usbVendorId: 0x2886 }])
@@ -54,7 +52,6 @@ export const USB_PORT_RELEASE_TIMEOUT_MS = 2_000
  *   usbConnectionAttempts?: number,
  *   timeoutMs?: number,
  *   usbConnectionStage?: "opening" | "handshake",
- *   usbTextOnlyFirmware?: boolean,
  *   technicalDetails?: string,
  *   usbConnectionLost?: boolean,
  *   usbSyncInterrupted?: boolean,
@@ -134,7 +131,8 @@ export const WifiCommand = Object.freeze({
   COMMIT_UPDATE: 7,
   CANCEL_UPDATE: 8,
   SET_SILLAGE: 9,
-  GET_SILLAGE: 10
+  GET_SILLAGE: 10,
+  GET_IDENTITY: 12
 })
 
 export const WifiResponse = Object.freeze({
@@ -143,6 +141,7 @@ export const WifiResponse = Object.freeze({
   SCAN_RESULT: 0x83,
   ACK: 0x84,
   SILLAGE: 0x85,
+  IDENTITY: 0x86,
   ERROR: 0xff
 })
 
@@ -256,27 +255,21 @@ export class UsbFdrClient {
     const timeout = new Promise((_, reject) => {
       timeoutId = globalThis.setTimeout(() => {
         timedOut = true
+        const reader = this.frameReader
+        const error = usbConnectionTimeoutError(stage, timeoutMs, attempt, attempts)
+        if (reader && !reader.frames && reader.received >= USB_TEXT_ONLY_MIN_BYTES) {
+          error.message = "The board sent diagnostics but did not answer the USB-C handshake. Keep it connected and retry."
+          error.technicalDetails = reader.preamble.trim().split("\n").slice(-3).join(" | ").slice(0, 300)
+        }
         void this.close()
-        reject(usbConnectionTimeoutError(stage, timeoutMs, attempt, attempts))
+        reject(error)
       }, timeoutMs)
     })
 
-    let textOnlyId
-    const textOnly = new Promise((_, reject) => {
-      textOnlyId = globalThis.setTimeout(() => {
-        const reader = this.frameReader
-        if (!reader || reader.frames || reader.received < USB_TEXT_ONLY_MIN_BYTES) return
-        timedOut = true
-        void this.close()
-        reject(usbTextOnlyFirmwareError(reader.preamble))
-      }, USB_TEXT_ONLY_AFTER_MS)
-    })
-
     try {
-      return await Promise.race([connection, timeout, textOnly])
+      return await Promise.race([connection, timeout])
     } finally {
       globalThis.clearTimeout(timeoutId)
-      globalThis.clearTimeout(textOnlyId)
     }
   }
 
@@ -606,18 +599,6 @@ function usbConnectionTimeoutError(stage, timeoutMs, attempt, attempts) {
   return error
 }
 
-/** @param {string} preamble Text the board printed instead of answering. */
-function usbTextOnlyFirmwareError(preamble) {
-  const tunnel = /\bDIST \w+=/.test(preamble)
-  const error = /** @type {FdrProtocolError} */ (new Error(tunnel
-    ? "This module runs the distributed tunnel firmware, which has no USB-C control: it only prints diagnostics and keeps recording. Sillage cannot identify, authenticate or synchronize it over USB-C. Its recordings stay on the microSD card."
-    : "This board prints diagnostic text and does not answer Sillage over USB-C. Its firmware has no USB-C control, or another firmware is installed."))
-  error.usbConnectionStage = "handshake"
-  error.usbTextOnlyFirmware = true
-  error.technicalDetails = preamble.split("\n").filter((line) => line.trim()).slice(-3).join(" | ").slice(0, 300)
-  return error
-}
-
 /**
  * @param {number} type
  * @param {number} timeoutMs
@@ -934,6 +915,11 @@ export function parseWifiResponse(value) {
     }
   }
 
+  if (type === WifiResponse.IDENTITY) {
+    dataView(bytes, 44, "stored recorder identity")
+    return { type, commandHex: Array.from(bytes.slice(3), byte => byte.toString(16).padStart(2, "0")).join("") }
+  }
+
   if (type === WifiResponse.ACK) {
     const view = dataView(bytes, 8, "Wi-Fi acknowledgement")
     return { type, command: view.getUint8(3), revision: view.getUint32(4, true) }
@@ -1068,6 +1054,10 @@ export class BleWifiClient {
     payload.set([1, 11])
     for (let index = 0; index < hex.length; index += 2) payload[2 + index / 2] = Number.parseInt(hex.slice(index, index + 2), 16)
     return this.request(payload, WifiResponse.ACK)
+  }
+
+  readIdentity() {
+    return this.request(encodeWifiCommand(WifiCommand.GET_IDENTITY), WifiResponse.IDENTITY)
   }
 
   sillage() {
@@ -1224,9 +1214,9 @@ export function parseUsbDeviceError(payload) {
 /** @param {FdrProtocolError} error */
 export function formatUsbErrorDetails(error) {
   if (error?.usbConnectionTimedOut) {
+    if (error.technicalDetails) return `Web Serial · no EXS1 answer · ${error.technicalDetails}`
     return `Web Serial · ${error.usbConnectionStage} · attempt ${error.usbConnectionAttempt}/${error.usbConnectionAttempts}`
   }
-  if (error?.usbTextOnlyFirmware) return `Web Serial · no EXS1 answer · ${error.technicalDetails || "text output"}`
   if (!Number.isInteger(error?.recorderCode)) return ""
   const errorName = enumName(UsbErrorCode, error.recorderCode) || "UNKNOWN_ERROR"
   const requestName = enumName(UsbMessage, error.recorderRequestType) || "UNKNOWN_REQUEST"

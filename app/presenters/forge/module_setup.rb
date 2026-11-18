@@ -79,7 +79,10 @@ module Forge
     end
 
     def name_confirmed?
-      assembly.present? && controller&.signal_presence&.status&.dig("identity", "name") == assembly.serial_number
+      return false unless assembly && controller
+      installation = assembly.active_fdr_board_installation
+      (installation&.embedded_controller_id == controller.id && installation&.confirmed_name == assembly.serial_number) ||
+        controller.signal_presence&.status&.dig("identity", "name") == assembly.serial_number
     end
 
     def system_settled?

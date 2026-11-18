@@ -87,6 +87,21 @@ class FdrUnifiedIdentityTest < ActionDispatch::IntegrationTest
     assert_equal connectivity_forge_fdr_path(@assembly.serial_number), recorder.fetch("connectivity_url")
   end
 
+  test "USB name confirmation requires a readback matching the current board installation" do
+    binding = FdrIdentity::BindBoard.new(assembly: @assembly, controller: @board).call
+    command = FdrIdentity::NameProvisioning.payload(@board).fetch(:command)
+    patch api_v1_fdr_registration_path, params: { device_id: @board.device_id, observed_identity: "00" }
+    assert_response :conflict
+    assert_nil binding.reload.confirmed_name
+    2.times do
+      patch api_v1_fdr_registration_path, params: { device_id: @board.device_id, observed_identity: command }
+      assert_response :no_content
+    end
+    assert_equal @assembly.serial_number, binding.reload.confirmed_name
+    setup = Forge::ModuleSetup.new(assembly: @assembly.reload, controller: @board)
+    assert_equal "done", setup.steps.find { |step| step.key == :name_on_board }.state
+  end
+
   test "FDR pages work before a board has been assigned" do
     [ forge_fdr_path(@assembly.serial_number), parts_forge_fdr_path(@assembly.serial_number),
       files_forge_fdr_path(@assembly.serial_number), calibration_forge_fdr_path(@assembly.serial_number),

@@ -19,7 +19,7 @@ import {
 } from "fdr_wifi_provisioning"
 import { getRecorderSession } from "recorder_session"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
-import { readResponse, registrationPayload } from "fdr_api"
+import { provisionRecorderName, readResponse, registrationPayload } from "fdr_api"
 import { recorderLabel } from "recorder_identity"
 import { AircraftConnectionTransport, setAircraftConnection } from "aircraft_connection"
 
@@ -313,7 +313,7 @@ export default class extends TypedController {
       this.deviceInfo = deviceInfo
       this.wifiClient = new UsbWifiClient(client)
       if (this.usbAuthenticated && (deviceInfo.capabilities & UsbCapability.CANONICAL_NAME) && this.resolvedRecorder?.identity_provisioning) {
-        await this.wifiClient.configureIdentity(this.resolvedRecorder.identity_provisioning)
+        await provisionRecorderName(this.wifiClient, this.resolvedRecorder.identity_provisioning, this.resolvedRecorder.device_id, this.registrationUrlValue)
       }
       this.renderConnection(status, "USB-C")
       this.startUsbKeepalive()
@@ -360,7 +360,7 @@ export default class extends TypedController {
     this.bleAuthenticated = true
     this.wifiClient = new BleWifiClient(wifiCharacteristic)
     if (((this.deviceInfo.capabilities || 0) & BleCapability.CANONICAL_NAME) && this.resolvedRecorder?.identity_provisioning) {
-      await this.wifiClient.configureIdentity(this.resolvedRecorder.identity_provisioning)
+      await provisionRecorderName(this.wifiClient, this.resolvedRecorder.identity_provisioning, this.resolvedRecorder.device_id, this.registrationUrlValue)
     }
     this.renderConnection(parseBleStatus(statusValue), "BLE")
   }

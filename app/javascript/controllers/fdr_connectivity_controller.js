@@ -1,5 +1,5 @@
 import { FdrImportQueue } from "fdr_import_queue"
-import { objectPayload, readResponse, registrationPayload, importReceipt, authenticationHex, authenticationKey, commandSequence, heartbeatPayloads } from "fdr_api"
+import { objectPayload, provisionRecorderName, readResponse, registrationPayload, importReceipt, authenticationHex, authenticationKey, commandSequence, heartbeatPayloads } from "fdr_api"
 import { normalizeSillageHeartbeatStatus, describeWifiUpload, normalizeSillageHeartbeatDiagnostics, sillageHeartbeatIdentity, formatSeenAt } from "fdr_heartbeat"
 import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection, observeRecorderConnection } from "aircraft_connection"
@@ -508,7 +508,12 @@ export default class extends TypedController {
       this.usbDeviceTarget.textContent = "Checking this recorder in Forge"
       await this.refreshRecorderRegistration()
       if (this.usbAuthenticated && (device.capabilities & UsbCapability.CANONICAL_NAME) && this.registeredRecorder?.identity_provisioning) {
-        await new UsbWifiClient(client).configureIdentity(this.registeredRecorder.identity_provisioning)
+        try {
+          await provisionRecorderName(new UsbWifiClient(client), this.registeredRecorder.identity_provisioning, device.deviceId, this.registrationUrlValue)
+        } catch (error) {
+          if (!this.usbSessionActive(session, client)) return
+          this.showUsbConnectionNotice(error instanceof Error ? error.message : String(error), { state: "error", label: "Recorder name" })
+        }
       }
       setAircraftConnection(AircraftConnectionTransport.USB_C, true, { deviceId: device.deviceId })
       this.setConnectionStatus(this.usbStatusTarget, ConnectionStatus.CONNECTED)
@@ -651,6 +656,11 @@ export default class extends TypedController {
         progress: (manifest, offset) => {
           this.syncProgressTarget.hidden = false
           this.syncProgressTarget.max = manifest.sizeBytes || 1
+          if (manifest.state === 1) {
+            this.syncProgressTarget.removeAttribute("value")
+            this.syncDetailTarget.textContent = `Preparing ${manifest.filename} on the recorder · ${formatBytes(manifest.sizeBytes)}`
+            return
+          }
           this.syncProgressTarget.value = offset
           this.syncDetailTarget.textContent = `${manifest.filename} · ${formatBytes(offset)} / ${formatBytes(manifest.sizeBytes)}`
         }
@@ -1074,7 +1084,7 @@ export default class extends TypedController {
     }
     await this.refreshRecorderRegistration()
     if (this.bleAuthenticated && (this.bleIdentity.capabilities & BleCapability.CANONICAL_NAME) && this.registeredRecorder?.identity_provisioning) {
-      await new BleWifiClient(await service.getCharacteristic(BleUuid.wifi)).configureIdentity(this.registeredRecorder.identity_provisioning)
+      await provisionRecorderName(new BleWifiClient(await service.getCharacteristic(BleUuid.wifi)), this.registeredRecorder.identity_provisioning, this.bleIdentity.deviceId, this.registrationUrlValue)
     }
     setAircraftConnection(AircraftConnectionTransport.BLE, true, { deviceId: this.bleIdentity.deviceId })
     this.setConnectionStatus(this.bleStatusTarget, ConnectionStatus.CONNECTED)
