@@ -49,6 +49,20 @@ class Imu::ZeroTest < ActiveSupport::TestCase
     end
   end
 
+  test "a still recorder whose accelerometer reads 3.3 percent high is accepted" do
+    # Values captured on ECU-441BF685BEC8, firmware fdr_integrated/69, wing flat, 2026-11-18.
+    samples = Array.new(20) do
+      { "quaternion" => [ 0.21808446690317987, -0.009582776743296736, 0.9758562711581416, -0.007202341756108375 ],
+        "accel" => [ -4.328125, -0.19140625, -9.15625 ], "gyro" => [ 0, 0, 0 ] }
+    end
+    zero = Imu::Zero.call(samples, mount_profile: Imu::Mount::UPSIDE_DOWN)
+    assert zero["passed"], zero["reason"]
+    assert_in_delta(-25.2, zero["pitch"], 0.1)
+    assert_in_delta 1.1, zero["roll"], 0.1
+    shaken = samples.map { |s| s.merge("accel" => [ -4.3, -0.2, -12.0 ]) }
+    assert_match(/still/, Imu::Zero.call(shaken, mount_profile: Imu::Mount::UPSIDE_DOWN)["reason"])
+  end
+
   test "motion, a wrong mounting and missing evidence are refused" do
     level = Array.new(20) { sample(attitude(2, 1, 90)) }
     assert_match(/Select an IMU mounting/, Imu::Zero.call(level, mount_profile: Imu::Mount::NATIVE)["reason"])

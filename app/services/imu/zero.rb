@@ -11,7 +11,9 @@ module Imu
       valid = samples.all? { |s| s.is_a?(Hash) && numeric.call(s["quaternion"], 4) && numeric.call(s["accel"], 3) && numeric.call(s["gyro"], 3) }
       return failure("Missing or invalid sensor evidence.") unless valid
       norm = ->(v) { Math.sqrt(v.sum { |x| x * x }) }
-      still = samples.all? { |s| (norm.call(s["accel"]) / 9.80665).between?(0.97, 1.03) && norm.call(s["gyro"]) <= 0.035 }
+      # Stillness comes from rotation rate and attitude spread. An uncalibrated accelerometer can read a few percent
+      # off 1 g at rest, so its magnitude is only a coarse guard against handling.
+      still = samples.all? { |s| (norm.call(s["accel"]) / 9.80665).between?(0.9, 1.1) && norm.call(s["gyro"]) <= 0.035 }
       return failure("Keep the wing still while the zero is measured.") unless still
       attitudes = samples.map { |s| Mount.attitude(s["quaternion"], mount_profile)&.fetch("quaternion") }
       return failure("Missing or invalid sensor evidence.") if attitudes.any?(&:nil?)
