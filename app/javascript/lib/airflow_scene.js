@@ -12,7 +12,8 @@ const ROWS = [-1.0, -0.55, -0.18, 0.08, 0.42]    // smoke rake heights across th
 const COLUMNS = 9, NODES = 110
 const FILAMENTS = ROWS.length * COLUMNS, COUNT = FILAMENTS * NODES
 const UPSTREAM = 5.2, LIFE_LENGTH = 13.5, FLOW_SPEED = 2.7
-const VIEWS = /** @type {const} */ ({ quarter: [-11.2, 2.2, -6.4], side: [-14.5, 0.4, 0.6] })
+// Seen from the right of the wing: the nose points right and the airflow comes from the right of the picture.
+const VIEWS = /** @type {const} */ ({ quarter: [11.2, 2.2, -6.4], side: [14.5, 0.4, 0.6] })
 
 const SHADER_HEAD = `
   attribute float age; attribute float speed; attribute float seed;
@@ -87,9 +88,9 @@ export class AirflowScene {
     studio.dispose(); pmrem.dispose()
     this.scene.add(new THREE.HemisphereLight(this.color("--ex-vapor-150"), this.color("--ex-carbon-900"), 0.7))
     const key = new THREE.DirectionalLight(this.color("--ex-white"), 2.6)
-    key.position.set(-4, 7, -5)
+    key.position.set(4, 7, -5)
     const rim = new THREE.DirectionalLight(this.color("--ex-khaki-300"), 1.6)
-    rim.position.set(5, 2, 6)
+    rim.position.set(-5, 2, 6)
     this.scene.add(key, rim)
     this.setView("quarter")
 
