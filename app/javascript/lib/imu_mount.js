@@ -18,18 +18,29 @@ export function multiplyQuaternion(a, b) {
 }
 
 /** Sensor to body FRD. Belly pocket: forward +Y, right -X, down +Z. Upside down: the sensor axes already are FRD.
- * @param {number[]|null} vector @param {string} profile */
-export function mountedVector(vector, profile) { return vector && rotated(vector, profile) }
-/** @param {number[]} vector @param {string} profile */
-function rotated(vector, profile) { return profile === BELLY_MOUNT ? [vector[1], -vector[0], vector[2]] : vector }
+ * The optional wing zero then maps installed axes to wing axes.
+ * @param {number[]|null} vector @param {string} profile @param {number[]|null} [zero] */
+export function mountedVector(vector, profile, zero = null) { return vector && rotated(vector, profile, zero) }
+/** @param {number[]} vector @param {string} profile @param {number[]|null} [zero] */
+function rotated(vector, profile, zero = null) {
+  const body = profile === BELLY_MOUNT ? [vector[1], -vector[0], vector[2]] : vector
+  if (!zero || !installedMount(profile)) return body
+  return multiplyQuaternion(multiplyQuaternion(zero, [0, ...body]), [zero[0], -zero[1], -zero[2], -zero[3]]).slice(1)
+}
+/** A wing zero is a unit quaternion: the installed tilt recorded with the wing flat.
+ * @param {unknown} zero @returns {number[]|null} */
+export function mountZero(zero) {
+  return Array.isArray(zero) && zero.length === 4 && zero.every(Number.isFinite) && Math.abs(Math.hypot(...zero) - 1) < 0.01 ? zero : null
+}
 
-/** Convert native sensor-to-ENU attitude into body-to-NED, without a tare.
- * @param {number[]} quaternion @param {string} profile */
-export function mountedAttitude(quaternion, profile) {
+/** Convert native sensor-to-ENU attitude into body-to-NED. The optional wing zero removes the installed tilt.
+ * @param {number[]} quaternion @param {string} profile @param {number[]|null} [zero] */
+export function mountedAttitude(quaternion, profile, zero = null) {
   const length = Math.hypot(...quaternion)
   if (quaternion.length !== 4 || !Number.isFinite(length) || length < 0.5 || length > 1.5) return null
   const h = Math.SQRT1_2
-  const q = multiplyQuaternion(multiplyQuaternion([0,h,h,0], quaternion.map(v => v / length)), BODY_TO_SENSOR[profile])
+  let q = multiplyQuaternion(multiplyQuaternion([0,h,h,0], quaternion.map(v => v / length)), BODY_TO_SENSOR[profile])
+  if (zero) q = multiplyQuaternion(q, [zero[0], -zero[1], -zero[2], -zero[3]])
   const [w,x,y,z] = q, degrees = 180 / Math.PI
   return {quaternion: q,
     rollDeg: Math.atan2(2*(w*x+y*z), 1-2*(x*x+y*y)) * degrees,
@@ -41,29 +52,29 @@ export function mountedAttitude(quaternion, profile) {
 export function bellyAttitude(quaternion) { return mountedAttitude(quaternion, BELLY_MOUNT) }
 
 /** Derived display values only. Legacy body reports are never transformed twice.
- * @param {import('../types/signal').DecodedMessage} decoded @param {string} profile
+ * @param {import('../types/signal').DecodedMessage} decoded @param {string} profile @param {number[]|null} [zero]
  * @returns {import('../types/signal').DecodedMessage} */
-export function interpretImu(decoded, profile) {
+export function interpretImu(decoded, profile, zero = null) {
   if (decoded.name === "live_instruments") return {...decoded, attitude: decoded.attitude
-    ? /** @type {import('../types/signal').AttitudeTelemetry} */ (interpretImu(decoded.attitude, profile)) : null}
+    ? /** @type {import('../types/signal').AttitudeTelemetry} */ (interpretImu(decoded.attitude, profile, zero)) : null}
   if (!installedMount(profile) || !("coordinateFrame" in decoded) || decoded.coordinateFrame !== "sensor_native") return decoded
   if (decoded.name === "highres_imu") return {...decoded, coordinateFrame: "body_frd_ned",
-    acceleration: mountedVector(decoded.acceleration, profile), angularVelocity: mountedVector(decoded.angularVelocity, profile), magneticField: mountedVector(decoded.magneticField, profile)}
+    acceleration: mountedVector(decoded.acceleration, profile, zero), angularVelocity: mountedVector(decoded.angularVelocity, profile, zero), magneticField: mountedVector(decoded.magneticField, profile, zero)}
   if (decoded.name === "attitude") {
-    const attitude = mountedAttitude(decoded.quaternion, profile)
+    const attitude = mountedAttitude(decoded.quaternion, profile, zero)
     if (!attitude) return {...decoded, rollDeg: NaN, pitchDeg: NaN, yawDeg: NaN}
-    const [rollSpeed, pitchSpeed, yawSpeed] = rotated([decoded.rollSpeed, decoded.pitchSpeed, decoded.yawSpeed], profile)
+    const [rollSpeed, pitchSpeed, yawSpeed] = rotated([decoded.rollSpeed, decoded.pitchSpeed, decoded.yawSpeed], profile, zero)
     return {...decoded, ...attitude, coordinateFrame: "body_frd_ned", rollSpeed, pitchSpeed, yawSpeed}
   }
   return decoded
 }
 
 /** Static assessment in the installed frame; the captured evidence stays native.
- * @param {import('./imu_health').ReferenceSample} sample @param {string} profile */
-export function mountedReference(sample, profile) {
+ * @param {import('./imu_health').ReferenceSample} sample @param {string} profile @param {number[]|null} [zero] */
+export function mountedReference(sample, profile, zero = null) {
   if (!installedMount(profile)) return sample
-  const attitude = sample.quaternion && mountedAttitude(sample.quaternion, profile)
+  const attitude = sample.quaternion && mountedAttitude(sample.quaternion, profile, zero)
   if (!attitude) return null
   return {...sample, roll: attitude.rollDeg, pitch: attitude.pitchDeg, frame: "body_frd_ned",
-    accel: rotated(sample.accel, profile), gyro: rotated(sample.gyro, profile), mag: rotated(sample.mag, profile)}
+    accel: rotated(sample.accel, profile, zero), gyro: rotated(sample.gyro, profile, zero), mag: rotated(sample.mag, profile, zero)}
 }

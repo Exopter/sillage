@@ -3,7 +3,7 @@ module Imu
   class Assessment
     LIMITS_VERSION = "imu-poc-4".freeze
 
-    def self.call(samples, firmware: nil, mount_profile: Mount::NATIVE)
+    def self.call(samples, firmware: nil, mount_profile: Mount::NATIVE, zero: nil)
       return { "passed" => false, "reason" => "A continuous 15-second reference is required." } unless samples.is_a?(Array) && samples.size.between?(100, 400)
       numeric = ->(v) { v.is_a?(Numeric) && v.finite? }
       valid = samples.all? do |s|
@@ -13,7 +13,7 @@ module Imu
       end
       return { "passed" => false, "reason" => "Missing or invalid sensor evidence." } unless valid
       return { "passed" => false, "reason" => "Unknown IMU mounting profile." } unless Mount::LABELS.key?(mount_profile)
-      samples = samples.map { |sample| Mount.reference(sample, mount_profile) }
+      samples = samples.map { |sample| Mount.reference(sample, mount_profile, zero) }
       return { "passed" => false, "reason" => "Native quaternions are required for the installed reference." } if samples.any?(&:nil?)
       span = samples.last["t"] - samples.first["t"]
       continuous = span.between?(15_000, 45_000) && samples.each_cons(2).all? { |a, b| (b["t"] - a["t"]).between?(1, 300) }
@@ -59,7 +59,7 @@ module Imu
         "gyro_status_role" => "warning", "warnings" => warnings, "firmware" => firmware,
         "heading_accuracy_max_deg" => samples.map { |s| s["heading_accuracy"] }.max,
         "accuracy_min" => accuracy_min,
-        "limits_version" => LIMITS_VERSION, "mount_profile" => mount_profile }
+        "limits_version" => LIMITS_VERSION, "mount_profile" => mount_profile, "mount_zero" => zero }
     end
   end
 end

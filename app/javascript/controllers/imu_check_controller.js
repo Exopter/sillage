@@ -3,15 +3,17 @@ import { Controller } from "@hotwired/stimulus"
 import { ImuHealth, SixFaceCapture, ReferenceCapture, imuQualityLabel, FACE_NAMES, FACE_HOLD_RULES, referenceIssue } from "imu_health"
 import { registerUsbPageRelease } from "usb_page_lifecycle"
 import { recorderTechnicalLabel } from "recorder_identity"
-import { BELLY_MOUNT, NATIVE_MOUNT, mountedReference } from "imu_mount"
-/** @typedef {{deviceValue:string, kindValue:string, flightValue:string, mountProfileValue:string, sceneTarget:HTMLElement, sceneLabelTarget:HTMLElement, sceneHintTarget:HTMLElement, visualTarget:HTMLElement, stepLabelTarget:HTMLElement, holdTarget:HTMLElement, holdRingTarget:SVGCircleElement, countdownTarget:HTMLElement, confirmationTarget:HTMLElement, titleTarget:HTMLElement, instructionTarget:HTMLElement, qualityReasonTarget:HTMLElement, attitudeTarget:HTMLElement, headingTarget:HTMLElement, connectButtonTarget:HTMLButtonElement, actionButtonTarget:HTMLButtonElement, cancelButtonTarget:HTMLButtonElement, confirmedTarget:HTMLInputElement, progressTarget:HTMLProgressElement, resultTarget:HTMLElement}} Bindings */
+import { BELLY_MOUNT, NATIVE_MOUNT, mountZero, mountedReference } from "imu_mount"
+/** @typedef {{deviceValue:string, kindValue:string, flightValue:string, mountProfileValue:string, zeroValue:number[], hasZeroButtonTarget:boolean, zeroButtonTarget:HTMLButtonElement, zeroClearButtonTarget:HTMLButtonElement, zeroStatusTarget:HTMLElement, zeroLiveTarget:HTMLElement, sceneTarget:HTMLElement, sceneLabelTarget:HTMLElement, sceneHintTarget:HTMLElement, visualTarget:HTMLElement, stepLabelTarget:HTMLElement, holdTarget:HTMLElement, holdRingTarget:SVGCircleElement, countdownTarget:HTMLElement, confirmationTarget:HTMLElement, titleTarget:HTMLElement, instructionTarget:HTMLElement, qualityReasonTarget:HTMLElement, attitudeTarget:HTMLElement, headingTarget:HTMLElement, connectButtonTarget:HTMLButtonElement, actionButtonTarget:HTMLButtonElement, cancelButtonTarget:HTMLButtonElement, confirmedTarget:HTMLInputElement, progressTarget:HTMLProgressElement, resultTarget:HTMLElement}} Bindings */
 const Base = /** @type {new (c:import('@hotwired/stimulus').Context) => Controller & Bindings} */ (/** @type {unknown} */ (Controller))
 export default class extends Base {
-  static targets = ["scene", "sceneLabel", "sceneHint", "visual", "stepLabel", "hold", "holdRing", "countdown", "confirmation", "title", "instruction", "qualityReason", "attitude", "heading", "connectButton", "actionButton", "cancelButton", "confirmed", "progress", "result"]
-  static values = { device: String, kind: String, flight: String, mountProfile: { type: String, default: "sensor_native" } }
+  static targets = ["scene", "sceneLabel", "sceneHint", "visual", "stepLabel", "hold", "holdRing", "countdown", "confirmation", "title", "instruction", "qualityReason", "attitude", "heading", "connectButton", "actionButton", "cancelButton", "confirmed", "progress", "result", "zeroButton", "zeroClearButton", "zeroStatus", "zeroLive"]
+  static values = { device: String, kind: String, flight: String, mountProfile: { type: String, default: "sensor_native" }, zero: { type: Array, default: [] } }
   get installed() { return (this.mountProfileValue || NATIVE_MOUNT) !== NATIVE_MOUNT }
   get referenceFace() { return this.installed ? "z-" : "z+" }
-  get levelInstruction() { return this.installed ? `Place the enclosure level in its flight mounting, with +Z toward the ground and ${this.mountProfileValue === BELLY_MOUNT ? "+Y" : "+X"} forward.` : "Place the enclosure on a level reference." }
+  // The wing zero defines level for preflight; the calibration reference stays in the mounting frame.
+  get levelZero() { return this.kindValue === "preflight" && this.installed ? mountZero(this.zeroValue) : null }
+  get levelInstruction() { return this.levelZero ? "Lay the wing flat, as when its IMU zero was set." : this.installed ? `Place the enclosure level in its flight mounting, with +Z toward the ground and ${this.mountProfileValue === BELLY_MOUNT ? "+Y" : "+X"} forward.` : "Place the enclosure on a level reference." }
   health = new ImuHealth()
   faces = new SixFaceCapture()
   /** @type {import('../lib/imu_health').ReferenceSample[]} */ samples = []
@@ -39,6 +41,9 @@ export default class extends Base {
   referenceKey = ""
   uuid = ""
   capture = new ReferenceCapture(0)
+  /** @type {{quaternion:number[], accel:number[], gyro:number[]}[]|null} */ zeroSamples = null
+  zeroUntil = 0
+  zeroSaving = false
   connect() {
     this.active = true
     this.tick()
@@ -180,7 +185,7 @@ export default class extends Base {
   }
   cancel() {
     this.phase = "ready"; this.samples = []; this.faces = new SixFaceCapture(); this.rotation = [0,0,0]; this.lastRotationTime = -1
-    this.capture = new ReferenceCapture(0); this.actionButtonTarget.disabled = true
+    this.capture = new ReferenceCapture(0); this.actionButtonTarget.disabled = true; this.zeroSamples = null
     this.faceIndex = 0; this.faceCompletedUntil = 0; this.checkPassed = false
     this.uuid = ""; this.progressTarget.value = 0; this.actionButtonTarget.textContent = "Start"
     this.titleTarget.textContent = this.kindValue === "calibration" ? "IMU calibration" : "IMU preflight check"
@@ -250,7 +255,7 @@ export default class extends Base {
       this.actionButtonTarget.disabled = !s || !this.confirmedTarget.checked || this.rotation.some(v => v < 0.5)
       this.progressTarget.value = this.rotation.reduce((sum, v) => sum + Math.min(1, v / 0.5), 0) / 3 * 100
     } else if (this.phase === "measuring") {
-      const installed = s && mountedReference(s, this.mountProfileValue || NATIVE_MOUNT)
+      const installed = s && mountedReference(s, this.mountProfileValue || NATIVE_MOUNT, this.levelZero)
       const issue = installed ? referenceIssue(installed) : "Waiting for fresh sensor and quality reports"
       this.titleTarget.textContent = "Measuring the static reference"
       this.instructionTarget.textContent = issue ? `Recording the diagnostic. ${issue}` : "Keep still. Measuring acceleration, rotation, level and magnetic stability."
@@ -267,7 +272,60 @@ export default class extends Base {
         this.actionButtonTarget.textContent = "Retry reference"
       }
     }
+    this.tickZero(s, now)
     this.renderGuidance(now)
+  }
+  // Wing zero: a 2-second still measurement with the wing flat, independent of the calibration procedure.
+  setZero() {
+    if (this.phase !== "ready" || this.zeroSamples || this.zeroSaving) return
+    const issue = this.connectionIssue(Date.now())
+    if (issue) { this.zeroStatusTarget.textContent = issue; return }
+    this.zeroSamples = []; this.zeroUntil = Date.now() + 2000
+  }
+  /** @param {import('../lib/imu_health').ReferenceSample|null} s @param {number} now */
+  tickZero(s, now) {
+    if (!this.hasZeroButtonTarget) return
+    const busy = this.zeroSamples !== null || this.zeroSaving
+    this.zeroButtonTarget.disabled = !s || this.phase !== "ready" || busy
+    this.zeroClearButtonTarget.disabled = busy
+    this.zeroClearButtonTarget.hidden = !mountZero(this.zeroValue)
+    const installed = s && mountedReference(s, this.mountProfileValue, mountZero(this.zeroValue))
+    this.zeroLiveTarget.textContent = installed
+      ? `Live · roll ${installed.roll.toFixed(1)}° · pitch ${installed.pitch.toFixed(1)}°${mountZero(this.zeroValue) ? " from the wing zero" : " in the mounting, no zero applied"}`
+      : "Connect the ground radio to read the live attitude."
+    if (!this.zeroSamples) return
+    if (!s || !s.quaternion || this.phase !== "ready") {
+      this.zeroSamples = null; this.zeroStatusTarget.textContent = "Zero not saved: live measurements were interrupted. Retry."; return
+    }
+    this.zeroSamples.push({ quaternion: s.quaternion, accel: s.accel, gyro: s.gyro })
+    this.zeroStatusTarget.textContent = `Measuring. Keep the wing still for ${Math.max(0, (this.zeroUntil - now) / 1000).toFixed(1)} s.`
+    if (now >= this.zeroUntil) void this.saveZero(this.zeroSamples)
+  }
+  /** @param {{quaternion:number[], accel:number[], gyro:number[]}[]|null} samples */
+  async saveZero(samples) {
+    const q = this.health.quality
+    this.zeroSamples = null
+    if (!q) return
+    this.zeroSaving = true
+    try {
+      const response = await fetch("/api/v1/imu-zero", { method: samples ? "POST" : "DELETE", headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "" },
+        body: JSON.stringify({ expected_device_id: this.deviceValue, device_id: q.deviceId, firmware: q.firmware, mount_profile: this.mountProfileValue, samples }) })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || "The zero could not be saved.")
+      if (!this.active) return
+      this.zeroValue = result.zero?.quaternion || []
+      this.zeroStatusTarget.textContent = result.zero
+        ? `Zero set just now · installed tilt ${result.zero.roll.toFixed(1)}° roll · ${result.zero.pitch.toFixed(1)}° pitch`
+        : "No wing zero set. Attitude is relative to the IMU mounting."
+    } catch (error) {
+      if (this.active) this.zeroStatusTarget.textContent = `Zero not saved: ${error instanceof Error ? error.message : String(error)}`
+    } finally { this.zeroSaving = false }
+  }
+  clearZero() {
+    if (this.zeroSamples || this.zeroSaving) return
+    const issue = this.connectionIssue(Date.now())
+    if (issue) { this.zeroStatusTarget.textContent = issue; return }
+    void this.saveZero(null)
   }
   /** @param {number} now */
   renderGuidance(now) {
@@ -306,7 +364,7 @@ export default class extends Base {
       label = this.phase === "saving" ? "Saving the reference" : elapsed > 0 ? "Keep the enclosure stationary" : "Place the enclosure level"
       hint = this.phase === "level" ? `${this.levelInstruction} Check both directions, then remove the level.` : this.instructionTarget.textContent || ""
       state = elapsed > 0 ? "holding" : state
-      if (this.phase === "measuring" && this.samples.some(sample => { const installed = mountedReference(sample, this.mountProfileValue || NATIVE_MOUNT); return !installed || referenceIssue(installed) })) {
+      if (this.phase === "measuring" && this.samples.some(sample => { const installed = mountedReference(sample, this.mountProfileValue || NATIVE_MOUNT, this.levelZero); return !installed || referenceIssue(installed) })) {
         state = "degraded"; label = "Recording the diagnostic"
       }
     } else if (this.phase === "result") {
@@ -354,7 +412,7 @@ export default class extends Base {
     const generation = this.health.generation
     const operation = this.uuid
     const body = { uuid: this.uuid, expected_device_id: this.deviceValue, device_id: q.deviceId, boot_id: q.bootId, imu_epoch: q.imuEpoch, firmware: q.firmware,
-      kind: this.kindValue, flight_id: this.flightValue || null, mount_profile: this.mountProfileValue || NATIVE_MOUNT, samples: this.samples, faces: this.faces.completed,
+      kind: this.kindValue, flight_id: this.flightValue || null, mount_profile: this.mountProfileValue || NATIVE_MOUNT, mount_zero: this.levelZero, samples: this.samples, faces: this.faces.completed,
       ground_reference_confirmed: this.confirmedTarget.checked, figure_eight_confirmed: this.rotation.every(v => v >= 0.5) }
     try {
       const response = await fetch("/api/v1/imu-checks", { method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "" }, body: JSON.stringify(body) })

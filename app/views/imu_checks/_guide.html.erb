@@ -1,4 +1,8 @@
-<section data-controller="imu-check" data-imu-check-device-value="<%= fdr.device_id %>" data-imu-check-kind-value="<%= kind %>" data-imu-check-flight-value="<%= local_assigns[:flight]&.id %>" data-imu-check-mount-profile-value="<%= fdr.imu_mount_profile %>">
+<% assembly = fdr.assembly
+   zero = assembly&.imu_zero_change_at
+   zero = nil unless zero&.fetch("quaternion", nil)
+   zero_available = assembly && Imu::Mount.installed?(fdr.imu_mount_profile) %>
+<section data-controller="imu-check" data-imu-check-zero-value="<%= (zero ? zero["quaternion"] : []).to_json %>" data-imu-check-device-value="<%= fdr.device_id %>" data-imu-check-kind-value="<%= kind %>" data-imu-check-flight-value="<%= local_assigns[:flight]&.id %>" data-imu-check-mount-profile-value="<%= fdr.imu_mount_profile %>">
   <div class="calibration-quality" aria-live="polite">
     <span>ATTITUDE <strong data-imu-check-target="attitude" data-state="unknown">Unknown</strong></span>
     <span>HEADING <strong data-imu-check-target="heading" data-state="unknown">Unknown</strong></span>
@@ -25,7 +29,7 @@
       <span class="section-eyebrow"><%= kind == "calibration" ? "Forge / IMU calibration" : "Flight / Preflight check" %></span>
       <h2 data-imu-check-target="title"><%= kind == "calibration" ? "IMU calibration" : "IMU preflight check" %></h2>
       <p class="workspace-muted"><%= Imu::Mount::LABELS.fetch(fdr.imu_mount_profile) %> · <%= Imu::Mount.description(fdr.imu_mount_profile) %></p>
-      <p data-imu-check-target="instruction"><%= kind == "calibration" ? "Hold each of the six orientations for 3 seconds, rotate about all three axes, then record a 15-second static reference." : "Place the enclosure on a level reference. Leave the radio and normal equipment powered. Keep it still for 15 seconds." %></p>
+      <p data-imu-check-target="instruction"><%= kind == "calibration" ? "Hold each of the six orientations for 3 seconds, rotate about all three axes, then record a 15-second static reference." : (zero ? "Lay the wing flat, as when its IMU zero was set." : "Place the enclosure on a level reference.") + " Leave the radio and normal equipment powered. Keep it still for 15 seconds." %></p>
       <% if kind == "calibration" %>
         <div class="calibration-faces" aria-label="Measured orientations">
           <% %w[x+ x- y+ y- z+ z-].each_with_index do |face, index| %>
@@ -35,7 +39,7 @@
           <% end %>
         </div>
       <% end %>
-      <label class="calibration-confirm" data-imu-check-target="confirmation"><input type="checkbox" data-imu-check-target="confirmed"> <span>On the ground, clear of magnets and tools. The enclosure reference is level in both directions.</span></label>
+      <label class="calibration-confirm" data-imu-check-target="confirmation"><input type="checkbox" data-imu-check-target="confirmed"> <span>On the ground, clear of magnets and tools. <%= zero && kind == "preflight" ? "The wing lies flat, as when its IMU zero was set." : "The enclosure reference is level in both directions." %></span></label>
       <progress class="calibration-progress" data-imu-check-target="progress" max="100" value="0" aria-label="Measured progress"></progress>
       <div class="workspace-actions">
         <button type="button" class="button-primary exds-btn exds-btn--primary" data-action="imu-check#advance" data-imu-check-target="actionButton" disabled>Start</button>
@@ -45,4 +49,20 @@
       <p class="workspace-muted">Static consistency check in the selected mounting. Source sensor axes are preserved.</p>
     </div>
   </div>
+  <% if kind == "calibration" %>
+    <div class="workspace-panel">
+      <div class="workspace-panel-header"><h2>Wing zero</h2><span>Independent of the calibration procedure</span></div>
+      <% if zero_available %>
+        <p class="workspace-muted">Lay the wing flat and keep it still for 2 seconds. The zero applies to Signal, new flight data and the preflight level. The calibration reference stays valid.</p>
+        <p data-imu-check-target="zeroStatus"><% if zero %>Zero set <%= local_time(Time.iso8601(zero["effective_at"]), :long) %><%= " by #{zero["user_name"]}" if zero["user_name"].present? %> · installed tilt <%= number_with_precision(zero["roll"], precision: 1) %>° roll · <%= number_with_precision(zero["pitch"], precision: 1) %>° pitch<% else %>No wing zero set. Attitude is relative to the IMU mounting.<% end %></p>
+        <p data-imu-check-target="zeroLive">Connect the ground radio to read the live attitude.</p>
+        <div class="workspace-actions">
+          <button type="button" class="button-primary exds-btn exds-btn--primary" data-action="imu-check#setZero" data-imu-check-target="zeroButton" disabled>Set zero</button>
+          <button type="button" class="button-secondary exds-btn exds-btn--secondary" data-action="imu-check#clearZero" data-imu-check-target="zeroClearButton" <%= "hidden" unless zero %>>Clear zero</button>
+        </div>
+      <% else %>
+        <p class="workspace-muted"><%= assembly ? "Select an IMU mounting on the assembly in Hangar to set a wing zero." : "Install this recorder in an assembly to set a wing zero." %></p>
+      <% end %>
+    </div>
+  <% end %>
 </section>

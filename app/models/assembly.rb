@@ -137,6 +137,23 @@ class Assembly < ApplicationRecord
     imu_mount_change_at(time)&.fetch("profile") || Imu::Mount::NATIVE
   end
 
+  # Active wing zero: the installed IMU tilt recorded with the wing flat, or nil.
+  def imu_zero_at(time = nil)
+    imu_zero_change_at(time)&.fetch("quaternion", nil)
+  end
+
+  def imu_zero_change_at(time = nil)
+    return imu_zero_history.last unless time
+    imu_zero_history.reverse.find { |change| Time.iso8601(change.fetch("effective_at")) <= time }
+  end
+
+  def record_imu_zero!(zero, user:, device_id: nil, firmware: nil)
+    entry = { "quaternion" => zero&.fetch("quaternion"), "roll" => zero&.fetch("roll"), "pitch" => zero&.fetch("pitch"),
+      "mount_profile" => imu_mount_profile, "device_id" => device_id, "firmware" => firmware,
+      "user_id" => user&.id, "user_name" => user&.full_name, "effective_at" => Time.current.iso8601(6) }
+    update!(imu_zero_history: imu_zero_history + [ entry.compact_blank.merge("quaternion" => entry["quaternion"]) ])
+  end
+
   def selection_label
     controlled_fdr? ? display_name : "#{name} · #{identity_label}"
   end
@@ -190,7 +207,10 @@ class Assembly < ApplicationRecord
 
   def record_imu_mount_change
     return unless will_save_change_to_imu_mount_profile?
-    self.imu_mount_history = imu_mount_history + [ { "profile" => imu_mount_profile, "effective_at" => Time.current.iso8601(6) } ]
+    effective_at = Time.current.iso8601(6)
+    self.imu_mount_history = imu_mount_history + [ { "profile" => imu_mount_profile, "effective_at" => effective_at } ]
+    # A zero belongs to the mounting it was measured in.
+    self.imu_zero_history = imu_zero_history + [ { "quaternion" => nil, "mount_profile" => imu_mount_profile, "effective_at" => effective_at } ] if imu_zero_at
   end
 
   def assign_exofdr_serial_number

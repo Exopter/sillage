@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_17_170000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_18_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -68,6 +68,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_170000) do
     t.string "serial_number"
     t.string "serviceability_state", default: "in_preparation", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "imu_zero_history", default: [], null: false
     t.index "lower((serial_number)::text)", name: "index_assemblies_on_lower_serial_number", unique: true, where: "((serial_number IS NOT NULL) AND ((serial_number)::text <> ''::text))"
     t.index ["fdr_functional_configuration_id"], name: "index_assemblies_on_fdr_functional_configuration_id"
     t.index ["internal_number"], name: "index_assemblies_on_internal_number", unique: true
