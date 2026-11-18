@@ -24,6 +24,10 @@ assert.deepEqual(extractChecklist("We talked for 12 minutes about nothing in par
 assert.equal(spokenNumbers("speed one five zero, glide two point eight"), "speed 150, glide 2.8")
 assert.equal(spokenNumbers("un cinq z\u00e9ro puis deux virgule huit"), "150 puis 2.8")
 assert.equal(spokenNumbers("at one point no one moved"), "at one point no one moved")
+// FLT-2026-130, 18 November 2026: a half is said, not spelled out.
+assert.deepEqual(extractChecklist("Glide ratio 4, vitesse 150, CG setting trois et demi, AoA 0"), { glide_ratio: "4", speed: "150 km/h", cg: "3.5", aoa: "0" })
+assert.deepEqual(extractChecklist("Glide ratio 3 et demi, CG two and a half"), { glide_ratio: "3.5", cg: "2.5" })
+assert.equal(spokenNumbers("un moment et demie-heure"), "un moment et demie-heure")
 assert.equal(spokenNumbers("CG three point five\nZero angle of attack"), "CG 3.5\nZero angle of attack")
 assert.deepEqual(extractChecklist("Zero degrees of angle of attack, it felt too twitchy"), { aoa: "0", feelings: "too twitchy" })
 assert.deepEqual(extractChecklist("Pas d'incidence, les sensations sont bonnes"), { aoa: "none", feelings: "bonnes" })

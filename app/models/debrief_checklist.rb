@@ -26,6 +26,8 @@ module DebriefChecklist
   SPOKEN = /(?<![\p{L}\d])(?:#{DIGIT_WORD})(?:[ ,]+(?:#{DIGIT_WORD}|point|dot|virgule|comma))+(?![\p{L}\d])/i
   AOA = /\ba\.?o\.?a\.?\b|angle of attack|angle d.attaque|incidence/i
   DECIMAL_WORD = /point|dot|virgule|comma/i
+  # Field debrief of 18 November 2026 (FLT-2026-130): "CG trois et demi" is 3.5.
+  HALF = /(?<![\p{L}\d.,])(\d+|#{DIGIT_WORD})\s+(?:et\s+demie?|and\s+a\s+half)(?!\p{L})/i
   # Field debriefs of 17 November 2026: the live transcript arrives in short lines cut wherever the
   # pilot breathes ("Glide ratio 3 point" / "Two, speed"), and a lone number word follows its label
   # ("Glide ratio, quatre", "AoA setting zero").
@@ -45,9 +47,10 @@ module DebriefChecklist
 
   module_function
 
-  # "one five zero" becomes "150" and "two point eight" becomes "2.8". A lone number word is left alone.
+  # "one five zero" becomes "150", "two point eight" becomes "2.8" and "trois et demi" becomes "3.5".
+  # A lone number word is left alone.
   def spoken_numbers(text)
-    mended = text.gsub(/\b(#{DECIMAL_WORD})[ \t]*\n\s*/i, "\\1 ")
+    mended = text.gsub(HALF) { "#{DIGITS.fetch($1.downcase, $1)}.5" }.gsub(/\b(#{DECIMAL_WORD})[ \t]*\n\s*/i, "\\1 ")
       .gsub(/(?<![\p{L}\d.,])(\d)\.[ \t]*\n\s*(#{DIGIT_WORD})(?=\s*(?:[,.]|\n|\z))/i) { "#{$1}.#{DIGITS[$2.downcase]}" }
     spoken = mended.gsub(SPOKEN) do |run|
       figure = run.downcase.split(/[ ,]+/).map { |word| DIGITS.fetch(word, ".") }.join
