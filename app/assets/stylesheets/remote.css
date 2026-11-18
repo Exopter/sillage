@@ -69,8 +69,8 @@
   content: "";
 }
 
-.remote-link[data-state="live"] { color: var(--status-live-text); }
-.remote-link[data-state="live"]::before { animation: remote-beat 1.6s var(--ease-in-out) infinite; }
+.remote-link[data-state="live"] { color: var(--status-nominal-text); }
+.remote-link[data-state="live"]::before { box-shadow: var(--ex-shadow-nominal); animation: remote-beat 1.6s var(--ease-in-out) infinite; }
 .remote-link[data-state="wait"] { color: var(--status-caution-text); }
 .remote-link[data-state="down"] { color: var(--status-fault-text); }
 
@@ -165,7 +165,7 @@
   line-height: 1.43;
 }
 
-.remote-station[data-state="ready"] { color: var(--status-live-text); }
+.remote-station[data-state="ready"] { color: var(--status-nominal-text); }
 
 .remote-error {
   margin: 0;

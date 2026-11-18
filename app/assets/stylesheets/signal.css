@@ -1539,9 +1539,9 @@ textarea {
 .signal-phone-head h1 { margin: 0; font-size: var(--fs-page); font-weight: 600; line-height: 1.17; letter-spacing: var(--ls-tight); }
 .signal-phone-head p { margin: 0; color: var(--ex-graphite-400); font-size: var(--fs-sm); line-height: 1.55; }
 .signal-phone-station, .signal-phone-live { font: 600 var(--fs-xs)/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ex-graphite-400); }
-.signal-phone-station[data-state="ready"], .signal-phone-live { color: var(--status-live-text); }
+.signal-phone-station[data-state="ready"], .signal-phone-live { color: var(--status-nominal-text); }
 .signal-phone-live { display: inline-flex; align-items: center; gap: 8px; }
-.signal-phone-live > span { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.signal-phone-live > span { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: var(--ex-shadow-nominal); }
 .signal-phone-primary, .signal-phone-secondary { display: flex; align-items: center; gap: var(--sp-4); border-radius: 12px; text-decoration: none; }
 .signal-phone-primary { min-height: 88px; padding: var(--sp-4); background: var(--control-primary); color: var(--control-primary-text); }
 .signal-phone-primary-icon { display: grid; width: 44px; height: 44px; flex-shrink: 0; place-items: center; border-radius: 50%; background: var(--control-primary-text); color: var(--control-primary); }
