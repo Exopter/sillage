@@ -977,6 +977,33 @@ export default class extends TypedController {
 
   /** @param {{deviceId: string}} device @param {NonNullable<Awaited<ReturnType<UsbFdrClient["nextFile"]>>>} manifest @param {Blob} blob @param {{signal?: AbortSignal, priority?: boolean}} options */
   async uploadFile(device, manifest, blob, { signal, priority = false } = {}) {
+    // The distributed Seat releases its USB session after 60 seconds without
+    // an EXS1 request, including time spent uploading and decoding on the server.
+    const client = this.usbClient
+    const connection = new AbortController()
+    const active = signal ? AbortSignal.any([signal, connection.signal]) : connection.signal
+    let checking = false
+    const keepalive = setInterval(async () => {
+      if (!client || checking || active.aborted) return
+      checking = true
+      try {
+        await client.status()
+      } catch (error) {
+        connection.abort(error)
+      } finally {
+        checking = false
+      }
+    }, 10_000)
+    try {
+      return await this.uploadAndValidateFile(device, manifest, blob, active, priority)
+    } finally {
+      clearInterval(keepalive)
+    }
+  }
+
+  /** @param {{deviceId:string}} device @param {NonNullable<Awaited<ReturnType<UsbFdrClient["nextFile"]>>>} manifest
+   * @param {Blob} blob @param {AbortSignal} signal @param {boolean} priority */
+  async uploadAndValidateFile(device, manifest, blob, signal, priority) {
     const form = new FormData()
     form.append("source_file", blob, manifest.filename)
     form.append("device_id", device.deviceId)
@@ -994,12 +1021,12 @@ export default class extends TypedController {
       signal
     })
     let payload = importReceipt(await readResponse(response, `Sillage rejected ${manifest.filename}.`))
-    const deadline = Date.now() + 120_000
     while (true) {
+      signal.throwIfAborted()
       if (payload.sha256 !== manifest.sha256) throw new Error("Sillage acknowledged a different SHA-256.")
       if (payload.import_status === "imported") return
       if (payload.import_status === "failed") throw new Error(payload.error || "Sillage could not validate this recording.")
-      if (!payload.status_url || Date.now() >= deadline) throw new Error("Recording validation is still pending. Synchronize again to resume.")
+      if (!payload.status_url) throw new Error("Sillage did not provide a recording validation URL.")
       const statusUrl = new URL(payload.status_url, window.location.href)
       if (statusUrl.origin !== window.location.origin) throw new Error("Invalid recording validation URL.")
       await new Promise((resolve, reject) => {
@@ -1008,8 +1035,8 @@ export default class extends TypedController {
         signal?.addEventListener("abort", abort, { once: true })
         if (signal?.aborted) abort()
       })
-      const timeout = AbortSignal.timeout(Math.max(1, deadline - Date.now()))
-      const statusResponse = await fetch(statusUrl, { signal: signal ? AbortSignal.any([signal, timeout]) : timeout })
+      const timeout = AbortSignal.timeout(15_000)
+      const statusResponse = await fetch(statusUrl, { signal: AbortSignal.any([signal, timeout]) })
       payload = importReceipt(await readResponse(statusResponse, "Recording validation could not be checked."))
     }
   }

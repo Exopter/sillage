@@ -31,6 +31,31 @@ try {
   assert.equal(requests.length, 3, "pending and processing must not acknowledge the recorder")
   assert.ok(requests[1].options.signal, "poll requests have a deadline")
 
+  // Keep the same authenticated Seat alive while a long server job owns the file.
+  const realNow = Date.now
+  const realInterval = globalThis.setInterval
+  const realClear = globalThis.clearInterval
+  let keepalive, released = false, checks = 0, now = 0
+  try {
+    Date.now = () => (now += 125_000)
+    globalThis.setInterval = callback => { keepalive = callback; return 42 }
+    globalThis.clearInterval = timer => { released = timer === 42 }
+    controller.usbClient = { async status() { checks++ } }
+    let polls = 0
+    globalThis.fetch = async () => {
+      await keepalive()
+      return { ok: true, json: async () => ++polls === 3 ? { ...receipt, import_status: "imported" } : receipt }
+    }
+    await controller.uploadFile(device, manifest, blob)
+    assert.equal(checks, 3)
+    assert.ok(released)
+  } finally {
+    Date.now = realNow
+    globalThis.setInterval = realInterval
+    globalThis.clearInterval = realClear
+    controller.usbClient = null
+  }
+
   respond([receipt, { ...receipt, import_status: "failed", error: "Record CRC mismatch" }])
   await assert.rejects(controller.uploadFile(device, manifest, blob), /CRC mismatch/)
   respond([receipt, { ...receipt, import_status: "imported", sha256: "b".repeat(64) }])
