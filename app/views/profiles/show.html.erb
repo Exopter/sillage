@@ -22,10 +22,12 @@
     </section>
   <% end %>
 
+  <%= render "wing_settings", user: @user, editing: @editing_wing_settings %>
+
   <section class="sillage-profile-panel" aria-labelledby="profile-identity">
     <h2 id="profile-identity">Identity</h2>
     <%= form_with model: @user, url: profile_path, method: :patch, class: "sillage-profile-form" do |form| %>
-      <% if @user.errors.any? %>
+      <% if @user.errors.any? && !@editing_wing_settings %>
         <p class="workspace-errors" role="alert"><%= @user.errors.full_messages.to_sentence %> Please select your photo again before saving.</p>
       <% end %>
       <div class="sillage-profile-names">

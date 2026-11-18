@@ -9,28 +9,41 @@
     </div>
   </header>
 
-  <section class="core-panel">
-    <%= form_with model: @user, url: core_user_path(@user), method: :patch, class: "core-form" do |form| %>
-      <label>
-        <span>Role</span>
-        <%= form.select :role, User::ROLES.map { |role| [role.titleize, role] } %>
-      </label>
-      <label>
-        <span>First name</span>
-        <%= form.text_field :first_name, autocomplete: "off" %>
-      </label>
-      <label>
-        <span>Last name</span>
-        <%= form.text_field :last_name, autocomplete: "off" %>
-      </label>
-      <label>
-        <span>Flight Club membership</span>
-        <%= form.select :membership_tier, User::MEMBERSHIP_TIERS.map { |tier| [tier.titleize, tier] }, include_blank: "None" %>
-      </label>
-      <div class="exds-form-actions">
-        <%= link_to "Cancel", core_users_path, class: "button-secondary exds-btn exds-btn--secondary" %>
-        <%= form.submit "Save user", class: "button-primary exds-btn exds-btn--primary" %>
+  <%= form_with model: @user, url: core_user_path(@user), method: :patch, class: "core-form-panels" do |form| %>
+    <section class="core-panel" aria-labelledby="core-user-account">
+      <h2 id="core-user-account">Account</h2>
+      <div class="core-form is-paired">
+        <label>
+          <span>First name</span>
+          <%= form.text_field :first_name, autocomplete: "off" %>
+        </label>
+        <label>
+          <span>Last name</span>
+          <%= form.text_field :last_name, autocomplete: "off" %>
+        </label>
+        <label>
+          <span>Role</span>
+          <%= form.select :role, User::ROLES.map { |role| [role.titleize, role] } %>
+        </label>
+        <label>
+          <span>Flight Club membership</span>
+          <%= form.select :membership_tier, User::MEMBERSHIP_TIERS.map { |tier| [tier.titleize, tier] }, include_blank: "None" %>
+        </label>
       </div>
-    <% end %>
-  </section>
+    </section>
+
+    <section class="core-panel" aria-labelledby="core-user-wing-settings">
+      <header class="core-panel-header">
+        <h2 id="core-user-wing-settings">Wing settings</h2>
+        <% if @user.wing_settings_updated_at %><span>Updated <%= @user.wing_settings_updated_at.strftime("%-d %B %Y") %></span><% end %>
+      </header>
+      <p class="core-panel-lede">The pilot's preferred setup, shown on their profile, where they can change it too. Leave a field empty when it is not known yet.</p>
+      <%= render "shared/wing_settings_fields", form: form %>
+    </section>
+
+    <div class="exds-form-actions">
+      <%= link_to "Cancel", core_users_path, class: "button-secondary exds-btn exds-btn--secondary" %>
+      <%= form.submit "Save user", class: "button-primary exds-btn exds-btn--primary" %>
+    </div>
+  <% end %>
 </section>

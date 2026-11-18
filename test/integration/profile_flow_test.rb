@@ -19,6 +19,42 @@ class ProfileFlowTest < ActionDispatch::IntegrationTest
     assert_select ".sillage-avatar-photo", count: 0
   end
 
+  test "a pilot adds, reads and edits their own wing settings" do
+    get profile_path
+    assert_select "#wing-settings .sillage-wing-settings-empty a[href='#{profile_path(edit: "wing-settings", anchor: "wing-settings")}']", text: "Add your settings"
+    assert_select "#wing-settings .sillage-wing-settings", count: 0
+
+    get profile_path(edit: "wing-settings")
+    assert_select "#wing-settings form input[name='section'][value='wing_settings']"
+    assert_select "#wing-settings input[name='user[tunnel_glide_ratio]'][min='1.49'][max='3.98']"
+    assert_select "#wing-settings .exds-form-actions a[href='#{profile_path(anchor: "wing-settings")}']", text: "Cancel"
+
+    patch profile_path, params: { section: "wing_settings",
+      user: { weight_kg: "68", height_cm: "172", cg_setting: "", tunnel_glide_ratio: "2.99", tunnel_speed_kmh: "165", role: "admin" } }
+    assert_redirected_to profile_path(anchor: "wing-settings")
+    @member.reload
+    assert_equal [ 68, 172, nil, BigDecimal("2.99"), 165 ], User::WING_SETTINGS.map { |setting| @member[setting] }
+    assert_equal "user", @member.role
+    assert @member.wing_settings_updated_at
+
+    get profile_path
+    assert_select "#wing-settings .sillage-profile-panel-header a", text: "Edit"
+    assert_select "#wing-settings .sillage-wing-settings > div", count: 5
+    assert_select "#wing-settings .sillage-wing-settings dd", text: /\A68\s*kg\z/
+    assert_select "#wing-settings .sillage-wing-settings dd", text: "2.99"
+    assert_select "#wing-settings .sillage-wing-settings dd.is-unset", count: 1
+    assert_select "#wing-settings .sillage-wing-settings-note", text: /Updated #{Time.current.strftime("%-d %B %Y")}/
+  end
+
+  test "an out of range wing setting keeps the form open with the error" do
+    patch profile_path, params: { section: "wing_settings", user: { tunnel_glide_ratio: "9", weight_kg: "68" } }
+    assert_response :unprocessable_entity
+    assert_select "#wing-settings .workspace-errors", text: /Tunnel glide ratio/
+    assert_select "#wing-settings input[name='user[weight_kg]'][value='68']"
+    assert_select ".sillage-profile-form .workspace-errors", count: 0
+    assert_nil @member.reload.weight_kg
+  end
+
   test "a read-only member can upload replace and remove their own photo" do
     patch profile_path, params: { user: { avatar: image_upload, first_name: "Eli", role: "admin", membership_tier: "trailblazer" } }
     assert_redirected_to profile_path

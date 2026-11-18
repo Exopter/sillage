@@ -79,7 +79,7 @@ module Core
     end
 
     def requested_profile
-      params.require(:user).permit(:first_name, :last_name, :membership_tier).to_h.symbolize_keys
+      params.require(:user).permit(:first_name, :last_name, :membership_tier, *User::WING_SETTINGS).to_h.symbolize_keys
     end
 
     def demoting_last_active_admin?

@@ -10,6 +10,15 @@ class User < ApplicationRecord
   AVATAR_TYPES = %w[image/jpeg image/png image/webp].freeze
   MAX_AVATAR_SIZE = 5.megabytes
   DEFAULT_ADMIN_EMAIL = "julien@exopter.com"
+  # A pilot's preferred setup, edited from their profile or by an admin in Core.
+  WING_SETTING_RANGES = {
+    weight_kg: 30..200,
+    height_cm: 120..230,
+    cg_setting: -10..10,
+    tunnel_glide_ratio: Flight::TUNNEL_GLIDE_RATIOS,
+    tunnel_speed_kmh: 50..300
+  }.freeze
+  WING_SETTINGS = WING_SETTING_RANGES.keys.freeze
 
   has_secure_password validations: false, reset_token: { expires_in: 30.minutes }
   has_one_attached :avatar
@@ -44,11 +53,16 @@ class User < ApplicationRecord
   validates :member_number, uniqueness: true, allow_nil: true, unless: -> { membership_tier == "core_team" && member_number == 0 }
   validates :member_number, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validate :zero_member_number_requires_core_team
+  WING_SETTING_RANGES.each do |setting, range|
+    validates setting, numericality: { greater_than_or_equal_to: range.min, less_than_or_equal_to: range.max }, allow_nil: true
+  end
+  validates :height_cm, :tunnel_speed_kmh, numericality: { only_integer: true }, allow_nil: true
 
   normalizes :first_name, :last_name, with: ->(name) { name.to_s.squish.presence }
   normalizes :membership_tier, with: ->(tier) { tier.presence }
 
   before_validation :assign_member_number, if: -> { member? && member_number.nil? }
+  before_save :stamp_wing_settings, if: -> { WING_SETTINGS.any? { |setting| will_save_change_to_attribute?(setting) } }
   validate :accepted_users_have_password_digest
   validate :validate_avatar
 
@@ -87,6 +101,10 @@ class User < ApplicationRecord
 
   def signal_access?
     admin? || !member?
+  end
+
+  def wing_settings?
+    WING_SETTINGS.any? { |setting| self[setting].present? }
   end
 
   def full_name
@@ -213,6 +231,10 @@ class User < ApplicationRecord
 
     errors.add(:avatar, "must be a JPEG, PNG or WebP image") unless AVATAR_TYPES.include?(avatar.blob.content_type)
     errors.add(:avatar, "must be 5 MB or smaller") if avatar.blob.byte_size > MAX_AVATAR_SIZE
+  end
+
+  def stamp_wing_settings
+    self.wing_settings_updated_at = Time.current
   end
 
   def assign_member_number

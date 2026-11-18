@@ -2,9 +2,12 @@ class ProfilesController < ApplicationController
   before_action :set_user
 
   def show
+    @editing_wing_settings = params[:edit] == "wing-settings"
   end
 
   def update
+    return update_wing_settings if params[:section] == "wing_settings"
+
     attributes = params.require(:user).permit(:first_name, :last_name, :avatar, :remove_avatar)
     upload = attributes.delete(:avatar)
     remove_avatar = ActiveModel::Type::Boolean.new.cast(attributes.delete(:remove_avatar))
@@ -30,6 +33,15 @@ class ProfilesController < ApplicationController
   end
 
   private
+
+  def update_wing_settings
+    if @user.update(params.require(:user).permit(*User::WING_SETTINGS))
+      redirect_to profile_path(anchor: "wing-settings"), notice: "Wing settings saved.", status: :see_other
+    else
+      @editing_wing_settings = true
+      render :show, status: :unprocessable_entity
+    end
+  end
 
   def set_user
     @user = Current.user

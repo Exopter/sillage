@@ -96,6 +96,32 @@ class Core::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_not user.reload.totp_configured?
   end
 
+  test "an admin edits a pilot's wing settings" do
+    pilot = users(:member)
+    sign_in_as users(:julien)
+
+    get edit_core_user_path(pilot)
+    assert_response :success
+    assert_select "form[action='#{core_user_path(pilot)}'] .core-panel", count: 2
+    assert_select "input[name='user[weight_kg]']"
+    assert_select "input[name='user[tunnel_speed_kmh]']"
+
+    patch core_user_path(pilot), params: { user: { role: "user", first_name: "Elias", last_name: "Okafor", membership_tier: "explorer",
+      weight_kg: "72.5", height_cm: "180", cg_setting: "3.5", tunnel_glide_ratio: "3.1", tunnel_speed_kmh: "170" } }
+    assert_redirected_to core_users_path
+    pilot.reload
+    assert_equal [ BigDecimal("72.5"), 180, BigDecimal("3.5"), BigDecimal("3.1"), 170 ], User::WING_SETTINGS.map { |setting| pilot[setting] }
+    stamped = pilot.wing_settings_updated_at
+    assert stamped
+
+    patch core_user_path(pilot), params: { user: { role: "user", tunnel_speed_kmh: "900" } }
+    assert_response :unprocessable_entity
+    assert_equal 170, pilot.reload.tunnel_speed_kmh
+
+    patch core_user_path(pilot), params: { user: { role: "user", first_name: "Eli" } }
+    assert_equal stamped, pilot.reload.wing_settings_updated_at
+  end
+
   test "rejects an unsupported role" do
     sign_in_as users(:julien)
 

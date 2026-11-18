@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_18_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_18_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -799,10 +799,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_090000) do
   end
 
   create_table "users", force: :cascade do |t|
+    t.decimal "cg_setting", precision: 3, scale: 1
     t.datetime "created_at", null: false
     t.datetime "disabled_at"
     t.string "email_address", null: false
     t.string "first_name"
+    t.integer "height_cm"
     t.datetime "invitation_accepted_at"
     t.datetime "invitation_sent_at"
     t.string "last_name"
@@ -815,7 +817,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_090000) do
     t.text "otp_secret_ciphertext"
     t.string "password_digest"
     t.string "role", default: "user", null: false
+    t.decimal "tunnel_glide_ratio", precision: 3, scale: 2
+    t.integer "tunnel_speed_kmh"
     t.datetime "updated_at", null: false
+    t.decimal "weight_kg", precision: 4, scale: 1
+    t.datetime "wing_settings_updated_at"
     t.index ["disabled_at"], name: "index_users_on_disabled_at"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
     t.index ["member_number"], name: "index_users_on_member_number", unique: true, where: "(member_number <> 0)"

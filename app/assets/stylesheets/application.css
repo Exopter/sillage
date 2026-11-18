@@ -651,6 +651,155 @@ body {
   align-items: center;
 }
 
+/* A panel title with its action on the same row. */
+.sillage-profile-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-4);
+  min-height: var(--control-h-sm);
+  margin-bottom: var(--sp-5);
+}
+
+.sillage-profile-panel .sillage-profile-panel-header h2 {
+  margin: 0;
+}
+
+/* Wing settings readout: five instrument cells split by hairlines. */
+.sillage-wing-settings {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-rule);
+  border-radius: var(--radius-compact);
+}
+
+.sillage-wing-settings > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  box-shadow: 1px 0 var(--border-rule), 0 1px var(--border-rule);
+}
+
+.sillage-wing-settings dt {
+  color: var(--text-muted);
+  font: 400 var(--fs-xs)/1.3 var(--font-mono);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+}
+
+.sillage-wing-settings dd {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin: 0;
+  color: var(--text-strong);
+  font: 400 1.625rem/1 var(--font-data);
+  font-feature-settings: var(--num-tabular);
+  letter-spacing: -0.02em;
+}
+
+.sillage-wing-settings dd small {
+  color: var(--text-muted);
+  font: 400 var(--fs-sm)/1 var(--font-mono);
+  letter-spacing: 0;
+}
+
+.sillage-wing-settings dd.is-unset {
+  color: var(--ex-graphite-400);
+}
+
+.sillage-wing-settings-note {
+  margin: 14px 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
+  line-height: 1.6;
+}
+
+.sillage-wing-settings-empty {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-1);
+  padding: 18px var(--sp-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-compact);
+}
+
+.sillage-wing-settings-empty strong {
+  color: var(--text-strong);
+  font-size: var(--fs-text);
+  font-weight: 600;
+}
+
+.sillage-wing-settings-empty span {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.sillage-wing-settings-empty .exds-btn {
+  margin-top: 10px;
+}
+
+.sillage-wing-settings-form {
+  display: grid;
+  gap: var(--sp-5);
+}
+
+/* Weight, height and CG share the first row; the two tunnel values share the second. */
+.sillage-wing-settings-fields {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+.sillage-wing-settings-fields label {
+  display: grid;
+  grid-column: span 2;
+  min-width: 0;
+  align-content: start;
+  gap: 8px;
+  font-size: var(--fs-sm);
+}
+
+.sillage-wing-settings-fields label:nth-child(n + 4) {
+  grid-column: span 3;
+}
+
+@media (max-width: 600px) {
+  .sillage-wing-settings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sillage-wing-settings > div:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .sillage-wing-settings-fields label {
+    grid-column: span 3;
+  }
+
+  .sillage-wing-settings-fields label:nth-child(n + 3) {
+    grid-column: 1 / -1;
+  }
+
+  .sillage-profile-panel-header .exds-btn,
+  .sillage-wing-settings-empty .exds-btn {
+    min-height: 44px;
+    padding-inline: var(--sp-4);
+  }
+
+  .sillage-wing-settings-form .exds-form-actions .exds-btn,
+  .core-form-panels > .exds-form-actions .exds-btn {
+    min-height: 44px;
+    flex: 1 1 0;
+  }
+}
+
 
 .sillage-account-menu {
   position: fixed;
@@ -1380,6 +1529,42 @@ body {
   margin: 0;
   font-size: var(--fs-card);
   letter-spacing: 0;
+}
+
+/* An edit page made of several panels saved by one action row. */
+.core-form-panels {
+  display: grid;
+  gap: 22px;
+}
+
+.core-form.is-paired {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px var(--sp-4);
+}
+
+.core-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-1) var(--sp-4);
+}
+
+.core-panel-header span,
+.core-panel-lede {
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
+  line-height: 1.6;
+}
+
+.core-panel-lede {
+  margin: -10px 0 0;
+  font-size: var(--fs-sm);
+}
+
+.core-panel .sillage-wing-settings-fields label > span:first-child {
+  color: var(--text-muted);
+  font-weight: 750;
 }
 
 .core-user-row td {
