@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 /**
  * @typedef {ReturnType<import("../lib/signal_telemetry").SignalTelemetry["snapshot"]>["radio"]} RadioReport
- * @typedef {{report: RadioReport, state: string, now: number}} RadioQuality
+ * @typedef {{report: RadioReport, state: string, lost?: boolean, now: number}} RadioQuality
  * @typedef {{linkTargets: HTMLElement[]}} StimulusBindings
  */
 const TypedController = /** @type {new (context: import("@hotwired/stimulus").Context) => Controller<HTMLElement> & StimulusBindings} */ (/** @type {unknown} */ (Controller))
@@ -11,7 +11,7 @@ export default class extends TypedController {
   static targets = ["link"]
 
   /** @param {CustomEvent<RadioQuality>} event */
-  update({detail: {report, state, now}}) {
+  update({detail: {report, state, lost, now}}) {
     for (const link of this.linkTargets) {
       const ground = link.dataset.endpoint === "ground"
       const dbm = ground ? report?.groundDbm : report?.airDbm
@@ -20,6 +20,7 @@ export default class extends TypedController {
       const level = !available ? 0 : margin >= 30 ? 4 : margin >= 20 ? 3 : margin >= 10 ? 2 : 1
       const quality = level ? ["", "Weak", "Fair", "Good", "Strong"][level] : report ? "Unavailable" : state
       link.dataset.level = String(level)
+      link.dataset.fault = String(Boolean(lost) && !level)
       const label = link.querySelector("[data-quality-label]")
       const value = link.querySelector("[data-quality-value]")
       if (!label || !value) continue
