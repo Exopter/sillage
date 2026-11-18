@@ -330,8 +330,8 @@
 }
 
 .remote[data-recording="true"] .remote-trace path {
-  stroke: var(--ex-onair-500);
-  filter: drop-shadow(0 0 4px rgba(255, 49, 39, 0.7));
+  stroke: var(--ex-nominal-500);
+  filter: drop-shadow(0 0 4px rgba(31, 184, 79, 0.7));
   stroke-dasharray: 28 14;
   animation: remote-trace 1.4s linear infinite;
 }
@@ -428,7 +428,7 @@
 }
 
 .remote-mic.is-live .remote-mic-disc {
-  background: var(--ex-onair-500);
+  background: var(--ex-openmic-500);
   box-shadow: inset 0 -6px 12px rgba(7, 11, 13, 0.12), 0 0 0 4px rgba(255, 49, 39, 0.2), 0 0 28px 6px rgba(255, 49, 39, 0.6);
   color: var(--ex-white);
   transform: scale(calc(1 + var(--debrief-level) * 0.12));
@@ -436,7 +436,7 @@
 
 .remote-mic.is-live .remote-mic-ring {
   border-width: 2px;
-  border-color: var(--ex-onair-500);
+  border-color: var(--ex-openmic-500);
   opacity: calc(0.25 + var(--debrief-level) * 0.6);
   transform: scale(calc(0.86 + var(--debrief-level) * 0.2));
   transition: transform var(--dur) var(--ease-out), opacity var(--dur) var(--ease-out);
@@ -474,7 +474,7 @@
   width: 4px;
   height: calc(4px + 28px * var(--debrief-level) * var(--debrief-wave));
   border-radius: 2px;
-  background: var(--ex-onair-500);
+  background: var(--ex-openmic-500);
   box-shadow: 0 0 8px rgba(255, 49, 39, 0.55);
   transition: height var(--dur) var(--ease-out);
 }
