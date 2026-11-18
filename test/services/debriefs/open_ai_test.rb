@@ -25,6 +25,16 @@ class Debriefs::OpenAiTest < ActiveSupport::TestCase
     assert_equal 2, sent.size
   end
 
+  test "the summary is told what IDK and IDP stand for" do
+    client = Debriefs::OpenAi.new
+    sent = nil
+    client.define_singleton_method(:request) { |_path, body| sent = body; { "output" => [ { "content" => [ { "type" => "output_text", "text" => "Feel: IDK 10." } ] } ] } }
+    assert_equal "Feel: IDK 10.", client.summarize("Good feeling. IDK 10 on 10.")
+    assert_includes sent[:instructions], "indice de kiff"
+    assert_includes sent[:instructions], "never means \"I don't know\""
+    assert_includes Debriefs::OpenAi::CONTEXT, "IDK and IDP"
+  end
+
   test "file transcription sends context and hints, then retries bare when they are refused" do
     record = FlightDebrief.create!(flight: flights(:one), user: users(:julien), uuid: SecureRandom.uuid)
     record.audio.attach(io: StringIO.new("audio"), filename: "debrief.webm", content_type: "audio/webm")
