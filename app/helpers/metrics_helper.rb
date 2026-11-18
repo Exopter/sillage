@@ -31,9 +31,9 @@ module MetricsHelper
     return [ "live", "Live" ] if flight.live?
     return [ "caution", "Waiting for recording" ] if flight.recording_expected?
     return if flight.waiting_for_recording?
-    return [ "live", "Processing" ] if flight.processing?
+    return [ "active", "Processing" ] if flight.processing?
     return [ "caution", "Review" ] if flight.review?
-    return [ "live", "Processing" ] if flight.video_processing?
+    return [ "active", "Processing" ] if flight.video_processing?
     return [ "fault", "Video fault" ] if flight.video_failed?
     return [ "fault", "Source missing" ] if flight.flight_import&.source_missing?
     [ "caution", "Needs review" ] if flight.flight_import&.needs_activity_review?

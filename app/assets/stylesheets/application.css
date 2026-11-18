@@ -799,6 +799,18 @@ body {
 }
 
 .status-dot.is-live span {
+  background: var(--ex-onair-500);
+  box-shadow: var(--ex-shadow-onair);
+  animation: ex-onair-breathe 2s var(--ease-in-out) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-dot.is-live span {
+    animation: none;
+  }
+}
+
+.status-dot.is-active span {
   background: var(--state-live);
 }
 

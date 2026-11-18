@@ -29,7 +29,7 @@ module RecordingActivityHelper
   def recording_logbook_status(flight_import)
     return [ "fault", "Source missing" ] if flight_import.source_missing?
     return [ "fault", "Import failed" ] if flight_import.failed?
-    return [ "live", "Processing" ] if flight_import.pending? || flight_import.processing?
+    return [ "active", "Processing" ] if flight_import.pending? || flight_import.processing?
     return [ "unknown", recording_activity_label(flight_import) ] if flight_import.set_aside?
     return [ "caution", "Needs review" ] if flight_import.needs_activity_review?
 
