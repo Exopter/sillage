@@ -658,11 +658,14 @@ export default class extends TypedController {
           this.syncProgressTarget.max = manifest.sizeBytes || 1
           if (manifest.state === 1) {
             this.syncProgressTarget.removeAttribute("value")
-            this.syncDetailTarget.textContent = `Preparing ${manifest.filename} on the recorder · ${formatBytes(manifest.sizeBytes)}`
+            const detail = `Preparing ${manifest.filename} on the recorder · ${formatBytes(manifest.sizeBytes)}`
+            if (this.syncNoticeTarget.hidden || this.syncDetailTarget.textContent !== detail) this.showSynchronizationNotice(detail)
             return
           }
           this.syncProgressTarget.value = offset
-          this.syncDetailTarget.textContent = `${manifest.filename} · ${formatBytes(offset)} / ${formatBytes(manifest.sizeBytes)}`
+          const detail = `${manifest.filename} · ${formatBytes(offset)} / ${formatBytes(manifest.sizeBytes)}`
+          if (this.syncNoticeTarget.hidden) this.showSynchronizationNotice(detail)
+          else this.syncDetailTarget.textContent = detail
         }
       })
     }
