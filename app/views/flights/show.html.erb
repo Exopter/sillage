@@ -285,12 +285,12 @@
         <% [
           ["altitude", "Altitude", "is-aqua", true],
           ["horizontal-speed", "Horizontal speed", "is-sky", true],
-          ["vertical-speed", "Vertical speed", "is-amber", true],
-          ["airspeed", "Airspeed", "is-lime", false],
+          ["vertical-speed", "Vertical speed", "is-orchid", true],
+          ["airspeed", "Airspeed", "is-olive", false],
           ["total-speed", "Total speed", "is-violet", false],
-          ["glide", "Glide ratio", "is-coral", false],
+          ["glide", "Glide ratio", "is-magenta", false],
           ["distance", "Distance", "is-graphite", false],
-          ["load", "G-force", "is-field", false],
+          ["load", "G-force", "is-navy", false],
           ["radio-signal", "Radio signal", "is-violet", @radio_signal.any? { |row| row[:ground_dbm] }]
         ].each do |metric, label, color_class, checked| %>
           <label class="flight-metric-toggle <%= color_class %>">

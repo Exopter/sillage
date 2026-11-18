@@ -29,7 +29,7 @@
               <td data-label="Function"><%= part.function.name %></td>
               <td data-label="Serial"><%= part.serial_number.presence || "—" %></td>
               <td data-label="Where"><% if part.assembly %><%= link_to part.assembly.identity_label, hangar_assembly_path(part.assembly) %><% elsif (aircraft = @part_aircraft[part.id]) %><%= link_to aircraft.registration, hangar_aircraft_path(aircraft) %><% else %>In stock<% end %></td>
-              <td><span class="status-dot is-<%= part.state == "quarantined" ? "caution" : part.state == "retired" ? "fault" : part.state == "available" ? "unknown" : "ready" %>"><span></span><%= part.state == "quarantined" ? "Review flag" : part.state.titleize %></span></td>
+              <td><span class="status-dot is-<%= part.state == "quarantined" ? "caution" : part.state == "retired" ? "unknown" : part.state == "available" ? "unknown" : "ready" %>"><span></span><%= part.state == "quarantined" ? "Review flag" : part.state.titleize %></span></td>
               <td class="workspace-table-actions">
                 <div class="workspace-actions">
                   <%= link_to "Edit", edit_hangar_part_path(part), class: "button-secondary exds-btn exds-btn--secondary is-compact" %>
