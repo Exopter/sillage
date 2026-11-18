@@ -1,8 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 
 const GLIDE_KEY = "signal-tunnel-glide-ratio"
-// The tunnel angle is set in steps: 1.49, 1.99, 2.49, 2.99, 3.49 and its limit, 3.98.
-const MIN_RATIO = 1.49, MAX_RATIO = 3.98, RATIO_STEP = 0.5
+// The tunnel glide ratio is set in tenths from 1.49: 1.49, 1.59 ... 3.89 and its limit, 3.98.
+const MIN_RATIO = 1.49, MAX_RATIO = 3.98, RATIO_STEP = 0.1
 const RAD = Math.PI / 180
 const STANDARD_GRAVITY = 9.80665
 
