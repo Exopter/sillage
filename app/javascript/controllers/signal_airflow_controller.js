@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { headingOffset } from "signal_instruments"
 
 const GLIDE_KEY = "signal-tunnel-glide-ratio"
 // The tunnel glide ratio is set in tenths from 1.49: 1.49, 1.59 ... 3.89 and its limit, 3.98.
@@ -6,19 +7,23 @@ const MIN_RATIO = 1.49, MAX_RATIO = 3.98, RATIO_STEP = 0.1
 const RAD = Math.PI / 180
 const STANDARD_GRAVITY = 9.80665
 
-/** @typedef {{modelUrlValue: string, seatUrlValue: string, pilotUrlValue: string, sectionsUrlValue: string, ratioValue: number, massValue: number, areaValue: number, recordedValue: boolean, sceneTarget: HTMLElement, glideOutputTarget: HTMLElement, airflowTarget: HTMLElement, statusTarget: HTMLElement, valueTargets: HTMLElement[], viewTargets: HTMLButtonElement[]}} Bindings */
+/** @typedef {{modelUrlValue: string, seatUrlValue: string, pilotUrlValue: string, sectionsUrlValue: string, ratioValue: number, massValue: number, areaValue: number, recordedValue: boolean, sceneTarget: HTMLElement, glideOutputTarget: HTMLElement, airflowTarget: HTMLElement, statusTarget: HTMLElement, faceButtonTarget: HTMLButtonElement, hasFaceButtonTarget: boolean, valueTargets: HTMLElement[], viewTargets: HTMLButtonElement[]}} Bindings */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 
 // Signal Tunnel: the wing model follows the attitude measured by the recorder IMU,
 // in an airflow drawn at the angle of the tunnel glide ratio set here.
 export default class extends TypedController {
   static values = { modelUrl: String, seatUrl: String, pilotUrl: String, sectionsUrl: String, ratio: Number, mass: Number, area: Number, recorded: Boolean }
-  static targets = ["scene", "glideOutput", "airflow", "status", "value", "view"]
+  static targets = ["scene", "glideOutput", "airflow", "status", "value", "view", "faceButton"]
   /** @type {import("airflow_scene").AirflowScene | null} */
   scene = null
   ratio = 2.99
-  /** @type {{roll: number, pitch: number} | null} */
+  /** @type {{roll: number, pitch: number, yaw: number} | null} */
   attitude = null
+  /** Measured heading in degrees, and the heading at which the wing faces the airflow. @type {number | null} */
+  heading = null
+  /** @type {number | null} */
+  airflowHeading = null
   /** Pitot differential pressure in pascals, the dynamic pressure of the airflow. @type {number | null} */
   pressure = null
 
@@ -52,11 +57,24 @@ export default class extends TypedController {
     this.scene = null
   }
 
-  /** @param {CustomEvent<{roll: number | null, pitch: number | null, pressure: number | null}>} event */
+  /** @param {CustomEvent<{roll: number | null, pitch: number | null, heading?: number | null, pressure: number | null}>} event */
   telemetry(event) {
     const { roll, pitch, pressure } = event.detail
     this.pressure = pressure
-    this.attitude = roll == null || pitch == null ? null : { roll, pitch }
+    this.heading = event.detail.heading ?? null
+    // The tunnel has no known magnetic axis: yaw starts at the first heading received, until the pilot faces the airflow.
+    if (this.heading != null && this.airflowHeading == null) this.airflowHeading = this.heading
+    const yaw = this.heading == null || this.airflowHeading == null ? 0 : headingOffset(this.heading, this.airflowHeading)
+    this.attitude = roll == null || pitch == null ? null : { roll, pitch, yaw }
+    this.scene?.setAttitude(this.attitude)
+    this.render()
+  }
+
+  // The wing is held facing the airflow: its current heading becomes the zero of the yaw.
+  faceAirflow() {
+    if (this.heading == null) return
+    this.airflowHeading = this.heading
+    if (this.attitude) this.attitude = { ...this.attitude, yaw: 0 }
     this.scene?.setAttitude(this.attitude)
     this.render()
   }
@@ -107,11 +125,13 @@ export default class extends TypedController {
       this.statusTarget.hidden = Boolean(attitude)
       this.statusTarget.textContent = "No attitude received. The wing is shown aligned with the airflow."
     }
+    if (this.hasFaceButtonTarget) this.faceButtonTarget.disabled = !attitude || this.heading == null
     /** @type {Record<string, string>} */
     const values = {
       toAirflow: attitude ? signed(attitude.pitch + this.airflowAngle) : "---",
       pitch: attitude ? signed(attitude.pitch) : "---",
       roll: attitude ? signed(attitude.roll) : "---",
+      yaw: attitude && this.heading != null ? signed(attitude.yaw) : "---",
       lift: forces ? signed(forces.cl, 2) : "---",
       liftNeeded: this.liftNeeded == null ? "---" : signed(this.liftNeeded, 2)
     }

@@ -4,7 +4,7 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js"
 import { WingAero, stationSample } from "wing_aero"
 
 /** @typedef {{modelUrl: string, seatUrl: string, pilotUrl: string, sectionsUrl: string}} AirflowAssets */
-/** @typedef {{roll: number, pitch: number}} WingAttitude Degrees: roll positive right wing down, pitch positive nose up. */
+/** @typedef {{roll: number, pitch: number, yaw?: number}} WingAttitude Degrees: roll positive right wing down, pitch positive nose up, yaw positive nose right of the airflow. */
 
 const RAD = Math.PI / 180
 const CENTRE = [0, 0.3, 0]                       // wing-frame point kept at the scene origin
@@ -233,8 +233,8 @@ export class AirflowScene {
   applyAttitude() {
     if (!this.aero) return
     const pitch = (this.attitude?.pitch ?? -this.airflowAngle / RAD) * RAD, roll = (this.attitude?.roll ?? 0) * RAD
-    // Aircraft order pitch then roll, with -z forward, +x right, +y up. Heading is not used in the tunnel.
-    this.rig.rotation.set(pitch, 0, -roll, "YXZ")
+    // Aircraft order yaw, pitch then roll, with -z forward, +x right, +y up. Yaw is measured from the airflow axis.
+    this.rig.rotation.set(pitch, -(this.attitude?.yaw ?? 0) * RAD, -roll, "YXZ")
     this.rig.updateMatrixWorld(true)
     this.rotation.setFromMatrix4(this.rig.matrixWorld)
     const e = this.rotation.elements, w = this.windWorld

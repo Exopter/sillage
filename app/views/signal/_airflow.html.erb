@@ -21,6 +21,7 @@
         <output aria-live="polite" data-signal-airflow-target="glideOutput">2.99</output>
         <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" aria-label="Raise the glide ratio by 0.1" data-step="up" data-action="signal-airflow#stepGlide">+</button></span>
       <small data-signal-airflow-target="airflow">Airflow 18.5° below the horizon</small>
+      <button type="button" class="signal-tool-button exds-btn exds-btn--secondary" title="Hold the wing facing the airflow, then set its yaw to zero. Yaw otherwise starts at the first heading received." data-signal-airflow-target="faceButton" data-action="signal-airflow#faceAirflow" disabled>Face the airflow</button>
       <span class="signal-mode-buttons" role="group" aria-label="Camera">
         <button type="button" aria-pressed="true" data-view="quarter" data-signal-airflow-target="view" data-action="signal-airflow#view">Quarter</button>
         <button type="button" aria-pressed="false" data-view="side" data-signal-airflow-target="view" data-action="signal-airflow#view">Side</button>
@@ -33,6 +34,7 @@
       <div><span title="Measured pitch plus the airflow angle of the set glide ratio. It depends on the recorder mounting reference; it is not a measured angle of attack.">Wing to airflow</span><strong data-signal-airflow-target="value" data-reading="toAirflow">---</strong><small>deg</small></div>
       <div><span>Pitch</span><strong data-signal-airflow-target="value" data-reading="pitch">---</strong><small>deg</small></div>
       <div><span>Roll</span><strong data-signal-airflow-target="value" data-reading="roll">---</strong><small>deg</small></div>
+      <div><span title="Heading measured by the recorder, relative to the heading set as facing the airflow. Positive with the nose to the right.">Yaw</span><strong data-signal-airflow-target="value" data-reading="yaw">---</strong><small>deg</small></div>
       <div><span title="Vortex lattice estimate on the wing surface alone: no viscosity, no separation, no fins. An indication, not a measurement.">Lift coefficient</span><strong data-signal-airflow-target="value" data-reading="lift">---</strong><small>computed</small></div>
       <div><span title="Lift coefficient the wing must produce to hold this flight: weight across the airflow, divided by the pitot dynamic pressure and the wing area. Assumes a slack tether, <%= Flight::TUNNEL_FLYING_MASS_KG %> kg flying and <%= Flight::WING_AREA_M2 %> m² of wing.">Lift needed</span><strong data-signal-airflow-target="value" data-reading="liftNeeded">---</strong><small>from pitot and mass</small></div>
     </div>

@@ -790,6 +790,7 @@ export default class extends TypedController {
     // The wing in the airflow follows the recorder IMU; a stale attitude is sent as missing.
     window.dispatchEvent(new CustomEvent("sillage:signal-telemetry", {detail: {
       roll: live ? this.telemetry.roll : null, pitch: live ? this.telemetry.pitch : null,
+      heading: live ? this.telemetry.heading : null,
       pressure: live ? this.telemetry.pressure : null
     }}))
     this.renderRadioMetrics(live, now)

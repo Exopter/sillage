@@ -17,6 +17,7 @@ CI.run do
   step "Tests: Browser module graph", "node test/javascript/importmap_modules_test.mjs"
   step "Tests: Landing scene lifecycle and assets", "node test/javascript/landing_scene_test.mjs"
   step "Tests: Wing airflow model", "node test/javascript/wing_aero_test.mjs"
+  step "Tests: Wing airflow yaw reference", "node test/javascript/signal_airflow_test.mjs"
   step "Tests: Local Cesium distribution", "node test/javascript/cesium_assets_test.mjs"
   step "Tests: Cesium ion tile provider", "node test/javascript/flight_viewer_cesium_ion_test.mjs"
   step "Tests: Viewer lifecycle", "node test/javascript/flight_viewer_lifecycle_test.mjs"
