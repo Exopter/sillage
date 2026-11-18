@@ -62,7 +62,7 @@ class Flight < ApplicationRecord
   validate :video_upload_must_be_video
   attr_accessor :folder_assignment_user
   # Set by lists that resolve the expectation for a whole page at once.
-  attr_writer :recording_expected
+  attr_writer :recording_expected, :debrief_expected
 
   validate :folder_must_accept_contributor, if: -> { new_record? || will_save_change_to_folder_id? || will_save_change_to_user_id? }
 
@@ -136,6 +136,15 @@ class Flight < ApplicationRecord
     return @recording_expected unless @recording_expected.nil?
 
     recording_enabled?
+  end
+
+  # A flight flown from the remote ends with a spoken debrief: once closed, it waits
+  # for one until a debrief has been recorded, from the phone or from the Pilot log.
+  def debrief_expected?
+    return false if remote_start_requested_at.nil? || preparation? || live?
+    return @debrief_expected unless @debrief_expected.nil?
+
+    !flight_debriefs.where.not(status: "recording").exists?
   end
 
   # A date entered without a time keeps the time of the recording: saving another

@@ -169,6 +169,13 @@
   <div class="flight-replay-content">
     <div class="flight-record-panel" id="analysis" data-section-tabs-target="panel">
     <div class="flight-analysis-workspace">
+    <% if @flight.debrief_expected? %>
+      <section class="analysis-mode-banner" aria-label="Waiting for debrief">
+        <strong>Waiting for debrief</strong>
+        <span>No debrief has been recorded for this flight.</span>
+        <%= link_to "Record debrief", "#pilot-log", data: { action: "section-tabs#select", section_tabs_name_param: "pilot-log" } if can_manage_operations? %>
+      </section>
+    <% end %>
     <% if @flight.recording_expected? %>
       <section class="analysis-mode-banner" aria-label="Waiting for recording">
         <strong>Waiting for recording</strong>

@@ -22,6 +22,7 @@ module Flights
       flights = Flight.visible_to(@user).where(id: rows.select { |row| row["kind"] == "flight" }.map { |row| row["id"] })
         .includes(:flight_import, :aircraft, :fdr, pilot: :avatar_attachment, folder: :memberships).index_by(&:id)
       resolve_recording_expectations(flights.values)
+      resolve_debrief_expectations(flights.values)
       imports = FlightImport.accessible_to(@user).where(id: rows.select { |row| row["kind"] == "import" }.map { |row| row["id"] })
         .includes(:aircraft).index_by(&:id)
       rows.filter_map { |row| (row["kind"] == "flight" ? flights : imports)[row["id"]] }
@@ -50,6 +51,15 @@ module Flights
       capturing = unlinked.empty? ? [] :
         SignalSession.where(flight_id: unlinked).distinct.pluck(:flight_id) | ImuCheck.where(flight_id: unlinked).distinct.pluck(:flight_id)
       waiting.each { |flight| flight.recording_expected = !unlinked.include?(flight.id) || capturing.include?(flight.id) }
+    end
+
+    # One query for the page instead of one per flight flown from the remote.
+    def resolve_debrief_expectations(flights)
+      remote = flights.select(&:remote_start_requested_at)
+      return if remote.empty?
+
+      debriefed = FlightDebrief.where(flight_id: remote.map(&:id)).where.not(status: "recording").distinct.pluck(:flight_id).to_set
+      remote.each { |flight| flight.debrief_expected = !debriefed.include?(flight.id) }
     end
 
     def flight_scope
