@@ -29,6 +29,8 @@ module MetricsHelper
     return [ "unknown", "Preparation" ] if flight.preparation?
     return if flight.logged?
     return [ "live", "Live" ] if flight.live?
+    # The debrief comes first: it is recorded on the spot, the recording is imported later.
+    return [ "caution", "Waiting for debrief" ] if flight.debrief_expected?
     return [ "caution", "Waiting for recording" ] if flight.recording_expected?
     return if flight.waiting_for_recording?
     return [ "active", "Processing" ] if flight.processing?

@@ -185,16 +185,31 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     get flight_path(flight)
     assert_response :success
     assert_select "section[aria-label='Waiting for recording']", count: 0
+    # The debrief is what the closed flight still waits for.
+    assert flight.debrief_expected?
+    assert_select "section[aria-label='Waiting for debrief'] a[href='#pilot-log']", text: "Record debrief"
     get flights_path
-    # A flight with nothing in progress, awaited or wrong shows no status.
-    assert_select ".exds-browser-entry-heading .status-dot", count: 0
+    assert_select ".exds-browser-entry .status-dot", text: "Waiting for debrief"
     get preview_flights_path(id: flight.id, kind: "flight"), headers: { "Turbo-Frame" => "flight-preview" }
-    assert_select ".status-dot", count: 0
+    assert_select ".status-dot", text: "Waiting for debrief"
     post remote_station_path, params: { key: SecureRandom.uuid, ready: true }, as: :json
     assert_empty response.parsed_body
 
-    post flight_debriefs_path(flight), params: { uuid: SecureRandom.uuid }, as: :json
+    uuid = SecureRandom.uuid
+    post flight_debriefs_path(flight), params: { uuid: }, as: :json
     assert_response :success
+    # A reservation is not a debrief yet.
+    assert flight.reload.debrief_expected?
+
+    flight.flight_debriefs.find_by!(uuid:).update!(status: "uploaded")
+    assert_not flight.reload.debrief_expected?
+    get flight_path(flight)
+    assert_select "section[aria-label='Waiting for debrief']", count: 0
+    get flights_path
+    # A flight with nothing in progress, awaited or wrong shows no status.
+    assert_select ".exds-browser-entry .status-dot", count: 0
+    get preview_flights_path(id: flight.id, kind: "flight"), headers: { "Turbo-Frame" => "flight-preview" }
+    assert_select ".status-dot", count: 0
   end
 
   test "a reservation opened early and never used does not block the next recording" do
