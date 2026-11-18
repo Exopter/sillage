@@ -15,6 +15,8 @@ const SPOKEN = new RegExp(`(?<![\\p{L}\\d])(?:${DIGIT_WORD})(?:[ ,]+(?:${DIGIT_W
 const AOA = "\\ba\\.?o\\.?a\\.?\\b|angle of attack|angle d.attaque|incidence"
 const FEEL = "feel(?:ing|s)?|felt|ressentis?|sensations?"
 const DECIMAL_WORD = "point|dot|virgule|comma"
+// Field debrief of 18 November 2026 (FLT-2026-130): "CG trois et demi" is 3.5.
+const HALF = new RegExp(`(?<![\\p{L}\\d.,])(\\d+|${DIGIT_WORD})\\s+(?:et\\s+demie?|and\\s+a\\s+half)(?!\\p{L})`, "giu")
 // Field debriefs of 17 November 2026: the live transcript arrives in short lines cut wherever the
 // pilot breathes ("Glide ratio 3 point" / "Two, speed"), and a lone number word follows its label
 // ("Glide ratio, quatre", "AoA setting zero").
@@ -36,11 +38,11 @@ const NOTHING_SPECIAL = /rien de sp[e\u00e9]cial|nothing special|no special feat
 // Words the feeling pattern must not report as the feeling itself ("I felt I had to work").
 const NOT_A_FEELING = ["had", "have", "has", "to", "that", "like", "as", "if", "when", "i", "it", "we", "you", "the", "a", "and", "so", "but", "je", "que", "comme"]
 
-/** "one five zero" becomes "150" and "two point eight" becomes "2.8". A lone number word is left alone.
+/** "one five zero" becomes "150", "two point eight" becomes "2.8" and "trois et demi" becomes "3.5". A lone number word is left alone.
  * @param {string} text */
 export function spokenNumbers(text) {
   const digit = (/** @type {string} */ word) => DIGITS[word.toLowerCase()] ?? word
-  return text.replace(MEND_WORD, "$1 ").replace(MEND_FIGURE, (_run, whole, word) => `${whole}.${digit(word)}`).replace(SPOKEN, run => {
+  return text.replace(HALF, (_run, whole) => `${digit(whole)}.5`).replace(MEND_WORD, "$1 ").replace(MEND_FIGURE, (_run, whole, word) => `${whole}.${digit(word)}`).replace(SPOKEN, run => {
     const figure = run.toLowerCase().split(/[ ,]+/).map(word => DIGITS[word] ?? ".").join("")
     return /^\d+(?:\.\d+)?$/.test(figure) ? figure : run
   }).replace(MIXED, (_run, whole, word) => `${whole}.${digit(word)}`).replace(AFTER_LABEL, (_run, lead, word) => `${lead}${digit(word)}`)

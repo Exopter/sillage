@@ -22,6 +22,11 @@ class DebriefChecklistTest < ActiveSupport::TestCase
   test "reads figures dictated digit by digit and the phrasing used in the tunnel" do
     assert_equal "speed 150, glide 2.8", DebriefChecklist.spoken_numbers("speed one five zero, glide two point eight")
     assert_equal "at one point no one moved", DebriefChecklist.spoken_numbers("at one point no one moved")
+    # FLT-2026-130, 18 November 2026: a half is said, not spelled out.
+    assert_equal({ "glide_ratio" => "4", "speed" => "150 km/h", "cg" => "3.5", "aoa" => "0" },
+      DebriefChecklist.extract("Glide ratio 4, vitesse 150, CG setting trois et demi, AoA 0"))
+    assert_equal({ "glide_ratio" => "3.5", "cg" => "2.5" }, DebriefChecklist.extract("Glide ratio 3 et demi, CG two and a half"))
+    assert_equal "un moment et demie-heure", DebriefChecklist.spoken_numbers("un moment et demie-heure")
     assert_equal({ "aoa" => "0", "feelings" => "too twitchy" }, DebriefChecklist.extract("Zero degrees of angle of attack, it felt too twitchy"))
     assert_equal({ "aoa" => "none", "feelings" => "bonnes" }, DebriefChecklist.extract("Pas d'incidence, les sensations sont bonnes"))
   end

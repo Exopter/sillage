@@ -4,7 +4,7 @@ module Debriefs
   class OpenAi
     Error = Class.new(StandardError)
 
-    CONTEXT = "A pilot's flight debrief after a wind tunnel or wingsuit flight, in English or French. It opens with the glide ratio, the speed in km/h, the CG setting and the angle of attack (AoA) setting, then how the flight felt and the special features of the flight: added weight, a leg wing, a payload or another trial. Pilots often mix both languages in one sentence, such as French figures with English terms (\"glide ratio quatre, speed 150, CG trois point cinq, AoA z\u00e9ro, bon feeling\"): write each word in the language it was spoken and never translate. Figures are short decimals such as 3.5. The pilot may close with two scores, written IDK and IDP (\"IDK 8, IDP 7\").".freeze
+    CONTEXT = "A pilot's flight debrief after a wind tunnel or wingsuit flight, in English or French. It opens with the glide ratio, the speed in km/h, the CG setting and the angle of attack (AoA) setting, then how the flight felt and the special features of the flight: added weight, a leg wing, a payload or another trial. Pilots often mix both languages in one sentence, such as French figures with English terms (\"glide ratio quatre, speed 150, CG trois point cinq, AoA z\u00e9ro, bon feeling\"): write each word in the language it was spoken and never translate. Figures are short decimals such as 3.5, also said \"trois et demi\" or \"three and a half\". The pilot may close with two scores, written IDK and IDP (\"IDK 8, IDP 7\").".freeze
     # The two scores a pilot gives. Without this, "IDK 10" is read as "I don't know" (FLT-2026-127, 18 November 2026).
     SCORES = "IDK is the \"indice de kiff\", the pilot's enjoyment score for the flight, and IDP is the \"indice de puret\u00e9\", the score for how cleanly it was flown. IDK never means \"I don't know\" here.".freeze
     # Literal terms the transcription models tend to miss or mishear in a debrief.
@@ -81,7 +81,8 @@ module Debriefs
       features: the CG or AoA setting, the speed, and how the flight felt or how the wing behaved (stable, stalling,
       yawing, oscillating, "awesome"). When weight is added to weight already carried, give the total ("we added 5
       kilos, 15 in total" is weight 15 kg).
-      How pilots dictate: figures are often spoken digit by digit ("one five zero" is 150, "two point eight" is 2.8). The
+      How pilots dictate: figures are often spoken digit by digit ("one five zero" is 150, "two point eight" is 2.8)
+      or with a half ("trois et demi" and "three and a half" are 3.5). The
       debrief usually opens with glide ratio, speed, CG and angle of attack in that order; the first words are sometimes
       lost or misheard, so a bare decimal figure right before the speed is the glide ratio. When a figure changes later in
       the debrief ("then we raised the speed to 140"), keep the first one stated: it is the test condition. An explicit
