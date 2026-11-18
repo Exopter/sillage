@@ -7,7 +7,7 @@ module DebriefChecklist
     { key: "cg", label: "CG setting" },
     { key: "aoa", label: "AoA setting" },
     { key: "feelings", label: "Feelings", hint: "IDK \u00b7 IDP" },
-    { key: "special", label: "Special features" }
+    { key: "special", label: "Special features", hint: "Weight \u00b7 load" }
   ].freeze
   KEYS = ITEMS.map { |item| item[:key] }.freeze
   # Stored beside the values: the cells corrected by hand, which no later reading may overwrite.
@@ -33,6 +33,15 @@ module DebriefChecklist
   # Words the feeling pattern must not report as the feeling itself ("I felt I had to work").
   NOT_A_FEELING = %w[had have has to that like as if when i it we you the a and so but je que comme].freeze
   FEEL = /feel(?:ing|s)?|felt|ressentis?|sensations?/i
+  # Special features are the trials flown alongside the flight itself: added weight, a leg wing, a payload.
+  SPECIALS = [
+    [ "weight", /\bweights?\b|\bballast|\blest|\bpoids\b|\bplombs?\b/i ],
+    [ "leg wing", /\bleg[\s-]*wing(?:suit)?s?\b|\b(?:wingsuit|aile)s? de jambes?\b/i ],
+    [ "payload", /\bpayloads?\b|\bcharge utile\b/i ]
+  ].freeze
+  # The mass said with them ("two kilos of weight", "payload 1.5 kg") belongs to the weight, else to the payload.
+  MASS = /(?<![\p{L}\d.,])(#{NUMBER}|#{DIGIT_WORD})\s*(kg|kilos?|kilogram(?:me)?s?|grams?|grammes?)(?!\p{L})/i
+  NOTHING_SPECIAL = /rien de sp[e\u00e9]cial|nothing special|no special feature|(?:pas de|aucune) particularit/i
 
   module_function
 
@@ -70,8 +79,23 @@ module DebriefChecklist
     scores = [ ("IDK #{idk}" if idk), ("IDP #{idp}" if idp) ].compact
     felt = scores.any? ? scores.join(" \u00b7 ") : feeling(text)
     found["feelings"] = felt if felt
-    found["special"] = "Noted" if text.match?(/special feature|particularit|rien de sp[e\u00e9]cial|nothing special|sp[e\u00e9]cificit/i)
+    noted = special(text)
+    found["special"] = noted if noted
     found
+  end
+
+  # "weight 2 kg \u00b7 leg wing" when trials are named, "none" when the pilot rules them out.
+  def special(text)
+    named = SPECIALS.select { |_, pattern| text.match?(pattern) }.map(&:first)
+    mass = text.match(MASS)
+    if mass && (owner = (%w[weight payload] & named).first)
+      figure = "#{DIGITS.fetch(mass[1].downcase, mass[1]).tr(",", ".")} #{mass[2].match?(/\Ag/i) ? "g" : "kg"}"
+      named = named.map { |name| name == owner ? "#{name} #{figure}" : name }
+    end
+    return named.join(" \u00b7 ") if named.any?
+    return "none" if text.match?(NOTHING_SPECIAL)
+
+    "Noted" if text.match?(/special feature|particularit|sp[e\u00e9]cificit/i)
   end
 
   def feeling(text)
@@ -108,10 +132,11 @@ module DebriefChecklist
   UNIT = %r{km/h|kmh|mph|m/s|kts?|knots|\u00b0|deg(?:rees)?|%|mm|cm}i
 
   # Maps the model's answer onto the checklist. The remote shows the value beside
-  # the tick, so each one is cut to the figure or a couple of words. The two
-  # scores live on the feelings line and replace its wording when given.
+  # the tick, so each one is cut to the figure or a couple of words. Special
+  # features keep their short phrase: "weight 2 kg legs" is not the figure 2. The
+  # two scores live on the feelings line and replace its wording when given.
   def from_model(answer)
-    values = answer.to_h.transform_values { |value| brief(value) }.compact
+    values = answer.to_h.to_h { |key, value| [ key, key.to_s == "special" ? phrase(value) : brief(value) ] }.compact
     scores = [ ("IDK #{values["idk"]}" if values["idk"]), ("IDP #{values["idp"]}" if values["idp"]) ].compact
     feelings = scores.any? ? scores.join(" \u00b7 ") : values["feelings"]
     # A tunnel speed is in km/h; a bare figure gets its unit so both sources read the same.
@@ -128,6 +153,11 @@ module DebriefChecklist
     return figure.tr(",", ".").sub(/(\.\d*[1-9])0+(?=\D|\z)/, "\\1") if figure
 
     text.split.first(2).join(" ").delete_suffix(",").first(18).presence
+  end
+
+  # "Weight 2 kg on the legs, and the leg wing as well" is cut at a word: "Weight 2 kg on the legs, and the leg".
+  def phrase(value)
+    value.to_s.squish.truncate(36, separator: " ", omission: "").sub(/[\s,;\u00b7]+\z/, "").presence
   end
 
   # Keeps only known keys and short text values, whatever the client sent.

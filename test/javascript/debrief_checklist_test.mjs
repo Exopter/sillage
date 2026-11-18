@@ -9,10 +9,16 @@ assert.deepEqual(
 )
 assert.deepEqual(
   extractChecklist("Finesse 3.1, vitesse de 170 km/h, centrage -1.5, incidence +2. Indice de kiff 8, pureté 7. Rien de spécial."),
-  { glide_ratio: "3.1", speed: "170 km/h", cg: "-1.5", aoa: "+2", feelings: "IDK 8 · IDP 7", special: "Noted" }
+  { glide_ratio: "3.1", speed: "170 km/h", cg: "-1.5", aoa: "+2", feelings: "IDK 8 · IDP 7", special: "none" }
 )
 // A point is not ticked by a neighbouring number or an unrelated word.
 assert.deepEqual(extractChecklist("I felt good about the special features of this suit, IDP 6."), { feelings: "IDP 6", special: "Noted" })
+// Special features name the trials flown: weight, leg wing, payload, with the mass when it is said.
+assert.equal(extractChecklist("Special features: two kilos of weight on the legs.").special, "weight 2 kg")
+assert.equal(extractChecklist("Lest de 2,5 kg et wingsuit de jambe").special, "weight 2.5 kg \u00b7 leg wing")
+assert.equal(extractChecklist("We flew the leg wingsuit with a 500 grams payload").special, "leg wing \u00b7 payload 500 g")
+assert.equal(extractChecklist("Premier vol avec la charge utile").special, "payload")
+assert.equal(extractChecklist("I am 80 kilos, speed 150 kilometers per hour, leg strap on purple").special, undefined)
 assert.deepEqual(extractChecklist("We talked for 12 minutes about nothing in particular."), {})
 // Figures dictated digit by digit read as numbers; a lone number word is left alone.
 assert.equal(spokenNumbers("speed one five zero, glide two point eight"), "speed 150, glide 2.8")
