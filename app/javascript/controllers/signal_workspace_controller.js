@@ -13,6 +13,8 @@ import { registerUsbPageRelease } from "usb_page_lifecycle"
 import { OUTBOX_STORE, META_STORE, openDatabase, putOutbox, writeOutbox, deleteOutbox, readOutbox, oldestOutbox, writeMetadata, readMetadata, transactionRequest } from "signal_outbox"
 const BATCH_INTERVAL_MS = 2_000
 const CHART_WINDOW_MS = 30_000
+// Interrupted telemetry is a caution first; past this delay the link is lost, which is a fault.
+const LINK_LOST_AFTER_MS = 10_000
 
 
 /**
@@ -533,9 +535,9 @@ export default class extends TypedController {
     this.worker = new Worker("/signal_serial_worker.js?v=module-status-42002")
     this.worker.onmessage = ({ data }) => this.handleWorkerMessage(data)
     this.worker.onerror = () => this.showWarning("Telemetry decoding stopped. Reconnect the link.")
-    if (!this.standby) this.recorderStatusTarget.textContent = "Checking the recorder"
+    if (!this.standby) this.setStatus(this.recorderStatusTarget, "Checking the recorder", "idle")
     this.renderRadioControl()
-    this.radioStatusTarget.textContent = "Connected · waiting for telemetry"
+    this.setStatus(this.radioStatusTarget, "Connected · waiting for telemetry", "idle")
     this.updateGroundRadioState("connected")
     await this.acquireWakeLock()
     if (generation !== this.connectionGeneration || this.port !== port || this.stopSerialPromise || this.ending || this.ended) return
@@ -655,7 +657,7 @@ export default class extends TypedController {
     this.openingPort = false
     this.releasePortLock = null
     this.renderRadioControl()
-    this.radioStatusTarget.textContent = "Not connected"
+    this.setStatus(this.radioStatusTarget, "Not connected", "idle")
     this.imuHealth = new ImuHealth()
     this.preflight = null; this.preflightInvalidated = false; this.qualityContextKey = ""; this.qualitySignature = ""; this.qualityContextAt = 0
     this.measurements = new SignalTelemetry()
@@ -693,15 +695,15 @@ export default class extends TypedController {
   handleWorkerMessage(message) {
     if (this.standby && message.type !== "frame") return
     if (message.type === "capture-ready") {
-      this.recorderStatusTarget.textContent = "Recording locally"
+      this.setStatus(this.recorderStatusTarget, "Recording locally", "nominal")
       return
     }
     if (message.type === "capture-closed") {
-      this.recorderStatusTarget.textContent = `Capture saved · ${formatBytes(message.bytes)}`
+      this.setStatus(this.recorderStatusTarget, `Capture saved · ${formatBytes(message.bytes)}`, "nominal")
       return
     }
     if (message.type === "capture-error") {
-      this.recorderStatusTarget.textContent = "Local capture unavailable"
+      this.setStatus(this.recorderStatusTarget, "Local capture unavailable", "fault")
       this.showWarning(`Raw capture unavailable: ${message.message}`)
       return
     }
@@ -771,7 +773,8 @@ export default class extends TypedController {
     this.telemetry = this.measurements.snapshot(now)
     this.frameTimes = this.frameTimes.filter((time) => now - time < 1_000)
     const live = Boolean(this.port && this.lastFrameAt && now - this.lastFrameAt < 1_500)
-    const state = this.ended ? "Ended" : live ? "Live" : this.lastFrameAt ? "Stale" : "Waiting"
+    const lost = this.linkLost(live, now)
+    const state = this.ended ? "Ended" : live ? "Live" : lost ? "Lost" : this.lastFrameAt ? "Stale" : "Waiting"
     this.streamBadgeTargets.forEach((badge) => {
       const widget = badge.closest("[data-widget]")?.getAttribute("data-widget")
       const available = widget === "map" ? this.telemetry.gps != null
@@ -781,9 +784,10 @@ export default class extends TypedController {
       badge.dataset.state = live && !available ? "waiting" : state.toLowerCase()
     })
     if (this.port) {
-      this.radioStatusTarget.textContent = live
+      this.setStatus(this.radioStatusTarget, live
         ? `Live · ${this.mavlinkSystemId}/${this.mavlinkComponentId} · ${this.frameTimes.length} frames/s`
-        : this.lastFrameAt ? "No telemetry · link lost" : "Connected · waiting for telemetry"
+        : lost ? "No telemetry · link lost" : this.lastFrameAt ? "Telemetry stale" : "Connected · waiting for telemetry",
+      live ? "nominal" : lost ? "fault" : this.lastFrameAt ? "caution" : "idle")
     }
     if (this.standby) this.renderStandby(live, now)
     this.renderModules()
@@ -801,9 +805,24 @@ export default class extends TypedController {
   }
 
   renderModules() {
+    const now = Date.now()
+    const live = Boolean(this.port && this.lastFrameAt && now - this.lastFrameAt < 1_500)
     window.dispatchEvent(new CustomEvent("sillage:module-status", {detail: {
-      modules: this.telemetry.modules, connected: Boolean(this.port && !this.ended), ended: this.ended
+      modules: this.telemetry.modules, connected: Boolean(this.port && !this.ended), ended: this.ended, lost: this.linkLost(live, now)
     }}))
+  }
+
+  /** Telemetry that was flowing and has been silent long enough: the link is lost.
+   * @param {boolean} live @param {number} now */
+  linkLost(live, now) {
+    return Boolean(this.port && !this.ended && !live && this.lastFrameAt && now - this.lastFrameAt >= LINK_LOST_AFTER_MS)
+  }
+
+  /** One status line: its text and the state that colours it.
+   * @param {HTMLElement} target @param {string} text @param {"nominal" | "caution" | "fault" | "idle"} state */
+  setStatus(target, text, state) {
+    target.textContent = text
+    target.dataset.state = state
   }
 
   renderRadioControl() {
@@ -823,9 +842,10 @@ export default class extends TypedController {
     // SiK can repeat RF statistics after Air telemetry is lost.
     const report = this.connectionKind === "ground-radio" && live && this.port && !this.ended ? this.telemetry.radio : null
     const state = this.ended ? "Ended" : !this.port ? "Offline" : this.connectionKind !== "ground-radio" ? "No SiK radio" : !live ? "No telemetry" : "Unavailable"
-    // Telemetry that was flowing and stopped is a lost link, not an idle one.
-    const lost = state === "No telemetry" && Boolean(this.lastFrameAt)
-    window.dispatchEvent(new CustomEvent("sillage:radio-quality", {detail: {report, state, lost, now}}))
+    // Telemetry that was flowing and stopped is stale first, then a lost link.
+    const interrupted = state === "No telemetry" && Boolean(this.lastFrameAt)
+    const lost = interrupted && this.linkLost(live, now)
+    window.dispatchEvent(new CustomEvent("sillage:radio-quality", {detail: {report, state, stale: interrupted && !lost, lost, now}}))
   }
 
   /** @param {string} recordedAt @param {string} sensorType @param {import("../types/signal").DecodedMessage} readings @returns {import("../types/signal").SignalSample} */
@@ -1230,13 +1250,13 @@ export default class extends TypedController {
     }
     const age = oldest ? Math.max(1, Math.round((Date.now() - oldest.queuedAt) / 1000)) : 0
     if (!navigator.onLine) {
-      this.cloudStatusTarget.textContent = oldest ? `${age} s behind` : "Offline"
+      this.setStatus(this.cloudStatusTarget, oldest ? `${age} s behind` : "Offline", "caution")
     } else if (!this.syncing && oldest && this.cloudError) {
-      this.cloudStatusTarget.textContent = `Sync blocked: ${this.cloudError}`
+      this.setStatus(this.cloudStatusTarget, `Sync blocked: ${this.cloudError}`, "fault")
     } else if (this.syncing || oldest) {
-      this.cloudStatusTarget.textContent = oldest ? `Syncing · ${age} s behind` : "Syncing"
+      this.setStatus(this.cloudStatusTarget, oldest ? `Syncing · ${age} s behind` : "Syncing", "idle")
     } else {
-      this.cloudStatusTarget.textContent = this.ended ? "Synced" : "Live"
+      this.setStatus(this.cloudStatusTarget, this.ended ? "Synced" : "Live", "nominal")
       this.cloudError = null
       if (this.ended && this.returnHomeAfterSync) {
         await this.leaveAfterSync()
@@ -1258,12 +1278,14 @@ export default class extends TypedController {
       : !connected ? ["Waiting for the link", this.connectionKind === "ground-radio" && !navigator.serial
         ? "The radio needs Chrome or Edge on desktop." : "Not connected to the recorder. Connect with the link button in the top bar to enable Start flight."]
       : !this.lastFrameAt ? ["Listening", "Link open, no telemetry yet. Power the recorder and check that both radios share the same settings."]
-      : !live ? ["Link lost", "No recent telemetry. Check the aircraft and the link."]
+      : !live ? [this.linkLost(live, now) ? "Link lost" : "Telemetry stale", "No recent telemetry. Check the aircraft and the link."]
       : !deviceId ? ["Identifying", "Telemetry received. Waiting for the recorder identity."]
       : !identity ? [name, "Aircraft heard. Checking the recorder with Sillage."]
       : !identity.canAcquire ? [name, "This recorder cannot be recorded. Check its assembly in Hangar."]
       : [name, "Ready. What you see is live and not saved: Start flight records from that moment."]
-    this.aircraftStatusTarget.textContent = aircraft
+    this.setStatus(this.aircraftStatusTarget, aircraft, this.starting || !connected || !this.lastFrameAt ? "idle"
+      : !live ? (this.linkLost(live, now) ? "fault" : "caution")
+      : !deviceId || !identity ? "idle" : identity.canAcquire ? "nominal" : "caution")
     this.standbyAircraftTarget.textContent = live && deviceId ? name : "No aircraft heard"
     this.startHintTarget.textContent = this.modeNotice || hint
     this.startButtonTarget.disabled = !ready

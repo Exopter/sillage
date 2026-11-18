@@ -156,11 +156,11 @@
     <% [
       ["airspeed", "Airspeed", "is-sky", true],
       ["to-airflow", "Wing to airflow", "is-aqua", true],
-      ["pitch", "Pitch", "is-amber", true],
+      ["pitch", "Pitch", "is-orchid", true],
       ["roll", "Roll", "is-violet", false],
-      ["lift-needed", "Lift needed", "is-coral", false],
-      ["dynamic-pressure", "Dynamic pressure", "is-lime", false],
-      ["load", "G-force", "is-field", false],
+      ["lift-needed", "Lift needed", "is-magenta", false],
+      ["dynamic-pressure", "Dynamic pressure", "is-olive", false],
+      ["load", "G-force", "is-navy", false],
       ["radio-signal", "Radio signal", "is-violet", radio_signal.any? { |row| row[:ground_dbm] }]
     ].each do |metric, label, color_class, checked| %>
       <label class="flight-metric-toggle <%= color_class %>">

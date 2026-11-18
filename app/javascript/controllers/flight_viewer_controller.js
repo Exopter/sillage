@@ -160,6 +160,10 @@ export default class extends TypedController {
       violet: "#6658c7",
       coral: "#e85d4f",
       lime: "#a7c83f",
+      orchid: "#d58cf0",
+      magenta: "#c8408a",
+      olive: "#7d8250",
+      navy: "#1f4a8c",
       graphite: "#5f6c6b",
       carbon: "#d4dfdc",
       grid: "rgba(95, 108, 107, 0.14)",
@@ -604,12 +608,12 @@ export default class extends TypedController {
     const datasets = [
       this.metricDataset("altitude", "Altitude", this.points, (point) => point.alt, this.colors.aqua, "altitude", "m", true),
       this.metricDataset("horizontal-speed", "Horizontal speed", this.points, (point) => this.kilometersPerHour(point.hspeed), this.colors.sky, "speed", "km/h", true),
-      this.metricDataset("vertical-speed", "Vertical speed", this.points, (point) => this.kilometersPerHour(point.vspeed, { absolute: true }), this.colors.amber, "speed", "km/h", true),
-      this.metricDataset("airspeed", "Airspeed", airspeedRows, (sample) => this.kilometersPerHour(sample.readings?.airspeed_m_s, { absolute: true }), this.colors.lime, "speed", "km/h", false),
+      this.metricDataset("vertical-speed", "Vertical speed", this.points, (point) => this.kilometersPerHour(point.vspeed, { absolute: true }), this.colors.orchid, "speed", "km/h", true),
+      this.metricDataset("airspeed", "Airspeed", airspeedRows, (sample) => this.kilometersPerHour(sample.readings?.airspeed_m_s, { absolute: true }), this.colors.olive, "speed", "km/h", false),
       this.metricDataset("total-speed", "Total speed", totalSpeedRows, (point) => this.kilometersPerHour(point.totalSpeed), this.colors.violet, "speed", "km/h", false),
-      this.metricDataset("glide", "Glide ratio", this.points, (point) => point.glide, this.colors.coral, "ratio", "", false),
+      this.metricDataset("glide", "Glide ratio", this.points, (point) => point.glide, this.colors.magenta, "ratio", "", false),
       this.metricDataset("distance", "Distance", distanceRows, (point) => point.distance / 1000, this.colors.graphite, "distance", "km", false),
-      this.metricDataset("load", "G-force", loadRows, (sample) => sample.load, this.colors.field, "load", "g", false),
+      this.metricDataset("load", "G-force", loadRows, (sample) => sample.load, this.colors.navy, "load", "g", false),
       this.radioDataset()
     ]
 
@@ -637,11 +641,11 @@ export default class extends TypedController {
     const datasets = [
       this.metricDataset("airspeed", "Airspeed", airspeedRows, (sample) => this.kilometersPerHour(sample.readings?.airspeed_m_s, { absolute: true }), this.colors.sky, "speed", "km/h", true),
       this.metricDataset("to-airflow", "Wing to airflow", angle == null ? [] : this.attitudeRows, (row) => row.pitch + (angle ?? 0), this.colors.aqua, "angle", "°", true),
-      this.metricDataset("pitch", "Pitch", this.attitudeRows, (row) => row.pitch, this.colors.amber, "angle", "°", true),
+      this.metricDataset("pitch", "Pitch", this.attitudeRows, (row) => row.pitch, this.colors.orchid, "angle", "°", true),
       this.metricDataset("roll", "Roll", this.attitudeRows, (row) => row.roll, this.colors.violet, "angle", "°", false),
-      this.metricDataset("lift-needed", "Lift needed", airspeedRows, (sample) => this.liftNeededFor(sample.readings), this.colors.coral, "lift", "", false),
-      this.metricDataset("dynamic-pressure", "Dynamic pressure", airspeedRows, (sample) => dynamicPressure(sample.readings), this.colors.lime, "pressure", "Pa", false),
-      this.metricDataset("load", "G-force", loadRows, (sample) => sample.load, this.colors.field, "load", "g", false),
+      this.metricDataset("lift-needed", "Lift needed", airspeedRows, (sample) => this.liftNeededFor(sample.readings), this.colors.magenta, "lift", "", false),
+      this.metricDataset("dynamic-pressure", "Dynamic pressure", airspeedRows, (sample) => dynamicPressure(sample.readings), this.colors.olive, "pressure", "Pa", false),
+      this.metricDataset("load", "G-force", loadRows, (sample) => sample.load, this.colors.navy, "load", "g", false),
       this.radioDataset()
     ]
 
@@ -2333,6 +2337,11 @@ export default class extends TypedController {
       violet: styles.getPropertyValue("--ds-violet").trim() || "#6658c7",
       coral: styles.getPropertyValue("--ds-coral").trim() || "#e85d4f",
       lime: styles.getPropertyValue("--ds-lime").trim() || "#a7c83f",
+      // Chart series stay clear of the alerting colours: red, amber and green are reserved for states.
+      orchid: styles.getPropertyValue("--ex-series-orchid").trim() || "#d58cf0",
+      magenta: styles.getPropertyValue("--ex-series-magenta").trim() || "#c8408a",
+      olive: styles.getPropertyValue("--ex-series-olive").trim() || "#7d8250",
+      navy: styles.getPropertyValue("--ex-series-navy").trim() || "#1f4a8c",
       graphite: styles.getPropertyValue("--ex-graphite-600").trim() || "#5f6c6b",
       carbon: styles.getPropertyValue("--ex-line-200").trim() || "#d4dfdc",
       grid: "rgba(95, 108, 107, 0.14)",

@@ -14,7 +14,7 @@ const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.
 Workspace.prototype.sessionValue = "session"
 const view = new Workspace()
 for (const name of ["qualityAttitude", "qualityHeading", "attitudeDetail", "headingDetail", "preflightDetail", "preflightStatus"]) view[`${name}Target`] = {textContent: "", dataset: {}}
-for (const name of ["radioStatus", "parserStatus", "dataStatus", "heading", "airspeed", "altitude", "verticalSpeed", "glide", "aircraftLabel"]) view[`${name}Target`] = {textContent: ""}
+for (const name of ["radioStatus", "parserStatus", "dataStatus", "heading", "airspeed", "altitude", "verticalSpeed", "glide", "aircraftLabel"]) view[`${name}Target`] = {textContent: "", dataset: {}}
 // The flight dashboard has every optional target; the tunnel dashboard omits them.
 view.hasHeadingTarget = view.hasAltitudeTarget = view.hasMapSceneTarget = true
 view.sensorValueTargets = ["accel", "gyro", "mag", "pressure", "temperature", "gps", "gLoad"].map((sensor) => ({dataset: {sensor}, textContent: ""}))
@@ -108,7 +108,14 @@ view.refreshTelemetry()
 assert.equal(view.streamBadgeTargets[0].textContent, "Stale", "ground-radio status cannot keep the Air link live")
 assert.ok(radioView.linkTargets.every(link => link.dataset.level === "0" && link.value.textContent === "RSSI --- · S/N ---"), "repeated radio reports must not show live strength after Air telemetry stops")
 assert.ok(radioView.linkTargets.every(link => link.label.textContent === "No telemetry"))
-assert.ok(radioView.linkTargets.every(link => link.dataset.fault === "true"), "a link lost during a session is shown as a fault")
+assert.ok(radioView.linkTargets.every(link => link.dataset.stale === "true" && link.dataset.fault === "false"), "interrupted telemetry is a caution before it is a fault")
+assert.equal(view.radioStatusTarget.dataset.state, "caution")
+assert.equal(moduleView.moduleTargets[1].fields.state.textContent, "No recent status")
+now += 8_000
+view.refreshTelemetry()
+assert.equal(view.streamBadgeTargets[0].textContent, "Lost", "telemetry silent for ten seconds is a lost link")
+assert.ok(radioView.linkTargets.every(link => link.dataset.fault === "true" && link.dataset.stale === "false"), "a lost link is shown as a fault")
+assert.equal(view.radioStatusTarget.dataset.state, "fault")
 assert.equal(moduleView.moduleTargets[1].fields.state.textContent, "Link lost")
 assert.equal(moduleView.moduleTargets[1].fields.storage.textContent, "Storage status unavailable")
 assert.equal(view.airspeedTarget.textContent, "---")

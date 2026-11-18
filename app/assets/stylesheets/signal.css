@@ -85,11 +85,15 @@
 
 .signal-link-stack strong {
   overflow: hidden;
-  color: var(--ex-field-500);
+  color: var(--ex-graphite-400);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.signal-link-stack strong[data-state="nominal"] { color: var(--status-nominal-text); }
+.signal-link-stack strong[data-state="caution"] { color: var(--ex-amber-500); }
+.signal-link-stack strong[data-state="fault"] { color: var(--ex-red-600); }
 
 .signal-quality-stack > div { grid-template-columns: 66px minmax(0, 1fr); }
 .signal-quality-stack strong { color: var(--state-live); }
@@ -251,6 +255,12 @@
   border-color: var(--ex-graphite-400);
   box-shadow: none;
   color: var(--ex-graphite-400);
+}
+
+.signal-live-badge[data-state="lost"] {
+  border-color: var(--ex-red-600);
+  box-shadow: none;
+  color: var(--ex-red-600);
 }
 
 .signal-live-badge[data-state="stale"] {
@@ -460,7 +470,7 @@
 .signal-telemetry-strip strong {
   overflow: hidden;
   margin-top: 4px;
-  color: var(--ex-hud-green);
+  color: var(--ex-vapor-50);
   font: 600 var(--fs-body)/1 var(--font-data);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1465,17 +1475,20 @@ textarea {
 /* Compact module indicators share the existing top-bar tooltip interaction. */
 .signal-modules { display: flex; flex: none; align-items: center; gap: var(--ex-space-1); }
 .signal-module .signal-module-indicator { color: var(--ex-graphite-400); }
-.signal-module[data-state="ready"] .signal-module-indicator { color: var(--ex-field-500); }
+.signal-module[data-state="ready"] .signal-module-indicator { color: var(--ex-nominal-500); }
 .signal-module[data-state="degraded"] .signal-module-indicator { color: var(--ex-amber-500); }
-.signal-module[data-state="stale"] .signal-module-indicator { color: var(--ex-red-600); }
+.signal-module[data-state="stale"] .signal-module-indicator { color: var(--ex-amber-500); }
+.signal-module[data-state="lost"] .signal-module-indicator { color: var(--ex-red-600); }
 .signal-module-tooltip > span { display: block; }
 
 .signal-assignment-fields { display: grid; grid-template-columns: 1fr; gap: var(--ex-space-3); margin: 12px 0 0; padding: 0; border: 0; }
 .signal-assignment-fields[hidden] { display: none; }
 
 /* Standby and recording share one screen: only the command bar says which it is. */
-.signal-command-bar[data-signal-state="recording"] { box-shadow: inset 0 2px 0 var(--ex-red-600); }
-.signal-recording-label { color: var(--ex-red-600); }
+.signal-command-bar[data-signal-state="recording"] { box-shadow: inset 0 2px 0 var(--ex-nominal-500); }
+.signal-recording-label { display: flex; align-items: center; gap: 8px; color: var(--status-nominal-text); }
+.signal-recording-label::before { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--ex-nominal-500); box-shadow: var(--ex-shadow-nominal); animation: ex-nominal-breathe 2s var(--ease-in-out) infinite; content: ""; }
+@media (prefers-reduced-motion: reduce) { .signal-recording-label::before { animation: none; } }
 @media (min-width: 1200px) {
   .signal-command-bar[data-signal-state="standby"] { grid-template-columns: minmax(170px, .6fr) minmax(220px, .7fr) minmax(200px, .6fr) minmax(480px, 1.3fr); }
 }
@@ -1487,7 +1500,7 @@ textarea {
 .signal-command-group:not([hidden]) ~ .signal-start,
 .signal-remote:not([hidden]) ~ .signal-start { padding-left: var(--sp-3); border-left: 1px solid var(--ex-carbon-700); }
 /* A status, not a control: this computer records the flights a phone starts. */
-.signal-remote { display: flex; align-items: center; gap: 7px; color: var(--ex-field-500); font-size: var(--fs-caption); white-space: nowrap; }
+.signal-remote { display: flex; align-items: center; gap: 7px; color: var(--ex-graphite-400); font-size: var(--fs-caption); white-space: nowrap; }
 .signal-remote[hidden] { display: none; }
 
 /* One line under the command bar: why Start flight is or is not available. */
@@ -1539,9 +1552,9 @@ textarea {
 .signal-phone-head h1 { margin: 0; font-size: var(--fs-page); font-weight: 600; line-height: 1.17; letter-spacing: var(--ls-tight); }
 .signal-phone-head p { margin: 0; color: var(--ex-graphite-400); font-size: var(--fs-sm); line-height: 1.55; }
 .signal-phone-station, .signal-phone-live { font: 600 var(--fs-xs)/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ex-graphite-400); }
-.signal-phone-station[data-state="ready"], .signal-phone-live { color: var(--status-live-text); }
+.signal-phone-station[data-state="ready"], .signal-phone-live { color: var(--status-nominal-text); }
 .signal-phone-live { display: inline-flex; align-items: center; gap: 8px; }
-.signal-phone-live > span { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.signal-phone-live > span { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: var(--ex-shadow-nominal); }
 .signal-phone-primary, .signal-phone-secondary { display: flex; align-items: center; gap: var(--sp-4); border-radius: 12px; text-decoration: none; }
 .signal-phone-primary { min-height: 88px; padding: var(--sp-4); background: var(--control-primary); color: var(--control-primary-text); }
 .signal-phone-primary-icon { display: grid; width: 44px; height: 44px; flex-shrink: 0; place-items: center; border-radius: 50%; background: var(--control-primary-text); color: var(--control-primary); }

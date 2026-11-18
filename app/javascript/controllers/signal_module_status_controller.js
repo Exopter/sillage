@@ -9,14 +9,14 @@ const TypedController = /** @type {new (context: import("@hotwired/stimulus").Co
 export default class extends TypedController {
   static targets = ["module"]
 
-  /** @param {CustomEvent<{modules: Modules, connected: boolean, ended: boolean}>} event */
-  update({detail: {modules, connected, ended}}) {
+  /** @param {CustomEvent<{modules: Modules, connected: boolean, ended: boolean, lost?: boolean}>} event */
+  update({detail: {modules, connected, ended, lost}}) {
     /** @type {Record<string,string>} */
-    const labels = {unknown: "Unknown", stale: "Link lost", ready: "Ready", degraded: "Degraded"}
+    const labels = {unknown: "Unknown", stale: "No recent status", lost: "Link lost", ready: "Ready", degraded: "Degraded"}
     for (const target of this.moduleTargets || []) {
       const module = modules.find(item => item.role === Number(target.dataset.moduleRole))
       if (!module) continue
-      const state = !connected ? "unknown" : module.state
+      const state = !connected ? "unknown" : module.state === "stale" && lost ? "lost" : module.state
       target.dataset.state = state
       const values = {
         state: ended ? "Session ended" : !connected ? "Disconnected" : labels[state],

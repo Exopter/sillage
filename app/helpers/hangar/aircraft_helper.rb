@@ -20,20 +20,20 @@ module Hangar::AircraftHelper
         "in_preparation" => [ "pending", "In preparation" ],
         "serviceable" => [ "ready", "Serviceable" ],
         "quarantined" => [ "caution", "Quarantined" ],
-        "retired" => [ "fault", "Retired" ]
+        "retired" => [ "unknown", "Retired" ]
       }.fetch(asset.serviceability_state)
     end
 
     case asset.state
     when "quarantined" then [ "caution", "Review flag" ]
-    when "retired" then [ "fault", "Retired" ]
+    when "retired" then [ "unknown", "Retired" ]
     when "available" then [ "ready", "Available" ]
     else [ "ready", "Installed" ]
     end
   end
 
   def hangar_aircraft_status(aircraft)
-    aircraft.active? ? [ "ready", "Ready" ] : [ "fault", "Unavailable" ]
+    aircraft.active? ? [ "ready", "Ready" ] : [ "unknown", "Unavailable" ]
   end
 
   def hangar_aircraft_summary(aircraft)

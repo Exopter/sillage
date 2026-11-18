@@ -24,5 +24,6 @@
 .exds-signal-strength__value { color: var(--ex-graphite-400); font-size: var(--fs-xs); line-height: 1.2; white-space: nowrap; }
 .exds-signal-strength[data-level="0"] { color: var(--ex-graphite-400); }
 .exds-signal-strength[data-level="1"] { color: var(--ex-amber-500); }
-/* Telemetry was flowing and stopped: the link is a fault, not an idle state. */
+/* Telemetry was flowing and stopped: caution first, then a fault once the link is lost. */
+.exds-signal-strength[data-stale="true"] { color: var(--ex-amber-500); }
 .exds-signal-strength[data-fault="true"] { color: var(--ex-red-600); }

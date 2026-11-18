@@ -1210,8 +1210,8 @@ body {
 }
 
 .status.processing {
-  background: var(--ex-state-caution-bg);
-  color: var(--ex-state-caution-text);
+  background: var(--ex-state-pending-bg);
+  color: var(--ex-state-pending-text);
 }
 
 .status.imported {
@@ -1614,15 +1614,15 @@ body {
 }
 
 .status-pill.is-pending {
-  border-color: rgba(177, 117, 0, 0.28);
-  background: rgba(177, 117, 0, 0.1);
-  color: #8a5a00;
+  border-color: var(--ex-amber-500);
+  background: var(--ex-state-caution-bg);
+  color: var(--ex-state-caution-text);
 }
 
 .status-pill.is-disabled {
-  border-color: rgba(230, 59, 53, 0.26);
-  background: rgba(230, 59, 53, 0.08);
-  color: var(--ds-red);
+  border-color: var(--border-rule);
+  background: var(--ex-state-pending-bg);
+  color: var(--ex-state-pending-text);
 }
 
 .trajectory {
@@ -2654,12 +2654,12 @@ body {
 }
 
 .flight-metric-toggle.is-sky { --metric-color: var(--ex-sky-500); }
-.flight-metric-toggle.is-amber { --metric-color: var(--ex-amber-500); }
-.flight-metric-toggle.is-lime { --metric-color: var(--ex-field-500); }
+.flight-metric-toggle.is-orchid { --metric-color: var(--ex-series-orchid); }
+.flight-metric-toggle.is-olive { --metric-color: var(--ex-series-olive); }
 .flight-metric-toggle.is-violet { --metric-color: var(--ex-violet-500); }
-.flight-metric-toggle.is-coral { --metric-color: var(--ex-red-600); }
+.flight-metric-toggle.is-magenta { --metric-color: var(--ex-series-magenta); }
 .flight-metric-toggle.is-graphite { --metric-color: var(--ex-graphite-500); }
-.flight-metric-toggle.is-field { --metric-color: var(--ex-field-500); }
+.flight-metric-toggle.is-navy { --metric-color: var(--ex-series-navy); }
 
 .flight-statistics {
   width: 100%;
