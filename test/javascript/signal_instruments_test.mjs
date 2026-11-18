@@ -1,8 +1,9 @@
 import assert from "node:assert/strict"
-import {drawSignalInstruments, instrumentTapeTicks, normalizeHeading} from "../../app/javascript/lib/signal_instruments.js"
+import {drawSignalInstruments, headingOffset, instrumentTapeTicks, normalizeHeading} from "../../app/javascript/lib/signal_instruments.js"
 
 assert.equal(normalizeHeading(-1), 359)
 assert.equal(normalizeHeading(360), 0)
+assert.deepEqual([[10, 350], [350, 10], [90, 90], [270, 90], [0, 180.5], [725, 5]].map(([heading, reference]) => headingOffset(heading, reference)), [20, -20, 0, 180, 179.5, 0])
 const ticks = instrumentTapeTicks(152, 10, 30, 100, 20, 180, 0)
 assert.ok(ticks.find(t => t.value === 160).y < 100, "higher speed values sit above the current value")
 assert.ok(ticks.find(t => t.value === 150).y > 100, "lower speed values sit below the current value")

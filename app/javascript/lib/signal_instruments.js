@@ -22,6 +22,9 @@ export function instrumentStyle(canvas) {
 
 /** @param {number} heading */
 export function normalizeHeading(heading) { return ((heading % 360) + 360) % 360 }
+/** Signed turn from a reference heading, in (-180, 180]: positive to the right.
+ * @param {number} heading @param {number} reference */
+export function headingOffset(heading, reference) { return 180 - normalizeHeading(180 - (heading - reference)) }
 
 /** @param {number|null} value @param {number} step @param {number} spacing @param {number} center @param {number} top @param {number} bottom @param {number} minimum */
 export function instrumentTapeTicks(value, step, spacing, center, top, bottom, minimum = -Infinity) {
