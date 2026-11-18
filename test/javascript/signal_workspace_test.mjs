@@ -15,6 +15,8 @@ Workspace.prototype.sessionValue = "session"
 const view = new Workspace()
 for (const name of ["qualityAttitude", "qualityHeading", "attitudeDetail", "headingDetail", "preflightDetail", "preflightStatus"]) view[`${name}Target`] = {textContent: "", dataset: {}}
 for (const name of ["radioStatus", "parserStatus", "dataStatus", "heading", "airspeed", "altitude", "verticalSpeed", "glide", "aircraftLabel"]) view[`${name}Target`] = {textContent: ""}
+// The flight dashboard has every optional target; the tunnel dashboard omits them.
+view.hasHeadingTarget = view.hasAltitudeTarget = view.hasMapSceneTarget = true
 view.sensorValueTargets = ["accel", "gyro", "mag", "pressure", "temperature", "gps", "gLoad"].map((sensor) => ({dataset: {sensor}, textContent: ""}))
 view.streamBadgeTargets = ["charts", "map", "instruments"].map((widget) => ({dataset: {}, textContent: "", closest: () => ({getAttribute: () => widget})}))
 view.port = {}

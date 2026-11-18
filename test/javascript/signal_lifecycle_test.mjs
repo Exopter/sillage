@@ -26,6 +26,8 @@ globalThis.signalLifecycleDependencies = {
 const prelude = "const {ImuHealth, SignalTelemetry, openDatabase, readMetadata, writeMetadata, registerUsbPageRelease, SignalMap, claimTelemetryLink, closeTelemetryLink} = globalThis.signalLifecycleDependencies;\n"
 const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountName, mountZero, mountedReference} from "${mountURL}";\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n` + prelude + source).toString("base64")}`)
 const tick = () => new Promise((resolve) => setImmediate(resolve))
+// connect() reads the Signal environment from the element to pick the stored layout.
+Workspace.prototype.element = {getAttribute: () => null}
 let closed = 0
 const database = {close() {closed += 1}}
 const view = new Workspace()
