@@ -23,6 +23,16 @@ const MEND_WORD = new RegExp(`\\b(${DECIMAL_WORD})[ \\t]*\\n\\s*`, "gi")
 const MEND_FIGURE = new RegExp(`(?<![\\p{L}\\d.,])(\\d)\\.[ \\t]*\\n\\s*(${DIGIT_WORD})(?=\\s*(?:[,.]|\\n|$))`, "giu")
 const MIXED = new RegExp(`(?<![\\p{L}\\d.,])(\\d+)\\s+(?:${DECIMAL_WORD})\\s+(${DIGIT_WORD}|\\d)(?![\\p{L}\\d])`, "giu")
 const AFTER_LABEL = new RegExp(`((?:${LABEL})[\\s,:.]*(?:(?:is|was|at|est|\u00e0|de|of)\\s+)?)(${DIGIT_WORD})(?=\\s*(?:[,.;:]|\\n|$)|\\s+(?:speed|vitesse|c\\.?g\\b|a\\.?o\\.?a|kilo|km|degr))`, "giu")
+// Special features are the trials flown alongside the flight itself: added weight, a leg wing, a payload.
+/** @type {[string, RegExp][]} */
+const SPECIALS = [
+  ["weight", /\bweights?\b|\bballast|\blest|\bpoids\b|\bplombs?\b/i],
+  ["leg wing", /\bleg[\s-]*wing(?:suit)?s?\b|\b(?:wingsuit|aile)s? de jambes?\b/i],
+  ["payload", /\bpayloads?\b|\bcharge utile\b/i]
+]
+// The mass said with them ("two kilos of weight", "payload 1.5 kg") belongs to the weight, else to the payload.
+const MASS = new RegExp(`(?<![\\p{L}\\d.,])(${NUMBER}|${DIGIT_WORD})\\s*(kg|kilos?|kilogram(?:me)?s?|grams?|grammes?)(?!\\p{L})`, "iu")
+const NOTHING_SPECIAL = /rien de sp[e\u00e9]cial|nothing special|no special feature|(?:pas de|aucune) particularit/i
 // Words the feeling pattern must not report as the feeling itself ("I felt I had to work").
 const NOT_A_FEELING = ["had", "have", "has", "to", "that", "like", "as", "if", "when", "i", "it", "we", "you", "the", "a", "and", "so", "but", "je", "que", "comme"]
 
@@ -52,6 +62,21 @@ function feeling(text) {
   return [after[2], word].filter(Boolean).join(" ").toLowerCase() || "Noted"
 }
 
+/** "weight 2 kg \u00b7 leg wing" when trials are named, "none" when the pilot rules them out.
+ * @param {string} text */
+function special(text) {
+  let named = SPECIALS.filter(([, pattern]) => pattern.test(text)).map(([name]) => name)
+  const mass = MASS.exec(text)
+  const owner = ["weight", "payload"].find(name => named.includes(name))
+  if (mass && owner) {
+    const figure = `${(DIGITS[mass[1].toLowerCase()] ?? mass[1]).replace(",", ".")} ${/^g/i.test(mass[2]) ? "g" : "kg"}`
+    named = named.map(name => name === owner ? `${name} ${figure}` : name)
+  }
+  if (named.length) return named.join(" \u00b7 ")
+  if (NOTHING_SPECIAL.test(text)) return "none"
+  return /special feature|particularit|sp[e\u00e9]cificit/i.test(text) ? "Noted" : null
+}
+
 /** @param {string} transcript @returns {Record<string, string>} */
 export function extractChecklist(transcript) {
   const text = spokenNumbers(String(transcript || ""))
@@ -77,6 +102,7 @@ export function extractChecklist(transcript) {
   const scores = [idk && `IDK ${idk}`, idp && `IDP ${idp}`].filter(Boolean)
   const felt = scores.length ? scores.join(" \u00b7 ") : feeling(text)
   if (felt) found.feelings = felt
-  if (/special feature|particularit|rien de sp[e\u00e9]cial|nothing special|sp[e\u00e9]cificit/i.test(text)) found.special = "Noted"
+  const noted = special(text)
+  if (noted) found.special = noted
   return found
 }

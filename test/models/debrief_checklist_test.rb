@@ -4,9 +4,19 @@ class DebriefChecklistTest < ActiveSupport::TestCase
   test "extracts spoken points in English and French" do
     assert_equal({ "glide_ratio" => "2.8", "speed" => "165 km/h", "cg" => "3", "aoa" => "2" },
       DebriefChecklist.extract("Glide ratio was about 2,8. Speed 165. CG setting 3, angle of attack plus 2 degrees."))
-    assert_equal({ "glide_ratio" => "3.1", "speed" => "170 km/h", "cg" => "-1.5", "aoa" => "+2", "feelings" => "IDK 8 · IDP 7", "special" => "Noted" },
+    assert_equal({ "glide_ratio" => "3.1", "speed" => "170 km/h", "cg" => "-1.5", "aoa" => "+2", "feelings" => "IDK 8 · IDP 7", "special" => "none" },
       DebriefChecklist.extract("Finesse 3.1, vitesse de 170 km/h, centrage -1.5, incidence +2. Indice de kiff 8, pureté 7. Rien de spécial."))
     assert_empty DebriefChecklist.extract("We talked for 12 minutes about nothing in particular.")
+  end
+
+  test "names the trials flown as special features: weight, leg wing, payload" do
+    assert_equal "weight 2 kg", DebriefChecklist.extract("Special features: two kilos of weight on the legs.")["special"]
+    assert_equal "weight 2.5 kg \u00b7 leg wing", DebriefChecklist.extract("Lest de 2,5 kg et wingsuit de jambe")["special"]
+    assert_equal "leg wing \u00b7 payload 500 g", DebriefChecklist.extract("We flew the leg wingsuit with a 500 grams payload")["special"]
+    assert_equal "payload", DebriefChecklist.extract("Premier vol avec la charge utile")["special"]
+    assert_equal "Noted", DebriefChecklist.extract("About the special features of this suit")["special"]
+    # A mass with no named trial is not one, and a speed in kilometers is not a mass.
+    assert_nil DebriefChecklist.extract("I am 80 kilos, speed 150 kilometers per hour, leg strap on purple")["special"]
   end
 
   test "reads figures dictated digit by digit and the phrasing used in the tunnel" do
@@ -63,6 +73,9 @@ class DebriefChecklistTest < ActiveSupport::TestCase
       DebriefChecklist.from_model("glide_ratio" => "about 2,8 on the last run", "speed" => "165 km/h in the tunnel", "cg" => "Position 3, a bit forward",
         "aoa" => "+2\u00b0 nose up", "feelings" => "really smooth and stable", "special" => "none"))
     assert_equal({ "feelings" => "IDK 8" }, DebriefChecklist.from_model("idk" => "8", "special" => " "))
+    # A special feature keeps its short phrase instead of being cut to its figure.
+    assert_equal({ "special" => "weight 2 kg legs \u00b7 leg wing" }, DebriefChecklist.from_model("special" => " weight 2 kg legs \u00b7 leg wing "))
+    assert_equal({ "special" => "Weight 2 kg on the legs, and the leg" }, DebriefChecklist.from_model("special" => "Weight 2 kg on the legs, and the leg wing as well"))
     assert_empty DebriefChecklist.from_model({})
   end
 
