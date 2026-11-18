@@ -237,9 +237,10 @@
 .signal-live-badge {
   margin-left: auto;
   padding: 4px 7px;
-  border: 1px solid var(--state-live);
+  border: 1px solid var(--ex-onair-500);
   border-radius: var(--ex-radius-surface);
-  color: var(--state-live);
+  box-shadow: var(--ex-shadow-onair-soft);
+  color: var(--status-onair-text);
   font: 600 var(--fs-micro)/1 var(--font-mono);
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -248,11 +249,13 @@
 .signal-live-badge[data-state="waiting"],
 .signal-live-badge[data-state="ended"] {
   border-color: var(--ex-graphite-400);
+  box-shadow: none;
   color: var(--ex-graphite-400);
 }
 
 .signal-live-badge[data-state="stale"] {
   border-color: var(--ex-amber-500);
+  box-shadow: none;
   color: var(--ex-amber-500);
 }
 
@@ -984,8 +987,8 @@
 }
 
 .signal-fdr-recording-control[data-state="on"] {
-  border-left-color: var(--ex-state-live-text);
-  background: color-mix(in srgb, var(--ex-state-live-bg) 70%, var(--surface-card));
+  border-left-color: var(--ex-onair-500);
+  background: color-mix(in srgb, var(--ex-state-onair-bg) 70%, var(--surface-card));
 }
 
 .signal-fdr-recording-control[data-state="paused"],
@@ -1085,10 +1088,21 @@
   transform: translateX(18px);
 }
 
+.signal-fdr-recording-control[data-state="on"] .signal-fdr-recording-switch[aria-checked="true"] .signal-fdr-recording-switch-track {
+  border-color: var(--ex-onair-500);
+  background: var(--ex-onair-500);
+  box-shadow: var(--ex-shadow-onair);
+  animation: ex-onair-breathe 2s var(--ease-in-out) infinite;
+}
+
+.signal-fdr-recording-control[data-state="on"] .signal-fdr-recording-switch[aria-checked="true"] .signal-fdr-recording-switch-thumb {
+  background: var(--ex-white);
+}
+
 .signal-fdr-recording-control[data-state="on"] .signal-fdr-recording-switch-track::after {
   position: absolute;
   inset: -3px;
-  border: 1px solid var(--ex-state-live-text);
+  border: 1px solid var(--ex-onair-500);
   border-radius: inherit;
   animation: signal-fdr-recording-pulse 1.8s var(--ease-out) infinite;
   content: "";
@@ -1112,6 +1126,10 @@
   .signal-fdr-recording-control[data-state="on"] .signal-fdr-recording-switch-track::after {
     animation: none;
     opacity: 0;
+  }
+
+  .signal-fdr-recording-control[data-state="on"] .signal-fdr-recording-switch[aria-checked="true"] .signal-fdr-recording-switch-track {
+    animation: none;
   }
 }
 

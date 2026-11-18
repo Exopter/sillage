@@ -35,6 +35,7 @@
   --ex-hud-green: #8cff4d;
   --ex-amber-500: #f2a23a;
   --ex-red-600: #e63b35;
+  --ex-onair-500: #ff3127;
   --ex-violet-500: #6658c7;
 
   --ex-instrument-sky: #102936;
@@ -73,6 +74,8 @@
   --ex-state-caution-text: #7a4b0a;
   --ex-state-fault-bg: rgba(230, 59, 53, 0.12);
   --ex-state-fault-text: #b42318;
+  --ex-state-onair-bg: rgba(255, 49, 39, 0.10);
+  --ex-state-onair-text: #c2190f;
 
   --ex-space-1: 4px;
   --ex-space-2: 8px;
@@ -95,6 +98,9 @@
   --ex-radius-surface: 4px;
   --ex-shadow-raised: 0 6px 18px rgba(7, 11, 13, 0.14);
   --ex-shadow-panel: 0 1px 2px rgba(7, 11, 13, 0.06);
+  --ex-shadow-onair: 0 0 0 3px rgba(255, 49, 39, 0.16), 0 0 10px 1px rgba(255, 49, 39, 0.6);
+  --ex-shadow-onair-peak: 0 0 0 4px rgba(255, 49, 39, 0.24), 0 0 16px 3px rgba(255, 49, 39, 0.85);
+  --ex-shadow-onair-soft: 0 0 12px rgba(255, 49, 39, 0.32);
   --ex-page-width: min(1220px, calc(100vw - 36px)); /* @kind spacing */
   --ex-analysis-scene-expanded-height: clamp(360px, 55vh, 680px); /* @kind spacing */
 }

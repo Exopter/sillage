@@ -268,14 +268,18 @@
 .flight-debrief-record:hover { background: var(--control-primary-hover); box-shadow: 0 0 0 10px var(--surface-panel); }
 .flight-debrief-record:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 12px; }
 .flight-debrief-live { display: grid; justify-items: center; gap: var(--sp-3); }
-.flight-debrief-clock { color: var(--text-strong); font: 700 2.5rem/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.flight-debrief-clock { display: inline-flex; align-items: center; gap: var(--sp-3); color: var(--text-strong); font: 700 2.5rem/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+/* Recording dot: on air while the microphone records, muted while paused. */
+.flight-debrief-clock::before { width: 12px; height: 12px; flex: 0 0 auto; border-radius: 50%; background: var(--border-strong); content: ""; }
+.flight-debrief[data-state="recording"] .flight-debrief-clock::before { background: var(--ex-onair-500); box-shadow: var(--ex-shadow-onair); animation: ex-onair-breathe 2s var(--ease-in-out) infinite; }
+@media (prefers-reduced-motion: reduce) { .flight-debrief[data-state="recording"] .flight-debrief-clock::before { animation: none; } }
 .flight-debrief-wave { display: flex; align-items: center; gap: 5px; height: 56px; }
-.flight-debrief-wave i { width: 5px; height: calc(6px + 50px * var(--debrief-level, 0) * var(--debrief-wave, 1)); border-radius: 3px; background: var(--state-live); transition: height var(--dur) var(--ease-out); }
+.flight-debrief-wave i { width: 5px; height: calc(6px + 50px * var(--debrief-level, 0) * var(--debrief-wave, 1)); border-radius: 3px; background: var(--ex-onair-500); box-shadow: 0 0 8px rgba(255, 49, 39, 0.5); transition: height var(--dur) var(--ease-out); }
 .flight-debrief-wave i:is(:nth-child(1), :nth-child(9)) { --debrief-wave: 0.35; }
 .flight-debrief-wave i:is(:nth-child(2), :nth-child(8)) { --debrief-wave: 0.6; }
 .flight-debrief-wave i:is(:nth-child(3), :nth-child(7)) { --debrief-wave: 0.85; }
 .flight-debrief-wave i:nth-child(5) { --debrief-wave: 0.7; }
-.flight-debrief[data-state="paused"] .flight-debrief-wave i { background: var(--border-strong); }
+.flight-debrief[data-state="paused"] .flight-debrief-wave i { background: var(--border-strong); box-shadow: none; }
 .flight-debrief-spinner { width: 44px; height: 44px; border: 3px solid var(--border-rule); border-top-color: var(--text-strong); border-radius: 50%; animation: flight-debrief-spin 0.9s linear infinite; }
 @keyframes flight-debrief-spin { to { transform: rotate(360deg); } }
 .flight-debrief-status { max-width: 44ch; color: var(--text-muted); font-size: var(--fs-text); line-height: 1.5; }
