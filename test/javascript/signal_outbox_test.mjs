@@ -158,7 +158,7 @@ Object.defineProperty(globalThis, "navigator", { value: { onLine: true }, config
 globalThis.document = { querySelector: () => null }
 const cloud = workspace()
 delete cloud.flushOutbox
-cloud.cloudStatusTarget = {}
+cloud.cloudStatusTarget = {dataset: {}}
 cloud.db.autoCommit = true
 cloud.db.values.outbox.set("bad", {
   id: "bad", session: "session", kind: "batch", sequence: 7, url: "/batch", method: "POST", body: {sequence:7,first_received_at:"2026-09-06T10:00:00Z",last_received_at:"2026-09-06T10:00:00Z",samples:[]}, queuedAt: Date.now()
@@ -172,6 +172,7 @@ await cloud.flushOutbox()
 assert.equal(cloud.db.values.outbox.size, 0)
 assert.equal(cloud.cloudError, null)
 assert.equal(cloud.cloudStatusTarget.textContent, "Live")
+assert.equal(cloud.cloudStatusTarget.dataset.state, "nominal", "a synchronized cloud is the only green state")
 // End session returns home only after the server has acknowledged every queued record.
 cloud.ended = true
 cloud.returnHomeAfterSync = true
@@ -267,7 +268,7 @@ discard.db.autoCommit = true
 discard.flightCodeValue = "UNASSIGNED"
 discard.homeUrlValue = "/signal?view=home"
 discard.stopSerial = async () => {}
-discard.cloudStatusTarget = {}
+discard.cloudStatusTarget = {dataset: {}}
 discard.flushOutbox = Workspace.prototype.flushOutbox
 const removed = []
 navigator.storage = {getDirectory: async () => ({removeEntry: async name => removed.push(name)})}
@@ -297,7 +298,7 @@ prompt.continueSession()
 assert.equal(prompt.exitForm, null)
 prompt.interceptSubmit({target: logout, submitter: null, preventDefault() {}, stopImmediatePropagation() {}})
 prompt.stopSerial = async () => {}
-prompt.cloudStatusTarget = {}
+prompt.cloudStatusTarget = {dataset: {}}
 prompt.flushOutbox = Workspace.prototype.flushOutbox
 navigator.onLine = false
 await prompt.finishSession("save")

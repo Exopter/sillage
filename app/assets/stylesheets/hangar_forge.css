@@ -278,7 +278,7 @@
 }
 
 .workspace-status.is-caution {
-  border-color: var(--ex-amber-500, #d99b2b);
+  border-color: var(--ex-amber-500);
   color: var(--ex-state-caution-text);
 }
 
@@ -526,7 +526,7 @@
   height: 7px;
   margin-right: 7px;
   border-radius: 50%;
-  background: var(--ex-field-500, #4f7b4e);
+  background: var(--ex-field-500);
   content: "";
 }
 
@@ -652,12 +652,16 @@
 .fdr-wifi-network small,
 .fdr-wifi-scan-row small {
   margin-top: 4px;
-  color: var(--ex-state-ready-text, #27744f);
+  color: var(--text-muted);
   font-size: var(--fs-xs);
 }
 
+.fdr-wifi-network small {
+  color: var(--ex-state-ready-text);
+}
+
 .fdr-wifi-network small.is-pending {
-  color: var(--ex-amber-500, #c47d08);
+  color: var(--ex-state-caution-text);
 }
 
 .fdr-wifi-cell-muted {
@@ -747,7 +751,7 @@
 
 .fdr-wifi-security-note svg {
   flex: 0 0 auto;
-  color: var(--ex-state-live-text, #00615b);
+  color: var(--ex-state-live-text);
 }
 
 .fdr-wifi-scan-header,
@@ -802,11 +806,11 @@
 }
 
 .fdr-wifi-apply-bar > span[data-state="success"] {
-  color: var(--ex-state-ready-text, #27744f);
+  color: var(--ex-state-ready-text);
 }
 
 .fdr-wifi-apply-bar > span[data-state="error"] {
-  color: var(--ex-state-fault-text, #9e3535);
+  color: var(--ex-state-fault-text);
 }
 
 .fdr-wifi-apply-bar .button-primary {
@@ -1165,24 +1169,23 @@
 }
 
 .workspace-status.is-available {
-  color: var(--ex-state-ready-text, #315a26);
-  background: var(--ex-state-ready-bg, rgba(140, 255, 77, 0.18));
+  color: var(--ex-state-ready-text);
+  background: var(--ex-state-ready-bg);
 }
 
 .workspace-status.is-installed {
-  color: var(--ex-state-live-text, #00615b);
+  color: var(--ex-state-live-text);
   background: var(--ex-state-live-bg);
 }
 
 .workspace-status.is-quarantined {
-  color: var(--ex-state-caution-text, #7a4b0a);
-  background: var(--ex-state-caution-bg, rgba(242, 162, 58, 0.16));
+  color: var(--ex-state-caution-text);
+  background: var(--ex-state-caution-bg);
 }
 
-.workspace-status.is-retired,
 .workspace-status.is-failed {
-  color: var(--ex-state-fault-text, #b42318);
-  background: var(--ex-state-fault-bg, rgba(230, 59, 53, 0.12));
+  color: var(--ex-state-fault-text);
+  background: var(--ex-state-fault-bg);
 }
 
 .workspace-form {
@@ -1292,8 +1295,8 @@
 
 .workspace-errors {
   padding: 12px 14px;
-  color: var(--ex-state-fault-text, #b42318);
-  background: var(--ex-state-fault-bg, rgba(230, 59, 53, 0.12));
+  color: var(--ex-state-fault-text);
+  background: var(--ex-state-fault-bg);
   border-radius: var(--ex-radius-surface);
 }
 
@@ -1377,7 +1380,7 @@
 }
 
 .assembly-function {
-  color: var(--ex-state-live-text, #00615b);
+  color: var(--ex-state-live-text);
   font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.05em;
