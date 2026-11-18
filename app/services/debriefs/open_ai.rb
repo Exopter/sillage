@@ -71,10 +71,14 @@ module Debriefs
       feelings (how the flight felt, sensations, ressentis);
       idk ("indice de kiff": a fun or enjoyment score);
       idp ("indice de puret\u00e9": a cleanliness or purity score of the flying);
-      special (special features: any trial flown alongside the flight itself, such as added weight or ballast with its
-      mass and where it is worn, a leg wing or leg wingsuit, a payload, a changed strap, harness or piece of equipment,
-      or anything else unusual about this flight or setup; an explicit statement that there was nothing special is the
-      value "none"). A CG or AoA setting, a speed change and how the wing handled are not special features.
+      special (special features: any trial or deliberate change flown alongside the flight itself, such as added weight
+      or ballast with the total mass carried and where it is worn, a leg wing or leg wingsuit, a payload with its mass
+      and position, a changed strap, harness, padding, suit or other piece of equipment, a body position or manoeuvre
+      tried on purpose (arms forward, X position, legs unzipped), or a change around the tunnel such as the cameraman's
+      position; an explicit statement that there was nothing special is the value "none"). These are not special
+      features: the CG or AoA setting, the speed, and how the flight felt or how the wing behaved (stable, stalling,
+      yawing, oscillating, "awesome"). When weight is added to weight already carried, give the total ("we added 5
+      kilos, 15 in total" is weight 15 kg).
       How pilots dictate: figures are often spoken digit by digit ("one five zero" is 150, "two point eight" is 2.8). The
       debrief usually opens with glide ratio, speed, CG and angle of attack in that order; the first words are sometimes
       lost or misheard, so a bare decimal figure right before the speed is the glide ratio. When a figure changes later in
