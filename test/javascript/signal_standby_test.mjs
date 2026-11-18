@@ -58,7 +58,7 @@ console.log("Signal link parking, expiry and re-readable polling link tests pass
 
 // Standby: telemetry is shown, nothing is stored, and Start flight hands the open link over.
 const workspaceSource = strip(await read("controllers/signal_workspace_controller.js"))
-const {default: Workspace} = await load(`import {NATIVE_MOUNT, BELLY_MOUNT, interpretImu} from "${url("lib/imu_mount.js")}";
+const {default: Workspace} = await load(`import {NATIVE_MOUNT, BELLY_MOUNT, interpretImu, mountName} from "${url("lib/imu_mount.js")}";
 import {ImuHealth} from "${url("lib/imu_health.js")}";
 import {SignalTelemetry, groundStationHeartbeat, seatModeCommand} from "${url("lib/signal_telemetry.js")}";
 import {observeRecorderConnection} from "${url("lib/aircraft_connection.js")}";

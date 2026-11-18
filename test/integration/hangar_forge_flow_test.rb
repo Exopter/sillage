@@ -25,6 +25,7 @@ class HangarForgeFlowTest < ActionDispatch::IntegrationTest
       assert_select "select[name='assembly[assembly_type]'] option[value='#{type}']", type
     end
     assert_select "select[name='assembly[imu_mount_profile]'] option[value='#{Imu::Mount::NATIVE}']", "None (native sensor axes)"
+    assert_select "select[name='assembly[imu_mount_profile]'] option[value='#{Imu::Mount::UPSIDE_DOWN}']", "Upside down mount"
 
     %w[Parachute Exowing].each do |type|
       assert_difference -> { Assembly.count }, 1 do

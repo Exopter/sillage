@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 import { AircraftConnectionTransport, setAircraftConnection, observeRecorderConnection } from "aircraft_connection"
 import { clamp, signalLayoutPreset, parseSignalLayout } from "signal_layout"
 import { ImuHealth } from "imu_health"
-import { BELLY_MOUNT, NATIVE_MOUNT, interpretImu } from "imu_mount"
+import { NATIVE_MOUNT, interpretImu, mountName } from "imu_mount"
 import { SignalTelemetry, groundStationHeartbeat, seatModeCommand } from "signal_telemetry"
 import { directTelemetryPort, parkTelemetryLink, claimTelemetryLink, closeTelemetryLink } from "signal_transport"
 import { resolveRadioIdentity } from "signal_radio_link"
@@ -853,7 +853,7 @@ export default class extends TypedController {
   renderValues() {
     this.renderQuality()
     if (this.hasMountLabelTarget) this.mountLabelTarget.textContent = this.imuHealth.quality
-      ? this.activeMountProfile === BELLY_MOUNT ? "Wingsuit belly pocket · MAG" : "Native sensor axes · MAG"
+      ? `${mountName(this.activeMountProfile)} · MAG`
       : "Waiting for recorder mounting"
     for (const target of this.sensorAxesTargets || []) target.textContent = this.telemetry.bodyFrame ? "F/R/D" : "X/Y/Z"
     this.airspeedTarget.textContent = formatNumber(this.telemetry.airspeed, 1)

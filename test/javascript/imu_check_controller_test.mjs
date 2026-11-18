@@ -7,7 +7,7 @@ const source = (await readFile(new URL('../../app/javascript/controllers/imu_che
   .replace(/^const Base = .*$/m,'const Base = class {}')
 const healthURL = new URL('../../app/javascript/lib/imu_health.js',import.meta.url).href
 const identityURL = new URL('../../app/javascript/lib/recorder_identity.js',import.meta.url).href
-const {default: Guide} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountedReference} from "${mountURL}";\nimport {ImuHealth, SixFaceCapture, ReferenceCapture, imuQualityLabel, FACE_NAMES, FACE_HOLD_RULES, referenceIssue} from '${healthURL}';\nimport {recorderTechnicalLabel} from '${identityURL}';\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString('base64')}`)
+const {default: Guide} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountName, mountedReference} from "${mountURL}";\nimport {ImuHealth, SixFaceCapture, ReferenceCapture, imuQualityLabel, FACE_NAMES, FACE_HOLD_RULES, referenceIssue} from '${healthURL}';\nimport {recorderTechnicalLabel} from '${identityURL}';\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n${source}`).toString('base64')}`)
 function makeGuide() {
  const guide = new Guide()
  for(const name of ['attitude','heading','qualityReason','actionButton','title','instruction','progress','result','connectButton']) guide[`${name}Target`]={textContent:'',dataset:{},value:0}
@@ -199,5 +199,15 @@ belly.tick()
 assert.match(belly.resultTarget.textContent,/0.00° roll/)
 assert.equal(belly.samples[0].roll,180,'final reference display changes without rotating captured evidence')
 assert.equal(belly.faces.completed['z-'],undefined,'the final mounting does not fabricate six-face completion')
+const flipped=makeGuide()
+flipped.mountProfileValue='upside_down_v1'
+flipped.port={}; feed(flipped); flipped.confirmedTarget.checked=true
+assert.equal(flipped.referenceFace,'z-')
+assert.match(flipped.levelInstruction,/\+Z toward the ground and \+X forward/)
+flipped.phase='level'; flipped.advance(); flipped.save=async()=>{}
+flipped.health.sample=()=>({t:now,roll:180,pitch:0,quaternion:[0,Math.SQRT1_2,Math.SQRT1_2,0],accel:[0,0,-9.80665],gyro:[0,0,0],mag:[20,0,25],accuracy:[3,0,3,3],heading_accuracy:3,quality_age:10})
+flipped.tick()
+assert.match(flipped.resultTarget.textContent,/0.00° roll/)
+assert.equal(flipped.samples[0].roll,180,'upside down evidence stays native')
 Date.now=originalNow
 console.log('IMU recorder identity, freshness, disconnect, save guards, diagnostic recovery and reset tests passed')

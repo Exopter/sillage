@@ -24,7 +24,7 @@ globalThis.signalLifecycleDependencies = {
   claimTelemetryLink: () => null, closeTelemetryLink: async () => {}
 }
 const prelude = "const {ImuHealth, SignalTelemetry, openDatabase, readMetadata, writeMetadata, registerUsbPageRelease, SignalMap, claimTelemetryLink, closeTelemetryLink} = globalThis.signalLifecycleDependencies;\n"
-const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountedReference} from "${mountURL}";\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n` + prelude + source).toString("base64")}`)
+const {default: Workspace} = await import(`data:text/javascript;base64,${Buffer.from(`import {BELLY_MOUNT, NATIVE_MOUNT, interpretImu, mountName, mountedReference} from "${mountURL}";\nimport {observeRecorderConnection, forgetRecorderConnection} from "${connectionURL}";\n` + prelude + source).toString("base64")}`)
 const tick = () => new Promise((resolve) => setImmediate(resolve))
 let closed = 0
 const database = {close() {closed += 1}}

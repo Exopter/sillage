@@ -88,6 +88,22 @@ class ImuChecksFlowTest < ActionDispatch::IntegrationTest
     assert_match(/quaternions are required/, Imu::Assessment.call(@samples.as_json, mount_profile: Imu::Mount::BELLY)["reason"])
   end
 
+  test "upside down reference passes level in the installed frame only" do
+    assembly = create_exofdr_assembly
+    FdrIdentity::BindBoard.new(assembly:, controller: @fdr).call
+    assembly.update!(imu_mount_profile: Imu::Mount::UPSIDE_DOWN)
+    half = Math.sqrt(0.5)
+    @samples.each { |s| s.merge!(roll: 180, pitch: 0, quaternion: [ 0, half, half, 0 ], accel: [ 0, 0, -9.80665 ]) }
+    post api_v1_imu_checks_path, params: @payload.merge(mount_profile: Imu::Mount::UPSIDE_DOWN), as: :json
+    assert_response :created
+    assert_equal "passed", response.parsed_body["outcome"]
+    assert_in_delta 0, response.parsed_body.dig("summary", "roll_mean"), 1e-6
+    assert_equal Imu::Mount::UPSIDE_DOWN, response.parsed_body.dig("summary", "mount_profile")
+    assert_equal 180, ImuCheck.last.evidence["samples"].first["roll"]
+    @samples.each { |s| s.merge!(quaternion: [ 1, 0, 0, 0 ], accel: [ 0, 0, 9.80665 ]) }
+    assert_not Imu::Assessment.call(@samples.as_json, mount_profile: Imu::Mount::UPSIDE_DOWN)["passed"], "upright sensor is inverted relative to the flight mounting"
+  end
+
   test "preflight requires a matching reference and belongs to the signed-in user" do
     post api_v1_imu_checks_path, params: @payload.merge(kind: "preflight", flight_id: @flight.id), as: :json
     assert_response :unprocessable_entity
