@@ -1,0 +1,27 @@
+<%# The five wing setting fields, shared by the pilot profile and Core. %>
+<% range = User::WING_SETTING_RANGES %>
+<%# A whole decimal reads "68", not "68.0". %>
+<% plain = ->(setting) { form.object[setting]&.to_s("F")&.delete_suffix(".0") } %>
+<div class="sillage-wing-settings-fields">
+  <label>
+    <span>Weight</span>
+    <span class="exds-input-wrap"><%= form.number_field :weight_kg, value: plain.call(:weight_kg), step: 0.1, min: range[:weight_kg].min, max: range[:weight_kg].max, inputmode: "decimal", class: "exds-input exds-input--data" %><span class="exds-input__affix">kg</span></span>
+  </label>
+  <label>
+    <span>Height</span>
+    <span class="exds-input-wrap"><%= form.number_field :height_cm, step: 1, min: range[:height_cm].min, max: range[:height_cm].max, inputmode: "numeric", class: "exds-input exds-input--data" %><span class="exds-input__affix">cm</span></span>
+  </label>
+  <label>
+    <span>CG setting</span>
+    <span class="exds-input-wrap"><%= form.number_field :cg_setting, value: plain.call(:cg_setting), step: 0.1, min: range[:cg_setting].min, max: range[:cg_setting].max, inputmode: "decimal", class: "exds-input exds-input--data" %></span>
+  </label>
+  <label>
+    <span>Tunnel glide ratio</span>
+    <span class="exds-input-wrap"><%= form.number_field :tunnel_glide_ratio, step: 0.01, min: range[:tunnel_glide_ratio].min, max: range[:tunnel_glide_ratio].max, inputmode: "decimal", class: "exds-input exds-input--data", aria: { describedby: "tunnel-glide-ratio-help" } %></span>
+    <span id="tunnel-glide-ratio-help" class="exds-field__hint">Between <%= range[:tunnel_glide_ratio].min %> and <%= range[:tunnel_glide_ratio].max %>, as set on the tunnel.</span>
+  </label>
+  <label>
+    <span>Tunnel speed</span>
+    <span class="exds-input-wrap"><%= form.number_field :tunnel_speed_kmh, step: 1, min: range[:tunnel_speed_kmh].min, max: range[:tunnel_speed_kmh].max, inputmode: "numeric", class: "exds-input exds-input--data" %><span class="exds-input__affix">km/h</span></span>
+  </label>
+</div>

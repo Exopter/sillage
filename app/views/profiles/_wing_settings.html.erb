@@ -1,0 +1,56 @@
+<%# The pilot's preferred setup: a readout that turns into its form on Edit. %>
+<%
+  readouts = [
+    [ "Weight", user.weight_kg && number_with_precision(user.weight_kg, precision: 1, strip_insignificant_zeros: true), "kg" ],
+    [ "Height", user.height_cm, "cm" ],
+    [ "CG setting", user.cg_setting && number_with_precision(user.cg_setting, precision: 1, strip_insignificant_zeros: true), nil ],
+    [ "Tunnel glide ratio", user.tunnel_glide_ratio && number_with_precision(user.tunnel_glide_ratio, precision: 2), nil ],
+    [ "Tunnel speed", user.tunnel_speed_kmh, "km/h" ]
+  ]
+  recorded = User::WING_SETTINGS.any? { |setting| user.attribute_in_database(setting).present? }
+%>
+<section id="wing-settings" class="sillage-profile-panel" aria-labelledby="profile-wing-settings">
+  <header class="sillage-profile-panel-header">
+    <h2 id="profile-wing-settings">Wing settings</h2>
+    <% if recorded && !editing %>
+      <%= link_to "Edit", profile_path(edit: "wing-settings", anchor: "wing-settings"), class: "exds-btn exds-btn--secondary exds-btn--sm" %>
+    <% end %>
+  </header>
+
+  <% if editing %>
+    <%= form_with model: user, url: profile_path, method: :patch, class: "sillage-wing-settings-form" do |form| %>
+      <%= hidden_field_tag :section, "wing_settings", id: nil %>
+      <% if user.errors.any? %>
+        <p class="workspace-errors" role="alert"><%= user.errors.full_messages.to_sentence %></p>
+      <% end %>
+      <%= render "shared/wing_settings_fields", form: form %>
+      <div class="exds-form-actions">
+        <%= link_to "Cancel", profile_path(anchor: "wing-settings"), class: "exds-btn exds-btn--secondary" %>
+        <%= form.submit "Save settings", class: "exds-btn exds-btn--primary" %>
+      </div>
+    <% end %>
+  <% elsif recorded %>
+    <dl class="sillage-wing-settings">
+      <% readouts.each do |label, value, unit| %>
+        <div>
+          <dt><%= label %></dt>
+          <% if value %>
+            <dd><%= value %><% if unit %><small><%= unit %></small><% end %></dd>
+          <% else %>
+            <dd class="is-unset"><span aria-hidden="true">–</span><span class="sr-only">Not set</span></dd>
+          <% end %>
+        </div>
+      <% end %>
+    </dl>
+    <p class="sillage-wing-settings-note">
+      Your preferred setup, ready for your next session.
+      <% if user.wing_settings_updated_at %>Updated <%= user.wing_settings_updated_at.strftime("%-d %B %Y") %>.<% end %>
+    </p>
+  <% else %>
+    <div class="sillage-wing-settings-empty">
+      <strong>No settings recorded yet</strong>
+      <span>Add your weight, height, CG setting and tunnel preferences so they are ready for your next session.</span>
+      <%= link_to "Add your settings", profile_path(edit: "wing-settings", anchor: "wing-settings"), class: "exds-btn exds-btn--secondary exds-btn--sm" %>
+    </div>
+  <% end %>
+</section>
