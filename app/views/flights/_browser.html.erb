@@ -23,8 +23,8 @@
     <div class="exds-browser-body">
       <aside class="exds-browser-sidebar" aria-label="Flight folders">
         <nav aria-label="Library">
-          <% [["All flights", "plane", nil, "all"], ["Unfiled", "file-text", "unfiled", "flights"], ["Excluded recordings", "file-text", nil, "set_aside"]].each do |label, icon, folder, filter| %>
-            <% active = @folder_filter == folder && (folder || (filter == "all" ? @filter != "set_aside" : @filter == filter)) %>
+          <% [["My flights", "user", nil, "mine"], ["All flights", "plane", nil, "all"], ["Unfiled", "file-text", "unfiled", "flights"], ["Excluded recordings", "file-text", nil, "set_aside"]].each do |label, icon, folder, filter| %>
+            <% active = @folder_filter == folder && (folder || (filter == "all" ? %w[set_aside mine].exclude?(@filter) : @filter == filter)) %>
             <%= link_to browser_path(folder: folder, filter: filter, page: nil), class: "exds-browser-nav", aria: { current: ("page" if active) }, data: { folder_destination: folder, action: "dragenter->flight-browser#overFolder dragover->flight-browser#overFolder dragleave->flight-browser#leaveFolder drop->flight-browser#drop" } do %>
               <%= sillage_icon icon, size: 22 %><span><%= label %></span><% if folder == "unfiled" %><small><%= @unfiled_count %></small><% end %><%= sillage_icon "chevron-right", size: 16 %>
             <% end %>
@@ -89,7 +89,7 @@
                 <% end %>
               <% end %>
             <% end %>
-            <% if @flights.empty? %><div class="exds-browser-empty"><%= sillage_icon "folder", size: 40 %><strong><%= @query.present? ? "No matching flights" : "This folder is empty" %></strong><span><%= @folder_filter ? "No flights match this folder and the current filters." : can_manage_operations? ? "Create a flight or import a recording to get started." : "No accessible flights or recordings." %></span></div><% end %>
+            <% if @flights.empty? %><div class="exds-browser-empty"><%= sillage_icon "folder", size: 40 %><strong><%= @query.present? ? "No matching flights" : @filter == "mine" && !@folder_filter ? "No flights of your own yet" : "This folder is empty" %></strong><span><%= @folder_filter ? "No flights match this folder and the current filters." : @filter == "mine" ? "Flights you pilot appear here." : can_manage_operations? ? "Create a flight or import a recording to get started." : "No accessible flights or recordings." %></span></div><% end %>
           </div>
           <% if can_manage_operations? %>
           <div class="exds-selection-toolbar" data-table-selection-target="toolbar" hidden role="group" aria-label="Selection actions">

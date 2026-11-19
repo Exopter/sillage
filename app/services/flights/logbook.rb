@@ -1,6 +1,7 @@
 module Flights
   class Logbook
-    FILTERS = %w[flights set_aside all].freeze
+    # "mine" keeps the flights piloted by the user; recordings have no pilot.
+    FILTERS = %w[flights set_aside all mine].freeze
     PER_PAGE = 30
 
     def initialize(user:, filter:, query: nil, visibility: nil, folder: nil, environment: nil)
@@ -75,6 +76,7 @@ module Flights
         end
       end
       scope = scope.none if @filter == "set_aside"
+      scope = scope.where(pilot_id: @user.id) if @filter == "mine"
       scope = scope.where(environment: @environment) if @environment
       if @query.present?
         scope = scope.left_joins(:aircraft, :flight_import).where(
@@ -85,7 +87,7 @@ module Flights
 
     def import_scope
       scope = FlightImport.accessible_to(@user)
-      scope = scope.none if @folder
+      scope = scope.none if @folder || @filter == "mine"
       scope = scope.none if @visibility.in?(%w[public shared])
       # A recording without a flight has no mode yet.
       scope = scope.none if @environment
