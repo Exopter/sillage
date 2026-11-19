@@ -534,7 +534,9 @@ export default class extends TypedController {
         this.usbSyncActive = true
         this.usbSyncInterrupted = false
         this.updateUsbActions()
-        this.showSynchronizationNotice("Preparing sealed recordings and verifying checksums")
+        this.showSynchronizationNotice(this.importQueue && (device.capabilities & UsbCapability.IMPORT_QUEUE)
+          ? "Reading the recording catalog from the recorder…"
+          : "Checking the next sealed recording on the recorder…")
         try {
           const synchronization = await this.synchronizeUsbFiles(client, device)
           if (!this.usbSessionActive(session, client)) return
