@@ -144,6 +144,27 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, secret_folder.name
   end
 
+  test "my flights leads the library and lists only the flights piloted by the user" do
+    other = flights(:two)
+    other.update!(pilot: users(:member), visibility: "team")
+
+    get flights_path
+    assert_select ".exds-browser-sidebar nav[aria-label=Library] .exds-browser-nav:first-child[href=?]", flights_path(filter: "mine"), text: /My flights/
+    assert_select ".exds-browser-nav[aria-current=page]", text: /All flights/
+    assert_select ".exds-browser-entry[data-entry=?]", "flight:#{other.id}"
+
+    get flights_path(filter: "mine")
+    assert_select ".exds-browser-nav[aria-current=page]", count: 1, text: /My flights/
+    assert_select ".exds-browser-collection h2", text: "My flights"
+    assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}"
+    assert_select ".exds-browser-entry[data-entry=?]", "flight:#{other.id}", count: 0
+    assert_select ".exds-browser-entry[data-entry^='import:']", count: 0
+
+    Flight.where(pilot: @owner).update_all(pilot_id: users(:member).id)
+    get flights_path(filter: "mine")
+    assert_select ".exds-browser-empty strong", text: "No flights of your own yet"
+  end
+
   test "empty and filtered folders keep their navigation and explicit empty states" do
     get flights_path(folder: @folder.id, q: "Nothing matches", visibility: "team")
     assert_select ".exds-browser-entry", count: 0
