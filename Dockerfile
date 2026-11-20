@@ -2,15 +2,15 @@
 # check=error=true
 
 # Production image for Kamal deploys.
-ARG RUBY_VERSION=4.0.9
-FROM docker.io/library/node:24-bookworm-slim AS frontend
+ARG RUBY_VERSION=4.0.10
+FROM docker.io/library/node:24.22.3-bookworm-slim AS frontend
 WORKDIR /frontend
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
 COPY script/prepare_cesium_assets.mjs script/prepare_three_assets.mjs script/prepare_leaflet_assets.mjs script/
 RUN npm run assets:prepare
 
-FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
+FROM docker.io/library/ruby:$RUBY_VERSION-slim-trixie AS base
 
 WORKDIR /rails
 
