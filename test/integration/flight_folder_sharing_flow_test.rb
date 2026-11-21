@@ -10,7 +10,7 @@ class FlightFolderSharingFlowTest < ActionDispatch::IntegrationTest
     sign_in_as_admin @member
   end
 
-  test "administrator members manage accessible flights while folder administration stays owner scoped" do
+  test "administrator members manage accessible flights and the folder itself" do
     get flights_path(folder: @folder.id, visibility: "shared")
     assert_response :success
     assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(@flight)
@@ -44,6 +44,73 @@ class FlightFolderSharingFlowTest < ActionDispatch::IntegrationTest
     assert_nil own.reload.folder_id
     assert_nil @flight.reload.folder_id
     patch flight_folder_path(@folder), params: { flight_folder: { visibility: "public" } }
+    assert_redirected_to flights_path(folder: @folder.id)
+    assert_equal "public", @folder.reload.visibility
+    assert_equal @owner.id, @folder.user_id
+  end
+
+  test "an added member renames recolors shares and deletes the folder" do
+    get flights_path(folder: @folder.id)
+    assert_select ".exds-browser-folder-actions a[href='#{edit_flight_folder_path(@folder)}']", 2
+    assert_select ".exds-browser-folder-actions [data-controller='folder-color']", 1
+    assert_select ".exds-browser-folder-actions form[action='#{flight_folder_path(@folder)}']", 1
+
+    get edit_flight_folder_path(@folder), headers: { "Turbo-Frame" => "folder-sharing" }
+    assert_response :success
+    assert_select "form[data-folder-access-shared-value='true']"
+    assert_select "[data-controller='folder-members'][data-folder-members-folder-value='#{@folder.id}']"
+    assert_select ".exds-browser-member-list input[name='flight_folder[member_ids][]'][value=?]", @member.id.to_s
+    assert_select "p", text: /Created by #{Regexp.escape(@owner.email_address)}/
+
+    # The creator is the one left out of the candidates: the person sharing can keep or add themselves.
+    get member_search_flight_folders_path(q: "exopter", folder_id: @folder.id)
+    assert_not_includes response.parsed_body.fetch("members").map { |member| member.fetch("id") }, @owner.id
+    patch flight_folder_path(@folder), params: { flight_folder: { member_ids: [ @owner.id ] } }
+    assert_response :not_found
+
+    newcomer = User.create!(email_address: "newcomer@example.test", password: "password123456", invitation_accepted_at: Time.current)
+    patch flight_folder_path(@folder), params: { flight_folder: { name: "Renamed by a member", member_ids: [ @member.id, newcomer.id ] } }
+    assert_redirected_to flights_path(folder: @folder.id)
+    assert_equal "Renamed by a member", @folder.reload.name
+    assert_equal [ @member.id, newcomer.id ].sort, @folder.member_ids.sort
+    patch color_flight_folder_path(@folder), params: { flight_folder: { color: "aqua" } }, as: :json
+    assert_response :success
+    assert_equal "aqua", @folder.reload.color
+
+    assert_difference "FlightFolder.count", -1 do
+      delete flight_folder_path(@folder)
+    end
+    assert_redirected_to flights_path
+    assert_nil @flight.reload.folder_id
+  end
+
+  test "people who are not added cannot manage a folder and narrowing it can end a member's own access" do
+    private_folder = @owner.flight_folders.create!(name: "Private campaign")
+    patch flight_folder_path(private_folder), params: { flight_folder: { name: "Taken over" } }
+    assert_response :not_found
+    patch color_flight_folder_path(private_folder), params: { flight_folder: { color: "aqua" } }, as: :json
+    assert_response :not_found
+    delete flight_folder_path(private_folder)
+    assert_response :not_found
+    get member_search_flight_folders_path(q: "exopter", folder_id: private_folder.id)
+    assert_response :not_found
+
+    # Seeing a public or Flight Club folder without being added to it gives no management rights.
+    %w[public club].each do |visibility|
+      open_folder = @owner.flight_folders.create!(name: "Open #{visibility}", visibility: visibility)
+      get flights_path(folder: open_folder.id) if visibility == "public"
+      assert_select ".exds-browser-folder-actions", count: 0 if visibility == "public"
+      patch flight_folder_path(open_folder), params: { flight_folder: { name: "Taken over" } }
+      assert_response :not_found
+      delete flight_folder_path(open_folder)
+      assert_response :not_found
+      assert FlightFolder.exists?(open_folder.id)
+    end
+
+    patch flight_folder_path(@folder), params: { flight_folder: { visibility: "private" } }
+    assert_redirected_to flights_path
+    assert_equal "private", @folder.reload.visibility
+    get edit_flight_folder_path(@folder)
     assert_response :not_found
   end
 

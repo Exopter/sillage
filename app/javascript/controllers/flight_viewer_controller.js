@@ -530,16 +530,17 @@ export default class extends TypedController {
   }
 
   /**
-   * Switches the stage to another clock-aligned clip, keeping the flight playhead.
+   * Switches the stage to another video, keeping the flight playhead. A tunnel clip is aligned on
+   * the recording clock; an uploaded video has none and follows the marked exit, or plays freely.
    * @param {Event & {params: {src?: string, startElapsed?: number}}} event
    */
   selectVideoSource(event) {
     const { src, startElapsed } = event.params
-    if (!this.hasVideoTarget || !src || !isFiniteNumber(this.number(startElapsed))) return
+    if (!this.hasVideoTarget || !src) return
 
     const resume = this.isPlaying
     this.pausePlayback()
-    this.videoStartElapsed = this.number(startElapsed)
+    this.videoStartElapsed = isFiniteNumber(this.number(startElapsed)) ? this.number(startElapsed) : null
     this.videoSourceTargets.forEach((button) => button.setAttribute("aria-pressed", String(button === event.currentTarget)))
     this.videoTarget.addEventListener("loadedmetadata", () => {
       this.syncVideoFromFlight()

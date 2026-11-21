@@ -37,7 +37,7 @@
             <%= link_to browser_path(folder: folder.id, filter: "flights", page: nil), class: "exds-browser-nav", aria: { current: ("page" if @folder == folder) }, title: "#{folder.name} · #{visibility_label(folder.visibility)}", data: { folder_destination: (folder.id if folder.contributable_by?(Current.user)), action: "dragenter->flight-browser#overFolder dragover->flight-browser#overFolder dragleave->flight-browser#leaveFolder drop->flight-browser#drop" } do %>
               <%= sillage_icon "folder", size: 24, class_name: "exds-browser-folder-icon" %><span><%= folder.name %><small class="exds-browser-folder-access"><%= visibility_label(folder.visibility) %></small></span><small><%= @folder_counts.fetch(folder.id, 0) %></small><%= sillage_icon "chevron-right", size: 16 %>
             <% end %>
-            <% if can_manage_operations? && @folder == folder && folder.owned_by?(Current.user) %>
+            <% if can_manage_operations? && @folder == folder && folder.manageable_by?(Current.user) %>
               <div class="exds-browser-folder-actions" role="group" aria-label="Actions for <%= folder.name %>">
                 <%= link_to edit_flight_folder_path(folder), class: "exds-browser-icon-button is-quiet", title: "Sharing and members", aria: { label: "Sharing and members" }, data: { turbo_frame: "folder-sharing" } do %><%= sillage_icon "users", size: 17 %><% end %>
                 <%= link_to edit_flight_folder_path(folder), class: "exds-browser-icon-button is-quiet", title: "Rename folder", aria: { label: "Rename folder" }, data: { turbo_frame: "_top", action: "flight-browser#renameFolder", folder_name: folder.name, folder_url: flight_folder_path(folder) } do %><%= sillage_icon "pencil", size: 17 %><% end %>

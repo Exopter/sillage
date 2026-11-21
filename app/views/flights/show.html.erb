@@ -36,7 +36,10 @@
 <h1 class="sr-only"><%= @flight.code %></h1>
 
 <% video_section = capture do %>
-    <% video_manageable = can_manage_operations? && @flight.visible_to?(Current.user) %>
+    <%
+      video_manageable = can_manage_operations? && @flight.visible_to?(Current.user)
+      uploaded_video = @flight.video.attachment if @flight.video_ready?
+    %>
     <section class="flight-instrument-panel video-sync" aria-labelledby="flight-video-title">
       <div class="video-sync-header">
         <div>
@@ -49,48 +52,32 @@
           <% end %>
         </div>
 
-        <% if video_manageable && tunnel_videos.any? %>
-          <%# The tunnel clips are the video of the flight: the only action left is to drop a clip filmed outside it. %>
-          <details class="exds-browser-preview-menu exds-comment-actions">
-            <summary class="exds-browser-icon-button" title="<%= t("flights.video.tunnel_actions") %>" aria-label="<%= t("flights.video.tunnel_actions") %>"><%= sillage_icon "ellipsis", size: 17 %></summary>
-            <div class="exds-comment-menu">
-              <% tunnel_videos.uniq { |video| [ video.timeslot_at, video.clip_number ] }.each_with_index do |video, index| %>
-                <%= button_to flight_tunnel_video_path(@flight, video), method: :delete, form: { data: { turbo_confirm: t("flights.video.tunnel_confirm_remove") } } do %>
-                  <%= sillage_icon "trash", size: 16 %>
-                  <span><%= t("flights.video.tunnel_remove", clip: index + 1, time: l(video.recorded_at.in_time_zone(TunnelMedia::Configuration.from_env.zone), format: "%H:%M:%S")) %></span>
-                <% end %>
-              <% end %>
-            </div>
-          </details>
-        <% elsif video_manageable %>
-          <%# The file name and the confirmation only appear once a file is chosen. %>
-          <%= form_with model: @flight, html: { multipart: true, class: "video-upload-form", data: { controller: "upload", turbo: false, action: "submit->upload#start", upload_failed_label_value: t("flights.video.upload_failed"), upload_processing_label_value: t("flights.video.uploading") } } do |form| %>
-            <span class="file-summary" data-upload-target="summary"><%= t("flights.video.no_file") %></span>
-            <label class="secondary-button exds-btn exds-btn--secondary video-upload-button">
-              <%= sillage_icon "upload", size: 18 %>
-              <span><%= t(@flight.video.attached? ? "flights.video.replace" : "flights.video.upload") %></span>
-              <%= form.file_field :video_upload, accept: "video/*,.avi,.m4v,.mkv,.mov,.mp4,.webm", data: { upload_target: "input", action: "change->upload#showFiles" } %>
-            </label>
-            <%= form.button class: "primary-button exds-btn exds-btn--primary video-upload-submit", data: { upload_target: "submit" } do %>
-              <%= sillage_icon "settings", size: 18 %>
-              <span><%= t("flights.video.process") %></span>
+        <% if video_manageable %>
+          <%# Whoever can edit the flight adds their own video, next to the clips the tunnel cameras publish. %>
+          <div class="video-sync-actions">
+            <%= render "flights/video_upload_form", flight: @flight %>
+            <% if tunnel_videos.any? %>
+              <%# The tunnel clips arrive on their own: the only action on them is to drop a clip filmed outside the flight. %>
+              <details class="exds-browser-preview-menu exds-comment-actions">
+                <summary class="exds-browser-icon-button" title="<%= t("flights.video.tunnel_actions") %>" aria-label="<%= t("flights.video.tunnel_actions") %>"><%= sillage_icon "ellipsis", size: 17 %></summary>
+                <div class="exds-comment-menu">
+                  <% tunnel_videos.uniq { |video| [ video.timeslot_at, video.clip_number ] }.each_with_index do |video, index| %>
+                    <%= button_to flight_tunnel_video_path(@flight, video), method: :delete, form: { data: { turbo_confirm: t("flights.video.tunnel_confirm_remove") } } do %>
+                      <%= sillage_icon "trash", size: 16 %>
+                      <span><%= t("flights.video.tunnel_remove", clip: index + 1, time: l(video.recorded_at.in_time_zone(TunnelMedia::Configuration.from_env.zone), format: "%H:%M:%S")) %></span>
+                    <% end %>
+                  <% end %>
+                </div>
+              </details>
             <% end %>
-            <div class="upload-progress" data-upload-target="progress" hidden>
-              <div class="upload-progress-track" role="progressbar" aria-label="<%= t("flights.video.upload_progress") %>" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-upload-target="meter">
-                <span class="upload-progress-bar" data-upload-target="bar"></span>
-              </div>
-              <span class="upload-progress-percent" data-upload-target="percent">0%</span>
-            </div>
-          <% end %>
+          </div>
         <% end %>
       </div>
 
-      <% if tunnel_videos.any? %>
-        <%= render "flights/tunnel_cameras", videos: tunnel_videos, viewer: true %>
-      <% elsif @flight.video_ready? %>
-        <div class="video-stage">
-          <video data-flight-viewer-target="video" data-action="loadedmetadata->flight-viewer#syncVideoFromFlight play->flight-viewer#videoPlaybackStarted pause->flight-viewer#videoPlaybackPaused seeked->flight-viewer#videoSeeked timeupdate->flight-viewer#videoTimeUpdated" class="flight-video" controls playsinline preload="metadata" src="<%= attachment_path(@flight.video.attachment) %>"></video>
-        </div>
+      <% if tunnel_videos.any? || uploaded_video %>
+        <%= render "flights/video_player", videos: tunnel_videos, uploaded: uploaded_video, viewer: true %>
+      <% end %>
+      <% if uploaded_video && tunnel_videos.empty? %>
         <div class="video-sync-controls">
           <% if video_manageable %>
             <%= form_with model: @flight, class: "video-exit-form" do |form| %>
@@ -105,11 +92,12 @@
             <%= @flight.video_exit_offset_seconds.present? ? t("flights.video.exit_marked", timestamp: duration(@flight.video_exit_offset_seconds)) : t("flights.video.exit_unmarked") %>
           </span>
         </div>
-      <% elsif @flight.video_processing? %>
+      <% end %>
+      <% if @flight.video_processing? %>
         <p class="video-status"><%= t("flights.video.processing") %></p>
       <% elsif @flight.video_failed? %>
         <p class="video-status error-text"><%= t("flights.video.failed", error: @flight.video_processing_error.presence || t("flights.video.unknown_error")) %></p>
-      <% else %>
+      <% elsif tunnel_videos.empty? && !uploaded_video %>
         <div class="flight-empty-state">
           <%= sillage_icon "video", size: 28, stroke_width: 1.6 %>
           <strong><%= t(@flight.tunnel? ? "flights.video.tunnel_empty_title" : "flights.video.empty_title") %></strong>
@@ -138,7 +126,8 @@
   data-flight-viewer-labels-value="<%= json_escape(t("flights.charts").to_json) %>"
   <% if tunnel_videos.any? %>
     data-flight-viewer-video-start-elapsed-value="<%= tunnel_videos.first.start_elapsed_seconds %>"
-  <% elsif @flight.video_exit_offset_seconds.present? %>
+  <% end %>
+  <% if @flight.video_exit_offset_seconds.present? %>
     data-flight-viewer-video-exit-offset-value="<%= @flight.video_exit_offset_seconds %>"
   <% end %>>
   <header class="flight-replay-header">

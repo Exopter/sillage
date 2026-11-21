@@ -1,0 +1,20 @@
+<%# Videos of a flight in the flight log panels: the player, the state of an upload and, for whoever
+    can edit the flight, the upload itself. Nothing loads until the flight is selected. %>
+<%
+  uploaded = flight.video.attachment if flight.video_ready?
+  count = videos.size + (uploaded ? 1 : 0)
+%>
+<section class="exds-browser-editor-section" aria-label="Flight videos">
+  <div class="exds-comments-heading"><h3>Videos</h3><% if count.positive? %><span><%= count %></span><% end %></div>
+  <% if count.positive? %>
+    <%= render "flights/video_player", videos: videos, uploaded: uploaded, viewer: false %>
+  <% end %>
+  <% if flight.video_processing? %>
+    <p class="video-status"><%= t("flights.video.processing") %></p>
+  <% elsif flight.video_failed? %>
+    <p class="video-status error-text"><%= t("flights.video.failed", error: flight.video_processing_error.presence || t("flights.video.unknown_error")) %></p>
+  <% elsif count.zero? %>
+    <p class="video-status"><%= t(upload ? "flights.video.log_empty" : "flights.video.log_empty_read_only") %></p>
+  <% end %>
+  <%= render "flights/video_upload_form", flight: flight if upload %>
+</section>

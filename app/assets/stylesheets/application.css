@@ -1856,9 +1856,19 @@ body {
   white-space: nowrap;
 }
 
-.video-sync-header > .exds-comment-actions {
+/* Header actions of the video section: the upload, then the menu of the tunnel clips. */
+.video-sync-actions {
+  display: flex;
+  /* The menu stays level with the upload button when the chosen file wraps the form onto more rows. */
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
+}
+
+.video-sync-actions > .exds-comment-actions {
   flex: 0 0 auto;
-  align-self: start;
+  margin-left: 0;
 }
 
 .video-sync-header .exds-comment-menu {
@@ -3174,14 +3184,8 @@ body.flight-analysis-theme,
     flex: 1 1 auto;
   }
 
-  .video-sync-header > .exds-comment-actions {
-    position: absolute;
-    top: 0;
-    right: 0;
-  }
-
-  .video-sync-header {
-    position: relative;
+  .video-sync-actions > .video-upload-form {
+    flex: 1 1 auto;
   }
 
   .video-source-switch button {

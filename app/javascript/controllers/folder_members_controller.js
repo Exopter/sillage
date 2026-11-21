@@ -1,12 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
 
 /** @typedef {{id: number, email: string}} Member */
-/** @typedef {{searchTarget: HTMLInputElement, resultsTarget: HTMLElement, statusTarget: HTMLElement, listTarget: HTMLElement, emptyTarget: HTMLElement, templateTarget: HTMLTemplateElement, urlValue: string}} Bindings */
+/** @typedef {{searchTarget: HTMLInputElement, resultsTarget: HTMLElement, statusTarget: HTMLElement, listTarget: HTMLElement, emptyTarget: HTMLElement, templateTarget: HTMLTemplateElement, urlValue: string, folderValue: string}} Bindings */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 
 export default class extends TypedController {
   static targets = ["search", "results", "status", "list", "empty", "template"]
-  static values = { url: String }
+  static values = { url: String, folder: String }
   /** @type {Member[]} */
   matches = []
   activeIndex = -1
@@ -46,6 +46,8 @@ export default class extends TypedController {
     const request = new AbortController()
     this.request = request
     const params = new URLSearchParams({ q: query })
+    // An existing folder leaves its creator out of the candidates instead of the person editing it.
+    if (this.folderValue) params.set("folder_id", this.folderValue)
     for (const id of this.selectedIds()) if (id) params.append("exclude_ids[]", id)
     try {
       const response = await fetch(`${this.urlValue}?${params}`, { signal: request.signal, headers: { Accept: "application/json" }, cache: "no-store" })

@@ -20,7 +20,28 @@ class TunnelVideosTest < ActionDispatch::IntegrationTest
     assert_select "button[data-flight-viewer-src-param='#{attachment_path(@top.file.attachment)}']", text: "Top"
     assert_select ".video-source-switch", 1
     assert_select ".video-source-clip span", 0
-    assert_select ".video-upload-form", 0
+    assert_select ".video-sync-actions .video-upload-form input[type='file'][name='flight[video_upload]']", 1
+  end
+
+  test "an uploaded video joins the tunnel cameras as one more source" do
+    @flight.video.attach(io: StringIO.new("0123456789"), filename: "own.mp4", content_type: "video/mp4", identify: false)
+    @flight.update!(video_exit_offset_seconds: 4.5)
+
+    get flight_path(@flight)
+
+    assert_response :success
+    assert_select "section[data-flight-viewer-video-start-elapsed-value='20.0'][data-flight-viewer-video-exit-offset-value='4.5']"
+    assert_select "video.flight-video", 1
+    assert_select "video.flight-video[src='#{attachment_path(@side.file.attachment)}']"
+    assert_select "button[data-flight-viewer-target='videoSource']", 3
+    assert_select "button[aria-pressed='false'][data-flight-viewer-src-param='#{attachment_path(@flight.video.attachment)}']:not([data-flight-viewer-start-elapsed-param])", text: "Uploaded"
+    assert_select ".video-upload-form span", text: "Replace video"
+    assert_select ".video-exit-form", 0
+
+    get preview_flights_path(id: @flight.id)
+    assert_select "section[aria-label='Flight videos'] .exds-comments-heading", text: "Videos3"
+    assert_select "button[data-video-source-src-param='#{attachment_path(@flight.video.attachment)}']", text: "Uploaded"
+    assert_select "section[aria-label='Flight videos'] .video-upload-form", 0
   end
 
   test "tunnel clips follow the visibility of their flight" do

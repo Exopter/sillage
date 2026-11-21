@@ -1,4 +1,4 @@
-<%= form_with model: folder, class: "workspace-form", data: { turbo_frame: "_top", controller: "folder-access" } do |form| %>
+<%= form_with model: folder, class: "workspace-form", data: { turbo_frame: "_top", controller: "folder-access", folder_access_shared_value: folder.persisted? && !folder.owned_by?(Current.user) } do |form| %>
   <%= hidden_field_tag :return_to_browser, "1" if local_assigns[:dialog] %>
   <% if folder.errors.any? %><div class="workspace-errors" role="alert"><%= folder.errors.full_messages.to_sentence %></div><% end %>
   <label><span>Folder name</span><%= form.text_field :name, required: true, maxlength: 100, autofocus: true, placeholder: "Flight tests" %></label>
@@ -17,7 +17,7 @@
   <% end %>
   <label><span>Visibility</span><%= form.select :visibility, [["Private", "private"], ["Public", "public"], ["Shared", "shared"], ["Flight Club", "club"]], {}, data: { folder_access_target: "visibility", action: "change->folder-access#update" } %></label>
   <p class="exds-browser-caption" data-folder-access-target="description"></p>
-  <fieldset class="exds-browser-members" data-folder-access-target="members" data-controller="folder-members" data-folder-members-url-value="<%= member_search_flight_folders_path %>">
+  <fieldset class="exds-browser-members" data-folder-access-target="members" data-controller="folder-members" data-folder-members-url-value="<%= member_search_flight_folders_path %>" data-folder-members-folder-value="<%= folder.id %>">
     <legend>Members</legend>
     <div class="exds-browser-member-search" data-action="focusout->folder-members#leaveSearch">
       <label for="folder-member-search" class="sr-only">Add people by email</label>
@@ -34,9 +34,10 @@
     </ul>
     <p class="exds-browser-caption" data-folder-members-target="empty" <%= "hidden" if selected_members.any? %>>No members added yet.</p>
     <template data-folder-members-target="template"><%= render "member", member: nil %></template>
-    <p class="exds-browser-caption">Members can view every flight and add their own flights. Changes apply when you save.</p>
+    <p class="exds-browser-caption">Members can view every flight, add their own flights and manage this folder. Changes apply when you save.</p>
   </fieldset>
-  <p class="exds-browser-caption">Every flight in this folder inherits its visibility. Unfiled flights use their individual visibility.</p>
+  <p class="exds-browser-caption">Every flight in this folder inherits its visibility. Unfiled flights use their individual visibility. Its creator and its members can rename, recolor, share or delete it.</p>
+  <% if folder.persisted? && !folder.owned_by?(Current.user) %><p class="exds-browser-caption">Created by <%= folder.user.email_address %>, who always keeps access.</p><% end %>
   <div class="exds-browser-dialog-actions">
     <% if local_assigns[:dialog] %><button type="button" class="button-secondary exds-btn exds-btn--secondary" data-action="folder-sharing#close">Cancel</button><% else %><%= link_to "Cancel", flights_path(folder: folder.persisted? ? folder.id : nil), class: "button-secondary exds-btn exds-btn--secondary" %><% end %>
     <%= form.submit folder.persisted? ? "Save folder" : "Create folder", class: "button-primary exds-btn exds-btn--primary" %>

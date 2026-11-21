@@ -258,6 +258,44 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
 
   private
 
+  test "a logged flight always carries a video section where its editors add their own video" do
+    flight = log_entry(visibility: "team")
+    get flight_path(flight)
+    assert_response :success
+    assert_select ".exds-comments + section[aria-label='Flight videos']" do
+      assert_select ".exds-comments-heading", text: "Videos"
+      assert_select "p.video-status", text: I18n.t("flights.video.log_empty")
+      assert_select "form.video-upload-form[action='#{flight_path(flight)}'] input[type='file'][name='flight[video_upload]']", 1
+      assert_select "form.video-upload-form span", text: "Add video"
+    end
+
+    assert_enqueued_with(job: FlightVideoProcessingJob) do
+      patch flight_path(flight), params: { flight: { video_upload: fixture_file_upload("sample.mp4", "video/mp4") } }, headers: { "Accept" => "application/json" }
+    end
+    assert_response :success
+    assert_equal flight_path(flight), response.parsed_body.fetch("redirect_url")
+    get flight_path(flight)
+    assert_select "section[aria-label='Flight videos'] p.video-status", text: I18n.t("flights.video.processing")
+
+    flight.video.attach(io: StringIO.new("0123456789"), filename: "own.mp4", content_type: "video/mp4", identify: false)
+    flight.update!(video_processing_status: "ready")
+    get flight_path(flight)
+    assert_select "section[aria-label='Flight videos']" do
+      assert_select ".exds-comments-heading", text: "Videos1"
+      assert_select "[data-controller='video-source'] video.flight-video[src=?]", attachment_path(flight.video.attachment)
+      assert_select ".video-player-bar", 0
+      assert_select "form.video-upload-form span", text: "Replace video"
+    end
+
+    sign_in_as users(:operator)
+    get flight_path(flight)
+    assert_select "section[aria-label='Flight videos'] video.flight-video", 1
+    assert_select "section[aria-label='Flight videos'] form", 0
+    flight.video.purge
+    get flight_path(flight)
+    assert_select "section[aria-label='Flight videos'] p.video-status", text: I18n.t("flights.video.log_empty_read_only")
+  end
+
   def log_entry(**attributes)
     @owner.flights.create!({ status: "logged", flown_on: "2026-10-18", location: "Bouloc" }.merge(attributes))
   end

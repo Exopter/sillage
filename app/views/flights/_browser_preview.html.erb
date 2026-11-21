@@ -66,12 +66,9 @@
         <%= link_to "Join live session", signal_path(session: live_session.uuid, join: 1), class: "exds-btn exds-btn--primary", data: { turbo_frame: "_top" } %>
       <% end %>
       <%= render "flight_comments/comments", flight: entry %>
-      <% if preview_videos.any? %>
-        <%# The cameras follow the discussion in their own section. Nothing loads until the flight is selected. %>
-        <section class="exds-browser-editor-section" aria-label="Flight videos">
-          <div class="exds-comments-heading"><h3>Videos</h3><span><%= preview_videos.size %></span></div>
-          <%= render "flights/tunnel_cameras", videos: preview_videos, viewer: false %>
-        </section>
+      <% if preview_videos.any? || entry.video_ready? %>
+        <%# The videos follow the discussion in their own section; adding one belongs to the opened flight. %>
+        <%= render "flights/videos_panel", flight: entry, videos: preview_videos, upload: false %>
       <% end %>
       <%= render "flights/log_equipment", flight: entry %>
     <% end %>
