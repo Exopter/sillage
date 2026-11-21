@@ -68,9 +68,10 @@
         <%= link_to "Join live session", signal_path(session: live_session.uuid, join: 1), class: "exds-btn exds-btn--primary", data: { turbo_frame: "_top" } %>
       <% end %>
       <%= render "flight_comments/comments", flight: entry %>
-      <% if preview_videos.any? || entry.video_ready? %>
-        <%# The videos follow the discussion in their own section; adding one belongs to the opened flight. %>
-        <%= render "flights/videos_panel", flight: entry, videos: preview_videos, upload: false %>
+      <% video_manageable = can_manage_operations? && accessible %>
+      <% if video_manageable || preview_videos.any? || entry.video_ready? %>
+        <%# The videos follow the discussion in their own section. Whoever can edit the flight adds one from here and stays in the browser. %>
+        <%= render "flights/videos_panel", flight: entry, videos: preview_videos, upload: video_manageable, return_parameters: browser_context %>
       <% end %>
       <%= render "flights/log_equipment", flight: entry %>
     <% end %>

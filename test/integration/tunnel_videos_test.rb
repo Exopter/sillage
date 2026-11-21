@@ -41,7 +41,7 @@ class TunnelVideosTest < ActionDispatch::IntegrationTest
     get preview_flights_path(id: @flight.id)
     assert_select "section[aria-label='Flight videos'] .exds-comments-heading", text: "Videos3"
     assert_select "button[data-video-source-src-param='#{attachment_path(@flight.video.attachment)}']", text: "Uploaded"
-    assert_select "section[aria-label='Flight videos'] .video-upload-form", 0
+    assert_select "section[aria-label='Flight videos'] .video-upload-form span", text: "Replace video"
   end
 
   test "tunnel clips follow the visibility of their flight" do
