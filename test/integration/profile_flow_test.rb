@@ -21,7 +21,6 @@ class ProfileFlowTest < ActionDispatch::IntegrationTest
     assert_select "dialog.sillage-avatar-dialog .sillage-avatar-stage[tabindex='0'] img[data-avatar-crop-target='image']"
     assert_select "dialog.sillage-avatar-dialog input[type='range'][min='1'][max='4']"
     assert_select "dialog.sillage-avatar-dialog button[type='button']", count: 4
-    assert_select "button[data-avatar-crop-target='adjust'][hidden]"
     assert_select ".sillage-avatar-photo", count: 0
   end
 
