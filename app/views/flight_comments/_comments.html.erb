@@ -7,7 +7,7 @@
   <% replacing = recorded.find { |debrief| debrief.id.to_s == params[:rerecord].to_s && debrief.user_id == Current.user.id } %>
   <%= render "flight_debriefs/recorder", flight: flight, replacing: replacing if can_manage_operations? && (recorded.empty? || replacing) %>
   <div class="exds-comments-heading"><h3>Comments</h3><span><%= comments.size %></span></div>
-  <% if comments.empty? %><p class="exds-comments-empty">No comments yet. Add the first observation.</p><% end %>
+  <% if comments.empty? %><p class="exds-comments-empty">No comments yet.<%= " Add the first observation." if can_manage_operations? %></p><% end %>
   <% comments.each do |comment| %>
     <% current = editing_comment&.id == comment.id ? editing_comment : comment %>
     <article class="exds-comment" id="<%= dom_id(comment) %>">

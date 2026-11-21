@@ -3,6 +3,7 @@ class FlightsController < ApplicationController
   include FlightBrowser
 
   before_action :set_flight, only: [ :show, :edit, :update, :destroy ]
+  before_action :require_editable_flight, only: [ :edit, :update ]
   before_action :disable_caching
 
   def index
@@ -198,6 +199,10 @@ class FlightsController < ApplicationController
     @flight = Flight.visible_to(Current.user).includes(:aircraft, :fdr, pilot: :avatar_attachment, folder: :memberships).find(params[:id])
   end
 
+  def require_editable_flight
+    deny_role_access unless can_edit_flight?(@flight)
+  end
+
   def disable_caching
     no_store
   end
@@ -208,7 +213,7 @@ class FlightsController < ApplicationController
   end
 
   def flight_params
-    params.require(:flight).permit(
+    permitted = params.require(:flight).permit(
       :name,
       :description,
       :flown_on,
@@ -228,6 +233,8 @@ class FlightsController < ApplicationController
       :video_exit_offset_seconds,
       initial_comment_images: []
     )
+    # The pilot of a flight and its videos stay with administrators.
+    can_manage_operations? ? permitted : permitted.except(:pilot_id, :video_upload, :video_exit_offset_seconds)
   end
 
   def load_form_options
