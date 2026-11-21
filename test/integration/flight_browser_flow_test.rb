@@ -206,8 +206,9 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_select "turbo-frame#flight-browser .workspace-errors", text: /Location/
     assert_select "input[name='flight[description]'][value='Campaign draft']"
     assert_select ".exds-browser-sidebar a[aria-current=page]", text: /Campaign/
+    Installation.create!(aircraft: aircraft(:pilatus), installable: create_exofdr_assembly, installed_at: 1.hour.ago)
     assert_difference -> { Flight.count }, 1 do
-      post flights_path, params: context.merge(flight: { name: "Campaign draft", flown_on: "2026-10-18", location: "Bouloc", fdr_id: create_exofdr_assembly.id, aircraft_id: aircraft(:pilatus).id, folder_id: @folder.id })
+      post flights_path, params: context.merge(flight: { name: "Campaign draft", flown_on: "2026-10-18", location: "Bouloc", aircraft_id: aircraft(:pilatus).id, folder_id: @folder.id })
     end
     created = @owner.flights.find_by!(name: "Campaign draft")
     assert_redirected_to flight_path(created, folder: @folder.id, q: "Campaign")
@@ -240,6 +241,28 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     assert_not_includes response.body, secret.name
     assert_equal @folder.id, @flight.reload.folder_id
+  end
+
+  test "the flight form shows the FDR installed in the aircraft without letting it be chosen" do
+    pilatus = aircraft(:pilatus)
+    removed = create_exofdr_assembly
+    Installation.create!(aircraft: pilatus, installable: removed, installed_at: 2.hours.ago, removed_at: 90.minutes.ago)
+    installed = create_exofdr_assembly
+    Installation.create!(aircraft: pilatus, installable: installed, installed_at: 1.hour.ago)
+
+    get new_flight_path, headers: { "Turbo-Frame" => "flight-browser" }
+    assert_select "select[name='flight[fdr_id]']", count: 0
+    assert_select "fieldset[data-controller='installed-fdr']" do |fieldsets|
+      assert_equal({ pilatus.id.to_s => installed.display_name }, JSON.parse(fieldsets.first["data-installed-fdr-installed-value"]))
+      assert_equal({ "aircraft" => "", "fdr" => "" }, JSON.parse(fieldsets.first["data-installed-fdr-recorded-value"]))
+      assert_select "select[name='flight[aircraft_id]'][data-installed-fdr-target='aircraft'][data-action='change->installed-fdr#show']"
+      assert_select "input[disabled][data-installed-fdr-target='fdr'][placeholder='Select an aircraft']:not([name]):not([value])"
+    end
+
+    # A saved flight shows its recorded FDR.
+    @flight.update!(aircraft: pilatus)
+    get edit_flight_path(@flight), headers: { "Turbo-Frame" => "flight-browser" }
+    assert_select "input[disabled][data-installed-fdr-target='fdr'][value=?]", installed.display_name
   end
 
   test "pagination from an editor returns to the collection instead of another form" do

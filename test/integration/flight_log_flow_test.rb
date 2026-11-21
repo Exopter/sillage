@@ -184,13 +184,29 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "an FDR enables acquisition independently of an aircraft and can be linked later" do
+  test "the FDR is deduced from the aircraft installation and enables acquisition" do
     flight = log_entry
     fdr = create_exofdr_assembly
-    patch flight_path(flight), params: { flight: { fdr_id: fdr.id } }
+    spare = create_exofdr_assembly
+    pilatus = aircraft(:pilatus)
+    Installation.create!(aircraft: pilatus, installable: fdr, installed_at: 1.hour.ago)
+    # The FDR cannot be chosen: a posted one is ignored.
+    patch flight_path(flight), params: { flight: { fdr_id: spare.id } }
+    assert_nil flight.reload.fdr
+    patch flight_path(flight), params: { flight: { aircraft_id: pilatus.id } }
     assert_equal fdr, flight.reload.fdr
-    assert_nil flight.aircraft
+    # A later installation change leaves the recorded FDR of this flight alone.
+    Installation.active.find_by!(installable: fdr).remove!
+    Installation.create!(aircraft: pilatus, installable: spare, installed_at: 1.minute.ago)
+    patch flight_path(flight), params: { flight: { description: "Unchanged aircraft" } }
+    assert_equal fdr, flight.reload.fdr
+    assert_equal spare, log_entry(aircraft: pilatus).fdr
+    # Without an aircraft there is no FDR.
+    other = log_entry(aircraft: pilatus)
+    other.update!(aircraft: nil)
+    assert_nil other.fdr
     get flight_path(flight)
+    assert_select "select[name='flight[fdr_id]']", count: 0
     assert_select "a[href=?]", new_flight_import_path(flight_id: flight.id)
     assert_select "a[href=?]", signal_path(flight_id: flight.id)
     recorder = create_embedded_controller(assembly: fdr, device_id: "ECU-112233445566")
@@ -248,9 +264,10 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
   test "generic assemblies cannot be linked as an FDR and descriptions can be cleared" do
     flight = log_entry(description: "Old name")
     generic = Assembly.create!(name: "Generic equipment")
-    patch flight_path(flight), params: { flight: { fdr_id: generic.id } }, as: :json
-    assert_response :unprocessable_entity
-    assert_nil flight.reload.fdr
+    flight.fdr = generic
+    assert_not flight.valid?
+    assert_includes flight.errors[:fdr], "must be an ExoFDR"
+    flight.reload
     patch flight_path(flight), params: { flight: { description: "" } }
     assert_response :redirect
     assert_equal "", flight.reload.description

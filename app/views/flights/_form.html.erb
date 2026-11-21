@@ -53,20 +53,21 @@
     <% end %>
   </div>
 
-  <fieldset class="exds-browser-fieldset">
+  <%# The FDR is never chosen: it is the one installed in the aircraft. A saved flight keeps its recorded FDR while its aircraft is unchanged. %>
+  <%= tag.fieldset class: "exds-browser-fieldset", data: { controller: "installed-fdr", installed_fdr_installed_value: @installed_fdr_names, installed_fdr_recorded_value: { aircraft: flight.aircraft_id.to_s, fdr: flight.fdr&.display_name.to_s } } do %>
     <legend>Equipment (optional)</legend>
     <div class="exds-browser-form-grid">
       <label class="exds-browser-field">
         <span>Aircraft</span>
-        <%= form.collection_select :aircraft_id, @aircraft, :id, :display_name, { include_blank: "None" } %>
+        <%= form.collection_select :aircraft_id, @aircraft, :id, :display_name, { include_blank: "None" }, data: { installed_fdr_target: "aircraft", action: "change->installed-fdr#show" } %>
       </label>
       <label class="exds-browser-field">
         <span>FDR</span>
-        <%= form.collection_select :fdr_id, @fdrs, :id, :display_name, { include_blank: "None" }, aria: { describedby: "flight-fdr-help" } %>
+        <%= text_field_tag nil, flight.fdr&.display_name || @installed_fdr_names[flight.aircraft_id.to_s], id: "flight_installed_fdr", disabled: true, placeholder: flight.aircraft_id ? "No FDR installed" : "Select an aircraft", aria: { describedby: "flight-fdr-help" }, data: { installed_fdr_target: "fdr" } %>
       </label>
     </div>
-    <p class="operations-help" id="flight-fdr-help">Link an FDR to enable recording imports and telemetry. You can add one later.</p>
-  </fieldset>
+    <p class="operations-help" id="flight-fdr-help">The FDR is the one installed in the aircraft. To fly another FDR, change the aircraft installation in Hangar.</p>
+  <% end %>
 
   <details class="exds-browser-fieldset exds-disclosure">
     <summary>Organization &amp; access</summary>

@@ -412,8 +412,6 @@
               <%= form.label :tunnel_glide_ratio, "Tunnel glide ratio (optional)" %>
               <%= form.number_field :tunnel_glide_ratio, step: 0.01, min: Flight::TUNNEL_GLIDE_RATIOS.min, max: Flight::TUNNEL_GLIDE_RATIOS.max %>
             <% end %>
-            <%= form.label :fdr_id, "FDR (optional)" %>
-            <%= form.collection_select :fdr_id, @fdrs, :id, :display_name, { include_blank: "None" } %>
             <%= render "flights/visibility_field", form: form %>
             <%= render "flights/folder_field", form: form %>
             <% if @flight.sky? %>
