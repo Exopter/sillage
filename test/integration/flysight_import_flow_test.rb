@@ -209,7 +209,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     end
 
     flight = Flight.order(:created_at).last
-    assert_redirected_to flight_path(flight)
+    assert_redirected_to flights_path(selected: "flight:#{flight.id}")
     assert_equal "logged", flight.status
     assert_equal aircraft(:pilatus), flight.aircraft
     assert_equal "Tournon", flight.location

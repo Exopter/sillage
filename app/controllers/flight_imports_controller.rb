@@ -1,6 +1,8 @@
 class FlightImportsController < ApplicationController
   include FlightBrowser
 
+  before_action :require_target_flight, only: %i[new create]
+
   def new
     no_store
     @aircraft = Aircraft.active.ordered
@@ -64,6 +66,11 @@ class FlightImportsController < ApplicationController
   end
 
   private
+
+  # A regular user imports the recording of a flight they can see. A recording without a flight stays with administrators.
+  def require_target_flight
+    deny_role_access unless can_manage_operations? || (params[:flight_id] || import_params[:target_flight_id]).present?
+  end
 
   def source_files
     params.dig(:flight_import, :source_files) || []

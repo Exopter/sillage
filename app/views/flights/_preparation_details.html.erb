@@ -8,14 +8,14 @@
     <div><dt>Folder</dt><dd><%= @flight.folder ? link_to(@flight.folder.name, flights_path(folder: @flight.folder_id), data: { turbo_frame: "flight-browser" }) : "Unfiled" %></dd></div>
   <% end %>
 </dl>
-<% if can_edit_flight?(@flight) %>
+<% if can_manage_flight?(@flight) %>
   <% if @flight.preparation? %>
     <%= link_to "Log flight", edit_flight_path(@flight, **browser_context, intent: "log"), class: "button-primary exds-btn exds-btn--primary", data: { turbo_frame: "flight-browser" } %>
   <% end %>
   <%= link_to edit_flight_path(@flight, **browser_context), class: "button-secondary exds-btn exds-btn--secondary", data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %> Edit flight<% end %>
 <% end %>
 <%= render "flight_comments/comments", flight: @flight %>
-<%# A logged flight has no replay page: its videos live here, with the upload for whoever can edit it. %>
+<%# A flight in this panel has no flight page: its videos live here, with the upload for whoever can see it. %>
 <%= render "flights/videos_panel", flight: @flight, videos: @flight.tunnel_videos.ready.with_attached_file.playback_order.select(&:ready?),
-      upload: can_manage_operations? && @flight.visible_to?(Current.user) %>
+      upload: can_manage_flight?(@flight) %>
 <%= render "flights/log_equipment", flight: @flight %>

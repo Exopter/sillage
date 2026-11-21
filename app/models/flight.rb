@@ -150,8 +150,10 @@ class Flight < ApplicationRecord
     pilot.full_name || pilot.email_address
   end
 
+  # A flight in preparation, or one whose recording never produced data, lives in the flight log panel.
+  # A logged flight is a flight like any other, entered after the fact: it has its own flight page.
   def logbook_view?
-    logged? || preparation? || ((review? || processing?) && !flight_import_id && sample_count.zero? && sensor_sample_count.zero?)
+    preparation? || ((review? || processing?) && !flight_import_id && sample_count.zero? && sensor_sample_count.zero?)
   end
 
   def recording_enabled?

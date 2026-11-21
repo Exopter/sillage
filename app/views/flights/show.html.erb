@@ -37,7 +37,7 @@
 
 <% video_section = capture do %>
     <%
-      video_manageable = can_manage_operations? && @flight.visible_to?(Current.user)
+      video_manageable = can_manage_flight?(@flight)
       uploaded_video = @flight.video.attachment if @flight.video_ready?
     %>
     <section class="flight-instrument-panel video-sync" aria-labelledby="flight-video-title">
@@ -53,7 +53,7 @@
         </div>
 
         <% if video_manageable %>
-          <%# Whoever can edit the flight adds their own video, next to the clips the tunnel cameras publish. %>
+          <%# Whoever can see the flight adds their own video, next to the clips the tunnel cameras publish. %>
           <div class="video-sync-actions">
             <%= render "flights/video_upload_form", flight: @flight %>
             <% if tunnel_videos.any? %>
@@ -141,7 +141,7 @@
     <%= render "flights/pilot", flight: @flight %>
     <span class="mode-badge is-neutral"><%= @flight.environment_label %></span>
     <span class="mode-badge is-neutral"><%= visibility_label(@flight.effective_visibility) %></span>
-    <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
+    <% if can_manage_flight?(@flight) %>
       <%= button_to @flight, method: :delete, class: "kit-icon-button exds-iconbtn exds-iconbtn--ghost exds-iconbtn--danger", title: t("flights.show.delete"),
         aria: { label: t("flights.show.delete") }, form: { class: "flight-replay-delete", data: { turbo_confirm: t("flights.show.confirm_delete", name: @flight.label) } } do %>
         <%= sillage_icon "trash", size: 18 %>
@@ -163,7 +163,7 @@
       <section class="analysis-mode-banner" aria-label="Waiting for debrief">
         <strong>Waiting for debrief</strong>
         <span>No debrief has been recorded for this flight.</span>
-        <%= link_to "Record debrief", "#pilot-log", data: { action: "section-tabs#select", section_tabs_name_param: "pilot-log" } if can_manage_operations? %>
+        <%= link_to "Record debrief", "#pilot-log", data: { action: "section-tabs#select", section_tabs_name_param: "pilot-log" } if can_manage_flight?(@flight) %>
       </section>
     <% end %>
     <% if @seat_segments.any? %>
@@ -178,7 +178,14 @@
       <section class="analysis-mode-banner" aria-label="Waiting for recording">
         <strong>Waiting for recording</strong>
         <span>Signal capture is complete. Import the microSD recording to analyse the authoritative flight data.</span>
-        <%= link_to "Import recording", new_flight_import_path(flight_id: @flight.id) if can_manage_operations? && @flight.visible_to?(Current.user) %>
+        <%= link_to "Import recording", new_flight_import_path(flight_id: @flight.id) if can_manage_flight?(@flight) %>
+      </section>
+    <% end %>
+    <% if @flight.logged? %>
+      <section class="analysis-mode-banner" aria-label="No recording">
+        <strong>No recording</strong>
+        <span>This flight was logged without flight data. Its video, pilot log and details are kept here.</span>
+        <%= link_to "Import recording", new_flight_import_path(flight_id: @flight.id) if can_manage_flight?(@flight) && @flight.recording_enabled? %>
       </section>
     <% end %>
     <% if @flight_analysis.degraded? %>
@@ -394,7 +401,7 @@
             <p>Reference <%= @flight.code %></p>
           </div>
         </div>
-        <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
+        <% if can_manage_flight?(@flight) %>
           <%= form_with model: @flight, class: "details-form" do |form| %>
             <%= form.label :pilot_id, "Pilot *" %>
             <%= form.collection_select :pilot_id, @pilots, :id, ->(pilot) { pilot.full_name || pilot.email_address }, { prompt: "Select a pilot" }, required: true %>
@@ -442,11 +449,10 @@
               <div><dt><%= label %></dt><dd><%= timestamp ? local_time(timestamp, :seconds) : "—" %></dd></div>
             <% end %>
           </dl>
-          <p class="operations-help"><%= can_edit_flight?(@flight) ? "Edit this flight from the flight log. Administrator access is required to move or delete it." : "Administrator access is required to edit, move or delete this flight." %></p>
         <% end %>
       </div>
 
-      <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
+      <% if can_manage_flight?(@flight) %>
         <div class="flight-instrument-panel">
           <div class="flight-section-heading">
             <div>

@@ -138,8 +138,8 @@ class FlightFoldersFlowTest < ActionDispatch::IntegrationTest
     flight = @owner.flights.order(:id).last
     assert_equal @folder.id, flight.folder_id
     assert_equal "team", flight.visibility
-    get flight_path(flight)
-    assert_select "dd a[href=?]", flights_path(folder: @folder.id), text: @folder.name
+    get preview_flights_path(id: flight.id)
+    assert_select "dd", text: /#{Regexp.escape(@folder.name)}/
     get edit_flight_path(flight)
     assert_select "select[name='flight[folder_id]']"
     get flight_path(@flight)
