@@ -102,6 +102,7 @@
       ],
       "debrief_checklist": ["./app/javascript/lib/debrief_checklist.js"],
       "local_time": ["./app/javascript/lib/local_time.js"],
+      "avatar_crop": ["./app/javascript/lib/avatar_crop.js"],
       "membership_card": [
         "./app/javascript/lib/membership_card.js"
       ]
