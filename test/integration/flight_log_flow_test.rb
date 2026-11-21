@@ -165,8 +165,10 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     assert_nil flight.description
     assert_nil flight.started_at
     assert_nil flight.flown_at
+    assert_redirected_to flights_path(selected: "flight:#{flight.id}")
     follow_redirect!
-    assert_select "#flight-panel-title", flight.title
+    assert_select ".exds-browser-preview-heading h2", flight.title
+    assert_select ".exds-browser-preview-actions a[href=?]", flight_path(flight), text: /Open flight/
     assert_select "textarea[name='flight_comment[body]']"
     assert_select "a", text: /Start Signal|Import data|Run preflight/, count: 0
     assert_select ".exds-browser-map", count: 0
@@ -205,7 +207,7 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     other = log_entry(aircraft: pilatus)
     other.update!(aircraft: nil)
     assert_nil other.fdr
-    get flight_path(flight)
+    get preview_flights_path(id: flight.id)
     assert_select "select[name='flight[fdr_id]']", count: 0
     assert_select "a[href=?]", new_flight_import_path(flight_id: flight.id)
     assert_select "a[href=?]", signal_path(flight_id: flight.id)
@@ -217,7 +219,7 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
 
   test "aircraft alone does not enable recording controls" do
     flight = log_entry(aircraft: aircraft(:pilatus))
-    get flight_path(flight)
+    get preview_flights_path(id: flight.id)
     assert_select "dd", text: aircraft(:pilatus).display_name
     assert_select "a", text: /Start Signal|Import data|Run preflight/, count: 0
     assert_raises Signal::StartSession::InvalidFlight do
@@ -275,9 +277,10 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
 
   private
 
-  test "a logged flight always carries a video section where its editors add their own video" do
+  test "a logged flight always carries a video section where whoever sees it adds a video" do
     flight = log_entry(visibility: "team")
-    get flight_path(flight)
+    preview = preview_flights_path(id: flight.id)
+    get preview
     assert_response :success
     assert_select ".exds-comments + section[aria-label='Flight videos']" do
       assert_select ".exds-comments-heading", text: "Videos"
@@ -291,12 +294,12 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     end
     assert_response :success
     assert_equal flight_path(flight), response.parsed_body.fetch("redirect_url")
-    get flight_path(flight)
+    get preview
     assert_select "section[aria-label='Flight videos'] p.video-status", text: I18n.t("flights.video.processing")
 
     flight.video.attach(io: StringIO.new("0123456789"), filename: "own.mp4", content_type: "video/mp4", identify: false)
     flight.update!(video_processing_status: "ready")
-    get flight_path(flight)
+    get preview
     assert_select "section[aria-label='Flight videos']" do
       assert_select ".exds-comments-heading", text: "Videos1"
       assert_select "[data-controller='video-source'] video.flight-video[src=?]", attachment_path(flight.video.attachment)
@@ -305,12 +308,38 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     end
 
     sign_in_as users(:operator)
-    get flight_path(flight)
+    get preview
     assert_select "section[aria-label='Flight videos'] video.flight-video", 1
-    assert_select "section[aria-label='Flight videos'] form", 0
-    flight.video.purge
+    assert_select "section[aria-label='Flight videos'] form.video-upload-form", 1
+  end
+
+  test "a logged flight opens as a flight page like any other" do
+    flight = log_entry(visibility: "team")
+    assert_not flight.logbook_view?
+    get flights_path(selected: "flight:#{flight.id}")
+    assert_select ".exds-browser-preview-actions a[href=?]", flight_path(flight), text: /Open flight/
+
     get flight_path(flight)
-    assert_select "section[aria-label='Flight videos'] p.video-status", text: I18n.t("flights.video.log_empty_read_only")
+    assert_response :success
+    assert_select "[data-controller='flight-viewer']"
+    assert_select ".flight-record-tabs a", text: "Pilot log"
+    assert_select "section.analysis-mode-banner[aria-label='No recording']" do
+      assert_select "a", count: 0
+    end
+    assert_select "section.video-sync form.video-upload-form[action='#{flight_path(flight)}']", 1
+
+    sign_in_as users(:operator)
+    get flight_path(flight)
+    assert_response :success
+    assert_select "section.video-sync form.video-upload-form[action='#{flight_path(flight)}']", 1
+    assert_select "form.details-form[action='#{flight_path(flight)}']", 1
+
+    # A preparation stays in the flight log panel until it is logged.
+    sign_in_as @owner
+    preparation = @owner.flights.create!(status: "preparation")
+    get flight_path(preparation)
+    assert_select "#flight-panel-title", preparation.title
+    assert_select "[data-controller='flight-viewer']", 0
   end
 
   def log_entry(**attributes)

@@ -75,13 +75,13 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_select "section[aria-label='Flight videos'] .video-status", text: I18n.t("flights.video.processing")
   end
 
-  test "a reader without videos sees no video section in the preview" do
+  test "a reader adds a video from the preview of a flight shared with them" do
     @folder.update!(visibility: "shared", members: [ users(:operator) ])
     sign_in_as users(:operator)
     get preview_flights_path(id: @flight.id, kind: "flight"), headers: { "Turbo-Frame" => "flight-preview" }
     assert_response :success
-    assert_select "section[aria-label='Flight videos']", 0
-    assert_select "form.video-upload-form", 0
+    assert_select "section[aria-label='Flight videos'] p.video-status", text: I18n.t("flights.video.log_empty")
+    assert_select "section[aria-label='Flight videos'] form.video-upload-form[action='#{flight_path(@flight)}']", 1
   end
 
   test "a tunnel flight row names its mode in its own column, without a badge" do
@@ -289,9 +289,10 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
       post flights_path, params: context.merge(flight: { name: "Campaign draft", flown_on: "2026-10-18", location: "Bouloc", aircraft_id: aircraft(:pilatus).id, folder_id: @folder.id })
     end
     created = @owner.flights.find_by!(name: "Campaign draft")
-    assert_redirected_to flight_path(created, folder: @folder.id, q: "Campaign")
+    assert_redirected_to flights_path(folder: @folder.id, q: "Campaign", selected: "flight:#{created.id}")
     follow_redirect!
-    assert_select "#flight-panel-title", text: created.title
+    assert_select ".exds-browser-preview-heading h2", text: created.title
+    assert_select ".exds-browser-preview-actions a[href=?]", flight_path(created), text: /Open flight/
     assert_select "turbo-frame#flight-browser .flash.notice", text: /Flight logged/
     assert_select ".exds-browser-entry[aria-current=true][data-entry=?]", "flight:#{created.id}"
     assert_select "a[href=?]", signal_path(flight_id: created.id)

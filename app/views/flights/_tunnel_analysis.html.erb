@@ -8,7 +8,7 @@
   # The pitot and the recorder IMU are all a tunnel record charts, with the radio link beside them.
   charted = sensor_counts.any? { |type, count| count.positive? && (type == "AIRSPEED" || type.start_with?("IMU")) } || radio_signal.any?
   attitude_recorded = sensor_counts.fetch("IMU:rotation_vector", 0).positive?
-  importable = can_manage_operations? && flight.visible_to?(Current.user) && !flight.recording_expected?
+  importable = can_manage_flight?(flight) && !flight.recording_expected?
 %>
 
 <section class="flight-overview-strip" aria-label="Flight overview">

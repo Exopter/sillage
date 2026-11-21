@@ -4,9 +4,9 @@
     <% flight = entry.is_a?(Flight) %>
     <% accessible = !flight || entry.visible_to?(Current.user) %>
     <header class="exds-browser-preview-heading"><div><h2><%= browser_name(entry) %></h2><% subtitle = entry.import_type.upcase unless flight %><% if subtitle.present? %><p><%= subtitle %></p><% end %></div>
-      <% manageable = can_manage_operations? && flight && accessible %>
+      <% manageable = flight && can_manage_flight?(entry) %>
       <% openable = !(flight && entry.logbook_view?) %>
-      <% editable_flight = flight && can_edit_flight?(entry) %>
+      <% editable_flight = manageable %>
       <% if manageable || openable || editable_flight %>
         <div class="exds-browser-preview-actions">
           <%# The way into the flight leads the header actions, level with the title. %>
@@ -38,7 +38,7 @@
     <% editable = editable_flight && !entry.live? %>
     <dl class="exds-browser-metadata">
       <% if flight %><div><dt>Pilot</dt><dd>
-        <% if editable && can_manage_operations? %>
+        <% if editable %>
           <%= render layout: "flights/inline_edit", locals: { flight: entry, label: "pilot", fields: ->(form) { form.collection_select :pilot_id, flight_pilot_options(entry), :id, ->(pilot) { pilot.full_name || pilot.email_address }, {}, required: true, aria: { label: "Pilot" }, data: { action: "change->inline-edit#submit" } } } do %><%= render "flights/pilot", flight: entry %><% end %>
         <% else %><%= render "flights/pilot", flight: entry %><% end %>
       </dd></div><% end %>
@@ -69,9 +69,9 @@
         <%= link_to "Join live session", signal_path(session: live_session.uuid, join: 1), class: "exds-btn exds-btn--primary", data: { turbo_frame: "_top" } %>
       <% end %>
       <%= render "flight_comments/comments", flight: entry %>
-      <% video_manageable = can_manage_operations? && accessible %>
+      <% video_manageable = manageable %>
       <% if video_manageable || preview_videos.any? || entry.video_ready? %>
-        <%# The videos follow the discussion in their own section. Whoever can edit the flight adds one from here and stays in the browser. %>
+        <%# The videos follow the discussion in their own section. Whoever can see the flight adds one from here and stays in the browser. %>
         <%= render "flights/videos_panel", flight: entry, videos: preview_videos, upload: video_manageable, return_parameters: browser_context %>
       <% end %>
       <%= render "flights/log_equipment", flight: entry %>

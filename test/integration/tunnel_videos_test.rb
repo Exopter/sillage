@@ -78,13 +78,17 @@ class TunnelVideosTest < ActionDispatch::IntegrationTest
     assert_select "button[data-flight-viewer-target='videoSource']", 2
   end
 
-  test "a member who cannot manage operations cannot remove a clip" do
-    @flight.update!(visibility: "team")
+  test "a member removes a clip from a flight they can see, never from a hidden one" do
     sign_in_as users(:operator)
-
+    @flight.update!(visibility: "private")
     delete flight_tunnel_video_path(@flight, @side)
-
+    assert_response :not_found
     assert_equal "ready", @side.reload.status
+
+    @flight.update!(visibility: "team")
+    delete flight_tunnel_video_path(@flight, @side)
+    assert_redirected_to flight_path(@flight)
+    assert_equal "ignored", @side.reload.status
   end
 
   private

@@ -31,7 +31,7 @@ class FlightPilotFlowTest < ActionDispatch::IntegrationTest
       flight = @creator.flights.order(:id).last
       assert_equal @pilot, flight.pilot
       assert_equal @creator, flight.user
-      get flight_path(flight)
+      get(flight.preparation? ? flight_path(flight) : preview_flights_path(id: flight.id))
       assert_select "dt", text: "Pilot"
       assert_select ".flight-pilot-name", text: "Elias Okafor"
       get edit_flight_path(flight)
