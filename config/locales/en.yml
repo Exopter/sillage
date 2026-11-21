@@ -91,6 +91,12 @@ en:
       mark_exit: "Mark exit"
       exit_marked: "Video exit at %{timestamp}"
       exit_unmarked: "Play the video to the exit, then mark that point."
+      stage: "Flight video"
+      uploaded_source: "Uploaded"
+      uploaded_source_group: "Uploaded video"
+      log_empty: "No video yet. Add one to keep it with this flight."
+      log_empty_read_only: "No video has been added to this flight."
+      tunnel_stage: "Tunnel camera video"
       tunnel_camera:
         one: "%{camera}"
         other: "%{camera} · clip %{clip}"

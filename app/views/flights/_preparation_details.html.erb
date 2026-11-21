@@ -15,4 +15,7 @@
   <%= link_to edit_flight_path(@flight, **browser_context), class: "button-secondary exds-btn exds-btn--secondary", data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %> Edit flight<% end %>
 <% end %>
 <%= render "flight_comments/comments", flight: @flight %>
+<%# A logged flight has no replay page: its videos live here, with the upload for whoever can edit it. %>
+<%= render "flights/videos_panel", flight: @flight, videos: @flight.tunnel_videos.ready.with_attached_file.playback_order.select(&:ready?),
+      upload: can_manage_operations? && @flight.visible_to?(Current.user) %>
 <%= render "flights/log_equipment", flight: @flight %>

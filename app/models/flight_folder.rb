@@ -33,6 +33,12 @@ class FlightFolder < ApplicationRecord
       (visibility == "club" && (person.member? || person.admin? || member?(person))))
   end
 
+  # The creator and the members added to a folder rename, recolor, share and delete it. Viewing a
+  # public or Flight Club folder without being added to it does not give these rights.
+  def manageable_by?(person)
+    contributable_by?(person)
+  end
+
   def contributable_by?(person)
     owned_by?(person) || (person.present? && visibility != "private" && member?(person))
   end

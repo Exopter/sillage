@@ -87,10 +87,10 @@ class FlightFoldersFlowTest < ActionDispatch::IntegrationTest
     sign_in_as_admin @other
     get flights_path(folder: @folder.id)
     assert_select ".exds-browser-sidebar [data-folder-color-id][style='--exds-folder-color: var(--ex-aqua-500)']", text: /Renamed campaign/
-    assert_select "button[aria-label='Change folder color']", count: 0
+    assert_select "button[aria-label='Change folder color']", count: 1
     patch color_flight_folder_path(@folder), params: { flight_folder: { color: "graphite" } }, as: :json
-    assert_response :not_found
-    assert_equal "aqua", @folder.reload.color
+    assert_response :success
+    assert_equal "graphite", @folder.reload.color
   end
 
   test "folder filtering combines with visibility search and pagination" do

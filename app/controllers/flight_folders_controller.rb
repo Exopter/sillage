@@ -1,11 +1,15 @@
 class FlightFoldersController < ApplicationController
   before_action :set_folder, only: %i[edit update update_color destroy]
   before_action :disable_caching
-  before_action :load_member_options, only: %i[new create edit update member_search]
+  before_action :load_member_options, only: %i[new create edit update]
 
   def member_search
     query = params[:q].to_s.strip.downcase.first(100)
     return render json: { members: [], has_more: false } if query.length < 2
+
+    # Editing a folder: its owner already has access, so the owner is the one left out of the candidates.
+    @folder = FlightFolder.contributable_to(Current.user).find(params[:folder_id]) if params[:folder_id].present?
+    load_member_options
 
     matches = @member_options
       .where("LOWER(email_address) LIKE ?", "%#{User.sanitize_sql_like(query)}%")
@@ -40,7 +44,8 @@ class FlightFoldersController < ApplicationController
 
   def update
     if @folder.update(folder_params)
-      redirect_to flights_path(folder: @folder.id), notice: "Folder updated."
+      # A member who shares a folder can narrow it until they no longer see it themselves.
+      redirect_to flights_path(folder: (@folder.id if @folder.visible_to?(Current.user))), notice: "Folder updated."
     else
       render :edit, status: :unprocessable_entity
     end
@@ -64,7 +69,7 @@ class FlightFoldersController < ApplicationController
   private
 
   def set_folder
-    @folder = Current.user.flight_folders.find(params[:id])
+    @folder = FlightFolder.contributable_to(Current.user).find(params[:id])
   end
 
   def folder_params
@@ -79,7 +84,8 @@ class FlightFoldersController < ApplicationController
   end
 
   def load_member_options
-    @member_options = User.active.where.not(id: Current.user.id).where.not(invitation_accepted_at: nil).order(:email_address)
+    owner_id = @folder&.user_id || Current.user.id
+    @member_options = User.active.where.not(id: owner_id).where.not(invitation_accepted_at: nil).order(:email_address)
   end
 
   def duplicate_name(view)

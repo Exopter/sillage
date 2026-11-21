@@ -1,7 +1,9 @@
-<%# Player of the tunnel camera clips: one stage, then one camera switch per clip. The flight
-    record drives it from the telemetry timeline (viewer: true); the flight log preview plays it alone. %>
+<%# Player of a flight's videos: one stage, then one switch per tunnel camera clip and one for the
+    uploaded video. The flight record drives it from the telemetry timeline (viewer: true); the
+    flight log panels play it alone. %>
 <%
   clips = videos.group_by { |video| [ video.timeslot_at, video.clip_number ] }.values
+  uploaded_path = attachment_path(uploaded) if uploaded
   video_data = if viewer
     { flight_viewer_target: "video", action: "loadedmetadata->flight-viewer#syncVideoFromFlight play->flight-viewer#videoPlaybackStarted pause->flight-viewer#videoPlaybackPaused seeked->flight-viewer#videoSeeked timeupdate->flight-viewer#videoTimeUpdated" }
   else
@@ -10,9 +12,10 @@
 %>
 <%= tag.div class: "video-player", data: ({ controller: "video-source" } unless viewer) do %>
   <div class="video-stage">
-    <%= tag.video class: "flight-video", controls: true, playsinline: true, preload: "metadata", src: attachment_path(videos.first.file.attachment), data: video_data, aria: { label: "Tunnel camera video" } %>
+    <%= tag.video class: "flight-video", controls: true, playsinline: true, preload: "metadata", src: videos.first ? attachment_path(videos.first.file.attachment) : uploaded_path, data: video_data,
+          aria: { label: t(videos.any? ? "flights.video.tunnel_stage" : "flights.video.stage") } %>
   </div>
-  <% if videos.many? %>
+  <% if videos.size + (uploaded ? 1 : 0) > 1 %>
     <div class="video-player-bar">
       <% clips.each_with_index do |cameras, clip| %>
         <div class="video-source-clip">
@@ -27,6 +30,19 @@
               <%= button_tag video.camera, type: "button", data: source_data,
                     aria: { pressed: video == videos.first, label: t("flights.video.tunnel_camera", camera: video.camera, clip: clip + 1, count: clips.size) } %>
             <% end %>
+          </div>
+        </div>
+      <% end %>
+      <% if uploaded %>
+        <%# The uploaded video carries no recording clock: it follows the marked exit when there is one, and plays freely otherwise. %>
+        <div class="video-source-clip">
+          <div class="video-source-switch" role="group" aria-label="<%= t("flights.video.uploaded_source_group") %>">
+            <% source_data = if viewer
+                 { flight_viewer_target: "videoSource", action: "flight-viewer#selectVideoSource", flight_viewer_src_param: uploaded_path }
+               else
+                 { video_source_target: "source", action: "video-source#select", video_source_src_param: uploaded_path }
+               end %>
+            <%= button_tag t("flights.video.uploaded_source"), type: "button", data: source_data, aria: { pressed: false } %>
           </div>
         </div>
       <% end %>
