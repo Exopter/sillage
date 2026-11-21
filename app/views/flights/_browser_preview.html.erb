@@ -3,7 +3,7 @@
   <% if entry %>
     <% flight = entry.is_a?(Flight) %>
     <% accessible = !flight || entry.visible_to?(Current.user) %>
-    <header class="exds-browser-preview-heading"><div><h2><%= browser_name(entry) %></h2><% subtitle = flight ? entry.description : entry.import_type.upcase %><% if subtitle.present? %><p><%= subtitle %></p><% end %></div>
+    <header class="exds-browser-preview-heading"><div><h2><%= browser_name(entry) %></h2><% subtitle = entry.import_type.upcase unless flight %><% if subtitle.present? %><p><%= subtitle %></p><% end %></div>
       <% manageable = can_manage_operations? && flight && accessible %>
       <% openable = !(flight && entry.logbook_view?) %>
       <% if manageable || openable %>
@@ -15,11 +15,11 @@
             <%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button", aria: { label: "Edit flight" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 17 %><% end %>
             <% unless entry.live? %>
               <details class="exds-browser-preview-menu exds-comment-actions">
-                <summary class="exds-browser-icon-button" title="More actions" aria-label="More actions for <%= entry.code %>"><%= sillage_icon "ellipsis", size: 17 %></summary>
+                <summary class="exds-browser-icon-button" title="More actions" aria-label="More actions for <%= entry.label %>"><%= sillage_icon "ellipsis", size: 17 %></summary>
                 <div class="exds-comment-menu">
                   <%# The browser context brings the operator back to the same folder, filter and search. %>
                   <%= button_to flight_path(entry, **browser_context.except(:page), browser: 1), method: :delete,
-                        form: { data: { turbo_frame: "_top", turbo_confirm: t("flights.show.confirm_delete", code: entry.code) } } do %><%= sillage_icon "trash", size: 16 %> Delete flight<% end %>
+                        form: { data: { turbo_frame: "_top", turbo_confirm: t("flights.show.confirm_delete", name: entry.label) } } do %><%= sillage_icon "trash", size: 16 %> Delete flight<% end %>
                 </div>
               </details>
             <% end %>
@@ -57,7 +57,9 @@
           <%= render layout: "flights/inline_edit", locals: { flight: entry, label: "location", save: true, fields: ->(form) { form.text_field :location, required: !entry.preparation? && entry.sky?, autocomplete: "off", aria: { label: "Location" }, placeholder: "Airfield, drop zone or operating location" } } do %><%= entry.display_location %><% end %>
         <% else %><%= entry.display_location %><% end %>
       </dd></div><% end %>
-      <% if !flight || browser_duration(entry).present? %><div><dt>Duration</dt><dd><%= logbook_duration(browser_duration(entry)) %></dd></div><% end %>
+      <%# A flight with a recording but no flight time shows the gap rather than the length of the recording. %>
+      <% flight_time = browser_duration(entry) %>
+      <% if !flight || flight_time.present? || entry.sample_count.positive? || entry.sensor_sample_count.positive? %><div><dt><%= flight ? "Flight time" : "Duration" %></dt><dd><%= logbook_duration(flight_time) %></dd></div><% end %>
       <% state, label = flight ? logbook_status(entry) : recording_logbook_status(entry) %>
       <% if label %><div><dt>Status</dt><dd><span class="status-dot is-<%= state %>"><span></span><%= label %></span></dd></div><% end %>
     </dl>

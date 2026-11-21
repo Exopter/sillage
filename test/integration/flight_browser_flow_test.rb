@@ -28,7 +28,9 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
 
     get flights_path(folder: @folder.id)
     assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
-      assert_select ".exds-browser-entry-detail", text: "Tunnel · Inclined Slovenia · #{@flight.description}"
+      assert_select ".exds-browser-entry-copy strong", text: @flight.description
+      assert_select ".exds-browser-cell.is-mode", text: "Tunnel"
+      assert_select ".exds-browser-cell.is-location", text: "Tunnel · Inclined Slovenia"
       assert_select ".exds-browser-entry-cameras[title='2 cameras']", text: "2 cameras"
     end
 
@@ -49,32 +51,75 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_select "button[data-video-source-target='source']", 0
   end
 
-  test "a tunnel flight row names its mode in the detail line, without a badge" do
+  test "a tunnel flight row names its mode in its own column, without a badge" do
     @flight.update!(environment: "tunnel", location: "Inclined Slovenia")
     get flights_path(folder: @folder.id)
     assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
-      assert_select ".exds-browser-entry-detail", text: "Tunnel · Inclined Slovenia · #{@flight.description}"
+      assert_select ".exds-browser-entry-copy strong", text: @flight.description
+      assert_select ".exds-browser-cell.is-mode", text: "Tunnel"
+      assert_select ".exds-browser-cell.is-location", text: "Tunnel · Inclined Slovenia"
       assert_select ".mode-badge", count: 0
     end
   end
 
-  test "flight rows lead with the time under a day header, without the flight duration" do
-    @flight.update!(duration_seconds: 4786, description: "Test flight")
+  test "flight rows are table rows under a day header, with the flight time instead of the recording length" do
+    @flight.update!(duration_seconds: 4786, description: "Test flight", opening_at: @flight.exit_at + 103)
     get flights_path(folder: @folder.id)
-    assert_select ".exds-browser-entries[data-local-days='exds-browser-day'] > .exds-browser-day[data-day-header]", text: "Fri 15 May 2026"
+    assert_select ".exds-browser-entries[data-local-days='exds-browser-day'] > .exds-browser-table-head[aria-hidden='true'] .exds-browser-table-columns > span", 8
+    assert_select ".exds-browser-entries > .exds-browser-day[data-day-header]", text: "Fri 15 May 2026"
     assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
+      assert_select ".exds-browser-entry-link > *", 8
       assert_select ".status-dot", count: 0
       assert_select ".exds-browser-entry-time", text: "20:01"
-      assert_select ".exds-browser-entry-detail", text: "#{@flight.location} · Test flight"
-      assert_select ".exds-browser-entry-link", text: /1h 19m/, count: 0
+      assert_select ".exds-browser-entry-copy strong", text: "Test flight"
+      assert_select ".exds-browser-entry-link", text: /FLT-/, count: 0
+      assert_select ".exds-browser-cell.is-mode", text: "Sky"
+      assert_select ".exds-browser-cell.is-aircraft", text: @flight.aircraft.registration
+      assert_select ".exds-browser-cell.is-location", text: @flight.location
+      assert_select ".exds-browser-cell.is-flown", text: "01:43"
     end
-    @flight.update!(status: "preparation", started_at: nil, flight_import: nil, duration_seconds: nil, description: "Draft flight")
+    @flight.update!(status: "preparation", started_at: nil, flight_import: nil, aircraft: nil, duration_seconds: nil, exit_at: nil, opening_at: nil, description: "Draft flight")
     get flights_path(folder: @folder.id)
     assert_select ".exds-browser-entry[data-entry=?][data-day-at]", "flight:#{@flight.id}" do
+      assert_select ".exds-browser-entry-link > *", 8
       assert_select ".exds-browser-entry-meta .status-dot", text: "Preparation"
       assert_select ".exds-browser-entry-time[title='Creation time'] time[data-local-time='clock'][datetime]", 1
-      assert_select ".exds-browser-entry-detail", text: @flight.location
+      # A placeholder description names nothing and is not shown as one.
+      assert_select ".exds-browser-entry-copy strong", count: 0
+      assert_select ".exds-browser-entry-detail", text: "No description"
+      assert_select ".exds-browser-cell.is-location", text: @flight.location
+      assert_select ".exds-browser-cell.is-aircraft .exds-browser-cell-blank .sr-only", text: "Not recorded"
+      assert_select ".exds-browser-cell.is-flown .exds-browser-cell-blank .sr-only", text: "Not recorded"
     end
+  end
+
+  test "tunnel flight times of the page come from one query" do
+    @flight.update!(environment: "tunnel")
+    [ 1, 3.5, 25 ].each { |elapsed| @flight.sensor_samples.create!(sensor_type: "AIRSPEED", elapsed_seconds: elapsed, readings: { differential_pressure_pa: 420 }) }
+    queries = []
+    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql].include?("sensor_samples") }
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { get flights_path(folder: @folder.id) }
+    assert_select ".exds-browser-entry[data-entry=?] .exds-browser-cell.is-flown", "flight:#{@flight.id}", text: "00:24"
+    assert_equal 1, queries.count { |sql| sql.include?("MIN(elapsed_seconds)") }
+  end
+
+  test "the side panels can be put away and the details toggle waits while a panel is open" do
+    get flights_path(folder: @folder.id)
+    assert_select ".exds-browser-collection-header .exds-browser-panes button[data-flight-browser-target='paneToggle']", 2
+    assert_select "button[data-pane='folders'][aria-controls='flight-browser-folders'][aria-expanded='true']"
+    assert_select "aside#flight-browser-folders"
+    assert_select "button[data-pane='preview'][aria-controls='flight-preview']:not([disabled])"
+    get edit_flight_path(@flight)
+    assert_select "button[data-pane='preview'][disabled]"
+  end
+
+  test "the details pane has a keyboard reachable resize handle on the list edge" do
+    get flights_path(folder: @folder.id)
+    assert_select ".exds-browser-collection > .exds-browser-resizer[role='separator'][tabindex='0'][aria-orientation='vertical'][aria-controls='flight-preview']" do |handles|
+      assert_equal "Resize details", handles.first["aria-label"]
+      assert_includes handles.first["data-action"], "keydown->flight-browser#resizeWithKeys"
+    end
+    assert_select "#flight-preview.exds-browser-preview"
   end
 
   test "the preview overflow menu deletes the flight and returns to the same folder" do
@@ -82,8 +127,8 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     get flights_path(folder: @folder.id, selected: "flight:#{@flight.id}")
     assert_response :success
     assert_select ".exds-browser-preview-actions a[aria-label='Edit flight'] + details.exds-browser-preview-menu" do
-      assert_select "summary[aria-label=?]", "More actions for #{@flight.code}"
-      assert_select "form[action=?][data-turbo-confirm*=?]", flight_path(@flight, folder: @folder.id, browser: 1), @flight.code do
+      assert_select "summary[aria-label=?]", "More actions for #{@flight.label}"
+      assert_select "form[action=?][data-turbo-confirm*=?]", flight_path(@flight, folder: @folder.id, browser: 1), @flight.label do
         assert_select "input[name='_method'][value='delete']"
         assert_select "button", text: /Delete flight/
       end
@@ -109,7 +154,7 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_select ".exds-browser[data-view=columns]"
     assert_select ".exds-browser-entry[aria-current=true][draggable=true][data-entry=?]", "flight:#{@flight.id}"
     assert_select ".exds-browser-entry-link[draggable=false]"
-    assert_select ".exds-browser-preview h2", text: @flight.code
+    assert_select ".exds-browser-preview h2", text: @flight.title
     assert_select ".exds-browser-preview a[href=?]", flight_path(@flight), text: /Open flight/
     assert_select "a[aria-label='Grid view']", count: 0
     assert_select "a[aria-label='List view']", count: 0
@@ -138,7 +183,7 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, secret.name
     assert_not_includes response.body, secret_folder.name
     get flights_path(selected: "flight:#{shared.id}")
-    assert_select ".exds-browser-preview h2", text: shared.code
+    assert_select ".exds-browser-preview h2", text: shared.title
     assert_select ".exds-browser-preview button[aria-label='Move flight']", count: 1
     assert_select ".exds-browser-entry[data-entry=?][draggable=true]", "flight:#{shared.id}"
     assert_not_includes response.body, secret_folder.name
@@ -213,7 +258,7 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     created = @owner.flights.find_by!(name: "Campaign draft")
     assert_redirected_to flight_path(created, folder: @folder.id, q: "Campaign")
     follow_redirect!
-    assert_select "#flight-panel-title", text: created.code
+    assert_select "#flight-panel-title", text: created.title
     assert_select "turbo-frame#flight-browser .flash.notice", text: /Flight logged/
     assert_select ".exds-browser-entry[aria-current=true][data-entry=?]", "flight:#{created.id}"
     assert_select "a[href=?]", signal_path(flight_id: created.id)
@@ -228,7 +273,7 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     patch flight_path(@flight), params: context.merge(flight: { name: "Renamed flight" })
     assert_redirected_to flights_path(folder: @folder.id, selected: "flight:#{@flight.id}")
     follow_redirect!
-    assert_select ".exds-browser-preview h2", text: @flight.code
+    assert_select ".exds-browser-preview h2", text: "Renamed flight"
     assert_select ".exds-browser-sidebar a[aria-current=page]", text: /Campaign/
   end
 

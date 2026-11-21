@@ -63,12 +63,4 @@ module Hangar::AircraftHelper
         meta: "Assembly \u00b7 #{pluralize(assembly.snapshot_part_numbers.size, "part")}" }
     end
   end
-
-  def hangar_root_assembly(assembly)
-    assembly.parent ? hangar_root_assembly(assembly.parent) : assembly
-  end
-
-  def hangar_assembly_aircraft(assembly)
-    Installation.active.find_by(installable: hangar_root_assembly(assembly))&.aircraft
-  end
 end

@@ -5,7 +5,7 @@
         <%= render "flights/pilot", flight: flight, show_name: false %>
         <span class="flight-card-body">
           <span class="flight-date"><%= logbook_date(flight) %></span>
-          <strong><%= flight.code %></strong><% if flight.description.present? %><span><%= flight.description %></span><% end %>
+          <strong><%= flight.title %></strong>
           <span><%= [flight.location.presence, duration(flight.duration_seconds), meters(flight.distance_m)].compact.join(" / ") %></span>
         </span>
         <span class="status imported"><%= flight.status.titleize %></span>

@@ -28,6 +28,8 @@ module FlightBrowser
     @flights = entries.first(Flights::Logbook::PER_PAGE)
     # One grouped query for the whole page: which flights have tunnel cameras ready.
     @camera_counts = TunnelVideo.ready.where(flight_id: @flights.grep(Flight).map(&:id)).group(:flight_id).distinct.count(:camera)
+    # Likewise for the flight time of the tunnel flights on the page.
+    @tunnel_flying_durations = Flights::TunnelFlyingDuration.for(@flights.grep(Flight).select(&:tunnel?).map(&:id))
     visible = Flight.visible_to(Current.user)
     @folder_counts = visible.where.not(flight_import_id: FlightImport.set_aside.select(:id)).or(visible.where(flight_import_id: nil)).group(:folder_id).count
     @unfiled_count = visible.where(folder_id: nil).count

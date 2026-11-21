@@ -21,11 +21,11 @@
     </header>
     <%= render "flights/recording_details" if @flight_import %>
     <div class="exds-browser-body">
-      <aside class="exds-browser-sidebar" aria-label="Flight folders">
+      <aside class="exds-browser-sidebar" id="flight-browser-folders" aria-label="Flight folders">
         <nav aria-label="Library">
-          <% [["My flights", "user", nil, "mine"], ["All flights", "plane", nil, "all"], ["Unfiled", "file-text", "unfiled", "flights"], ["Excluded recordings", "file-text", nil, "set_aside"]].each do |label, icon, folder, filter| %>
+          <% [["My flights", "user", nil, "mine"], ["All flights", "plane", nil, "all"], ["Unfiled", "inbox", "unfiled", "flights"], ["Excluded recordings", "file-text", nil, "set_aside"]].each do |label, icon, folder, filter| %>
             <% active = @folder_filter == folder && (folder || (filter == "all" ? %w[set_aside mine].exclude?(@filter) : @filter == filter)) %>
-            <%= link_to browser_path(folder: folder, filter: filter, page: nil), class: "exds-browser-nav", aria: { current: ("page" if active) }, data: { folder_destination: folder, action: "dragenter->flight-browser#overFolder dragover->flight-browser#overFolder dragleave->flight-browser#leaveFolder drop->flight-browser#drop" } do %>
+            <%= link_to browser_path(folder: folder, filter: filter, page: nil), class: "exds-browser-nav", title: label, aria: { current: ("page" if active) }, data: { folder_destination: folder, action: "dragenter->flight-browser#overFolder dragover->flight-browser#overFolder dragleave->flight-browser#leaveFolder drop->flight-browser#drop" } do %>
               <%= sillage_icon icon, size: 22 %><span><%= label %></span><% if folder == "unfiled" %><small><%= @unfiled_count %></small><% end %><%= sillage_icon "chevron-right", size: 16 %>
             <% end %>
           <% end %>
@@ -55,11 +55,22 @@
           <header class="exds-browser-collection-header">
             <% if can_manage_operations? %><label><input type="checkbox" data-table-selection-target="all" data-action="change->table-selection#toggleAll"><span class="sr-only">Select all entries on this page</span></label><% end %>
             <div><h2><%= @browser_title %></h2><p class="exds-browser-caption"><% if @folder %><% total = @folder_counts.fetch(@folder.id, 0) %><%= "#{@flights.length} of " if @flights.length != total %><%= pluralize(total, "flight") %><% else %><%= "#{@flights.length} entries#{' on this page' if @next_page || @page > 1}" %><% end %> · Newest first</p></div>
+            <%# Each side column can be put away to give the table the room; the choice is kept per browser. %>
+            <div class="exds-browser-panes" role="group" aria-label="Side panels">
+              <button type="button" class="exds-browser-icon-button is-quiet" title="Hide folders" aria-label="Folders" aria-expanded="true" aria-controls="flight-browser-folders" data-flight-browser-target="paneToggle" data-pane="folders" data-action="flight-browser#togglePane"><%= sillage_icon "panel-left", size: 17 %></button>
+              <button type="button" class="exds-browser-icon-button is-quiet" title="Hide details" aria-label="Details" aria-expanded="true" aria-controls="flight-preview" data-flight-browser-target="paneToggle" data-pane="preview" data-action="flight-browser#togglePane" <%= "disabled" if @browser_panel %>><%= sillage_icon "panel-right", size: 17 %></button>
+            </div>
           </header>
           <% if @filter == "set_aside" %><p class="exds-browser-explanation">Static tests and technical recordings excluded from flights. Original files are kept here.</p><% end %>
           <%= hidden_field_tag :scope, @bulk_scope || "page", id: nil, data: { table_selection_target: "scope" } %>
           <%= render "flights/browser_filters", form: form, include_query: true %>
           <div class="exds-browser-entries" data-local-days="exds-browser-day">
+            <% if @flights.any? %>
+              <%# Column labels for sighted readers; each row link carries its own accessible name. %>
+              <div class="exds-browser-table-head" aria-hidden="true"><span></span><div class="exds-browser-table-columns">
+                <span>Time</span><span></span><span>Description</span><span class="exds-browser-cell is-mode">Mode</span><span class="exds-browser-cell is-aircraft">Aircraft</span><span class="exds-browser-cell is-location">Location</span><span class="exds-browser-cell is-flown">Flown</span><span></span>
+              </div></div>
+            <% end %>
             <% day = nil %>
             <% @flights.each do |entry| %>
               <% flight = entry.is_a?(Flight) %>
@@ -73,14 +84,19 @@
                 <% if can_manage_operations? && accessible %><label><input type="checkbox" name="entries[]" value="<%= browser_key(entry) %>" <%= "checked" if flight && @bulk_ids&.include?(entry.id) %> data-table-selection-target="item" data-action="change->table-selection#update"><span class="sr-only">Select <%= browser_name(entry) %></span></label><% end %>
                 <%= link_to browser_preview_path(entry), class: "exds-browser-entry-link", draggable: false, data: { turbo_frame: "flight-preview", flight_browser_target: "entry", open_url: browser_open_path(entry), selected: selected, name: browser_name(entry), action: "click->flight-browser#select dblclick->flight-browser#open" }, aria: { label: "Preview #{browser_name(entry)}" } do %>
                   <% entry_state, entry_status = flight ? logbook_status(entry) : recording_logbook_status(entry) %>
-                  <%# The time leads: it is what tells consecutive flights apart. The day is the group header. %>
+                  <%# One cell per column, always rendered so every row fills the shared grid. The day is the group header. %>
                   <span class="exds-browser-entry-time" title="<%= "Creation time" if flight && entry.started_at.nil? && !entry.flown_on %>"><%= browser_time(entry) || "--:--" %></span>
                   <% if flight %><%= render "flights/pilot", flight: entry, show_name: false %><% else %><span class="exds-browser-entry-kind"><%= sillage_icon "file-text", size: 16 %></span><% end %>
                   <span class="exds-browser-entry-copy">
-                    <strong><%= browser_name(entry) %></strong>
-                    <% detail = browser_detail(entry) %>
-                    <small class="exds-browser-entry-detail" title="<%= detail %>"><%= detail %></small>
+                    <% heading = flight ? entry.display_description : browser_name(entry) %>
+                    <% if heading %><strong title="<%= heading %>"><%= heading %></strong><% end %>
+                    <% if (detail = browser_detail(entry)) %><small class="exds-browser-entry-detail" title="<%= detail %>"><%= detail %></small><% end %>
                   </span>
+                  <span class="exds-browser-cell is-mode"><%= entry.environment_label if flight %></span>
+                  <span class="exds-browser-cell is-aircraft"><%= entry.aircraft&.registration.presence || (browser_blank if flight) %></span>
+                  <span class="exds-browser-cell is-location"><% if flight %><% if entry.tunnel? %><span class="exds-browser-cell-prefix">Tunnel<%= " \u00b7 " if entry.location.present? %></span><% end %><%= entry.location.presence || browser_blank %><% end %></span>
+                  <% seconds = browser_duration(entry) if flight %>
+                  <span class="exds-browser-cell is-flown <%= "is-blank" unless seconds %>"><%= seconds ? duration(seconds) : (browser_blank if flight) %></span>
                   <span class="exds-browser-entry-meta">
                     <% if flight && browser_visibility(entry) == "private" %><span title="Private"><%= sillage_icon "lock-keyhole", size: 14 %><span class="sr-only">Private</span></span><% end %>
                     <% if flight && (cameras = @camera_counts&.fetch(entry.id, nil)) %><span class="exds-browser-entry-cameras" title="<%= pluralize(cameras, "camera") %>"><%= sillage_icon "video", size: 14 %><%= cameras %><span class="sr-only"> <%= "camera".pluralize(cameras) %></span></span><% end %>
@@ -104,6 +120,7 @@
           <% end %>
         <% end %>
         <div class="exds-browser-pagination"><%= render "shared/pagination", path: ->(page) { browser_path(page: page) } %></div>
+        <div class="exds-browser-resizer" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize details" aria-controls="flight-preview" title="Drag to resize, double-click to reset" data-flight-browser-target="resizer" data-action="pointerdown->flight-browser#startResize keydown->flight-browser#resizeWithKeys dblclick->flight-browser#resetPreviewWidth"></div>
       </section>
       <% if @browser_panel %>
         <%= render "flights/browser_panel" %>

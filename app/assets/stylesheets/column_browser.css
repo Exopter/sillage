@@ -24,7 +24,9 @@
 .exds-browser-folder { min-width: 0; }
 .exds-browser-folder-access { display: block; margin-top: 3px; font-size: var(--fs-xs); font-weight: 400; }
 .exds-browser-explanation { margin: 0; padding: 0 24px 16px; color: var(--text-muted); font-size: var(--fs-sm); line-height: 1.5; }
-.exds-browser-body { display: grid; grid-template-columns: minmax(176px, 18%) minmax(300px, 34%) minmax(0, 1fr); flex: 1; min-height: 0; overflow: hidden; }
+/* The collection takes the room: folders and preview frame it, and each can be put away. */
+.exds-browser { --exds-browser-folders: minmax(216px, 17%); --exds-browser-folders-floor: 216px; --exds-browser-preview: minmax(320px, 28%); --exds-browser-preview-size: 320px; }
+.exds-browser-body { display: grid; grid-template-columns: var(--exds-browser-folders) minmax(0, 1fr) var(--exds-browser-preview); flex: 1; min-height: 0; overflow: hidden; }
 .exds-browser-sidebar { padding: 12px 0; border-right: 1px solid var(--border-rule); overflow-y: auto; }
 .exds-browser-nav { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 20px; color: var(--text-body); border-left: 3px solid transparent; font-size: var(--fs-text); }
 .exds-browser-nav span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -54,42 +56,77 @@
 .exds-browser-color-radio input:focus-visible + .exds-browser-color-swatch { outline: 2px solid var(--selection-marker); outline-offset: 2px; }
 .exds-browser-section-label { display: flex; align-items: center; justify-content: space-between; margin: 12px 16px 6px; padding-top: 12px; border-top: 1px solid var(--border-rule); color: var(--text-muted); font: var(--fs-xs) var(--ex-font-mono); text-transform: uppercase; letter-spacing: .08em; }
 .exds-browser-section-label a { text-transform: none; letter-spacing: 0; }
-.exds-browser-collection { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface-card); border-right: 1px solid var(--border-rule); }
+.exds-browser-collection { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface-card); border-right: 1px solid var(--border-rule); }
+/* The edge between list and details: a 9px grab area over the 1px rule, dragged or moved with the arrow keys. */
+.exds-browser-resizer { position: absolute; z-index: 4; inset-block: 0; right: -5px; width: 9px; cursor: col-resize; touch-action: none; }
+.exds-browser-resizer::after { content: ""; position: absolute; inset-block: 0; left: 3px; width: 3px; background: var(--selection-marker); opacity: 0; transition: opacity var(--dur-fast) ease; }
+.exds-browser-resizer:is(:hover, :focus-visible)::after, .exds-browser[data-resizing] .exds-browser-resizer::after { opacity: 1; }
+.exds-browser-resizer:focus-visible { outline: none; }
+.exds-browser[data-resizing] { cursor: col-resize; user-select: none; }
+.exds-browser[data-resizing] .exds-browser-preview { pointer-events: none; }
 .exds-browser-collection-header { display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 12px 16px; }
 /* Select-all checkbox, in line with the entry checkboxes below it. */
 .exds-browser-collection-header > label { display: flex; flex: none; }
 .exds-browser-collection-header > div { flex: 1; min-width: 0; }
+.exds-browser-collection-header > .exds-browser-panes { display: flex; flex: none; gap: 2px; }
 .exds-browser-collection-header h2, .exds-browser-preview h2 { margin: 0; font-size: var(--fs-section); line-height: 1.2; overflow-wrap: anywhere; }
 .exds-browser-caption { margin: 6px 0 0; font-size: var(--fs-sm); line-height: 1.5; color: var(--text-muted); }
-.exds-browser-selection { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; margin: 0; }
-/* Flight log ledger: the day is a sticky group header and each flight is one line led by its time. */
-.exds-browser-entries { container-type: inline-size; flex: 1; min-height: 0; overflow-y: auto; }
-.exds-browser-day { position: sticky; top: 0; z-index: 1; padding: 7px 16px 6px 15px; border-bottom: 1px solid var(--surface-panel); background: var(--surface-app); color: var(--text-strong); font: 600 var(--fs-caption)/18px var(--ex-font-sans); }
-.exds-browser-entry { position: relative; display: flex; align-items: center; border-left: 3px solid transparent; border-bottom: 1px solid var(--surface-panel); }
+.exds-browser-selection { container-type: inline-size; display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; margin: 0; }
+/* Flight log table: one grid for the whole list, so every row shares its columns. The day stays a sticky group header. */
+.exds-browser-entries { display: grid; grid-template-columns: auto auto 24px minmax(18ch, 1fr) auto fit-content(14ch) fit-content(22ch) auto auto; grid-auto-rows: min-content; align-content: start; column-gap: 16px; flex: 1; min-height: 0; overflow-y: auto; }
+.exds-browser-entries > * { grid-column: 1 / -1; }
+.exds-browser-table-head, .exds-browser-entry { display: grid; grid-template-columns: subgrid; align-items: center; border-left: 3px solid transparent; }
+.exds-browser-table-head { position: sticky; top: 0; z-index: 2; height: 32px; border-bottom: 1px solid var(--border-rule); background: var(--surface-card); color: var(--text-muted); font: 600 var(--fs-xs)/1 var(--ex-font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.exds-browser-day { position: sticky; top: 32px; z-index: 1; padding: 7px 16px 6px 15px; border-bottom: 1px solid var(--surface-panel); background: var(--surface-app); color: var(--text-strong); font: 600 var(--fs-caption)/18px var(--ex-font-sans); }
+.exds-browser-entry { position: relative; border-bottom: 1px solid var(--surface-panel); }
 .exds-browser-entry[aria-current="true"] { background: var(--surface-selected); border-left-color: var(--selection-marker); }
 .exds-browser-entry[data-selected] { box-shadow: inset 0 0 0 1px var(--selection-marker); }
-.exds-browser-entry > label { display: flex; align-self: stretch; align-items: center; padding: 0 0 0 12px; }
+.exds-browser-entry > label { grid-column: 1; display: flex; align-self: stretch; align-items: center; padding: 0 0 0 12px; }
 .exds-browser-entry input, .exds-browser-collection-header input { accent-color: var(--selection-marker); width: 15px; height: 15px; }
-.exds-browser-entry-link { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; height: var(--ex-list-row-height); min-height: var(--ex-list-row-height); padding: 0 16px 0 12px; color: var(--text-body); }
-.exds-browser-entry-time { flex: none; min-width: 5ch; color: var(--text-body); font: 400 var(--fs-sm)/1 var(--ex-font-mono); font-variant-numeric: tabular-nums; }
+.exds-browser-table-columns, .exds-browser-entry-link { grid-column: 2 / -1; display: grid; grid-template-columns: subgrid; align-items: center; min-width: 0; padding-right: 16px; }
+.exds-browser-entry-link { height: var(--ex-list-row-height); min-height: var(--ex-list-row-height); color: var(--text-body); }
+.exds-browser-entry-time { color: var(--text-body); font: 400 var(--fs-sm)/1 var(--ex-font-mono); font-variant-numeric: tabular-nums; }
 .exds-browser-entry-time:not(:has(time)) { color: var(--text-muted); }
 .exds-browser-entry .sillage-avatar, .exds-browser-entry-kind { width: 24px; height: 24px; margin: 0; font-size: var(--fs-xs); }
 .exds-browser-entry .sillage-avatar-insignia { right: -3px; top: -3px; width: 10px; height: 12px; }
-.exds-browser-entry-kind { display: grid; flex: none; place-items: center; color: var(--text-muted); }
-.exds-browser-entry-copy { display: flex; align-items: baseline; gap: 10px; flex: 1; min-width: 0; }
-.exds-browser-entry-copy strong { flex: 0 1 auto; min-width: 0; max-width: 60%; font-size: var(--fs-text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.exds-browser-entry-detail { flex: 1; min-width: 0; margin: 0; color: var(--text-muted); font-size: var(--fs-sm); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.exds-browser-entry-meta { display: flex; align-items: center; gap: 12px; flex: none; color: var(--text-muted); font-size: var(--fs-caption); font-variant-numeric: tabular-nums; }
-.exds-browser-entry-meta:empty { display: none; }
+.exds-browser-entry-kind { display: grid; place-items: center; color: var(--text-muted); }
+.exds-browser-entry-copy { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.exds-browser-entry-copy strong { flex: 0 1 auto; min-width: 0; color: var(--text-strong); font-size: var(--fs-text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.exds-browser-entry-detail { flex: 0 1 auto; min-width: 0; margin: 0; color: var(--text-muted); font-size: var(--fs-sm); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.exds-browser-cell { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--fs-sm); }
+.exds-browser-table-head .exds-browser-cell { font-size: inherit; }
+.exds-browser-cell.is-mode, .exds-browser-cell-blank { color: var(--text-muted); }
+.exds-browser-cell.is-flown { text-align: right; font-variant-numeric: tabular-nums; }
+.exds-browser-entry .exds-browser-cell.is-flown { font-family: var(--ex-font-mono); }
+.exds-browser-cell-prefix { display: none; }
+.exds-browser-entry-meta { display: flex; align-items: center; justify-content: flex-end; gap: 12px; color: var(--text-muted); font-size: var(--fs-caption); font-variant-numeric: tabular-nums; }
 .exds-browser-entry-meta > span, .exds-browser-entry-cameras { display: inline-flex; align-items: center; gap: 4px; }
 .exds-browser-entry-meta .status-dot { gap: 6px; white-space: nowrap; font: 500 var(--fs-xs)/var(--fs-card) var(--ex-font-sans); letter-spacing: 0; text-transform: none; color: var(--text-muted); }
 .exds-browser-entry-meta .status-dot > span { flex-shrink: 0; width: 6px; height: 6px; }
-/* Narrow column or phone: the name is never truncated and its detail moves to a second line. */
-@container (max-width: 460px) {
-  .exds-browser-entry-link { height: 56px; min-height: 56px; }
-  .exds-browser-entry-copy { flex-direction: column; align-items: stretch; gap: 1px; }
-  .exds-browser-entry-copy strong { max-width: none; }
-  .exds-browser-entry-detail { flex: none; font-size: var(--fs-caption); }
+/* Less room: mode and aircraft leave first; they stay in the preview. */
+@container (max-width: 700px) {
+  .exds-browser-entries { grid-template-columns: auto auto 24px minmax(0, 1fr) fit-content(18ch) auto auto; }
+  .exds-browser-cell:is(.is-mode, .is-aircraft) { display: none; }
+}
+/* Narrow column or phone: no header, the description is never squeezed and the location moves under it. */
+@container (max-width: 600px) {
+  .exds-browser-entries { display: block; }
+  .exds-browser-table-head { display: none; }
+  .exds-browser-day { top: 0; }
+  .exds-browser-entry { display: flex; }
+  .exds-browser-entry-link { flex: 1; grid-template-columns: 5ch 24px minmax(0, 1fr) auto minmax(5ch, auto); grid-template-rows: auto auto; column-gap: 12px; row-gap: 1px; align-content: center; height: 56px; min-height: 56px; padding-left: 12px; }
+  .exds-browser-entry-link > * { grid-row: 1 / 3; }
+  .exds-browser-entry-link > .exds-browser-entry-time { grid-column: 1; }
+  .exds-browser-entry-link > :nth-child(2) { grid-column: 2; }
+  .exds-browser-entry-link > .exds-browser-entry-copy { grid-area: 1 / 3 / 2 / 4; }
+  .exds-browser-entry-link > .is-location { grid-area: 2 / 3 / 3 / 4; color: var(--text-muted); font-size: var(--fs-caption); }
+  .exds-browser-entry-link > .exds-browser-entry-meta { grid-column: 4; }
+  .exds-browser-entry-link > .is-flown { grid-column: 5; }
+  .exds-browser-entry-meta:empty, .exds-browser-cell-blank { display: none; }
+  /* A status needs the room that an absent flight time would only reserve. */
+  .exds-browser-entry-link:has(.status-dot):has(.is-flown.is-blank) { grid-template-columns: 5ch 24px minmax(0, 1fr) auto; }
+  .exds-browser-entry-link:has(.status-dot) > .is-flown.is-blank { display: none; }
+  .exds-browser-cell-prefix { display: inline; }
 }
 .exds-browser-selection .exds-selection-toolbar { border-radius: 0; box-shadow: none; padding: 12px; gap: 8px; flex-wrap: wrap; font-size: var(--fs-caption); }
 .exds-browser-selection .exds-selection-toolbar button, .exds-browser-selection .exds-selection-toolbar select { font-size: var(--fs-caption); }
@@ -170,8 +207,22 @@
 .exds-browser-dialog-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .exds-browser :is(a, button, input, select, summary):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .exds-browser-mobile-back { display: none; }
+/* Folders become an icon rail and the preview leaves the grid; an editing panel always shows. */
+@media (min-width: 851px) {
+  .exds-browser[data-folders="collapsed"] { --exds-browser-folders: 56px; }
+  .exds-browser[data-folders="collapsed"] .exds-browser-sidebar { overflow-x: hidden; }
+  .exds-browser[data-folders="collapsed"] .exds-browser-nav { justify-content: center; gap: 0; padding-inline: 0; }
+  .exds-browser[data-folders="collapsed"] .exds-browser-nav > :not(:first-child), .exds-browser[data-folders="collapsed"] .exds-browser-section-label > span, .exds-browser[data-folders="collapsed"] .exds-browser-sidebar :is(.exds-browser-folder-actions, .exds-browser-empty) { display: none; }
+  .exds-browser[data-folders="collapsed"] .exds-browser-section-label { justify-content: center; margin-inline: 8px; }
+  .exds-browser[data-preview-sized] { --exds-browser-preview: clamp(320px, var(--exds-browser-preview-size), 100% - var(--exds-browser-folders-floor) - 360px); }
+  .exds-browser[data-folders="collapsed"] { --exds-browser-folders-floor: 56px; }
+  .exds-browser[data-preview="hidden"]:not(:has(.exds-browser-editor)) .exds-browser-resizer { display: none; }
+  .exds-browser[data-preview="hidden"]:not(:has(.exds-browser-editor)) { --exds-browser-preview: 0px; }
+  .exds-browser[data-preview="hidden"]:not(:has(.exds-browser-editor)) .exds-browser-preview { display: none; }
+  .exds-browser[data-preview="hidden"]:not(:has(.exds-browser-editor)) .exds-browser-collection { border-right: 0; }
+}
 @media (max-width: 1100px) {
-  .exds-browser-body { grid-template-columns: 200px minmax(270px, 1fr) minmax(300px, 1fr); }
+  .exds-browser { --exds-browser-folders: 200px; --exds-browser-folders-floor: 200px; --exds-browser-preview: minmax(300px, 32%); }
   .exds-browser-preview { padding: 20px 16px; }
   .exds-browser-nav { padding-inline: 16px; }
 }
@@ -187,6 +238,7 @@
   .exds-browser[data-mobile-preview] .exds-browser-collection { display: none; }
   .exds-browser:not([data-mobile-preview]) .exds-browser-preview { display: none; }
   .exds-browser-mobile-back { display: inline-flex; margin-bottom: 16px; }
+  .exds-browser-collection-header > .exds-browser-panes, .exds-browser-resizer { display: none; }
   .exds-browser-footer span:last-child { display: none; }
 }
 @media (max-width: 560px) {

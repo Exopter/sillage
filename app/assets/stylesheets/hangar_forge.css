@@ -2,23 +2,6 @@
   margin-bottom: var(--sp-5);
 }
 
-.workspace-navigation-groups {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 8px 32px;
-  margin-bottom: 20px;
-}
-
-.workspace-navigation-groups > div {
-  min-width: 0;
-  max-width: 100%;
-}
-
-.workspace-navigation-groups .workspace-tabs {
-  margin: 6px 0 0;
-}
-
 .workspace-fieldset {
   min-width: 0;
   margin: 0;
@@ -33,59 +16,6 @@
 .workspace-choice-table caption { text-align: left; font-weight: 600; padding-bottom: 12px; }
 .workspace-form .workspace-radio-choice { display: flex; align-items: center; gap: 10px; cursor: pointer; }
 .workspace-choice-table tr:has(input:checked) { background: var(--surface-panel); }
-
-.workspace-tabs {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--border-rule);
-}
-
-.workspace-tab {
-  padding: 10px 14px;
-  color: var(--ds-muted, #5f6c6b);
-  text-decoration: none;
-  border-bottom: 2px solid transparent;
-}
-
-.workspace-tab:hover,
-.workspace-tab.is-active {
-  color: var(--ds-ink, #10181a);
-  border-bottom-color: var(--selection-marker);
-}
-
-.workspace-segmented-tabs {
-  width: max-content;
-  max-width: 100%;
-  gap: 4px;
-  margin-bottom: 20px;
-  padding: 4px;
-  overflow-x: auto;
-  border: 1px solid var(--border-rule, #d4dfdc);
-  border-radius: var(--ex-radius-surface);
-  background: var(--surface-panel, #eef3f1);
-}
-
-.workspace-segmented-tabs .workspace-tab {
-  padding: 8px 13px;
-  border: 0;
-  border-radius: var(--ex-radius-surface);
-  color: var(--text-muted, #5f6c6b);
-  font-family: var(--ex-font-mono, ui-monospace, monospace);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: .05em;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.workspace-segmented-tabs .workspace-tab:hover,
-.workspace-segmented-tabs .workspace-tab.is-active {
-  border: 0;
-  background: var(--surface-card, #fff);
-  color: var(--text-strong, #10181a);
-  box-shadow: var(--shadow-sm, 0 7px 20px rgba(16, 24, 26, .07));
-}
 
 .recorder-fleet-header {
   margin-bottom: 16px;

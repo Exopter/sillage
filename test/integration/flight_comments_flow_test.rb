@@ -118,12 +118,12 @@ class FlightCommentsFlowTest < ActionDispatch::IntegrationTest
     @flight.update!(notes: "Obsolete private note")
     comments = 2.times.map { @flight.comments.create!(user: @owner, body: "Distinct observation") }
     get flights_path(q: "Distinct observation")
-    assert_select ".exds-browser-entry-copy strong", text: @flight.code, count: 1
+    assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}", count: 1
     comments.each { |comment| delete flight_comment_path(@flight, comment) }
     get flights_path(q: "Distinct observation")
-    assert_select ".exds-browser-entry-copy strong", count: 0
+    assert_select ".exds-browser-entry", count: 0
     get flights_path(q: "Obsolete private note")
-    assert_select ".exds-browser-entry-copy strong", count: 0
+    assert_select ".exds-browser-entry", count: 0
     patch flight_path(@flight), params: { flight: { notes: "No longer writable" } }
     assert_equal "Obsolete private note", @flight.reload.notes
   end

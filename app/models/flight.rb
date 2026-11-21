@@ -15,6 +15,9 @@ class Flight < ApplicationRecord
   TUNNEL_FLYING_MASS_KG = 101
   # Projected wing area, from the 2.498 m CAD span and the sections of the wing model.
   WING_AREA_M2 = 1.31
+  # Descriptions written by the application rather than by a person: they name nothing.
+  PLACEHOLDER_DESCRIPTIONS = [ "Draft flight", "Prepared flight" ].freeze
+  GENERATED_DESCRIPTION = /\AFlySight \d{4}-\d{2}-\d{2} \d{2}:\d{2}\z/
 
   belongs_to :user
   belongs_to :pilot, class_name: "User", inverse_of: :piloted_flights
@@ -112,6 +115,31 @@ class Flight < ApplicationRecord
 
   def display_started_at
     started_at || (created_at unless flight_import)
+  end
+
+  # The description when a person wrote one.
+  def display_description
+    description.presence unless description.in?(PLACEHOLDER_DESCRIPTIONS) || description&.match?(GENERATED_DESCRIPTION)
+  end
+
+  # What the flight is called next to its date and time. The code is a platform-wide
+  # sequence: it stays a stable reference but says nothing about the flight.
+  def title
+    display_description || location.presence || (tunnel? ? "Tunnel flight" : "Flight")
+  end
+
+  # Plain-text name for page titles, confirmations and menus, where the viewer's time zone is unknown.
+  def label
+    [ display_flown_on&.strftime("%d %b %Y"), title ].compact.join(" \u00b7 ")
+  end
+
+  # Time spent flying, not the length of the recording: exit to opening in the sky (to landing
+  # when no opening was found), and the span at flying airspeed in the tunnel.
+  def flight_duration_seconds
+    return Flights::TunnelFlyingDuration.call(self) if tunnel?
+
+    finish = opening_at || landing_at
+    finish - exit_at if exit_at && finish && finish > exit_at
   end
 
   def display_aircraft

@@ -6,7 +6,7 @@ module FlightBrowserHelper
   end
 
   def browser_name(entry)
-    entry.is_a?(FlightImport) ? entry.source_filename.presence || "Recording" : entry.code
+    entry.is_a?(FlightImport) ? entry.source_filename.presence || "Recording" : entry.title
   end
 
   # Pilots offered when the pilot is changed in place: active users plus the current pilot.
@@ -39,8 +39,18 @@ module FlightBrowserHelper
     flight_path(entry, **(entry.logbook_view? ? browser_context : {}))
   end
 
+  # A recording shows how long it runs; a flight shows how long it was flown.
   def browser_duration(entry)
-    entry.is_a?(FlightImport) ? entry.activity_summary["duration_seconds"] || entry.details.to_h["duration_seconds"] : entry.duration_seconds
+    return entry.activity_summary["duration_seconds"] || entry.details.to_h["duration_seconds"] if entry.is_a?(FlightImport)
+    # The list resolves its tunnel flights in one query; a single preview asks for its own.
+    return @tunnel_flying_durations[entry.id] if entry.tunnel? && @tunnel_flying_durations
+
+    entry.flight_duration_seconds
+  end
+
+  # A table cell without a value: a quiet dash, spelled out for screen readers.
+  def browser_blank
+    tag.span(class: "exds-browser-cell-blank") { safe_join([ tag.span("\u2013", aria: { hidden: true }), tag.span("Not recorded", class: "sr-only") ]) }
   end
 
   # The instant a row is dated by; nil when the flight only carries its logbook date.
@@ -63,14 +73,12 @@ module FlightBrowserHelper
     entry.flown_at.strftime("%H:%M") if entry.is_a?(Flight) && entry.flown_at
   end
 
-  # Muted text after the name: where the flight took place, then what was flown.
+  # Muted text of the description cell: the recording type, or what stands in for a missing description.
   def browser_detail(entry)
     return entry.failed? ? entry.error_message : entry.import_type.upcase if entry.is_a?(FlightImport)
+    return if entry.display_description
 
-    description = entry.description
-    description = nil if description.in?([ "Draft flight", "Prepared flight" ])
-    description = "FlySight recording" if description&.match?(/\AFlySight \d{4}-\d{2}-\d{2} \d{2}:\d{2}\z/)
-    [ ("Tunnel" if entry.tunnel?), entry.location.presence, description.presence ].compact.join(" \u00b7 ")
+    entry.description&.match?(Flight::GENERATED_DESCRIPTION) ? "FlySight recording" : "No description"
   end
 
   # "club" reads as the Flight Club everywhere it is shown.
