@@ -166,7 +166,7 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
     assert_nil flight.started_at
     assert_nil flight.flown_at
     follow_redirect!
-    assert_select "#flight-panel-title", flight.code
+    assert_select "#flight-panel-title", flight.title
     assert_select "textarea[name='flight_comment[body]']"
     assert_select "a", text: /Start Signal|Import data|Run preflight/, count: 0
     assert_select ".exds-browser-map", count: 0

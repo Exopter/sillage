@@ -1,5 +1,5 @@
 <%= render "flights/signal_processing", flight: @flight %>
-<% content_for :title, @flight.code %>
+<% content_for :title, @flight.label %>
 <% content_for :body_class, "flight-analysis-theme" %>
 <% content_for :head do %>
   <meta name="turbo-cache-control" content="no-cache">
@@ -33,7 +33,7 @@
   tunnel_videos = @flight.started_at ? @flight.tunnel_videos.ready.with_attached_file.playback_order.select(&:ready?) : []
 %>
 
-<h1 class="sr-only"><%= @flight.code %></h1>
+<h1 class="sr-only"><%= @flight.label %></h1>
 
 <% video_section = capture do %>
     <%
@@ -135,14 +135,15 @@
       <%= sillage_icon "chevron-right", size: 18, class_name: "is-back-icon" %>
     <% end %>
     <div class="flight-replay-title">
-      <span><%= @flight.code %><% if @flight.description.present? %> · <%= @flight.description %><% end %></span>
+      <%# The header names the flight by its moment; the code is kept as a reference in the Details tab. %>
+      <span><% if @flight.display_flown_on || @flight.display_started_at %><%= logbook_date(@flight) %> · <% end %><%= @flight.title %></span>
     </div>
     <%= render "flights/pilot", flight: @flight %>
     <span class="mode-badge is-neutral"><%= @flight.environment_label %></span>
     <span class="mode-badge is-neutral"><%= visibility_label(@flight.effective_visibility) %></span>
     <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
       <%= button_to @flight, method: :delete, class: "kit-icon-button exds-iconbtn exds-iconbtn--ghost exds-iconbtn--danger", title: t("flights.show.delete"),
-        aria: { label: t("flights.show.delete") }, form: { class: "flight-replay-delete", data: { turbo_confirm: t("flights.show.confirm_delete", code: @flight.code) } } do %>
+        aria: { label: t("flights.show.delete") }, form: { class: "flight-replay-delete", data: { turbo_confirm: t("flights.show.confirm_delete", name: @flight.label) } } do %>
         <%= sillage_icon "trash", size: 18 %>
       <% end %>
     <% end %>
@@ -390,6 +391,7 @@
           <div>
             <span class="flight-section-kicker">Flight record</span>
             <h2><%= t("flights.show.details") %></h2>
+            <p>Reference <%= @flight.code %></p>
           </div>
         </div>
         <% if can_manage_operations? && @flight.visible_to?(Current.user) %>
@@ -453,7 +455,7 @@
             </div>
           </div>
           <p class="operations-help"><%= t("flights.show.delete_help") %></p>
-          <%= button_to @flight, method: :delete, class: "danger-button exds-btn exds-btn--danger", form: { data: { turbo_confirm: t("flights.show.confirm_delete", code: @flight.code) } } do %>
+          <%= button_to @flight, method: :delete, class: "danger-button exds-btn exds-btn--danger", form: { data: { turbo_confirm: t("flights.show.confirm_delete", name: @flight.label) } } do %>
             <%= sillage_icon "trash", size: 16 %>
             <span><%= t("flights.show.delete") %></span>
           <% end %>

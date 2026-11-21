@@ -1,154 +1,4 @@
-/* Flights */
-.flights-screen {
-  padding: 0;
-}
 
-.flights-heading {
-  display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(230px, 0.72fr) auto auto;
-  align-items: end;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.flights-heading h1 {
-  margin: 0;
-  color: var(--text-strong);
-  font-size: var(--fs-page);
-  line-height: 1.15;
-}
-
-.flights-heading p {
-  margin: 5px 0 0;
-  color: var(--text-muted);
-  font-size: var(--fs-sm);
-}
-
-.flights-search .search-control {
-  width: 100%;
-  min-height: var(--control-h);
-}
-
-.flights-heading .button-primary,
-.flights-heading .button-secondary {
-  min-height: var(--control-h);
-  white-space: nowrap;
-}
-
-.flights-table-wrap {
-  margin: 0;
-  overflow: hidden;
-  border: 1px solid var(--border-rule);
-  border-radius: var(--ds-radius);
-  background: var(--surface-card);
-  box-shadow: var(--shadow-sm);
-}
-
-.flights-table-scroll {
-  overflow-x: auto;
-}
-
-.flights-table {
-  width: 100%;
-  min-width: 980px;
-  border-collapse: collapse;
-}
-
-.flights-table th {
-  padding: 12px 13px 9px;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: var(--fs-micro);
-  font-weight: 600;
-  letter-spacing: .08em;
-  text-align: left;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.flights-table td {
-  height: 47px;
-  padding: 11px 13px;
-  border-top: 1px solid var(--border-rule);
-  color: var(--text-body);
-  font-size: var(--fs-caption);
-  white-space: nowrap;
-}
-
-.flights-table th:first-child,
-.flights-table td:first-child {
-  width: 48px;
-  padding: 4px;
-}
-
-.flights-table th:nth-child(2),
-.flights-table td:nth-child(2) {
-  width: 26%;
-  min-width: 200px;
-  max-width: 360px;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-.flights-table th:nth-child(3),
-.flights-table td:nth-child(3) {
-  width: 110px;
-}
-
-.flights-table th:nth-child(4),
-.flights-table td:nth-child(4) {
-  width: 20%;
-  min-width: 150px;
-  max-width: 280px;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  line-height: 1.5;
-}
-
-.flights-selection-checkbox {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 40px;
-  min-height: 40px;
-  cursor: pointer;
-}
-
-.flights-selection-checkbox input {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  accent-color: var(--selection-marker);
-}
-
-.flights-selection-checkbox input:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 3px;
-}
-
-.flights-table th:last-child,
-.flights-table td:last-child {
-  width: 36px;
-}
-
-.flights-row {
-  cursor: pointer;
-}
-
-.flights-cell-note {
-  display: block;
-  max-width: 36ch;
-  margin: 4px 0 0;
-  color: var(--text-muted);
-  font-size: var(--fs-xs);
-  line-height: 1.4;
-  white-space: normal;
-}
-
-.flights-row:hover,
-.flights-row[data-selected] {
-  background: var(--surface-hover);
-}
 
 .flights-data {
   color: var(--text-strong);
@@ -156,48 +6,15 @@
   font-variant-numeric: tabular-nums;
 }
 
-.flights-name {
-  display: block;
-  color: var(--text-strong);
-  font-weight: 650;
-  line-height: 1.5;
-}
-
 .flights-muted {
   color: var(--text-muted) !important;
   font-weight: 400;
-}
-
-.flights-source {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-muted);
-}
-
-.flights-open {
-  color: var(--text-muted);
-  text-align: right;
-}
-
-.flights-open a {
-  display: inline-grid;
-  place-items: center;
 }
 
 @media (max-width: 920px) {
   .operations-heading {
     align-items: flex-start;
     flex-wrap: wrap;
-  }
-
-  .flights-heading {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .flights-heading > div,
-  .flights-search {
-    grid-column: 1 / -1;
   }
 
   .operations-form-grid {

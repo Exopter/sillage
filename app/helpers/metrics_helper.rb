@@ -1,8 +1,4 @@
 module MetricsHelper
-  def flight_code(flight)
-    flight.code
-  end
-
   def logbook_value(value)
     return value if value.present?
 

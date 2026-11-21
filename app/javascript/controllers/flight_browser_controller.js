@@ -1,13 +1,21 @@
 import { Controller } from "@hotwired/stimulus"
 import { Turbo } from "@hotwired/turbo-rails"
 
-/** @typedef {{entryTargets: HTMLAnchorElement[], hasDialogTarget:boolean, hasMoveDialogTarget:boolean, selectionTarget: HTMLFormElement, dialogTarget: HTMLDialogElement, dialogTitleTarget: HTMLElement, folderFormTarget: HTMLFormElement, folderNameTarget: HTMLInputElement, folderMethodTarget: HTMLInputElement, moveDialogTarget: HTMLDialogElement, moveEntryTarget: HTMLInputElement, moveNameTarget: HTMLElement, moveDestinationTarget: HTMLSelectElement}} Bindings */
+/** @typedef {{entryTargets: HTMLAnchorElement[], paneToggleTargets: HTMLButtonElement[], resizerTarget: HTMLElement, hasResizerTarget:boolean, hasDialogTarget:boolean, hasMoveDialogTarget:boolean, selectionTarget: HTMLFormElement, dialogTarget: HTMLDialogElement, dialogTitleTarget: HTMLElement, folderFormTarget: HTMLFormElement, folderNameTarget: HTMLInputElement, folderMethodTarget: HTMLInputElement, moveDialogTarget: HTMLDialogElement, moveEntryTarget: HTMLInputElement, moveNameTarget: HTMLElement, moveDestinationTarget: HTMLSelectElement}} Bindings */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 
+const PANES_KEY = "sillage.flight-browser.panes"
+// The flight list keeps at least this much room while the details pane is dragged wider.
+const LIST_MIN_WIDTH = 360
+const PREVIEW_MIN_WIDTH = 320
+const RESIZE_KEY_STEP = 24
+
 export default class extends TypedController {
-  static targets = ["entry", "selection", "dialog", "dialogTitle", "folderForm", "folderName", "folderMethod", "moveDialog", "moveEntry", "moveName", "moveDestination"]
+  static targets = ["entry", "paneToggle", "resizer", "selection", "dialog", "dialogTitle", "folderForm", "folderName", "folderMethod", "moveDialog", "moveEntry", "moveName", "moveDestination"]
   /** @type {string[]} */
   dragEntries = []
+  /** @type {ResizeObserver | undefined} */
+  sizeObserver
 
   /** @param {MouseEvent} event */
   select(event) {
@@ -24,10 +32,114 @@ export default class extends TypedController {
     window.history.replaceState(window.history.state, "", url)
   }
 
+  connect() {
+    this.applyPanes(this.storedPanes())
+    this.sizeObserver = new ResizeObserver(() => this.describeResizer())
+    this.sizeObserver.observe(this.element)
+  }
+
+  // Folders and details can each be put away; the choice follows the viewer on this browser.
+  /** @param {MouseEvent} event */
+  togglePane(event) {
+    const button = event.currentTarget
+    if (!(button instanceof HTMLButtonElement) || !button.dataset.pane) return
+    const panes = { ...this.storedPanes(), [button.dataset.pane]: button.getAttribute("aria-expanded") !== "true" }
+    try { window.localStorage.setItem(PANES_KEY, JSON.stringify(panes)) } catch { /* The choice then lasts for this page only. */ }
+    this.applyPanes(panes)
+  }
+
+  // Dragging the edge of the details pane sets its width; the list keeps LIST_MIN_WIDTH.
+  /** @param {PointerEvent} event */
+  startResize(event) {
+    if (event.button !== 0) return
+    event.preventDefault()
+    const handle = this.resizerTarget
+    handle.setPointerCapture(event.pointerId)
+    this.element.dataset.resizing = ""
+    /** @param {PointerEvent} move */
+    const drag = (move) => this.setPreviewWidth(this.element.getBoundingClientRect().right - move.clientX)
+    const stop = () => {
+      handle.removeEventListener("pointermove", drag)
+      handle.removeEventListener("pointerup", stop)
+      handle.removeEventListener("pointercancel", stop)
+      this.element.removeAttribute("data-resizing")
+      this.storePreviewWidth()
+    }
+    handle.addEventListener("pointermove", drag)
+    handle.addEventListener("pointerup", stop)
+    handle.addEventListener("pointercancel", stop)
+  }
+
+  /** @param {KeyboardEvent} event */
+  resizeWithKeys(event) {
+    const { min, max, now } = this.previewBounds()
+    const width = { ArrowLeft: now + RESIZE_KEY_STEP, ArrowRight: now - RESIZE_KEY_STEP, Home: min, End: max }[event.key]
+    if (width === undefined || event.altKey || event.ctrlKey || event.metaKey) return
+    event.preventDefault()
+    this.setPreviewWidth(width)
+    this.storePreviewWidth()
+  }
+
+  resetPreviewWidth() {
+    this.element.style.removeProperty("--exds-browser-preview-size")
+    this.element.removeAttribute("data-preview-sized")
+    this.storePreviewWidth(null)
+    this.describeResizer()
+  }
+
+  /** @param {number} width */
+  setPreviewWidth(width) {
+    const { min, max } = this.previewBounds()
+    this.element.style.setProperty("--exds-browser-preview-size", `${Math.round(Math.min(Math.max(width, min), max))}px`)
+    this.element.dataset.previewSized = ""
+    this.describeResizer()
+  }
+
+  /** @param {number | null} [width] */
+  storePreviewWidth(width = parseInt(this.element.style.getPropertyValue("--exds-browser-preview-size"), 10) || null) {
+    const panes = { ...this.storedPanes(), previewWidth: width }
+    try { window.localStorage.setItem(PANES_KEY, JSON.stringify(panes)) } catch { /* The width then lasts for this page only. */ }
+  }
+
+  previewBounds() {
+    const preview = this.element.querySelector(".exds-browser-preview")
+    const folders = this.element.querySelector(".exds-browser-sidebar")
+    const max = Math.max(PREVIEW_MIN_WIDTH, this.element.clientWidth - (folders?.clientWidth || 0) - LIST_MIN_WIDTH)
+    return { min: PREVIEW_MIN_WIDTH, max, now: Math.round(preview?.getBoundingClientRect().width || 0) }
+  }
+
+  describeResizer() {
+    if (!this.hasResizerTarget) return
+    const { min, max, now } = this.previewBounds()
+    this.resizerTarget.setAttribute("aria-valuemin", String(min))
+    this.resizerTarget.setAttribute("aria-valuemax", String(max))
+    this.resizerTarget.setAttribute("aria-valuenow", String(now))
+    this.resizerTarget.setAttribute("aria-valuetext", `Details ${now} pixels wide`)
+  }
+
+  /** @returns {Record<string, any>} */
+  storedPanes() {
+    try { return JSON.parse(window.localStorage.getItem(PANES_KEY) || "{}") || {} } catch { return {} }
+  }
+
+  /** @param {Record<string, any>} panes */
+  applyPanes(panes) {
+    const folders = panes.folders !== false
+    const preview = panes.preview !== false
+    if (folders) this.element.removeAttribute("data-folders"); else this.element.dataset.folders = "collapsed"
+    if (preview) this.element.removeAttribute("data-preview"); else this.element.dataset.preview = "hidden"
+    this.paneToggleTargets.forEach((button) => {
+      const open = button.dataset.pane === "folders" ? folders : preview
+      button.setAttribute("aria-expanded", String(open))
+      button.title = `${open ? "Hide" : "Show"} ${button.dataset.pane === "folders" ? "folders" : "details"}`
+    })
+    if (Number(panes.previewWidth) > 0) this.setPreviewWidth(Number(panes.previewWidth)); else this.describeResizer()
+  }
+
   backToFlights() { this.element.removeAttribute("data-mobile-preview") }
 
   reset() { this.closeDialog(); this.closeMoveDialog(); this.endDrag() }
-  disconnect() { this.endDrag() }
+  disconnect() { this.endDrag(); this.sizeObserver?.disconnect() }
 
   /** @param {Event} event */
   filter(event) { if (event.currentTarget instanceof HTMLFormElement) event.currentTarget.requestSubmit() }

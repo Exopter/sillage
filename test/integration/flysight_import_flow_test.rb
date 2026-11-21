@@ -40,15 +40,16 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_redirected_to flight_path(flight)
     follow_redirect!
     assert_response :success
-    assert_select "h1", flight.code
+    assert_select "h1", flight.label
     assert_select ".flight-replay-page"
     assert_select "a", text: "Recording details", count: 0
     cesium_base_url = Rails.application.config.x.cesium_base_url
     assert_select ".flight-replay-page[data-flight-viewer-cesium-base-url-value=?]", cesium_base_url
     assert_select "link[rel='preload'][href=?]", "#{cesium_base_url}Cesium.js"
     assert_select "link[rel='stylesheet'][href=?]", "#{cesium_base_url}Widgets/widgets.css"
-    assert_select ".flight-replay-title span", text: "#{flight.code} · #{flight.description}"
-    assert_select ".flight-replay-title", text: /FLT-\d{4}-\d{3}/, count: 1
+    assert_select ".flight-replay-title span", text: /· #{Regexp.escape(flight.title)}\z/
+    assert_select ".flight-replay-title", text: /FLT-\d{4}-\d{3}/, count: 0
+    assert_select "#details .flight-section-heading p", text: "Reference #{flight.code}", count: 1
     assert_select ".flight-recorded-at", count: 0
     assert_select ".flight-replay-header .mode-badge", text: "Private", count: 1
     assert_select ".flight-phase-button", count: 4
@@ -296,7 +297,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     assert_select ".exds-browser"
     assert_select ".exds-browser-entry", minimum: 1
     assert_select "a.exds-browser-entry-link[data-open-url=?]", flight_path(flight)
-    assert_select ".exds-browser-entry-copy strong", text: flight.code
+    assert_select "a.exds-browser-entry-link[data-name=?]", flight.title
     assert_select "a[href='#{flights_path}']", text: "Flights"
     assert_select "a[href='#{new_flight_import_path}'][aria-label='Import data']"
     assert_select ".sillage-room-link", text: /Signal/
@@ -323,7 +324,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
 
     get flight_path(flight)
     assert_response :success
-    assert_sillage_header title: flight.code
+    assert_sillage_header title: flight.label
   end
 
   test "logout clears the local session" do

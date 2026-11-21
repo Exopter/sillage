@@ -22,7 +22,7 @@ module Flights
           flight.capture_configuration!(replace: true) if flight.saved_change_to_aircraft_id?
           result.updated += 1
         else
-          result.skipped << "#{flight.code} (#{flight.errors.full_messages.to_sentence})"
+          result.skipped << "#{flight.label} (#{flight.errors.full_messages.to_sentence})"
         end
       end
       result

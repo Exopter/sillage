@@ -72,7 +72,7 @@ en:
       danger: "Delete"
       delete: "Delete this flight"
       delete_help: "Deletion is permanent: the recording data, pilot log, debriefs, captures and videos go with the flight."
-      confirm_delete: "Permanently delete %{code}, its recording data, pilot log, captures and videos? This cannot be undone."
+      confirm_delete: "Permanently delete %{name}, its recording data, pilot log, captures and videos? This cannot be undone."
     video:
       title: "Synced video"
       hint: "Upload a video, move the playhead to the exit, then mark that point to align video playback with the FlySight data."
