@@ -11,6 +11,16 @@ class Aircraft < ApplicationRecord
   scope :active, -> { where(active: true) }
   scope :ordered, -> { order(:registration) }
 
+  # The ExoFDR an aircraft carries is the recorder of its flights; the latest installation wins.
+  def self.installed_fdr_names
+    Installation.active.where(installable_type: "Assembly", installable_id: Assembly.where(assembly_type: "ExoFDR").select(:id))
+      .recent.includes(:installable).each_with_object({}) { |installation, names| names[installation.aircraft_id.to_s] ||= installation.installable.display_name }
+  end
+
+  def installed_fdr
+    Assembly.where(assembly_type: "ExoFDR").joins(:installations).merge(installations.active.recent).first
+  end
+
   def display_name
     [ name, registration ].compact_blank.join(" · ")
   end

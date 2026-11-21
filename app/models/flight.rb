@@ -40,6 +40,7 @@ class Flight < ApplicationRecord
   before_validation :assign_code
   before_validation :assign_default_pilot, on: :create
   before_validation :assign_tunnel_location
+  before_validation :deduce_fdr_from_aircraft
   after_create :create_initial_comment
   validates :initial_comment, length: { maximum: FlightComment::MAX_LENGTH }, allow_blank: true
   validate :validate_initial_comment_images, if: :new_record?
@@ -229,6 +230,15 @@ class Flight < ApplicationRecord
     unless @initial_comment_with_images.valid?
       errors.add(:initial_comment, @initial_comment_with_images.errors.full_messages.to_sentence)
     end
+  end
+
+  # The FDR is never chosen: it is the ExoFDR installed in the aircraft when the aircraft is
+  # assigned, or when the flight has none yet. Signal assigns the recorder it is connected to.
+  def deduce_fdr_from_aircraft
+    return if will_save_change_to_fdr_id? && fdr_id.present?
+    return unless will_save_change_to_aircraft_id? || (fdr_id.nil? && aircraft_id)
+
+    self.fdr = aircraft&.installed_fdr
   end
 
   def fdr_must_be_recorder

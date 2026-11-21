@@ -9,6 +9,15 @@
   border:1px solid var(--border-strong); border-radius:var(--radius-compact);
   background:var(--surface-card); color:var(--text-body); font:400 var(--fs-sm)/1.5 var(--font-ui);
 }
+/* A disabled field shows a value the form does not let anyone change: readable, visibly not editable. */
+:is(.workspace-form, .workspace-inline-form, .operations-form-grid, .details-form, .exds-browser-field, .authentication-panel) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):not([type="submit"]), select):disabled {
+  border-color: var(--border-rule);
+  background: var(--surface-panel);
+  cursor: default;
+  opacity: 1;
+  -webkit-text-fill-color: currentColor;
+}
+
 :is(.workspace-form, .workspace-inline-form, .operations-form-grid, .details-form, .exds-browser-field, .authentication-panel) :is(input, select, textarea):focus-visible {
   outline:2px solid var(--focus-ring); outline-offset:2px; border-color:var(--focus-ring);
 }
