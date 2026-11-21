@@ -3,7 +3,7 @@ source "https://rubygems.org"
 gem "rails", "~> 8.1.3", ">= 8.1.4.1"
 gem "propshaft"
 # Use PostgreSQL as the single database for application and Solid adapters.
-gem "pg", "~> 1.6"
+gem "pg", "~> 1.7"
 gem "puma", ">= 8.0.4"
 gem "importmap-rails"
 gem "turbo-rails"
