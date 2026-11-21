@@ -8,7 +8,7 @@
     <div><dt>Folder</dt><dd><%= @flight.folder ? link_to(@flight.folder.name, flights_path(folder: @flight.folder_id), data: { turbo_frame: "flight-browser" }) : "Unfiled" %></dd></div>
   <% end %>
 </dl>
-<% if can_manage_operations? && @flight.visible_to?(Current.user) %>
+<% if can_edit_flight?(@flight) %>
   <% if @flight.preparation? %>
     <%= link_to "Log flight", edit_flight_path(@flight, **browser_context, intent: "log"), class: "button-primary exds-btn exds-btn--primary", data: { turbo_frame: "flight-browser" } %>
   <% end %>

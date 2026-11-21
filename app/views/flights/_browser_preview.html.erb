@@ -6,13 +6,14 @@
     <header class="exds-browser-preview-heading"><div><h2><%= browser_name(entry) %></h2><% subtitle = entry.import_type.upcase unless flight %><% if subtitle.present? %><p><%= subtitle %></p><% end %></div>
       <% manageable = can_manage_operations? && flight && accessible %>
       <% openable = !(flight && entry.logbook_view?) %>
-      <% if manageable || openable %>
+      <% editable_flight = flight && can_edit_flight?(entry) %>
+      <% if manageable || openable || editable_flight %>
         <div class="exds-browser-preview-actions">
           <%# The way into the flight leads the header actions, level with the title. %>
           <% if openable %><%= link_to browser_open_path(entry), class: "button-primary exds-btn exds-btn--primary", data: { turbo_frame: "_top" } do %><%= sillage_icon "arrow-up-right", size: 18 %> <%= flight ? "Open flight" : "Open recording" %><% end %><% end %>
+          <% if manageable && !entry.live? %><%= link_to "##{dom_id(entry, :debrief)}", class: "exds-browser-icon-button", title: "Record debrief", aria: { label: "Record debrief" }, data: { turbo: false } do %><%= sillage_icon "mic", size: 17 %><% end %><% end %>
+          <% if editable_flight %><%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button", aria: { label: "Edit flight" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 17 %><% end %><% end %>
           <% if manageable %>
-            <% unless entry.live? %><%= link_to "##{dom_id(entry, :debrief)}", class: "exds-browser-icon-button", title: "Record debrief", aria: { label: "Record debrief" }, data: { turbo: false } do %><%= sillage_icon "mic", size: 17 %><% end %><% end %>
-            <%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button", aria: { label: "Edit flight" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 17 %><% end %>
             <% unless entry.live? %>
               <details class="exds-browser-preview-menu exds-comment-actions">
                 <summary class="exds-browser-icon-button" title="More actions" aria-label="More actions for <%= entry.label %>"><%= sillage_icon "ellipsis", size: 17 %></summary>
@@ -34,10 +35,10 @@
       </div>
     <% end %>
     <% preview_videos = accessible ? Array(@preview_videos) : [] %>
-    <% editable = can_manage_operations? && flight && accessible && !entry.live? %>
+    <% editable = editable_flight && !entry.live? %>
     <dl class="exds-browser-metadata">
       <% if flight %><div><dt>Pilot</dt><dd>
-        <% if editable %>
+        <% if editable && can_manage_operations? %>
           <%= render layout: "flights/inline_edit", locals: { flight: entry, label: "pilot", fields: ->(form) { form.collection_select :pilot_id, flight_pilot_options(entry), :id, ->(pilot) { pilot.full_name || pilot.email_address }, {}, required: true, aria: { label: "Pilot" }, data: { action: "change->inline-edit#submit" } } } do %><%= render "flights/pilot", flight: entry %><% end %>
         <% else %><%= render "flights/pilot", flight: entry %><% end %>
       </dd></div><% end %>
@@ -83,7 +84,7 @@
           <% end %>
         </dd></div>
       <% end %>
-      <div><dt>Visibility</dt><dd><%= sillage_icon(browser_visibility(entry) == "private" ? "lock-keyhole" : "users", size: 19) %><%= visibility_label(browser_visibility(entry)) %><% if flight && entry.folder %><small>From folder</small><% elsif can_manage_operations? && flight && accessible %><%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button is-quiet", title: "Edit flight visibility", aria: { label: "Edit flight visibility" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %><% end %><% end %></dd></div>
+      <div><dt>Visibility</dt><dd><%= sillage_icon(browser_visibility(entry) == "private" ? "lock-keyhole" : "users", size: 19) %><%= visibility_label(browser_visibility(entry)) %><% if flight && entry.folder %><small>From folder</small><% elsif editable_flight %><%= link_to edit_flight_path(entry, **browser_context), class: "exds-browser-icon-button is-quiet", title: "Edit flight visibility", aria: { label: "Edit flight visibility" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "pencil", size: 16 %><% end %><% end %></dd></div>
     </dl>
   <% else %>
     <div class="exds-browser-empty"><%= sillage_icon "plane", size: 40 %><strong>Select a flight</strong><span>Its comments and details will appear here.</span></div>

@@ -13,10 +13,13 @@
       <%= form.select :environment, [["Sky", "sky"], ["Tunnel", "tunnel"]], {}, required: true, aria: { describedby: "flight-mode-help" } %>
       <small id="flight-mode-help" class="exds-browser-autocomplete-help">Tunnel flights have no GPS track. Their location is Inclined Slovenia unless another one is entered.</small>
     </label>
-    <label class="exds-browser-field is-wide">
-      <span>Pilot *</span>
-      <%= form.collection_select :pilot_id, @pilots, :id, ->(pilot) { pilot.full_name || pilot.email_address }, { prompt: "Select a pilot" }, required: true %>
-    </label>
+    <%# Regular users log their own flights: only administrators choose another pilot. %>
+    <% if can_manage_operations? %>
+      <label class="exds-browser-field is-wide">
+        <span>Pilot *</span>
+        <%= form.collection_select :pilot_id, @pilots, :id, ->(pilot) { pilot.full_name || pilot.email_address }, { prompt: "Select a pilot" }, required: true %>
+      </label>
+    <% end %>
     <label class="exds-browser-field">
       <span><%= preparation ? "Date (optional)" : "Date *" %></span>
       <%= form.date_field :flown_on, value: flight.flown_on || (flight.display_flown_on unless preparation || flight.errors[:flown_on].any?), required: !preparation %>

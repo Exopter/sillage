@@ -131,6 +131,6 @@ class FlightPilotFlowTest < ActionDispatch::IntegrationTest
     get flight_path(flight)
     assert_response :not_found
     patch flight_path(flight), params: { flight: { pilot_id: @pilot.id } }, as: :json
-    assert_response :forbidden
+    assert_response :not_found
   end
 end

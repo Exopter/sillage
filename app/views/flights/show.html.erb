@@ -442,7 +442,7 @@
               <div><dt><%= label %></dt><dd><%= timestamp ? local_time(timestamp, :seconds) : "—" %></dd></div>
             <% end %>
           </dl>
-          <p class="operations-help">Administrator access is required to edit, move or delete this flight.</p>
+          <p class="operations-help"><%= can_edit_flight?(@flight) ? "Edit this flight from the flight log. Administrator access is required to move or delete it." : "Administrator access is required to edit, move or delete this flight." %></p>
         <% end %>
       </div>
 
