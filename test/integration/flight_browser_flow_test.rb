@@ -51,6 +51,39 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_select "button[data-video-source-target='source']", 0
   end
 
+  test "the preview adds a video and returns to the same list with the flight selected" do
+    get preview_flights_path(id: @flight.id, kind: "flight", folder: @folder.id, q: "campaign"), headers: { "Turbo-Frame" => "flight-preview" }
+    assert_select ".exds-comments + section[aria-label='Flight videos']" do
+      assert_select ".exds-comments-heading", text: "Videos"
+      assert_select ".video-status", text: "No video yet. Add one to keep it with this flight."
+      assert_select "form.video-upload-form[action=?]", flight_path(@flight) do
+        assert_select "input[type='file'][name='flight[video_upload]']", 1
+        assert_select "input[type='hidden'][name='return_to_browser'][value='1']", 1
+        assert_select "input[type='hidden'][name='folder'][value=?]", @folder.id.to_s
+        assert_select "input[type='hidden'][name='q'][value='campaign']", 1
+      end
+    end
+
+    assert_enqueued_with(job: FlightVideoProcessingJob) do
+      patch flight_path(@flight), params: { flight: { video_upload: fixture_file_upload("sample.mp4", "video/mp4") },
+        return_to_browser: "1", folder: @folder.id, q: "campaign" }, headers: { "Accept" => "application/json" }
+    end
+    assert_response :success
+    assert_equal flights_path(folder: @folder.id, q: "campaign", selected: "flight:#{@flight.id}"), response.parsed_body["redirect_url"]
+
+    get preview_flights_path(id: @flight.id, kind: "flight"), headers: { "Turbo-Frame" => "flight-preview" }
+    assert_select "section[aria-label='Flight videos'] .video-status", text: I18n.t("flights.video.processing")
+  end
+
+  test "a reader without videos sees no video section in the preview" do
+    @folder.update!(visibility: "shared", members: [ users(:operator) ])
+    sign_in_as users(:operator)
+    get preview_flights_path(id: @flight.id, kind: "flight"), headers: { "Turbo-Frame" => "flight-preview" }
+    assert_response :success
+    assert_select "section[aria-label='Flight videos']", 0
+    assert_select "form.video-upload-form", 0
+  end
+
   test "a tunnel flight row names its mode in its own column, without a badge" do
     @flight.update!(environment: "tunnel", location: "Inclined Slovenia")
     get flights_path(folder: @folder.id)

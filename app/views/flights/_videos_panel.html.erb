@@ -1,5 +1,6 @@
 <%# Videos of a flight in the flight log panels: the player, the state of an upload and, for whoever
-    can edit the flight, the upload itself. Nothing loads until the flight is selected. %>
+    can edit the flight, the upload itself. Nothing loads until the flight is selected. From the flight
+    browser, return_parameters brings the upload back to the same folder, filter and search. %>
 <%
   uploaded = flight.video.attachment if flight.video_ready?
   count = videos.size + (uploaded ? 1 : 0)
@@ -16,5 +17,5 @@
   <% elsif count.zero? %>
     <p class="video-status"><%= t(upload ? "flights.video.log_empty" : "flights.video.log_empty_read_only") %></p>
   <% end %>
-  <%= render "flights/video_upload_form", flight: flight if upload %>
+  <%= render "flights/video_upload_form", flight: flight, return_parameters: local_assigns[:return_parameters] if upload %>
 </section>

@@ -1,5 +1,10 @@
 <%# Compact upload of the flight's own video. The file name and the confirmation only appear once a file is chosen. %>
 <%= form_with model: flight, html: { multipart: true, class: "video-upload-form", data: { controller: "upload", turbo: false, action: "submit->upload#start", upload_failed_label_value: t("flights.video.upload_failed"), upload_processing_label_value: t("flights.video.uploading") } } do |form| %>
+  <% if (return_parameters = local_assigns[:return_parameters]) %>
+    <%# Uploaded from the flight browser: come back to the same list with this flight still selected. %>
+    <%= hidden_field_tag :return_to_browser, "1", id: nil %>
+    <% return_parameters.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
+  <% end %>
   <span class="file-summary" data-upload-target="summary"><%= t("flights.video.no_file") %></span>
   <label class="secondary-button exds-btn exds-btn--secondary video-upload-button">
     <%= sillage_icon "upload", size: 18 %>
