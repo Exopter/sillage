@@ -30,6 +30,7 @@ CI.run do
   step "Tests: Audio debrief recovery", "node test/javascript/flight_debrief_test.mjs"
   step "Tests: Debrief checklist extraction", "node test/javascript/debrief_checklist_test.mjs"
   step "Tests: Local time display", "node test/javascript/local_time_test.mjs"
+  step "Tests: Avatar framing", "node test/javascript/avatar_crop_test.mjs"
   step "Tests: Recorded audio duration", "node test/javascript/audio_duration_test.mjs"
   step "Tests: Signal workspace controls", "node test/javascript/signal_controls_test.mjs"
   step "Tests: Signal layout", "node test/javascript/signal_layout_test.mjs"

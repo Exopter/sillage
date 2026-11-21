@@ -34,11 +34,41 @@
         <label><span>First name</span><span class="exds-input-wrap"><%= form.text_field :first_name, autocomplete: "given-name", required: @user.member?, class: "exds-input" %></span></label>
         <label><span>Last name</span><span class="exds-input-wrap"><%= form.text_field :last_name, autocomplete: "family-name", required: @user.member?, class: "exds-input" %></span></label>
       </div>
-      <label><span>Profile photo</span><%= form.file_field :avatar, class: "exds-file-input", accept: User::AVATAR_TYPES.join(","), aria: { describedby: "avatar-help" } %></label>
-      <p id="avatar-help">JPEG, PNG or WebP. Up to 5 MB. Your photo appears beside your name. Initials are shown until you add one.</p>
-      <% if @user.avatar.attached? && @user.avatar.attachment.persisted? %>
-        <label class="sillage-profile-remove"><%= form.check_box :remove_avatar, checked: false %><span>Remove current photo</span></label>
-      <% end %>
+      <div class="sillage-avatar-field" data-controller="avatar-crop">
+        <div data-avatar-crop-target="preview"><%= render "shared/user_avatar", user: @user, large: true %></div>
+        <div class="sillage-avatar-field-body">
+          <label><span>Profile photo</span><%= form.file_field :avatar, class: "exds-file-input", accept: User::AVATAR_TYPES.join(","), aria: { describedby: "avatar-help" }, data: { avatar_crop_target: "input", action: "change->avatar-crop#choose" } %></label>
+          <p id="avatar-help">JPEG, PNG or WebP. Your photo appears in a circle beside your name. Initials are shown until you add one.</p>
+          <div class="sillage-avatar-field-options">
+            <button type="button" class="exds-btn exds-btn--secondary exds-btn--sm" data-avatar-crop-target="adjust" data-action="avatar-crop#adjust" hidden>Adjust framing</button>
+            <% if @user.avatar.attached? && @user.avatar.attachment.persisted? %>
+              <label class="sillage-profile-remove"><%= form.check_box :remove_avatar, checked: false %><span>Remove current photo</span></label>
+            <% end %>
+          </div>
+        </div>
+        <dialog class="sillage-avatar-dialog" aria-labelledby="avatar-dialog-title" data-avatar-crop-target="dialog" data-action="cancel->avatar-crop#dismiss">
+          <header class="sillage-avatar-dialog-head">
+            <h2 id="avatar-dialog-title">Frame your photo</h2>
+            <div class="sillage-avatar-sample" aria-hidden="true">In lists<span><img alt="" data-avatar-crop-target="sample"></span></div>
+          </header>
+          <div class="sillage-avatar-stage" tabindex="0" autofocus role="group" aria-label="Photo framing. Drag or use the arrow keys to move the photo, plus and minus to zoom."
+            data-avatar-crop-target="stage"
+            data-action="pointerdown->avatar-crop#press pointermove->avatar-crop#drag pointerup->avatar-crop#drop pointercancel->avatar-crop#drop wheel->avatar-crop#wheel keydown->avatar-crop#nudge">
+            <img alt="" draggable="false" data-avatar-crop-target="image">
+            <div class="sillage-avatar-ring" data-avatar-crop-target="ring"></div>
+          </div>
+          <div class="sillage-avatar-zoom">
+            <button type="button" class="exds-iconbtn exds-iconbtn--ghost exds-iconbtn--sm" aria-label="Zoom out" data-action="avatar-crop#zoomOut"><%= sillage_icon("minus", size: 16) %></button>
+            <input type="range" min="1" max="4" step="0.01" value="1" aria-label="Zoom" data-avatar-crop-target="zoom" data-action="input->avatar-crop#zoom">
+            <button type="button" class="exds-iconbtn exds-iconbtn--ghost exds-iconbtn--sm" aria-label="Zoom in" data-action="avatar-crop#zoomIn"><%= sillage_icon("plus", size: 16) %></button>
+          </div>
+          <p class="sillage-avatar-dialog-hint">Drag to reposition. Scroll or pinch to zoom.</p>
+          <div class="sillage-avatar-dialog-actions">
+            <button type="button" class="exds-btn exds-btn--secondary" data-action="avatar-crop#dismiss">Cancel</button>
+            <button type="button" class="exds-btn exds-btn--primary" data-action="avatar-crop#use">Use photo</button>
+          </div>
+        </dialog>
+      </div>
       <div class="exds-form-actions"><%= form.submit "Save profile", class: "exds-btn exds-btn--primary" %></div>
     <% end %>
   </section>

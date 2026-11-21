@@ -14,8 +14,14 @@ class ProfileFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "Elias Okafor"
     assert_select "#membership [data-membership-card-tier-value='explorer']"
-    assert_select ".sillage-avatar-insignia[src*='insignia-explorer']", count: 2
+    assert_select ".sillage-avatar-insignia[src*='insignia-explorer']", count: 3
     assert_select "form[enctype='multipart/form-data']"
+    assert_select "[data-controller='avatar-crop'] input[type='file'][data-avatar-crop-target='input']"
+    assert_select "[data-avatar-crop-target='preview'] .sillage-avatar--large"
+    assert_select "dialog.sillage-avatar-dialog .sillage-avatar-stage[tabindex='0'] img[data-avatar-crop-target='image']"
+    assert_select "dialog.sillage-avatar-dialog input[type='range'][min='1'][max='4']"
+    assert_select "dialog.sillage-avatar-dialog button[type='button']", count: 4
+    assert_select "button[data-avatar-crop-target='adjust'][hidden]"
     assert_select ".sillage-avatar-photo", count: 0
   end
 
@@ -64,7 +70,7 @@ class ProfileFlowTest < ActionDispatch::IntegrationTest
     original = @member.avatar.attachment
     get profile_path
     assert_response :success
-    assert_select ".sillage-avatar-photo[src='#{attachment_path(original)}']", count: 2
+    assert_select ".sillage-avatar-photo[src='#{attachment_path(original)}']", count: 3
 
     sign_in_as users(:operator)
     get attachment_path(original)
@@ -91,7 +97,7 @@ class ProfileFlowTest < ActionDispatch::IntegrationTest
     assert_not @member.reload.avatar.attached?
     get profile_path
     assert_select ".sillage-avatar-photo", count: 0
-    assert_select ".sillage-avatar-insignia", count: 2
+    assert_select ".sillage-avatar-insignia", count: 3
   end
 
   test "invalid uploads and validation failures preserve the saved photo" do

@@ -276,7 +276,9 @@ retain their existing Signal access.
 
 All accounts can edit their own name and profile photo at `/profile`. Photos use
 Active Storage, accept JPEG, PNG and WebP up to 5 MB, and are served through
-authenticated attachment URLs. Multipart uploads are inspected by content; signed
+authenticated attachment URLs. The profile form frames the chosen photo in the
+avatar circle (`avatar_crop`) and uploads that square as a JPEG of at most
+512 px; avatars always render round. Multipart uploads are inspected by content; signed
 blob IDs are rejected. Initials remain the fallback. The shared avatar overlays
 the member insignia in the account menu, profile and flight comments. Insignia SVGs
 are generated from the card ranks by the design system
