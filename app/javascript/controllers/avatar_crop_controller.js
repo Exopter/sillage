@@ -2,14 +2,14 @@ import { Controller } from "@hotwired/stimulus"
 import { MAX_ZOOM, OUTPUT_SIZE, centeredFrame, clampFrame, coverScale, scaleFrame, sourceSquare, zoomFrame } from "avatar_crop"
 
 /** @typedef {import("avatar_crop").Frame} Frame */
-/** @typedef {{inputTarget: HTMLInputElement, previewTarget: HTMLElement, adjustTarget: HTMLButtonElement, dialogTarget: HTMLDialogElement, stageTarget: HTMLElement, ringTarget: HTMLElement, imageTarget: HTMLImageElement, sampleTarget: HTMLImageElement, zoomTarget: HTMLInputElement}} Bindings */
+/** @typedef {{inputTarget: HTMLInputElement, previewTarget: HTMLElement, dialogTarget: HTMLDialogElement, stageTarget: HTMLElement, ringTarget: HTMLElement, imageTarget: HTMLImageElement, sampleTarget: HTMLImageElement, zoomTarget: HTMLInputElement}} Bindings */
 const TypedController = /** @type {new (context: import('@hotwired/stimulus').Context) => Controller<HTMLElement> & Bindings} */ (/** @type {unknown} */ (Controller))
 
 // Frames a chosen profile photo in the avatar circle. Confirming the dialog
 // replaces the chosen file with the framed square, so every avatar is stored
 // ready for its round display. Without JavaScript the original file is uploaded.
 export default class extends TypedController {
-  static targets = ["input", "preview", "adjust", "dialog", "stage", "ring", "image", "sample", "zoom"]
+  static targets = ["input", "preview", "dialog", "stage", "ring", "image", "sample", "zoom"]
 
   /** @type {Frame | null} */
   frame = null
@@ -17,8 +17,8 @@ export default class extends TypedController {
   size = 0
   /** @type {File | null} */
   source = null
-  /** The confirmed framing: its original photo, the frame and the file sent with the form.
-   * @type {{source: File, frame: Frame, size: number, files: FileList} | null} */
+  /** The framed file sent with the form, once a framing is confirmed.
+   * @type {FileList | null} */
   applied = null
   /** @type {string | null} */
   sourceUrl = null
@@ -46,12 +46,8 @@ export default class extends TypedController {
     if (file) this.open(file)
   }
 
-  adjust() {
-    if (this.applied) this.open(this.applied.source, this.applied)
-  }
-
-  /** @param {File} file @param {{frame: Frame, size: number}} [framing] */
-  open(file, framing) {
+  /** @param {File} file */
+  open(file) {
     if (this.sourceUrl) URL.revokeObjectURL(this.sourceUrl)
     const url = this.sourceUrl = URL.createObjectURL(file)
     const image = this.imageTarget
@@ -62,9 +58,7 @@ export default class extends TypedController {
       this.dialogTarget.showModal()
       window.addEventListener("resize", this.resize)
       this.size = this.ringTarget.clientWidth
-      this.frame = framing
-        ? clampFrame(scaleFrame(framing.frame, this.size / framing.size), image.naturalWidth, image.naturalHeight, this.size)
-        : centeredFrame(image.naturalWidth, image.naturalHeight, this.size)
+      this.frame = centeredFrame(image.naturalWidth, image.naturalHeight, this.size)
       this.render()
     }
     // A file the browser cannot draw is uploaded as chosen and validated by the server.
@@ -76,7 +70,7 @@ export default class extends TypedController {
   // no photo at all: an unframed original is never left in the form.
   dismiss() {
     if (!this.frame) return
-    if (this.applied) this.inputTarget.files = this.applied.files
+    if (this.applied) this.inputTarget.files = this.applied
     else this.inputTarget.value = ""
     this.finish()
   }
@@ -97,7 +91,7 @@ export default class extends TypedController {
       const transfer = new DataTransfer()
       transfer.items.add(new File([blob], `${source.name.replace(/\.[^.]*$/, "")}.jpg`, { type: "image/jpeg" }))
       this.inputTarget.files = transfer.files
-      this.applied = { source, frame, size, files: transfer.files }
+      this.applied = transfer.files
       this.show(blob)
     }
     // If the square could not be produced, the original file stays in the form.
@@ -137,7 +131,6 @@ export default class extends TypedController {
       avatar?.prepend(photo)
     }
     photo.setAttribute("src", this.previewUrl)
-    this.adjustTarget.hidden = false
   }
 
   zoom() { this.zoomTo(this.cover * Number(this.zoomTarget.value)) }

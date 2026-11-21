@@ -39,12 +39,11 @@
         <div class="sillage-avatar-field-body">
           <label><span>Profile photo</span><%= form.file_field :avatar, class: "exds-file-input", accept: User::AVATAR_TYPES.join(","), aria: { describedby: "avatar-help" }, data: { avatar_crop_target: "input", action: "change->avatar-crop#choose" } %></label>
           <p id="avatar-help">JPEG, PNG or WebP. Your photo appears in a circle beside your name. Initials are shown until you add one.</p>
-          <div class="sillage-avatar-field-options">
-            <button type="button" class="exds-btn exds-btn--secondary exds-btn--sm" data-avatar-crop-target="adjust" data-action="avatar-crop#adjust" hidden>Adjust framing</button>
-            <% if @user.avatar.attached? && @user.avatar.attachment.persisted? %>
+          <% if @user.avatar.attached? && @user.avatar.attachment.persisted? %>
+            <div class="sillage-avatar-field-options">
               <label class="sillage-profile-remove"><%= form.check_box :remove_avatar, checked: false %><span>Remove current photo</span></label>
-            <% end %>
-          </div>
+            </div>
+          <% end %>
         </div>
         <dialog class="sillage-avatar-dialog" aria-labelledby="avatar-dialog-title" data-avatar-crop-target="dialog" data-action="cancel->avatar-crop#dismiss">
           <header class="sillage-avatar-dialog-head">
