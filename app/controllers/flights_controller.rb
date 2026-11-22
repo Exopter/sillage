@@ -258,22 +258,13 @@ class FlightsController < ApplicationController
   end
 
   def video_upload?(upload)
-    upload.content_type&.start_with?("video/") ||
-      Flight::VIDEO_UPLOAD_EXTENSIONS.include?(File.extname(upload.original_filename.to_s).downcase)
+    Flight.video_file?(content_type: upload.content_type, filename: upload.original_filename)
   end
 
   def enqueue_video_processing(video_upload)
-    blob = ActiveStorage::Blob.create_and_upload!(
-      io: video_upload, filename: video_upload.original_filename, content_type: video_upload.content_type
-    )
-    @flight.with_lock do
-      @flight.video_upload.attach(blob)
-      @flight.update!(video_processing_status: "processing", video_processing_error: nil)
-      raise ActiveJob::EnqueueError, "The video could not be queued." unless FlightVideoProcessingJob.perform_later(@flight, blob)
-    end
-  rescue StandardError
-    blob&.purge unless blob&.attachments&.exists?
-    raise
+    Flights::QueueVideoProcessing.new(
+      flight: @flight, io: video_upload, filename: video_upload.original_filename, content_type: video_upload.content_type
+    ).call
   end
 
   def respond_to_upload_success(redirect_url, notice)

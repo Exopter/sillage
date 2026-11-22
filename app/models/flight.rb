@@ -221,6 +221,11 @@ class Flight < ApplicationRecord
     video_processing_status == "failed"
   end
 
+
+  def self.video_file?(content_type:, filename:)
+    content_type.to_s.start_with?("video/") || VIDEO_UPLOAD_EXTENSIONS.include?(File.extname(filename.to_s).downcase)
+  end
+
   private
 
   def assign_tunnel_location

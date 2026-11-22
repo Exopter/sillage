@@ -7,6 +7,9 @@ import { Controller } from "@hotwired/stimulus"
  * @property {HTMLButtonElement} submitTarget
  * @property {string} failedLabelValue
  * @property {string} processingLabelValue
+ * @property {string} retryingLabelValue
+ * @property {string} chunkedUrlValue
+ * @property {boolean} hasChunkedUrlValue
  * @property {HTMLElement} progressTarget
  * @property {boolean} hasProgressTarget
  * @property {HTMLElement} meterTarget
@@ -22,7 +25,7 @@ const TypedController = /** @type {new (context: import("@hotwired/stimulus").Co
 
 export default class extends TypedController {
   static targets = ["input", "summary", "submit", "progress", "meter", "bar", "percent", "dropzone"]
-  static values = { failedLabel: String, processingLabel: String }
+  static values = { failedLabel: String, processingLabel: String, retryingLabel: String, chunkedUrl: String }
 
   dragDepth = 0
   emptyLabel = ""
@@ -103,6 +106,11 @@ export default class extends TypedController {
     this.showProgress()
     this.updateProgress(0)
 
+    if (this.hasChunkedUrlValue) {
+      this.sendInChunks(files[0], formData)
+      return
+    }
+
     const request = new XMLHttpRequest()
     request.open(this.element.method.toUpperCase(), this.element.action)
     request.setRequestHeader("Accept", "application/json")
@@ -118,6 +126,33 @@ export default class extends TypedController {
     request.addEventListener("error", () => this.fail())
     request.addEventListener("abort", () => this.fail())
     request.send(formData)
+  }
+
+  /** @param {File} file @param {FormData} formData */
+  async sendInChunks(file, formData) {
+    /** @type {Record<string,string>} */
+    const params = {}
+    formData.forEach((value, name) => {
+      if (typeof value === "string" && !["_method", "authenticity_token"].includes(name)) params[name] = value
+    })
+    let percent = 0
+
+    try {
+      const { uploadInChunks } = await import("chunked_upload")
+      const response = await uploadInChunks({
+        file, url: this.chunkedUrlValue, params,
+        csrfToken: document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "",
+        onProgress: (value) => { percent = Math.max(percent, value); this.updateProgress(percent) },
+        onRetry: (retrying) => {
+          if (retrying) this.setSubmitLabel(`${this.retryingLabelValue} ${percent}%`)
+          else if (percent > 0) this.updateProgress(percent)
+        }
+      })
+      this.updateProgress(100)
+      this.visit(response.redirect_url || this.element.action)
+    } catch (error) {
+      this.fail(error instanceof Error && error.message ? error.message : undefined)
+    }
   }
 
   /** @param {XMLHttpRequest} request */
