@@ -1,5 +1,6 @@
-const CONCURRENCY = 4
-const SIGNED_BATCH = 8
+// Object storage keeps a 64 KB HTTP/2 stream window, so throughput grows with parallel streams.
+const CONCURRENCY = 16
+const SIGNED_BATCH = 16
 const MAX_ATTEMPTS = 8
 const STALL_MS = 30000
 
@@ -90,14 +91,19 @@ export async function uploadInParts({ file, url, csrfToken, params = {}, onProgr
   const pending = Array.from({ length: partCount }, (_, index) => index + 1).filter((number) => !done.has(number))
   /** @type {Map<number,string>} */
   const signed = new Map()
+  /** @type {Promise<void>|null} */
+  let signing = null
   report()
 
   /** @param {number} number */
   const signedUrl = async (number) => {
-    if (!signed.has(number)) {
-      const parts = [number, ...pending.filter((other) => !signed.has(other)).slice(0, SIGNED_BATCH - 1)].join(",")
-      const response = await app("POST", `${uploadUrl}/sign`, new URLSearchParams({ parts }))
-      Object.entries(response.json.urls).forEach(([part, value]) => signed.set(Number(part), String(value)))
+    while (!signed.has(number)) {
+      signing ||= app("POST", `${uploadUrl}/sign`, new URLSearchParams({
+        parts: [number, ...pending.filter((other) => !signed.has(other)).slice(0, SIGNED_BATCH - 1)].join(",")
+      })).then((response) => {
+        Object.entries(response.json.urls).forEach(([part, value]) => signed.set(Number(part), String(value)))
+      }).finally(() => { signing = null })
+      await signing
     }
     return /** @type {string} */ (signed.get(number))
   }

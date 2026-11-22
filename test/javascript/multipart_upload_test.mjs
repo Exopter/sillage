@@ -37,5 +37,28 @@ assert.ok(Math.max(...percents) <= 99)
 assert.equal(retryable(413), false)
 assert.equal(retryable(502), true)
 
+// Parallel workers share signing requests instead of each asking for the same URLs.
+const large = new File([new Uint8Array(160)], "large.mp4", { type: "video/mp4", lastModified: 1 })
+let signRequests = 0
+let active = 0
+let peak = 0
+await uploadInParts({ file: large, url: "/v", csrfToken: "t", wait: async () => {}, transport: async ({ url, body }) => {
+  if (url === "/v") return { status: 201, json: { id: "abc", part_size: 10, received: [] } }
+  if (url === "/v/abc/sign") {
+    signRequests += 1
+    await new Promise((resolve) => setTimeout(resolve, 1))
+    return { status: 200, json: { urls: Object.fromEntries(body.get("parts").split(",").map((part) => [part, `https://s3/${part}`])) } }
+  }
+  if (url.startsWith("https://s3/")) {
+    active += 1
+    peak = Math.max(peak, active)
+    await new Promise((resolve) => setTimeout(resolve, 1))
+    active -= 1
+  }
+  return { status: 200, json: {} }
+} })
+assert.equal(peak, 16)
+assert.equal(signRequests, 1)
+
 await assert.rejects(uploadInParts({ file, url: "/v", csrfToken: "t", wait: async () => {},
   transport: async () => ({ status: 422, json: { error: "Choose a video file." } }) }), /Choose a video file/)
