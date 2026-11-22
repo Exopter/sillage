@@ -16,6 +16,9 @@ production:
   publish_debriefs_heard_without_audio:
     class: FlightDebriefLiveOnlyJob
     schedule: every 5 minutes
+  clean_abandoned_video_uploads:
+    class: VideoUploadCleanupJob
+    schedule: every hour at minute 40
   # No-op until the TUNNEL_MEDIA_* settings are present.
   sync_tunnel_media:
     class: TunnelMediaSyncJob

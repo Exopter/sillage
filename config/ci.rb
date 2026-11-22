@@ -20,6 +20,7 @@ CI.run do
   step "Tests: Wing airflow yaw reference", "node test/javascript/signal_airflow_test.mjs"
   step "Tests: Local Cesium distribution", "node test/javascript/cesium_assets_test.mjs"
   step "Tests: Cesium ion tile provider", "node test/javascript/flight_viewer_cesium_ion_test.mjs"
+  step "Tests: Chunked video upload", "node test/javascript/chunked_upload_test.mjs"
   step "Tests: Viewer lifecycle", "node test/javascript/flight_viewer_lifecycle_test.mjs"
   step "Tests: Unified flight analysis", "node test/javascript/flight_viewer_unified_analysis_test.mjs"
   step "Tests: Tunnel flight record", "node test/javascript/tunnel_flight_test.mjs"

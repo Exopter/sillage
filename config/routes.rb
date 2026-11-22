@@ -163,6 +163,12 @@ Rails.application.routes.draw do
       end
     end
     resources :comments, controller: "flight_comments", only: [ :index, :create, :edit, :update, :destroy ]
+    resources :video_uploads, controller: "flight_video_uploads", only: :create do
+      member do
+        put "chunks/:index", action: :chunk, as: :chunk
+        post :complete
+      end
+    end
     resources :tunnel_videos, only: :destroy
     collection do
       get :preview

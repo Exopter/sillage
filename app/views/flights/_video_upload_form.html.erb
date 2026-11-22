@@ -1,5 +1,5 @@
 <%# Compact upload of the flight's own video. The file name and the confirmation only appear once a file is chosen. %>
-<%= form_with model: flight, html: { multipart: true, class: "video-upload-form", data: { controller: "upload", turbo: false, action: "submit->upload#start", upload_failed_label_value: t("flights.video.upload_failed"), upload_processing_label_value: t("flights.video.uploading") } } do |form| %>
+<%= form_with model: flight, html: { multipart: true, class: "video-upload-form", data: { controller: "upload", turbo: false, action: "submit->upload#start", upload_failed_label_value: t("flights.video.upload_failed"), upload_processing_label_value: t("flights.video.uploading"), upload_retrying_label_value: t("flights.video.upload_retrying"), upload_chunked_url_value: flight_video_uploads_path(flight) } } do |form| %>
   <% if (return_parameters = local_assigns[:return_parameters]) %>
     <%# Uploaded from the flight browser: come back to the same list with this flight still selected. %>
     <%= hidden_field_tag :return_to_browser, "1", id: nil %>
