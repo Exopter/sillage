@@ -24,6 +24,8 @@ module Sillage
 
     # Tunnel videos go to the object storage bucket when one is configured, else the default service.
     config.x.tunnel_video_storage_service = ENV["OBJECT_STORAGE_BUCKET"].present? ? :tunnel_videos : nil
+    # Browsers send flight videos straight to the bucket when one is configured.
+    config.x.flight_video_direct_service = ENV["OBJECT_STORAGE_BUCKET"].present? ? :flight_videos : nil
     # Serve attachments only through authenticated, record-authorized downloads.
     config.active_storage.draw_routes = false
     config.active_storage.content_types_allowed_inline += %w[video/mp4]

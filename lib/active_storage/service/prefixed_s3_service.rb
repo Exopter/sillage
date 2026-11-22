@@ -19,10 +19,14 @@ module ActiveStorage
       end
     end
 
+    def object_key(key)
+      "#{@prefix}/#{key}"
+    end
+
     private
 
     def object_for(key)
-      bucket.object("#{@prefix}/#{key}")
+      bucket.object(object_key(key))
     end
   end
 end

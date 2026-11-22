@@ -8,8 +8,8 @@ import { Controller } from "@hotwired/stimulus"
  * @property {string} failedLabelValue
  * @property {string} processingLabelValue
  * @property {string} retryingLabelValue
- * @property {string} chunkedUrlValue
- * @property {boolean} hasChunkedUrlValue
+ * @property {string} directUrlValue
+ * @property {boolean} hasDirectUrlValue
  * @property {HTMLElement} progressTarget
  * @property {boolean} hasProgressTarget
  * @property {HTMLElement} meterTarget
@@ -25,7 +25,7 @@ const TypedController = /** @type {new (context: import("@hotwired/stimulus").Co
 
 export default class extends TypedController {
   static targets = ["input", "summary", "submit", "progress", "meter", "bar", "percent", "dropzone"]
-  static values = { failedLabel: String, processingLabel: String, retryingLabel: String, chunkedUrl: String }
+  static values = { failedLabel: String, processingLabel: String, retryingLabel: String, directUrl: String }
 
   dragDepth = 0
   emptyLabel = ""
@@ -106,8 +106,8 @@ export default class extends TypedController {
     this.showProgress()
     this.updateProgress(0)
 
-    if (this.hasChunkedUrlValue) {
-      this.sendInChunks(files[0], formData)
+    if (this.hasDirectUrlValue) {
+      this.sendDirectly(files[0], formData)
       return
     }
 
@@ -129,7 +129,7 @@ export default class extends TypedController {
   }
 
   /** @param {File} file @param {FormData} formData */
-  async sendInChunks(file, formData) {
+  async sendDirectly(file, formData) {
     /** @type {Record<string,string>} */
     const params = {}
     formData.forEach((value, name) => {
@@ -138,9 +138,9 @@ export default class extends TypedController {
     let percent = 0
 
     try {
-      const { uploadInChunks } = await import("chunked_upload")
-      const response = await uploadInChunks({
-        file, url: this.chunkedUrlValue, params,
+      const { uploadInParts } = await import("multipart_upload")
+      const response = await uploadInParts({
+        file, url: this.directUrlValue, params,
         csrfToken: document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "",
         onProgress: (value) => { percent = Math.max(percent, value); this.updateProgress(percent) },
         onRetry: (retrying) => {
