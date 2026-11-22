@@ -262,9 +262,9 @@ class FlightsController < ApplicationController
   end
 
   def enqueue_video_processing(video_upload)
-    Flights::QueueVideoProcessing.new(
+    Flights::QueueVideoProcessing.upload(
       flight: @flight, io: video_upload, filename: video_upload.original_filename, content_type: video_upload.content_type
-    ).call
+    )
   end
 
   def respond_to_upload_success(redirect_url, notice)

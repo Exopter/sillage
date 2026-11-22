@@ -8,7 +8,7 @@ pin "@hotwired/turbo-rails", to: "turbo.min.js"
 pin "@hotwired/stimulus", to: "stimulus.min.js"
 pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
 pin "local_time", to: "lib/local_time.js"
-pin "chunked_upload", to: "lib/chunked_upload.js", preload: false
+pin "multipart_upload", to: "lib/multipart_upload.js", preload: false
 pin "avatar_crop", to: "lib/avatar_crop.js", preload: false
 pin "exs1_contract", to: "lib/exs1_contract.js"
 pin "fdr_partial_file", to: "lib/fdr_partial_file.js"

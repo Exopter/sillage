@@ -1,46 +1,48 @@
 class FlightVideoUploadsController < ApplicationController
   include FlightBrowser
 
+  before_action :require_direct_upload
   before_action :set_flight
-  before_action :set_upload, only: %i[chunk complete]
+  before_action :set_upload, only: %i[sign complete]
   before_action { no_store }
 
-  rescue_from Flights::ChunkedVideoUpload::Error do |error|
+  rescue_from Flights::DirectVideoUpload::Error do |error|
     render json: { error: error.message }, status: :unprocessable_entity
   end
-  rescue_from Flights::ChunkedVideoUpload::Incomplete do |error|
+  rescue_from Flights::DirectVideoUpload::Incomplete do |error|
     render json: { error: error.message, received: @upload.received }, status: :conflict
   end
 
   def create
-    upload = Flights::ChunkedVideoUpload.start(
+    upload = Flights::DirectVideoUpload.start(
       flight: @flight, user: Current.user, filename: params[:filename], content_type: params[:content_type],
       byte_size: params[:byte_size], last_modified: params[:last_modified]
     )
-    render json: { id: upload.id, chunk_size: upload.chunk_size, received: upload.received }, status: :created
+    render json: { id: upload.id, part_size: upload.part_size, received: upload.received }, status: :created
   end
 
-  def chunk
-    @upload.write_chunk(params[:index], request.body)
-    head :no_content
+  def sign
+    render json: { urls: @upload.sign(params[:parts].to_s.split(",")) }
   end
 
   def complete
-    @upload.complete do |file, filename, content_type|
-      Flights::QueueVideoProcessing.new(flight: @flight, io: file, filename:, content_type:).call
-    end
+    @upload.complete
     flash[:notice] = t("flights.update.success")
     render json: { redirect_url: destination }
   end
 
   private
 
+  def require_direct_upload
+    head :not_found unless Flights::DirectVideoUpload.enabled?
+  end
+
   def set_flight
     @flight = Flight.visible_to(Current.user).find(params[:flight_id])
   end
 
   def set_upload
-    @upload = Flights::ChunkedVideoUpload.find(flight: @flight, user: Current.user, id: params[:id])
+    @upload = Flights::DirectVideoUpload.find(flight: @flight, user: Current.user, id: params[:id])
   end
 
   def destination

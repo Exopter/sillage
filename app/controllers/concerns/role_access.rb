@@ -19,7 +19,7 @@ module RoleAccess
     "flight_imports" => %w[new create],
     "flight_comments" => %w[create edit update destroy],
     "flight_debriefs" => %w[create show update destroy upload process_audio publish realtime checklist live],
-    "flight_video_uploads" => %w[create chunk complete],
+    "flight_video_uploads" => %w[create sign complete],
     "tunnel_videos" => %w[destroy]
   }.freeze
   ACCOUNT_CONTROLLERS = %w[sessions passwords invitations profiles two_factor/setups two_factor/challenges flight_club/welcomes flight_club/memberships].freeze
