@@ -24,25 +24,13 @@
 
 @media (max-width: 640px) {
   .operations-form-grid,
-  .import-source-picker,
-  .preparation-grid {
+  .import-source-picker {
     grid-template-columns: 1fr;
   }
 
   .operations-form-grid label.is-wide,
   .import-source-picker legend {
     grid-column: 1;
-  }
-
-  .preparation-grid > div,
-  .preparation-grid > div:nth-child(2n),
-  .preparation-grid > div:nth-last-child(-n + 2) {
-    border-right: 0;
-    border-bottom: 1px solid var(--border-rule);
-  }
-
-  .preparation-grid > div:last-child {
-    border-bottom: 0;
   }
 
   .operations-form-actions,

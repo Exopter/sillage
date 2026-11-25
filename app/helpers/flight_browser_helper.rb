@@ -34,7 +34,7 @@ module FlightBrowserHelper
   end
 
   def browser_open_path(entry)
-    return flights_path(recording: entry.id, filter: @filter, anchor: "recording-details") if entry.is_a?(FlightImport)
+    return browser_path(recording: entry.id) if entry.is_a?(FlightImport)
 
     flight_path(entry, **(entry.logbook_view? ? browser_context : {}))
   end

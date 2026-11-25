@@ -12,7 +12,7 @@ class FlightDeletionFlowTest < ActionDispatch::IntegrationTest
     get flight_import_path(import)
     assert_response :redirect
     follow_redirect!
-    assert_select "h2", text: "Source missing"
+    assert_select "#recording-details h3", text: "Source missing"
     assert_select "button", text: "Include in flights", count: 0
     assert_select "button", text: "Delete recording"
     assert_no_enqueued_jobs only: ExoFdrImportJob do

@@ -49,7 +49,7 @@ en:
       session: "Session"
       started_at: "Started at"
       flights: "Created flights"
-      processing: "FlySight data is being decoded. Replay will appear when processing completes."
+      processing: "Decoding the recording."
       open_replay: "Open replay"
     create:
       queued: "Upload received. FlySight processing has started."

@@ -1,55 +1,83 @@
-<section class="workspace-panel" aria-label="Recording details" id="recording-details">
-  <header class="section-header">
-    <h2><%= @flight_import.source_filename %></h2>
-    <div class="workspace-actions">
-      <strong class="status <%= @flight_import.status %>"><%= t("imports.status.#{@flight_import.status}") %></strong>
-      <%= link_to "Close details", flights_path(filter: @filter, q: @query.presence, visibility: @visibility, page: @page), class: "button-secondary exds-btn exds-btn--secondary" %>
-    </div>
-  </header>
+<%= turbo_frame_tag "flight-preview", target: "_top", class: "exds-browser-preview", role: "region", aria: { label: "Recording details" } do %>
+  <section class="exds-browser-editor" id="recording-details">
+    <header class="exds-browser-preview-heading">
+      <div>
+        <h2><%= browser_name(recording) %></h2>
+        <p class="exds-browser-caption"><%= recording.import_type == "exofdr" ? "ExoFDR" : "FlySight" %> recording</p>
+      </div>
+      <div class="exds-browser-preview-actions">
+        <% if can_manage_operations? %>
+          <details class="exds-browser-preview-menu exds-comment-actions">
+            <summary class="exds-browser-icon-button" aria-label="Recording actions" title="Recording actions"><%= sillage_icon "ellipsis", size: 17 %></summary>
+            <div class="exds-comment-menu">
+              <%= button_to flight_import_path(recording), method: :delete, form: { data: { turbo_frame: "_top", turbo_confirm: "Permanently delete this recording and all its flight data, measurements, captures and videos?" } } do %>
+                <%= sillage_icon "trash", size: 16 %> Delete recording
+              <% end %>
+            </div>
+          </details>
+        <% end %>
+        <%= link_to browser_path, class: "exds-browser-icon-button is-quiet", title: "Close details", aria: { label: "Close details" }, data: { turbo_frame: "flight-browser" } do %><%= sillage_icon "x", size: 18 %><% end %>
+      </div>
+    </header>
 
-  <% if @flight_import.failed? %>
-    <p class="error-text" role="alert"><%= @flight_import.error_message %></p>
-  <% elsif @flight_import.pending? || @flight_import.processing? %>
-    <p role="status"><%= t("imports.show.processing") %></p>
-  <% end %>
-
-  <% if can_manage_operations? && @flight_import.import_type == "exofdr" %>
-    <h2><%= recording_activity_label(@flight_import) %></h2>
-    <p><%= recording_activity_reason(@flight_import) %></p>
-    <% if @flight_import.set_aside? %>
-      <p>This static test or technical recording is excluded from flights. Its original file is retained.</p>
-    <% elsif @flight_import.included_in_flights_at? %>
-      <p>Your decision to include this recording takes precedence over automatic classification.</p>
+    <strong class="status <%= recording.status %>"><%= t("imports.status.#{recording.status}") %></strong>
+    <% if recording.failed? %>
+      <p class="error-text" role="alert"><%= recording.error_message %></p>
+    <% elsif recording.pending? || recording.processing? %>
+      <p class="exds-browser-caption" role="status"><%= recording.pending? ? "Waiting to decode the recording." : t("imports.show.processing") %></p>
     <% end %>
-  <% end %>
 
-  <dl class="preparation-grid">
-    <div><dt>Recorder</dt><dd><%= @flight_import.recorder_label %><% if @flight_import.device_id.present? %><br><%= ecu_label(@flight_import.device_id) %><% end %></dd></div>
-    <div><dt>Firmware</dt><dd><%= @flight_import.firmware_version.presence || "—" %></dd></div>
-    <div><dt>Session</dt><dd><%= @flight_import.session_id.presence || "—" %></dd></div>
-    <div><dt>Started at</dt><dd><%= @flight_import.log_started_at ? local_time(@flight_import.log_started_at, :seconds) : "—" %></dd></div>
-  </dl>
-
-  <% if @recording_flights.any? %>
-    <%= render "flights/list", flights: @recording_flights %>
-  <% end %>
-
-  <div class="workspace-actions">
-    <% if can_manage_operations? && @flight_import.import_type == "exofdr" && !@flight_import.source_missing? %>
-      <% if @flight_import.imported? && !@flight_import.included_in_flights_at? && @flight_import.activity_classification != "moving" %>
-        <%= button_to "Include in flights", include_in_flights_flight_import_path(@flight_import), class: "button-primary exds-btn exds-btn--primary" %>
-      <% elsif @flight_import.failed? && @flight_import.included_in_flights_at? && @recording_flights.empty? %>
-        <%= button_to "Retry import", include_in_flights_flight_import_path(@flight_import), class: "button-primary exds-btn exds-btn--primary" %>
+    <dl class="exds-browser-metadata">
+      <% if recording.device_id.present? || recording.details.to_h["files"].present? %>
+        <div><dt>Recorder</dt><dd><%= recording.recorder_label %><% if recording.import_type == "exofdr" && recording.device_id.present? %><small><%= ecu_label(recording.device_id) %></small><% end %></dd></div>
       <% end %>
+      <% if recording.firmware_version.present? %><div><dt>Firmware</dt><dd><%= recording.firmware_version %></dd></div><% end %>
+      <% if recording.session_id.present? %><div><dt>Session</dt><dd><%= recording.session_id %></dd></div><% end %>
+      <% if recording.log_started_at %><div><dt>Started at</dt><dd><%= local_time(recording.log_started_at, :seconds) %></dd></div><% end %>
+    </dl>
+
+    <% if can_manage_operations? && recording.import_type == "exofdr" && (recording.activity_classification? || recording.activity_summary["reason"].present? || recording.included_in_flights_at? || recording.imported?) %>
+      <section class="exds-browser-editor-section">
+        <h3><%= recording_activity_label(recording) %></h3>
+        <% if recording.activity_summary["reason"].present? %><p><%= recording_activity_reason(recording) %></p><% end %>
+        <% if recording.set_aside? %>
+          <p>This recording is excluded from flights. Its original file is retained.</p>
+        <% elsif recording.included_in_flights_at? %>
+          <p>Your decision to include this recording takes precedence over automatic classification.</p>
+        <% end %>
+        <% unless recording.source_missing? %>
+          <% if recording.imported? && !recording.included_in_flights_at? && recording.activity_classification != "moving" %>
+            <%= button_to "Include in flights", include_in_flights_flight_import_path(recording), class: "button-primary exds-btn exds-btn--primary", form: { data: { turbo_frame: "_top" } } %>
+          <% elsif recording.failed? && recording.included_in_flights_at? && @recording_flights.empty? %>
+            <%= button_to "Retry import", include_in_flights_flight_import_path(recording), class: "button-primary exds-btn exds-btn--primary", form: { data: { turbo_frame: "_top" } } %>
+          <% end %>
+        <% end %>
+      </section>
     <% end %>
-    <% unless @flight_import.source_missing? %>
-      <% @flight_import.source_files.each do |source| %>
-        <%= link_to "Download #{source.filename}", attachment_path(source), class: "button-secondary exds-btn exds-btn--secondary" %>
-      <% end %>
+
+    <% if @recording_flights.any? %>
+      <section class="exds-browser-editor-section">
+        <h3>Created flights</h3>
+        <%= render "flights/list", flights: @recording_flights %>
+      </section>
     <% end %>
-    <% if can_manage_operations? %>
-    <%= button_to "Delete recording", flight_import_path(@flight_import), method: :delete,
-      class: "button-danger exds-btn exds-btn--danger", form: { data: { turbo_confirm: "Permanently delete this recording and all its flight data, measurements, captures and videos?" } } %>
+
+    <% if !recording.source_missing? && recording.source_files.attached? %>
+      <section class="exds-browser-editor-section">
+        <h3>Source files</h3>
+        <dl class="exds-browser-metadata">
+          <% recording.source_files.each do |source| %>
+            <div>
+              <dt><%= number_to_human_size(source.byte_size) %></dt>
+              <dd>
+                <%= link_to attachment_path(source), class: "flight-debrief-download", download: true, title: "Download #{source.filename}", aria: { label: "Download #{source.filename}" }, data: { turbo: false } do %>
+                  <%= sillage_icon "download", size: 16 %><span><%= source.filename %></span>
+                <% end %>
+              </dd>
+            </div>
+          <% end %>
+        </dl>
+      </section>
     <% end %>
-  </div>
-</section>
+  </section>
+<% end %>

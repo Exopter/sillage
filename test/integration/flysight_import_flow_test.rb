@@ -27,7 +27,7 @@ class FlysightImportFlowTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_response :success
     assert_select "h1", "Flight log"
-    assert_select "#recording-details h2", flight_import.source_filename
+    assert_select "#flight-preview #recording-details h2", flight_import.source_filename
     assert_select ".status.pending", text: "Pending"
 
     perform_enqueued_jobs only: FlySightImportJob

@@ -34,7 +34,9 @@ module FlightBrowser
     @folder_counts = visible.where.not(flight_import_id: FlightImport.set_aside.select(:id)).or(visible.where(flight_import_id: nil)).group(:folder_id).count
     @unfiled_count = visible.where(folder_id: nil).count
     @browser_title = @folder&.name || (@folder_filter == "unfiled" ? "Unfiled" : @filter == "set_aside" ? "Excluded recordings" : @filter == "mine" ? "My flights" : "All flights")
-    @selected_entry = if panel
+    @selected_entry = if panel == "recording"
+      @flight_import
+    elsif panel
       @flights.find { |entry| entry == focus }
     else
       @flights.find { |entry| "#{entry.is_a?(FlightImport) ? 'import' : 'flight'}:#{entry.id}" == params[:selected] } || @flights.first

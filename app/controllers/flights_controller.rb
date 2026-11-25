@@ -14,7 +14,7 @@ class FlightsController < ApplicationController
         return
       end
     end
-    load_browser
+    load_browser(panel: (@flight_import ? "recording" : nil))
   end
 
   def preview
