@@ -67,7 +67,7 @@
             <% if @flights.any? %>
               <%# Column labels for sighted readers; each row link carries its own accessible name. %>
               <div class="exds-browser-table-head" aria-hidden="true"><span></span><div class="exds-browser-table-columns">
-                <span>Time</span><span></span><span>Description</span><span class="exds-browser-cell is-mode">Mode</span><span class="exds-browser-cell is-aircraft">Aircraft</span><span class="exds-browser-cell is-location">Location</span><span class="exds-browser-cell is-flown">Flown</span><span></span>
+                <span>Time</span><span></span><span class="exds-browser-cell is-mode">Mode</span><span class="exds-browser-cell is-aircraft">Aircraft</span><span class="exds-browser-cell is-location">Location</span><span class="exds-browser-cell is-flown">Flown</span><span class="exds-browser-cell">Description</span><span></span>
               </div></div>
             <% end %>
             <% day = nil %>
@@ -86,16 +86,16 @@
                   <%# One cell per column, always rendered so every row fills the shared grid. The day is the group header. %>
                   <span class="exds-browser-entry-time" title="<%= "Creation time" if flight && entry.started_at.nil? && !entry.flown_on %>"><%= browser_time(entry) || "--:--" %></span>
                   <% if flight %><%= render "flights/pilot", flight: entry, show_name: false %><% else %><span class="exds-browser-entry-kind"><%= sillage_icon "file-text", size: 16 %></span><% end %>
-                  <span class="exds-browser-entry-copy">
-                    <% heading = flight ? entry.display_description : browser_name(entry) %>
-                    <% if heading %><strong title="<%= heading %>"><%= heading %></strong><% end %>
-                    <% if (detail = browser_detail(entry)) %><small class="exds-browser-entry-detail" title="<%= detail %>"><%= detail %></small><% end %>
-                  </span>
                   <span class="exds-browser-cell is-mode"><%= entry.environment_label if flight %></span>
                   <span class="exds-browser-cell is-aircraft"><%= entry.aircraft&.registration.presence || (browser_blank if flight) %></span>
                   <span class="exds-browser-cell is-location"><% if flight %><% if entry.tunnel? %><span class="exds-browser-cell-prefix">Tunnel<%= " \u00b7 " if entry.location.present? %></span><% end %><%= entry.location.presence || browser_blank %><% end %></span>
                   <% seconds = browser_duration(entry) if flight %>
                   <span class="exds-browser-cell is-flown <%= "is-blank" unless seconds %>"><%= seconds ? duration(seconds) : (browser_blank if flight) %></span>
+                  <span class="exds-browser-entry-copy">
+                    <% heading = flight ? entry.display_description : browser_name(entry) %>
+                    <% if heading %><strong title="<%= heading %>"><%= heading %></strong><% end %>
+                    <% if (detail = browser_detail(entry)) %><small class="exds-browser-entry-detail" title="<%= detail %>"><%= detail %></small><% end %>
+                  </span>
                   <span class="exds-browser-entry-meta">
                     <% if flight && browser_visibility(entry) == "private" %><span title="Private"><%= sillage_icon "lock-keyhole", size: 14 %><span class="sr-only">Private</span></span><% end %>
                     <% if flight && (cameras = @camera_counts&.fetch(entry.id, nil)) %><span class="exds-browser-entry-cameras" title="<%= pluralize(cameras, "camera") %>"><%= sillage_icon "video", size: 14 %><%= cameras %><span class="sr-only"> <%= "camera".pluralize(cameras) %></span></span><% end %>
