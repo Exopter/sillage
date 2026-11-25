@@ -85,6 +85,14 @@ await usbReader.cancel(); usbReader.releaseLock(); await usb.close()
 assert.equal(authWrites, 1); assert.equal(usbClosed, 1)
 assert.equal(requestBodies.at(-1).transport, "usb")
 
+// Re-enumerated Seat keeps its grant. A different authorized recorder cannot take over.
+const other = await directTelemetryPort("usb-c", {deviceId: "ECU-OTHER", sessionUuid: "live", nativePort: native})
+await assert.rejects(other.open(), /not the SEAT/)
+const resumed = await directTelemetryPort("usb-c", {deviceId: "ECU-A172E0", sessionUuid: "live", nativePort: native})
+await resumed.open()
+await resumed.close()
+assert.equal(authWrites, 2)
+
 let authenticated = false
 const bleIdentity = new Uint8Array(64); bleIdentity[0] = 1; bleIdentity.set(new TextEncoder().encode("ECU-A172E0"), 4)
 const authentication = {

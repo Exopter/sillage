@@ -226,7 +226,10 @@ export default class extends TypedController {
   boundResize = () => this.reflowLayout()
   /** @type {"ground-radio"|"usb-c"|"ble"|"wifi"} */
   connectionKind = "ground-radio"
+  usbRecoveryUntil = 0
+  nextUsbRecoveryAt = 0
   boundRadioToggle = (/** @type {Event} */ event) => {
+    this.usbRecoveryUntil = 0
     const detail = /** @type {CustomEvent} */ (event).detail
     void this.connectStation(detail?.transport || "ground-radio", detail?.deviceId || "")
   }
@@ -310,6 +313,7 @@ export default class extends TypedController {
     this.starting = false
     const linkType = readLinkType()
     if (linkType) this.connectionKind = linkType
+    if (this.startBootValue && linkType === "usb-c") this.usbRecoveryUntil = Date.now() + 30000
     const review = this.reviewValue && new URL(this.pageUrl).searchParams.get("review") === "1"
     try {
       const database = await openDatabase()
@@ -362,7 +366,10 @@ export default class extends TypedController {
     if (!this.standby) this.batchTimer = window.setInterval(() => {
       if (!this.ending) this.queuePendingBatch().then(() => this.flushOutbox()).catch((error) => this.showWarning(`Local storage failed: ${error.message}. Keep this page open and free disk space.`))
     }, BATCH_INTERVAL_MS)
-    this.renderTimer = window.setInterval(() => this.refreshTelemetry(), 100)
+    this.renderTimer = window.setInterval(() => {
+      this.refreshTelemetry()
+      if (this.usbRecoveryUntil && !this.port) void this.recoverUsb().catch(() => {})
+    }, 100)
     this.refreshTelemetry()
     if (this.standby) {
       await this.resumeLink()
@@ -438,10 +445,26 @@ export default class extends TypedController {
     }
   }
 
+  // A mode transition re-enumerates Seat. Reuse only a previously granted port
+  // and verify its EXS1 identity before authentication or recording control.
+  async recoverUsb() {
+    const generation = this.connectionGeneration
+    const now = Date.now()
+    if (!navigator.serial || this.connectionKind !== "usb-c" || now >= this.usbRecoveryUntil ||
+        now < this.nextUsbRecoveryAt || !generation || !this.db || this.port || this.openingPort ||
+        this.choosingPort || this.stopSerialPromise || this.ending || this.ended) return
+    this.nextUsbRecoveryAt = now + 2000
+    const ports = (await navigator.serial.getPorts()).filter(p => [0x303a, 0x2886].includes(p.getInfo().usbVendorId || 0))
+    if (ports.length !== 1 || generation !== this.connectionGeneration || this.connectionKind !== "usb-c" || !this.usbRecoveryUntil) return
+    const port = await directTelemetryPort("usb-c", {deviceId: this.recorderDeviceIdValue, sessionUuid: this.sessionValue, nativePort: ports[0]})
+    if (generation === this.connectionGeneration && this.connectionKind === "usb-c" && this.usbRecoveryUntil) await this.acquirePort(port)
+  }
+
   /** @returns {Promise<void>} */
   async autoReconnect() {
     const generation = this.connectionGeneration
     if (this.parkedLink) return this.resumeLink()
+    if (this.connectionKind === "usb-c") return this.recoverUsb()
     if (this.connectionKind !== "ground-radio" || !navigator.serial || this.ended || this.ending || (this.hasExitDialogTarget && this.exitDialogTarget.open && !(this.triggerValue && localStorage.getItem(this.stopTriggerKey()))) || !generation) return
     const ports = (await navigator.serial.getPorts()).filter(isGroundRadio)
     const lastPort = await readMetadata(this.database, "last-authorized-port")
@@ -1414,6 +1437,7 @@ export default class extends TypedController {
       // Wi-Fi delivers the signed start in the next live telemetry response.
       // renderTrigger confirms recording from the flight ID and durable SD index.
       if (this.connectionKind === "wifi") return
+      if (state.groundFirst && this.connectionKind === "usb-c") this.usbRecoveryUntil = Date.now() + 30000
       const bytes = Uint8Array.from(String(result.payload).match(/../g) || [], b => parseInt(b, 16))
       for (let attempt = 0; attempt < 4; ++attempt) {
         if (this.port !== port || this.imuHealth.quality?.bootId !== q.bootId) break

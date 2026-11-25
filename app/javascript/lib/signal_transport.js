@@ -131,15 +131,16 @@ export function claimTelemetryLink() {
   return entry.link
 }
 
-/** @param {"usb-c"|"ble"|"wifi"} kind @param {{deviceId: string, sessionUuid: string}} options @returns {Promise<SerialPort>} */
+/** @param {"usb-c"|"ble"|"wifi"} kind @param {{deviceId: string, sessionUuid: string, nativePort?: SerialPort}} options @returns {Promise<SerialPort>} */
 export async function directTelemetryPort(kind, options) {
   if (kind === "usb-c") {
     if (!navigator.serial) throw new Error("USB-C requires Web Serial in Chrome or Edge.")
-    const native = await navigator.serial.requestPort({filters: [{usbVendorId: 0x303a}, {usbVendorId: 0x2886}]})
+    const native = options.nativePort || await navigator.serial.requestPort({filters: [{usbVendorId: 0x303a}, {usbVendorId: 0x2886}]})
     const client = new UsbFdrClient(native)
     return asSerialPort(new PollingTelemetryPort(async () => {
       try {
         const device = await client.connect({attempts: 1})
+        if (options.deviceId && device.deviceId !== options.deviceId) throw new Error("This USB recorder is not the SEAT for this flight.")
         if (!(device.capabilities & UsbCapability.LIVE_TELEMETRY)) throw new Error("Update the recorder firmware to enable Signal over USB-C.")
         const challenge = await client.usbAuthenticationChallenge()
         if (!challenge.configured) throw new Error("Register this recorder in Forge over USB-C first.")
