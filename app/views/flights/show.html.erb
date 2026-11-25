@@ -166,13 +166,11 @@
         <%= link_to "Record debrief", "#pilot-log", data: { action: "section-tabs#select", section_tabs_name_param: "pilot-log" } if can_manage_flight?(@flight) %>
       </section>
     <% end %>
-    <% if @seat_segments.any? %>
+    <% if @seat_sources.any? %>
       <section class="analysis-mode-banner" aria-label="SEAT recordings">
         <strong>SEAT recordings</strong>
-        <% @seat_segments.each do |segment| %>
-          <% segment.source_files.each do |source| %>
-            <%= link_to source.filename.to_s, attachment_path(source), download: true, data: { turbo: false } %>
-          <% end %>
+        <% @seat_sources.each do |source| %>
+          <%= link_to source.filename.to_s, attachment_path(source), download: true, data: { turbo: false } %>
         <% end %>
       </section>
     <% end %>

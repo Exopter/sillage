@@ -107,9 +107,13 @@ class AttachmentAccessTest < ActionDispatch::IntegrationTest
     %w[first.bin second.bin].each do |filename|
       import.source_files.attach(io: StringIO.new(filename), filename: filename, content_type: "application/octet-stream")
     end
+    retry_import = import.dup
+    retry_import.save!
+    retry_import.source_files.attach(io: StringIO.new("first.bin"), filename: "first.bin", content_type: "application/octet-stream")
 
     get flight_path(@flight)
     assert_response :success
+    assert_select "section[aria-label='SEAT recordings'] a", count: 2
     import.source_files.each do |source|
       assert_select "section[aria-label='SEAT recordings'] a[href=?]", attachment_path(source), text: source.filename.to_s
     end
