@@ -61,4 +61,37 @@ assert.equal(selectedUrl.searchParams.get("folder"), "9")
 assert.equal(selectedUrl.searchParams.get("q"), "Campaign")
 assert.equal(selectedUrl.searchParams.get("page"), "2")
 assert.equal(selectedUrl.searchParams.get("selected"), "flight:1")
+
+class PaneButton extends Element {
+  expanded = "true"
+  getAttribute() { return this.expanded }
+  setAttribute(_attribute, value) { this.expanded = value }
+}
+globalThis.HTMLButtonElement = PaneButton
+globalThis.ResizeObserver = class { observe() {} disconnect() {} }
+let storedPanes = { folders: false, preview: false, previewWidth: 400 }
+window.localStorage = {
+  getItem: () => JSON.stringify(storedPanes),
+  setItem: (_key, value) => { storedPanes = JSON.parse(value) }
+}
+const foldersToggle = new PaneButton({ pane: "folders" })
+const detailsToggle = new PaneButton({ pane: "preview" })
+const panesController = new Browser()
+Object.assign(panesController, {
+  element: { dataset: { preview: "hidden" }, removeAttribute(attribute) { delete this.dataset[attribute.slice(5)] } },
+  paneToggleTargets: [foldersToggle, detailsToggle],
+  setPreviewWidth(width) { assert.equal(width, 400) }
+})
+panesController.connect()
+assert.equal(foldersToggle.expanded, "false")
+assert.equal(detailsToggle.expanded, "true", "a stored closed state never hides details on arrival")
+assert.equal(panesController.element.dataset.preview, undefined)
+panesController.togglePane(event(detailsToggle))
+assert.equal(panesController.element.dataset.preview, "hidden")
+panesController.togglePane(event(foldersToggle))
+assert.equal(panesController.element.dataset.preview, "hidden", "toggling folders preserves the current details state")
+assert.deepEqual(storedPanes, { folders: true, previewWidth: 400 })
+panesController.connect()
+assert.equal(panesController.element.dataset.preview, undefined, "a newly connected log opens details again")
+
 console.log("Flight browser ownership, internal drops, grouped moves and mixed selections passed")

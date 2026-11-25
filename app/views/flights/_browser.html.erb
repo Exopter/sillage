@@ -54,7 +54,7 @@
           <header class="exds-browser-collection-header">
             <% if can_manage_operations? %><label><input type="checkbox" data-table-selection-target="all" data-action="change->table-selection#toggleAll"><span class="sr-only">Select all entries on this page</span></label><% end %>
             <div><h2><%= @browser_title %></h2><p class="exds-browser-caption"><% if @folder %><% total = @folder_counts.fetch(@folder.id, 0) %><%= "#{@flights.length} of " if @flights.length != total %><%= pluralize(total, "flight") %><% else %><%= "#{@flights.length} entries#{' on this page' if @next_page || @page > 1}" %><% end %> · Newest first</p></div>
-            <%# Each side column can be put away to give the table the room; the choice is kept per browser. %>
+            <%# Each side pane can be collapsed to give the table room. %>
             <div class="exds-browser-panes" role="group" aria-label="Side panels">
               <button type="button" class="exds-browser-icon-button is-quiet" title="Hide folders" aria-label="Folders" aria-expanded="true" aria-controls="flight-browser-folders" data-flight-browser-target="paneToggle" data-pane="folders" data-action="flight-browser#togglePane"><%= sillage_icon "panel-left", size: 17 %></button>
               <button type="button" class="exds-browser-icon-button is-quiet" title="Hide details" aria-label="Details" aria-expanded="true" aria-controls="flight-preview" data-flight-browser-target="paneToggle" data-pane="preview" data-action="flight-browser#togglePane" <%= "disabled" if @browser_panel %>><%= sillage_icon "panel-right", size: 17 %></button>

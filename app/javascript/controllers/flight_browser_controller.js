@@ -38,14 +38,19 @@ export default class extends TypedController {
     this.sizeObserver.observe(this.element)
   }
 
-  // Folders and details can each be put away; the choice follows the viewer on this browser.
+  // Folder visibility is remembered. Details start open whenever the browser reconnects.
   /** @param {MouseEvent} event */
   togglePane(event) {
     const button = event.currentTarget
     if (!(button instanceof HTMLButtonElement) || !button.dataset.pane) return
-    const panes = { ...this.storedPanes(), [button.dataset.pane]: button.getAttribute("aria-expanded") !== "true" }
-    try { window.localStorage.setItem(PANES_KEY, JSON.stringify(panes)) } catch { /* The choice then lasts for this page only. */ }
-    this.applyPanes(panes)
+    const open = button.getAttribute("aria-expanded") !== "true"
+    const panes = this.storedPanes()
+    const togglesFolders = button.dataset.pane === "folders"
+    if (togglesFolders) {
+      panes.folders = open
+      try { window.localStorage.setItem(PANES_KEY, JSON.stringify(panes)) } catch { /* The choice then lasts for this page only. */ }
+    }
+    this.applyPanes(panes, togglesFolders ? this.element.dataset.preview !== "hidden" : open)
   }
 
   // Dragging the edge of the details pane sets its width; the list keeps LIST_MIN_WIDTH.
@@ -119,13 +124,15 @@ export default class extends TypedController {
 
   /** @returns {Record<string, any>} */
   storedPanes() {
-    try { return JSON.parse(window.localStorage.getItem(PANES_KEY) || "{}") || {} } catch { return {} }
+    try {
+      const { folders, previewWidth } = JSON.parse(window.localStorage.getItem(PANES_KEY) || "{}") || {}
+      return { folders, previewWidth }
+    } catch { return {} }
   }
 
   /** @param {Record<string, any>} panes */
-  applyPanes(panes) {
+  applyPanes(panes, preview = true) {
     const folders = panes.folders !== false
-    const preview = panes.preview !== false
     if (folders) this.element.removeAttribute("data-folders"); else this.element.dataset.folders = "collapsed"
     if (preview) this.element.removeAttribute("data-preview"); else this.element.dataset.preview = "hidden"
     this.paneToggleTargets.forEach((button) => {
