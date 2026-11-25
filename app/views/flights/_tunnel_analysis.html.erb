@@ -3,8 +3,6 @@
 <%
   glide_ratio = flight.tunnel_glide_ratio
   airflow_angle = flight.tunnel_airflow_angle
-  debrief = flight.flight_debriefs.where.not(flight_comment_id: nil).order(:created_at, :id).last
-  spoken = ->(key) { debrief.checklist[key].presence || "–" }
   # The pitot and the recorder IMU are all a tunnel record charts, with the radio link beside them.
   charted = sensor_counts.any? { |type, count| count.positive? && (type == "AIRSPEED" || type.start_with?("IMU")) } || radio_signal.any?
   attitude_recorded = sensor_counts.fetch("IMU:rotation_vector", 0).positive?
@@ -33,39 +31,6 @@
     <strong><b data-flight-viewer-target="stat" data-stat="flying-airspeed">–</b><% if charted %><small> km/h avg</small><% end %></strong>
   </div>
 </section>
-
-<div class="flight-tunnel-media">
-  <%= video_section %>
-
-  <% if debrief %>
-    <article class="flight-stat-card" aria-label="Spoken debrief">
-      <header><span>Spoken debrief</span><small>Spoken / measured</small></header>
-      <dl>
-        <div>
-          <dt>Glide ratio</dt>
-          <dd class="flight-speed-values">
-            <span class="flight-speed-pill is-average"><span class="sr-only">Spoken</span><%= spoken.call("glide_ratio") %></span>
-            <span class="flight-speed-pill is-maximum"><span class="sr-only">Set on the tunnel</span><%= glide_ratio ? number_with_precision(glide_ratio, precision: 2) : "–" %></span>
-          </dd>
-        </div>
-        <div>
-          <dt>Speed</dt>
-          <dd class="flight-speed-values">
-            <span class="flight-speed-pill is-average"><span class="sr-only">Spoken</span><%= spoken.call("speed") %></span>
-            <span class="flight-speed-pill is-maximum">
-              <span class="sr-only">Average airspeed while flying</span>
-              <span data-flight-viewer-target="stat" data-stat="flying-airspeed">–</span>
-              <span class="flight-speed-unit">km/h</span>
-            </span>
-          </dd>
-        </div>
-        <% DebriefChecklist::ITEMS.reject { |item| %w[glide_ratio speed].include?(item[:key]) }.each do |item| %>
-          <div><dt><%= item[:label] %></dt><dd><%= spoken.call(item[:key]) %></dd></div>
-        <% end %>
-      </dl>
-    </article>
-  <% end %>
-</div>
 
 <% if charted %>
 <section class="flight-instrument-panel" data-flight-viewer-target="instrumentPanel" aria-labelledby="flight-data-title">
@@ -177,6 +142,8 @@
   </div>
 </section>
 
+<%= review_section %>
+
 <section class="flight-statistics" aria-labelledby="flight-statistics-title">
   <div class="flight-section-heading">
     <h2 id="flight-statistics-title"><span data-flight-viewer-target="phaseName">All</span> statistics</h2>
@@ -245,6 +212,8 @@
   </div>
 </section>
 <% else %>
+<%= review_section %>
+
 <section class="flight-instrument-panel" aria-labelledby="flight-data-title">
   <div class="flight-section-heading flight-analysis-heading">
     <div>

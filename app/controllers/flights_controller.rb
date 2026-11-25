@@ -90,6 +90,7 @@ class FlightsController < ApplicationController
     @cesium_ion_token = cesium_ion_token
     @radio_histories = can_access_signal? ? Signal::RadioHistory.for_flight(@flight) : []
     @radio_signal = Signal::RadioHistory.ground_signal_for(@flight, histories: @radio_histories)
+    @analysis_debrief = @flight.flight_debriefs.where.not(flight_comment_id: nil).order(:created_at, :id).last
     @raw_binaries = @flight.raw_binaries_for(Current.user)
     @imu_quality_events = @flight.operator_events.where("metadata ->> 'source' = ?", "imu_health").order(occurred_at: :desc, id: :desc).to_a
     @imu_checks = @flight.imu_checks.recent.limit(10).to_a

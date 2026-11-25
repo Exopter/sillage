@@ -94,8 +94,8 @@
 .flight-debrief-transcript p { margin: var(--sp-2) 0 0; color: var(--text-muted); font-size: var(--fs-text); line-height: 1.6; white-space: pre-wrap; }
 .flight-debrief-note { display: flex; align-items: flex-start; gap: var(--sp-2); color: var(--text-muted); font-size: var(--fs-caption); line-height: 1.5; }
 .flight-debrief-note svg { flex: 0 0 auto; margin-top: 2px; }
-/* Published debrief inside the Pilot log. */
-.flight-debrief-entry { display: grid; gap: var(--sp-3); margin-top: var(--sp-3); }
+/* Published debrief in the flight browser, analysis and Pilot log. */
+.flight-debrief-entry { display: grid; grid-template-columns: minmax(0, 1fr); overflow-wrap: anywhere; gap: var(--sp-3); margin-top: var(--sp-3); }
 .flight-debrief-badge { display: inline-flex; align-items: center; justify-self: start; gap: 6px; min-height: 22px; padding: 0 8px; border-radius: var(--ex-radius-instrument); background: var(--ex-state-live-bg); color: var(--status-live-text); font: 700 var(--fs-xs)/1 var(--font-mono); letter-spacing: var(--ls-label); text-transform: uppercase; }
 .flight-debrief-summary { display: grid; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
 .flight-debrief-summary li { padding: var(--sp-3) var(--sp-4); border-left: 2px solid var(--border-strong); border-radius: 0 var(--ex-radius-surface) var(--ex-radius-surface) 0; background: var(--surface-app); color: var(--text-body); font-size: var(--fs-text); line-height: 1.5; overflow-wrap: anywhere; }
@@ -107,6 +107,9 @@
 @container (width < 480px) {
   .flight-debrief-checklist:has(> div:nth-child(4)):not(:has(> div:nth-child(5))) > div { --per-row: 2; }
   .flight-debrief-checklist:has(> div:nth-child(7)) > div:nth-child(n+4) { --per-row: 2; }
+}
+@container (width < 360px) {
+  .flight-debrief-checklist > div { --per-row: 2; }
 }
 @container (480px <= width < 840px) {
   .flight-debrief-checklist > div { --per-row: 4; }

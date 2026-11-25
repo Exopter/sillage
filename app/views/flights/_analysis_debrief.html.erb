@@ -1,0 +1,22 @@
+<% if debrief %>
+  <section id="<%= dom_id(flight, :analysis_debrief) %>" class="flight-instrument-panel" aria-label="Pilot debrief">
+    <div class="flight-section-heading flight-review-heading">
+      <div>
+        <h2>Audio debrief</h2>
+        <p><%= comment_author_name(debrief.flight_comment.user) %> · <%= local_time debrief.flight_comment.created_at %></p>
+      </div>
+      <%= link_to "#pilot-log", class: "flight-debrief-download", data: { action: "section-tabs#select", section_tabs_name_param: "pilot-log" } do %>
+        Pilot log <%= sillage_icon "arrow-up-right", size: 15 %>
+      <% end %>
+    </div>
+    <%= render "flight_debriefs/entry", flight: flight, comment: debrief.flight_comment, debrief: debrief, interactive: false %>
+  </section>
+<% elsif flight.debrief_expected? %>
+  <section id="<%= dom_id(flight, :analysis_debrief) %>" class="flight-instrument-panel" aria-label="Waiting for debrief">
+    <div class="flight-section-heading"><h2>Waiting for debrief</h2></div>
+    <p>No debrief has been recorded for this flight.</p>
+    <%= link_to "Record debrief", "#pilot-log", data: { action: "section-tabs#select", section_tabs_name_param: "pilot-log" } if can_manage_flight?(flight) %>
+  </section>
+<% else %>
+  <template id="<%= dom_id(flight, :analysis_debrief) %>"></template>
+<% end %>

@@ -33,8 +33,8 @@ class TunnelFlightRecordTest < ActionDispatch::IntegrationTest
     assert_select "input[data-metric='altitude']", 0
     assert_select ".flight-source-grid dt", text: "GPS samples", count: 0
     assert_select "link[href*='Cesium']", 0
-    assert_select ".flight-tunnel-media .video-sync"
-    assert_operator response.body.index("flight-tunnel-media"), :<, response.body.index("Tunnel flight data")
+    assert_select ".flight-review-media .video-sync"
+    assert_select "[data-flight-viewer-target=instrumentPanel] + .flight-review-media + .flight-statistics"
     assert_select "input[name='flight[tunnel_glide_ratio]'][value='2.49']"
     assert_select "input[name='flight[exit_at]']", 0
   end
@@ -85,8 +85,18 @@ class TunnelFlightRecordTest < ActionDispatch::IntegrationTest
 
     get flight_path(@flight)
 
-    assert_select ".flight-tunnel-media .flight-stat-card dd", text: /2\.5\s+Set on the tunnel\s*2\.49/
-    assert_select ".flight-tunnel-media .flight-stat-card dd", text: /150 km\/h/
+    assert_select "#analysis .flight-debrief-entry" do
+      assert_select ".flight-debrief-checklist dt", count: DebriefChecklist::ITEMS.size
+      assert_select "dd", text: "2.5"
+      assert_select "dd", text: "150 km/h"
+      assert_select ".flight-debrief-summary li", text: "Debrief"
+    end
+    assert_select ".flight-overview-strip strong", text: "2.49"
+    assert_select ".flight-overview-strip [data-stat='flying-airspeed']"
+
+    patch flight_comment_path(@flight, comment), params: { flight_comment: { body: "Updated observations" } }
+    follow_redirect! headers: { "Turbo-Frame" => "comments_flight_#{@flight.id}" }
+    assert_select "turbo-stream[target='analysis_debrief_flight_#{@flight.id}'] .flight-debrief-summary li", text: "Updated observations"
   end
 
   test "a sky record keeps its trajectory and phases" do
@@ -96,7 +106,7 @@ class TunnelFlightRecordTest < ActionDispatch::IntegrationTest
     assert_select "section[data-flight-viewer-environment-value='sky']"
     assert_select "[data-flight-viewer-target='scene']"
     assert_select "button[data-phase='canopy']"
-    assert_select ".flight-tunnel-media", 0
+    assert_select ".flight-review-media .video-sync"
     assert_select "input[name='flight[exit_at]']"
   end
 end

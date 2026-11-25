@@ -35,7 +35,8 @@
 
 <h1 class="sr-only"><%= @flight.label %></h1>
 
-<% video_section = capture do %>
+<% review_section = capture do %>
+  <div class="flight-review-media">
     <%
       video_manageable = can_manage_flight?(@flight)
       uploaded_video = @flight.video.attachment if @flight.video_ready?
@@ -43,7 +44,6 @@
     <section class="flight-instrument-panel video-sync" aria-labelledby="flight-video-title">
       <div class="video-sync-header">
         <div>
-          <span class="flight-section-kicker">Visual reference</span>
           <h2 id="flight-video-title"><%= t(@flight.tunnel? ? "flights.video.tunnel_title" : "flights.video.title") %></h2>
           <% if tunnel_videos.any? %>
             <p><%= t("flights.video.tunnel_hint") %></p>
@@ -105,6 +105,8 @@
         </div>
       <% end %>
     </section>
+    <%= render "flights/analysis_debrief", flight: @flight, debrief: @analysis_debrief %>
+  </div>
 <% end %>
 
 <section
@@ -159,13 +161,6 @@
   <div class="flight-replay-content">
     <div class="flight-record-panel" id="analysis" data-section-tabs-target="panel">
     <div class="flight-analysis-workspace">
-    <% if @flight.debrief_expected? %>
-      <section class="analysis-mode-banner" aria-label="Waiting for debrief">
-        <strong>Waiting for debrief</strong>
-        <span>No debrief has been recorded for this flight.</span>
-        <%= link_to "Record debrief", "#pilot-log", data: { action: "section-tabs#select", section_tabs_name_param: "pilot-log" } if can_manage_flight?(@flight) %>
-      </section>
-    <% end %>
     <% if @flight.recording_expected? %>
       <section class="analysis-mode-banner" aria-label="Waiting for recording">
         <strong>Waiting for recording</strong>
@@ -201,7 +196,7 @@
     <% end %>
 
     <% if @flight.tunnel? %>
-      <%= render "flights/tunnel_analysis", flight: @flight, video_section:, total_duration:, imu_sample_rows:, sensor_counts: @sensor_counts, radio_signal: @radio_signal %>
+      <%= render "flights/tunnel_analysis", flight: @flight, review_section:, total_duration:, imu_sample_rows:, sensor_counts: @sensor_counts, radio_signal: @radio_signal %>
     <% else %>
     <section class="flight-overview-strip" aria-label="Flight overview">
       <div>
@@ -311,6 +306,8 @@
       </div>
     </section>
 
+    <%= review_section %>
+
     <section class="flight-statistics" aria-labelledby="flight-statistics-title">
       <div class="flight-section-heading">
         <h2 id="flight-statistics-title"><span data-flight-viewer-target="phaseName">All</span> statistics</h2>
@@ -372,8 +369,6 @@
     <% end %>
     <%= render "flights/imu_quality", events: @imu_quality_events, checks: @imu_checks %>
     </div>
-
-    <%= video_section unless @flight.tunnel? %>
 
     <% has_samples = @flight.raw_samples? %>
     <% if has_samples || @raw_binaries.any? %>

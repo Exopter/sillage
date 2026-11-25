@@ -3172,24 +3172,30 @@ body.flight-analysis-theme,
   color: var(--ex-carbon-900);
 }
 
-/* Tunnel flight record: the wing in the airflow replaces the GPS trajectory and the
-   tunnel cameras sit above the telemetry. */
-.flight-tunnel-media {
+/* Flight review pairs the video evidence with the published pilot debrief. */
+.flight-review-media {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
+  grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
   align-items: start;
   gap: 12px;
 }
 
-.flight-tunnel-media > :only-child {
+.flight-review-media:has(> template) > .video-sync {
   grid-column: 1 / -1;
 }
 
-.flight-tunnel-media .video-sync {
+.flight-review-media .flight-review-heading {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-2);
+}
+
+.flight-review-media .video-sync {
   margin-top: 0;
 }
 
-.flight-tunnel-media .flight-video {
+.flight-review-media .flight-video {
   max-height: min(48vh, 520px);
 }
 
@@ -3220,7 +3226,7 @@ body.flight-analysis-theme,
 }
 
 @media (max-width: 920px) {
-  .flight-tunnel-media {
+  .flight-review-media {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -3483,6 +3489,10 @@ body.flight-analysis-theme,
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     width: 100%;
+  }
+
+  .flight-phase-filter:has(> :nth-child(2):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .flight-phase-button {

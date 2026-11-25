@@ -76,6 +76,7 @@ class FlightCommentsController < ApplicationController
 
   def render_comments(status: :ok)
     render partial: "flight_comments/comments", locals: {
+      refresh_analysis: turbo_frame_request? && action_name == "index",
       flight: @flight, new_comment: @new_comment, editing_comment: @editing_comment,
       message: { "created" => "Comment posted.", "updated" => "Comment updated.", "deleted" => "Comment deleted." }[params[:result]]
     }, status:

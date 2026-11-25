@@ -1,0 +1,30 @@
+<%
+  audio_saved = debrief.audio.attached?
+  owner_controls = interactive && comment.owned_by?(Current.user)
+%>
+<div class="flight-debrief-entry">
+  <% if interactive %>
+    <span class="flight-debrief-badge"><%= sillage_icon "mic", size: 13 %>Audio debrief</span>
+  <% end %>
+  <dl class="flight-debrief-checklist" aria-label="Debrief checklist">
+    <% DebriefChecklist::ITEMS.each do |item| %>
+      <div><dt><%= item[:label] %></dt><dd><%= debrief_checklist_value(debrief.checklist[item[:key]]) %></dd></div>
+    <% end %>
+  </dl>
+  <% if debrief.summary_pending? %>
+    <p class="flight-debrief-pending"<% if owner_controls %> data-controller="debrief-summary" data-debrief-summary-url-value="<%= flight_debrief_path(flight, debrief) %>" data-debrief-summary-comments-url-value="<%= flight_comments_path(flight) %>"<% end %>><span class="flight-debrief-spinner" aria-hidden="true"></span>Writing the summary.<%= " The audio is already saved." if audio_saved %></p>
+  <% elsif debrief.status == "failed" && comment.body == FlightDebrief::PENDING_SUMMARY %>
+    <p class="flight-debrief-pending"<% if owner_controls %> data-controller="debrief-summary" data-debrief-summary-url-value="<%= flight_debrief_path(flight, debrief) %>" data-debrief-summary-comments-url-value="<%= flight_comments_path(flight) %>"<% end %>>The summary could not be written.<%= " The audio is saved." if audio_saved %><% if owner_controls && audio_saved %> <button type="button" class="exds-btn exds-btn--secondary exds-btn--sm" data-action="debrief-summary#retry">Retry</button><% end %></p>
+  <% else %>
+    <%= debrief_summary(comment.body) %>
+  <% end %>
+  <% if audio_saved %>
+    <audio class="flight-debrief-audio" aria-label="Debrief recording" controls preload="metadata" data-controller="audio-duration" src="<%= attachment_path(debrief.audio.attachment) %>"></audio>
+    <%= link_to attachment_path(debrief.audio.attachment), download: true, class: "flight-debrief-download" do %><%= sillage_icon "download", size: 15 %><span>Download original audio</span><% end %>
+  <% elsif !debrief.summary_pending? %>
+    <p class="flight-debrief-note"><%= sillage_icon "info", size: 14 %><span>The audio did not reach the server.<%= " The live transcript is available below." if debrief.transcript.present? %></span></p>
+  <% end %>
+  <% if debrief.transcript.present? %>
+    <details class="exds-disclosure flight-debrief-transcript"><summary><%= audio_saved ? "Full transcript" : "Live transcript" %></summary><p><%= debrief.transcript %></p></details>
+  <% end %>
+</div>
