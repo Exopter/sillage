@@ -170,7 +170,9 @@
       <section class="analysis-mode-banner" aria-label="SEAT recordings">
         <strong>SEAT recordings</strong>
         <% @seat_segments.each do |segment| %>
-          <%= link_to segment.source_filename, rails_blob_path(segment.source_files.first, disposition: "attachment") if segment.source_files.attached? %>
+          <% segment.source_files.each do |source| %>
+            <%= link_to source.filename.to_s, attachment_path(source), download: true, data: { turbo: false } %>
+          <% end %>
         <% end %>
       </section>
     <% end %>

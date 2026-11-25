@@ -101,6 +101,20 @@ class AttachmentAccessTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "Seat recordings link each segment through the authorized attachment route" do
+    import = @flight.flight_import
+    import.update!(details: { "signal_flight_id" => @flight.id })
+    %w[first.bin second.bin].each do |filename|
+      import.source_files.attach(io: StringIO.new(filename), filename: filename, content_type: "application/octet-stream")
+    end
+
+    get flight_path(@flight)
+    assert_response :success
+    import.source_files.each do |source|
+      assert_select "section[aria-label='SEAT recordings'] a[href=?]", attachment_path(source), text: source.filename.to_s
+    end
+  end
+
   test "default Active Storage routes cannot bypass flight access even with a signed blob id" do
     blob = @video.blob
     [ "/rails/active_storage/blobs/redirect/#{blob.signed_id}/flight.mp4",
