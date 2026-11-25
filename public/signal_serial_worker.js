@@ -226,7 +226,7 @@ function decode(messageId, payload, coordinateFrame) {
     const heading = f32(12)
     if (!/^ECU-(?:[A-F0-9]{6}|[A-F0-9]{12})$/.test(deviceId)) return { name: "unknown" }
     return { name: "imu_quality", deviceId, bootId: u32(0), timeBootMs: u32(4), imuEpoch: u32(8),
-      ...(payload.length >= 62 && payload[61] === 1 ? {trigger: {signal: Boolean(payload[48]), revision: u32(49), flight: u32(53), index: u32(57)}} : {}),
+      ...(payload.length >= 62 && (payload[61] === 1 || payload[61] === 2) ? {trigger: {...(payload[61] === 2 ? {groundFirst: true} : {}), signal: Boolean(payload[48]), revision: u32(49), flight: u32(53), index: u32(57)}} : {}),
       firmware: `fdr_integrated/${u16(16)}`, headingAccuracyDeg: Number.isFinite(heading) && heading >= 0 ? radiansToDegrees(heading) : null,
       agesMs: [u16(18), u16(20), u16(22), u16(24)], validity: u16(26), accuracy: Array.from(payload.slice(28, 32)) }
   }

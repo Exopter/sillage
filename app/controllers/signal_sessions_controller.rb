@@ -17,7 +17,7 @@ class SignalSessionsController < ApplicationController
       flight_id: params[:flight_id],
       environment: params[:environment],
       tunnel_glide_ratio: params[:tunnel_glide_ratio],
-      station_metadata: { "source" => "web_serial", "flight_trigger" => params[:flight_trigger].presence_in(%w[signal power]), "transport" => params[:transport].to_s.presence }.compact
+      station_metadata: { "source" => "web_serial", "flight_trigger" => params[:flight_trigger].presence_in(%w[signal power]), "start_boot_id" => Integer(params[:start_boot_id].to_s, exception: false), "transport" => params[:transport].to_s.presence }.compact
     ).call
     # This computer records the flight; every other device opening Signal watches it.
     cookies.signed[SignalController::STATION_COOKIE] = { value: signal_session.uuid, httponly: true, same_site: :lax, expires: 2.days }

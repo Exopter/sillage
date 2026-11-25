@@ -42,6 +42,7 @@ const LINK_LOST_AFTER_MS = 10_000
  * @property {HTMLElement} preflightDetailTarget
  * @property {HTMLElement} preflightStatusTarget
  * @property {boolean} hasTriggerStatusTarget
+ * @property {number} startBootValue
  * @property {string} triggerValue
  * @property {string} flightIdValue
  * @property {Record<string,string>} mountProfilesValue
@@ -263,7 +264,7 @@ export default class extends TypedController {
     mountProfiles: Object,
     mountZeros: Object,
     flightCode: String,
-    trigger: String, flightId: String,
+    trigger: String, startBoot: Number, flightId: String,
     batchUrl: String,
     eventUrl: String,
     homeUrl: String,
@@ -1158,7 +1159,7 @@ export default class extends TypedController {
         localStorage.setItem(this.stopTriggerKey(), disposition)
         const q = this.imuHealth.quality
         if (!q?.trigger || Date.now() - this.imuHealth.qualityAt > 3000) throw new Error("Stop pending. Reconnect the SEAT to confirm file closure.")
-        await this.sendFlightCommand("stop")
+        if (!this.observedGroundAfterFlight()) await this.sendFlightCommand("stop")
       }
       // The link stays open: standby takes it over once the flight is saved.
       await this.releaseCapture(true)
@@ -1302,7 +1303,7 @@ export default class extends TypedController {
     this.startHintTarget.textContent = this.modeNotice || hint
     this.startButtonTarget.disabled = !ready
     // Only an initialized module holds the key that makes a mode change acceptable.
-    const modeAvailable = live && identity?.modeControl === true && !this.starting
+    const modeAvailable = live && !this.imuHealth.quality?.trigger?.groundFirst && identity?.modeControl === true && !this.starting
     for (const button of this.modeButtonTargets) { button.hidden = !modeAvailable; button.disabled = this.modeChanging }
     if (this.hasModeGroupTarget) this.modeGroupTarget.hidden = !modeAvailable
     const detail = {connected, live, ready, deviceId, label: name, identified: Boolean(identity),
@@ -1329,7 +1330,8 @@ export default class extends TypedController {
   stopTriggerKey() { return `signal:stop-seat:${this.sessionValue}` }
 
   canSendTrigger() {
-    return Boolean(this.port && (this.connectionKind === "usb-c" || this.port.writable))
+    return Boolean(this.port && (this.connectionKind === "usb-c" || this.port.writable ||
+      (this.imuHealth.quality?.trigger?.groundFirst && ["ble", "wifi"].includes(this.connectionKind))))
   }
 
   /** @param {Event} event */
@@ -1345,6 +1347,8 @@ export default class extends TypedController {
     const q = this.imuHealth.quality
     const state = live && now - this.imuHealth.qualityAt < 3000 ? q?.trigger : undefined
     const capable = Boolean(state && this.canSendTrigger())
+    const selector = this.element.querySelector("[data-trigger-selector]")
+    if (selector instanceof HTMLElement) selector.style.display = q?.trigger?.groundFirst ? "none" : ""
     for (const button of this.element.querySelectorAll("button[data-trigger-mode]")) {
       if (!(button instanceof HTMLButtonElement)) continue
       const selected = state && state.signal === (button.dataset.triggerMode === "signal")
@@ -1359,7 +1363,8 @@ export default class extends TypedController {
         const prefix = state.flight <= 99999999 ? "FL" : ""
         const file = `${prefix}${state.flight}-${state.index.toString(36).toUpperCase().padStart(4,"0")}.BIN`
         text = `SEAT recording · Flight ${state.flight} · ${file}`
-      } else if (this.triggerValue && !this.ended) text = "Waiting for SEAT recording"
+      } else if (this.startBootValue && !this.ended && !this.standby) text = "Waiting for SEAT recording confirmation over radio or USB-C"
+      else if (this.triggerValue && !this.ended) text = "Waiting for SEAT recording"
       else if (state) text = state.signal ? "SEAT waits for Start flight" : "SEAT records at power-on"
       else if (this.standby) text = "FDR trigger unavailable"
       if (label.textContent !== text) label.textContent = text
@@ -1372,6 +1377,11 @@ export default class extends TypedController {
     }
     if (!state || !this.triggerValue || this.ended || this.ending || this.standby || !this.acquisitionAuthorized ||
         !capable || this.triggerBusy || now - this.triggerAttemptAt < 5000) return
+    if (this.observedGroundAfterFlight()) {
+      this.triggerAttemptAt = now
+      void this.finishSession(localStorage.getItem(this.stopTriggerKey()) === "discard" ? "discard" : "save")
+      return
+    }
     const stop = localStorage.getItem(this.stopTriggerKey())
     if (stop === "save" || stop === "discard") {
       this.triggerAttemptAt = now
@@ -1382,6 +1392,13 @@ export default class extends TypedController {
     }
   }
 
+  observedGroundAfterFlight() {
+    const q = this.imuHealth.quality
+    return Boolean(this.startBootValue && q?.trigger?.groundFirst && !q.trigger.flight &&
+      q.deviceId === this.recorderDeviceIdValue && q.bootId !== this.startBootValue &&
+      Date.now() - this.imuHealth.qualityAt < 3000)
+  }
+
   /** @param {"power"|"signal"|"start"|"stop"} operation */
   async sendFlightCommand(operation) {
     const q = this.imuHealth.quality, state = q?.trigger, port = this.port
@@ -1390,14 +1407,17 @@ export default class extends TypedController {
     try {
       const response = await fetch("/api/v1/fdr-flight-commands", {method: "POST", credentials: "same-origin",
         headers: {"Content-Type": "application/json", "X-CSRF-Token": document.querySelector("meta[name=csrf-token]")?.getAttribute("content") || ""},
-        signal: AbortSignal.timeout(8000), body: JSON.stringify({operation, device_id: q.deviceId, boot_id: q.bootId, revision: state.revision, session_uuid: this.sessionValue})})
+        signal: AbortSignal.timeout(8000), body: JSON.stringify({operation, transport: this.connectionKind, device_id: q.deviceId, boot_id: q.bootId, revision: state.revision, session_uuid: this.sessionValue})})
       if (!response.ok) throw new Error(`Sillage could not authorize the SEAT command (${response.status}).`)
       const result = await response.json()
       if (!/^[0-9a-f]{90}$/.test(result.payload)) throw new Error("Invalid SEAT command.")
+      // Wi-Fi delivers the signed start in the next live telemetry response.
+      // renderTrigger confirms recording from the flight ID and durable SD index.
+      if (this.connectionKind === "wifi") return
       const bytes = Uint8Array.from(String(result.payload).match(/../g) || [], b => parseInt(b, 16))
       for (let attempt = 0; attempt < 4; ++attempt) {
         if (this.port !== port || this.imuHealth.quality?.bootId !== q.bootId) break
-        if (this.connectionKind === "usb-c") {
+        if (this.connectionKind === "usb-c" || this.connectionKind === "ble") {
           const link = /** @type {import("../lib/signal_transport").PollingTelemetryPort} */ (/** @type {unknown} */ (port))
           if (!link.connection?.command) break
           await link.connection.command(bytes)
@@ -1410,6 +1430,8 @@ export default class extends TypedController {
         }
         await new Promise(resolve => setTimeout(resolve, 1200))
         const observed = this.imuHealth.quality
+        if (state.groundFirst && operation === "start") return
+        if (operation === "stop" && this.observedGroundAfterFlight()) return
         if (observed?.bootId !== q.bootId || observed.deviceId !== q.deviceId) break
         const ack = observed.trigger
         if (!ack || ack.revision === state.revision) continue
@@ -1495,10 +1517,12 @@ export default class extends TypedController {
     }
     this.starting = true
     const q = this.imuHealth.quality
+    const boot = this.startFormTarget.elements?.namedItem("start_boot_id")
+    if (boot && boot instanceof HTMLInputElement) boot.value = q?.trigger?.groundFirst ? String(q.bootId) : ""
     const trigger = this.startFormTarget.elements?.namedItem("flight_trigger")
     if (trigger && trigger instanceof HTMLInputElement) {
       if (q?.trigger && (!this.canSendTrigger() || q.trigger.flight || Date.now() - this.imuHealth.qualityAt > 3000)) {
-        this.showWarning("Connect to the idle SEAT over radio or USB-C before starting a flight.")
+        this.showWarning("Wait for current telemetry from the idle SEAT before starting a flight.")
         this.starting = false
         return
       }

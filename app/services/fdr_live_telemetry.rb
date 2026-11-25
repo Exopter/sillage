@@ -3,6 +3,15 @@ class FdrLiveTelemetry
   LEASE = 15.seconds
   FRESHNESS = 2.seconds
 
+  def self.queue_start(recorder, session, payload)
+    Rails.cache.write("fdr-live/start/#{recorder.device_id}", [ session.uuid, payload ], expires_in: LEASE)
+  end
+
+  def self.pending_start(recorder)
+    uuid, payload = Rails.cache.read("fdr-live/start/#{recorder.device_id}")
+    payload if uuid && SignalSession.exists?(uuid: uuid, status: "live")
+  end
+
   def self.wanted?(recorder)
     Rails.cache.read("fdr-live/lease/#{recorder.device_id}").present?
   end

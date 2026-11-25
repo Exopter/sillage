@@ -225,6 +225,25 @@ silent.port = {}
 await silent.startFlight()
 assert.equal(silent.startFormTarget.submitted, 0)
 
+// A link loss and a fresh idle boot have different flight lifecycle semantics.
+const lifecycle = standbyView()
+Object.assign(lifecycle, {startBootValue: 101, recorderDeviceIdValue: quality.deviceId, port: {}})
+lifecycle.imuHealth.quality = {...quality, bootId: 101, trigger: {groundFirst: true, flight: 0}}
+lifecycle.imuHealth.qualityAt = now
+for (const kind of ["usb-c", "ble", "wifi", "ground-radio"]) {
+  lifecycle.connectionKind = kind
+  lifecycle.port = kind === "ground-radio" ? {writable: {}} : {}
+  assert.ok(lifecycle.canSendTrigger(), kind)
+}
+assert.equal(lifecycle.observedGroundAfterFlight(), false)
+lifecycle.imuHealth.quality.bootId = 102
+lifecycle.imuHealth.quality.trigger.flight = 77
+assert.equal(lifecycle.observedGroundAfterFlight(), false)
+lifecycle.imuHealth.quality.trigger.flight = 0
+assert.equal(lifecycle.observedGroundAfterFlight(), true)
+lifecycle.imuHealth.qualityAt -= 5000
+assert.equal(lifecycle.observedGroundAfterFlight(), false)
+
 // Ending a flight parks the link instead of closing it; leaving for another page closes it.
 const ending = new Workspace()
 Object.assign(ending, {sessionValue: "session", radioStatusTarget: text()})

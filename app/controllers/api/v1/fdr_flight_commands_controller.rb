@@ -17,6 +17,8 @@ module Api
             return head :forbidden
           end
           Signal::RecorderAccess.for_session!(session, device_id: recorder.device_id)
+          origin = session.station_metadata["start_boot_id"]
+          return head :conflict if op == 2 && origin && boot != origin
           flight = session.flight_id
           return head :unprocessable_entity unless flight&.between?(1, 0xffffffff)
         elsif SignalSession.where(status: %w[live syncing]).where("station_metadata ->> 'recorder_device_id' = ?", recorder.device_id).exists?
@@ -28,7 +30,12 @@ module Api
         message = [ op, boot, revision, flight ].pack("CV3")
         proof = OpenSSL::HMAC.digest("SHA256", key, FdrModeCommandsController::DOMAIN + message)
         response.headers["Cache-Control"] = "no-store"
-        render json: { payload: (message + proof).unpack1("H*") }
+        payload = (message + proof).unpack1("H*")
+        if params[:transport] == "wifi"
+          return head :unprocessable_entity unless op == 2 && origin == boot
+          FdrLiveTelemetry.queue_start(recorder, session, payload)
+        end
+        render json: { payload: payload }
       rescue Signal::RecorderAccess::Denied
         head :forbidden
       rescue ActiveRecord::RecordNotFound

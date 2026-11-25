@@ -165,7 +165,20 @@ export async function directTelemetryPort(kind, options) {
         if (!challenge.configured) throw new Error("Register this recorder in Forge over USB-C first.")
         await auth.authenticate(await proof(identity.deviceId, challenge.nonce, "ble"))
         const telemetry = await service.getCharacteristic(TELEMETRY_UUID)
-        return {poll: async () => { const value = await telemetry.readValue(); return new Uint8Array(value.buffer, value.byteOffset, value.byteLength) },
+        // Web Bluetooth allows only one pending GATT operation on this device.
+        /** @type {Promise<unknown>} */
+        let pending = Promise.resolve()
+        /** @template T @param {() => Promise<T>} operation */
+        const run = operation => {
+          const next = pending.then(operation)
+          pending = next.catch(() => {})
+          return next
+        }
+        return {command: payload => run(() => telemetry.writeValueWithResponse(Uint8Array.from(payload))),
+          poll: () => run(async () => {
+            const value = await telemetry.readValue()
+            return new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
+          }),
           close: async () => { device.gatt?.disconnect() }}
       } catch (error) { device.gatt?.disconnect(); throw error }
     }))

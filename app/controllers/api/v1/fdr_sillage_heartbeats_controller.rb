@@ -41,6 +41,8 @@ module Api
         if payload.key?("live_telemetry")
           return head :unprocessable_entity unless FdrLiveTelemetry.publish(recorder, payload["live_telemetry"])
 
+          start = FdrLiveTelemetry.pending_start(recorder)
+          response.headers["X-FDR-Flight"] = start if start
           return head :accepted
         end
         return head :unprocessable_entity unless valid_recording_control?(payload["recording_control"])

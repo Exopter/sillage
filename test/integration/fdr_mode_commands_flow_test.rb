@@ -30,6 +30,39 @@ class FdrModeCommandsFlowTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "delivers only a current ground boot start to an authenticated Wi-Fi recorder" do
+    previous_cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+    sign_in_as users(:julien)
+    key = @recorder.ensure_fdr_auth_key!
+    @recorder.update!(fdr_auth_key_installed_at: Time.current)
+    post signal_sessions_path, params: { device_id: @recorder.device_id, flight_trigger: "signal", start_boot_id: 123 }
+    session = users(:julien).signal_sessions.order(:id).last
+    command = { device_id: @recorder.device_id, session_uuid: session.uuid, transport: "wifi", boot_id: 123, revision: 1 }
+    post api_v1_fdr_flight_commands_path, params: command.merge(operation: "start", boot_id: 124), as: :json
+    assert_response :conflict
+    post api_v1_fdr_flight_commands_path, params: command.merge(operation: "stop"), as: :json
+    assert_response :unprocessable_entity
+    post api_v1_fdr_flight_commands_path, params: command.merge(operation: "start"), as: :json
+    assert_response :success
+    signed_start = response.parsed_body.fetch("payload")
+    body = { version: 1, device_id: @recorder.device_id, sent_at: Time.current.to_i, live_telemetry: "00" * 8 }.to_json
+    headers = { "CONTENT_TYPE" => "application/json", "X-FDR-Signature" => "0" * 64 }
+    post api_v1_fdr_sillage_heartbeat_path, params: body, headers: headers
+    assert_response :unauthorized
+    assert_nil response.headers["X-FDR-Flight"]
+    headers["X-FDR-Signature"] = OpenSSL::HMAC.hexdigest("SHA256", key, "exopter/fdr/sillage-heartbeat/v1\0".b + body)
+    post api_v1_fdr_sillage_heartbeat_path, params: body, headers: headers
+    assert_response :accepted
+    assert_equal signed_start, response.headers["X-FDR-Flight"]
+    travel 16.seconds
+    post api_v1_fdr_sillage_heartbeat_path, params: body, headers: headers
+    assert_response :accepted
+    assert_nil response.headers["X-FDR-Flight"]
+  ensure
+    Rails.cache = previous_cache
+  end
+
   test "signs a mode change for one boot with the module's own key" do
     post api_v1_fdr_mode_commands_path, params: { device_id: @recorder.device_id, boot_id: 1234, mode: "ground" }, as: :json
     assert_response :unauthorized
