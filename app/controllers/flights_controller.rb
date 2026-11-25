@@ -65,6 +65,17 @@ class FlightsController < ApplicationController
   end
 
   def show
+    if request.format.csv?
+      return head :not_found unless @flight.raw_samples?
+
+      filename = "#{@flight.code}-raw-data.csv"
+      response.headers["Content-Disposition"] = ActionDispatch::Http::ContentDisposition.format(disposition: "attachment", filename:)
+      response.headers["Last-Modified"] = @flight.updated_at.httpdate
+      self.content_type = "text/csv; charset=utf-8"
+      self.response_body = Flights::RawDataCsv.new(@flight)
+      return
+    end
+
     load_form_options
     if @flight.logbook_view?
       load_browser(panel: "preparation", focus: @flight)
@@ -79,9 +90,7 @@ class FlightsController < ApplicationController
     @cesium_ion_token = cesium_ion_token
     @radio_histories = can_access_signal? ? Signal::RadioHistory.for_flight(@flight) : []
     @radio_signal = Signal::RadioHistory.ground_signal_for(@flight, histories: @radio_histories)
-    seat_imports = FlightImport.accessible_to(Current.user).where("details ->> 'signal_flight_id' = ?", @flight.id.to_s).with_attached_source_files.order(:id)
-    @seat_sources = seat_imports.flat_map { |recording| recording.source_files.attachments }
-      .uniq { |source| [ source.filename.to_s, source.byte_size, source.checksum || source.blob_id ] }
+    @raw_binaries = @flight.raw_binaries_for(Current.user)
     @imu_quality_events = @flight.operator_events.where("metadata ->> 'source' = ?", "imu_health").order(occurred_at: :desc, id: :desc).to_a
     @imu_checks = @flight.imu_checks.recent.limit(10).to_a
   end

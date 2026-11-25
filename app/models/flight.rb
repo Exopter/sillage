@@ -97,6 +97,27 @@ class Flight < ApplicationRecord
     Math.atan(1 / tunnel_glide_ratio.to_f) * 180 / Math::PI if tunnel_glide_ratio
   end
 
+  def raw_samples?
+    track_points.exists? || sensor_samples.exists?
+  end
+
+  def raw_binaries_for(user)
+    imports = FlightImport.accessible_to(user)
+    linked = imports.where(target_flight_id: id).or(imports.where("details ->> 'signal_flight_id' = ?", id.to_s))
+    linked = linked.or(imports.where(id: flight_import_id)) if flight_import_id
+    linked.with_attached_source_files.order(:id).flat_map do |recording|
+      files = recording.source_files.attachments.select { |file| file.filename.extension.to_s.casecmp?("bin") }
+      if files.any? && recording.flights.where.not(id: id).exists?
+        # A multi-flight import can contain a different binary for each flight.
+        blob_ids = files.map(&:blob_id)
+        own = track_points.where(source_blob_id: blob_ids).distinct.pluck(:source_blob_id) |
+          sensor_samples.where(source_blob_id: blob_ids).distinct.pluck(:source_blob_id)
+        files = files.select { |file| own.include?(file.blob_id) }
+      end
+      files
+    end.uniq { |file| [ file.filename.to_s, file.byte_size, file.checksum || file.blob_id ] }
+  end
+
   def owned_by?(user)
     user.present? && user_id == user.id
   end

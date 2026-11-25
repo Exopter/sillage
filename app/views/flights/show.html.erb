@@ -166,14 +166,6 @@
         <%= link_to "Record debrief", "#pilot-log", data: { action: "section-tabs#select", section_tabs_name_param: "pilot-log" } if can_manage_flight?(@flight) %>
       </section>
     <% end %>
-    <% if @seat_sources.any? %>
-      <section class="analysis-mode-banner" aria-label="SEAT recordings">
-        <strong>SEAT recordings</strong>
-        <% @seat_sources.each do |source| %>
-          <%= link_to source.filename.to_s, attachment_path(source), download: true, data: { turbo: false } %>
-        <% end %>
-      </section>
-    <% end %>
     <% if @flight.recording_expected? %>
       <section class="analysis-mode-banner" aria-label="Waiting for recording">
         <strong>Waiting for recording</strong>
@@ -383,6 +375,29 @@
 
     <%= video_section unless @flight.tunnel? %>
 
+    <% has_samples = @flight.raw_samples? %>
+    <% if has_samples || @raw_binaries.any? %>
+      <section class="exds-history" aria-labelledby="raw-data-title">
+        <header class="exds-history__heading"><h2 id="raw-data-title">Download raw data</h2></header>
+        <dl class="exds-browser-metadata">
+          <% if has_samples %>
+            <div><dt>CSV</dt><dd>
+              <%= link_to flight_path(@flight, format: :csv), class: "flight-debrief-download", download: true, data: { turbo: false } do %>
+                <%= sillage_icon "download", size: 16 %><span>Flight measurements</span>
+              <% end %>
+            </dd></div>
+          <% end %>
+          <% @raw_binaries.each do |file| %>
+            <div><dt>BIN</dt><dd>
+              <%= link_to attachment_path(file), class: "flight-debrief-download", download: true, data: { turbo: false } do %>
+                <%= sillage_icon "download", size: 16 %><span><%= file.filename %></span>
+              <% end %>
+              <small><%= number_to_human_size(file.byte_size) %></small>
+            </dd></div>
+          <% end %>
+        </dl>
+      </section>
+    <% end %>
     </div>
 
     <div class="flight-record-panel" id="pilot-log" data-section-tabs-target="panel" hidden>

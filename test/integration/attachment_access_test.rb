@@ -113,10 +113,78 @@ class AttachmentAccessTest < ActionDispatch::IntegrationTest
 
     get flight_path(@flight)
     assert_response :success
-    assert_select "section[aria-label='SEAT recordings'] a", count: 2
-    import.source_files.each do |source|
-      assert_select "section[aria-label='SEAT recordings'] a[href=?]", attachment_path(source), text: source.filename.to_s
+    assert_select "#analysis > section:last-child[aria-labelledby='raw-data-title']" do
+      assert_select "h2", "Download raw data"
+      assert_select "a[download]", count: 3
+      assert_select "a[href=?]", flight_path(@flight, format: :csv)
     end
+    import.source_files.each do |source|
+      assert_select "#analysis a[href=?] span", attachment_path(source), text: source.filename.to_s
+    end
+  end
+
+  test "directly attached binary excerpts are available without a Signal session" do
+    import = @flight.flight_import
+    import.source_files.attach(io: StringIO.new("excerpt"), filename: "flight.BIN")
+    get flight_path(@flight)
+    assert_select "#analysis a[href=?]", attachment_path(import.source_files.sole)
+  end
+
+  test "a shared import offers only binaries referenced by the selected flight" do
+    import = @flight.flight_import
+    flights(:two).update!(flight_import: import)
+    first, second = %w[first.BIN second.BIN].map do |name|
+      import.source_files.attach(io: StringIO.new(name), filename: name)
+      import.source_files.attachments.last
+    end
+    sensor_samples(:one).update!(source_blob_id: first.blob_id)
+    get flight_path(@flight)
+    assert_select "#analysis a[href=?]", attachment_path(first)
+    assert_select "#analysis a[href=?]", attachment_path(second), count: 0
+  end
+
+  test "a flight without measurements or binary has no download section" do
+    @flight.sensor_samples.delete_all
+    @flight.track_points.delete_all
+    get flight_path(@flight)
+    assert_response :success
+    assert_select "#raw-data-title", count: 0
+    get flight_path(@flight, format: :csv)
+    assert_response :not_found
+  end
+
+  test "raw export keeps every observation across batch boundaries" do
+    require "csv"
+    @flight.sensor_samples.insert_all!(1_025.times.map do |i|
+      { sensor_type: "AIRSPEED", elapsed_seconds: i + 2, readings: { differential_pressure_pa: i } }
+    end)
+    get flight_path(@flight, format: :csv)
+    assert_response :success
+    rows = CSV.parse(response.body, headers: true)
+    assert_equal (0..1024).to_a, rows["reading.differential_pressure_pa"].compact.map(&:to_i)
+    assert_equal 1027, rows.size
+  end
+
+  test "raw CSV includes all flight observations in time order with full precision and separate channels" do
+    require "csv"
+    sensor_samples(:one).update!(elapsed_seconds: 0.125, recorded_at: Time.utc(2026, 5, 15, 20, 2, 0, 123456),
+      sensor_type: "CENTRAL:IMU", readings: { x: -1.25, source_role: "central", label: "=1+1", nested: { quality: 3 } })
+    get flight_path(@flight, format: :csv)
+    assert_response :success
+    assert_equal "text/csv", response.media_type
+    assert_includes response.headers["Content-Disposition"], "#{@flight.code}-raw-data.csv"
+    assert_includes response.headers["Cache-Control"], "no-store"
+    rows = CSV.parse(response.body, headers: true)
+    assert_equal [ "CENTRAL:IMU", "GPS" ], rows["sensor_type"]
+    assert_equal [ "2026-05-15T20:02:00.123456Z", "central", "-1.25", "'=1+1", '{"quality":3}' ],
+      rows.first.values_at("recorded_at_utc", "reading.source_role", "reading.x", "reading.label", "reading.nested")
+    assert_equal "1.5", rows[1]["lat"]
+    sign_in_as users(:operator)
+    get flight_path(@flight, format: :csv)
+    assert_response :not_found
+    @flight.update!(visibility: "team")
+    get flight_path(@flight, format: :csv)
+    assert_response :success
   end
 
   test "default Active Storage routes cannot bypass flight access even with a signed blob id" do
