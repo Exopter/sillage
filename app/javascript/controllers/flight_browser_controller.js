@@ -59,20 +59,24 @@ export default class extends TypedController {
     if (event.button !== 0) return
     event.preventDefault()
     const handle = this.resizerTarget
+    const startX = event.clientX
+    const startWidth = this.previewBounds().now
     handle.setPointerCapture(event.pointerId)
     this.element.dataset.resizing = ""
     /** @param {PointerEvent} move */
-    const drag = (move) => this.setPreviewWidth(this.element.getBoundingClientRect().right - move.clientX)
+    const drag = (move) => this.setPreviewWidth(startWidth + startX - move.clientX)
     const stop = () => {
       handle.removeEventListener("pointermove", drag)
       handle.removeEventListener("pointerup", stop)
       handle.removeEventListener("pointercancel", stop)
+      handle.removeEventListener("lostpointercapture", stop)
       this.element.removeAttribute("data-resizing")
       this.storePreviewWidth()
     }
     handle.addEventListener("pointermove", drag)
     handle.addEventListener("pointerup", stop)
     handle.addEventListener("pointercancel", stop)
+    handle.addEventListener("lostpointercapture", stop)
   }
 
   /** @param {KeyboardEvent} event */
@@ -87,7 +91,6 @@ export default class extends TypedController {
 
   resetPreviewWidth() {
     this.element.style.removeProperty("--exds-browser-preview-size")
-    this.element.removeAttribute("data-preview-sized")
     this.storePreviewWidth(null)
     this.describeResizer()
   }
@@ -96,7 +99,6 @@ export default class extends TypedController {
   setPreviewWidth(width) {
     const { min, max } = this.previewBounds()
     this.element.style.setProperty("--exds-browser-preview-size", `${Math.round(Math.min(Math.max(width, min), max))}px`)
-    this.element.dataset.previewSized = ""
     this.describeResizer()
   }
 

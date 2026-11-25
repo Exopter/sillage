@@ -25,7 +25,12 @@
 .exds-browser-folder-access { display: block; margin-top: 3px; font-size: var(--fs-xs); font-weight: 400; }
 .exds-browser-explanation { margin: 0; padding: 0 24px 16px; color: var(--text-muted); font-size: var(--fs-sm); line-height: 1.5; }
 /* The collection takes the room: folders and preview frame it, and each can be put away. */
-.exds-browser { --exds-browser-folders: minmax(216px, 17%); --exds-browser-folders-floor: 216px; --exds-browser-preview: minmax(320px, 28%); --exds-browser-preview-size: 320px; }
+.exds-browser {
+  --exds-browser-folders: max(216px, 17%);
+  --exds-browser-preview-size: 38%;
+  --exds-browser-preview-max: max(320px, 100% - var(--exds-browser-folders) - 360px);
+  --exds-browser-preview: clamp(320px, var(--exds-browser-preview-size), var(--exds-browser-preview-max));
+}
 .exds-browser-body { display: grid; grid-template-columns: var(--exds-browser-folders) minmax(0, 1fr) var(--exds-browser-preview); flex: 1; min-height: 0; overflow: hidden; }
 .exds-browser-sidebar { padding: 12px 0; border-right: 1px solid var(--border-rule); overflow-y: auto; }
 .exds-browser-nav { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 20px; color: var(--text-body); border-left: 3px solid transparent; font-size: var(--fs-text); }
@@ -57,9 +62,10 @@
 .exds-browser-section-label { display: flex; align-items: center; justify-content: space-between; margin: 12px 16px 6px; padding-top: 12px; border-top: 1px solid var(--border-rule); color: var(--text-muted); font: var(--fs-xs) var(--ex-font-mono); text-transform: uppercase; letter-spacing: .08em; }
 .exds-browser-section-label a { text-transform: none; letter-spacing: 0; }
 .exds-browser-collection { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface-card); border-right: 1px solid var(--border-rule); }
-/* The edge between list and details: a 9px grab area over the 1px rule, dragged or moved with the arrow keys. */
-.exds-browser-resizer { position: absolute; z-index: 4; inset-block: 0; right: -5px; width: 9px; cursor: col-resize; touch-action: none; }
-.exds-browser-resizer::after { content: ""; position: absolute; inset-block: 0; left: 3px; width: 3px; background: var(--selection-marker); opacity: 0; transition: opacity var(--dur-fast) ease; }
+/* A visible grip on the divider, with a wider hit area than the rule. */
+.exds-browser-resizer { position: absolute; z-index: 4; inset-block: 0; inset-inline-end: -9px; width: 18px; cursor: col-resize; touch-action: none; }
+.exds-browser-resizer::before { content: ""; position: absolute; top: 50%; left: 50%; width: 6px; height: 32px; transform: translate(-50%, -50%); border-radius: 3px; background: var(--text-muted); }
+.exds-browser-resizer::after { content: ""; position: absolute; inset-block: 0; left: calc(50% - 1px); width: 2px; background: var(--selection-marker); opacity: 0; transition: opacity var(--dur-fast) ease; }
 .exds-browser-resizer:is(:hover, :focus-visible)::after, .exds-browser[data-resizing] .exds-browser-resizer::after { opacity: 1; }
 .exds-browser-resizer:focus-visible { outline: none; }
 .exds-browser[data-resizing] { cursor: col-resize; user-select: none; }
@@ -213,15 +219,13 @@
   .exds-browser[data-folders="collapsed"] .exds-browser-nav { justify-content: center; gap: 0; padding-inline: 0; }
   .exds-browser[data-folders="collapsed"] .exds-browser-nav > :not(:first-child), .exds-browser[data-folders="collapsed"] .exds-browser-section-label > span, .exds-browser[data-folders="collapsed"] .exds-browser-sidebar :is(.exds-browser-folder-actions, .exds-browser-empty) { display: none; }
   .exds-browser[data-folders="collapsed"] .exds-browser-section-label { justify-content: center; margin-inline: 8px; }
-  .exds-browser[data-preview-sized] { --exds-browser-preview: clamp(320px, var(--exds-browser-preview-size), 100% - var(--exds-browser-folders-floor) - 360px); }
-  .exds-browser[data-folders="collapsed"] { --exds-browser-folders-floor: 56px; }
   .exds-browser[data-preview="hidden"]:not(:has(.exds-browser-editor)) .exds-browser-resizer { display: none; }
   .exds-browser[data-preview="hidden"]:not(:has(.exds-browser-editor)) { --exds-browser-preview: 0px; }
   .exds-browser[data-preview="hidden"]:not(:has(.exds-browser-editor)) .exds-browser-preview { display: none; }
   .exds-browser[data-preview="hidden"]:not(:has(.exds-browser-editor)) .exds-browser-collection { border-right: 0; }
 }
 @media (max-width: 1100px) {
-  .exds-browser { --exds-browser-folders: 200px; --exds-browser-folders-floor: 200px; --exds-browser-preview: minmax(300px, 32%); }
+  .exds-browser { --exds-browser-folders: 200px; }
   .exds-browser-preview { padding: 20px 16px; }
   .exds-browser-nav { padding-inline: 16px; }
 }
@@ -255,6 +259,7 @@
 }
 
 @media (pointer: coarse) {
+  .exds-browser-resizer { inset-inline-end: -14px; width: 28px; }
   .exds-browser-icon-button, .exds-browser-field :is(input, select), .exds-inline-edit :is(input, select) { min-height: 44px; }
   .exds-inline-edit > summary > svg { opacity: 1; }
   .exds-browser-icon-button { min-width: 44px; }
