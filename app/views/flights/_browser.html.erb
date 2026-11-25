@@ -67,12 +67,14 @@
             <% if @flights.any? %>
               <%# Column labels for sighted readers; each row link carries its own accessible name. %>
               <div class="exds-browser-table-head" aria-hidden="true"><span></span><div class="exds-browser-table-columns">
-                <span>Time</span><span></span><span class="exds-browser-cell is-mode">Mode</span><span class="exds-browser-cell is-aircraft">Aircraft</span><span class="exds-browser-cell is-location">Location</span><span class="exds-browser-cell is-flown">Flown</span><span class="exds-browser-cell">Description</span><span></span>
+                <span>Time</span><span></span><span class="exds-browser-cell is-aircraft">Aircraft</span><span class="exds-browser-cell is-location">Location</span><span class="exds-browser-cell is-flown">Flown</span><span class="exds-browser-cell">Description</span><span></span>
               </div></div>
             <% end %>
             <% day = nil %>
             <% @flights.each do |entry| %>
               <% flight = entry.is_a?(Flight) %>
+              <% tunnel = flight && entry.logbook_tunnel? %>
+              <% mode = flight ? (tunnel ? "Tunnel" : "Sky") : nil %>
               <% accessible = !flight || entry.visible_to?(Current.user) %>
               <% selected = entry == @selected_entry %>
               <% instant = browser_instant(entry) %>
@@ -81,14 +83,13 @@
               <% day = entry_day %>
               <%= tag.div class: "exds-browser-entry", aria: { current: selected.to_s }, draggable: (can_manage_operations? && accessible && flight).to_s, data: { entry: browser_key(entry), day_at: instant&.utc&.iso8601, day: (entry_day unless instant), action: "dragstart->flight-browser#startDrag" } do %>
                 <% if can_manage_operations? && accessible %><label><input type="checkbox" name="entries[]" value="<%= browser_key(entry) %>" <%= "checked" if flight && @bulk_ids&.include?(entry.id) %> data-table-selection-target="item" data-action="change->table-selection#update"><span class="sr-only">Select <%= browser_name(entry) %></span></label><% end %>
-                <%= link_to browser_preview_path(entry), class: "exds-browser-entry-link", draggable: false, data: { turbo_frame: "flight-preview", flight_browser_target: "entry", open_url: browser_open_path(entry), selected: selected, name: browser_name(entry), action: "click->flight-browser#select dblclick->flight-browser#open" }, aria: { label: "Preview #{browser_name(entry)}" } do %>
+                <%= link_to browser_preview_path(entry), class: "exds-browser-entry-link", draggable: false, data: { turbo_frame: "flight-preview", flight_browser_target: "entry", open_url: browser_open_path(entry), selected: selected, name: browser_name(entry), action: "click->flight-browser#select dblclick->flight-browser#open" }, aria: { label: ["Preview #{browser_name(entry)}", mode].compact.join(", ") } do %>
                   <% entry_state, entry_status = flight ? logbook_status(entry) : recording_logbook_status(entry) %>
                   <%# One cell per column, always rendered so every row fills the shared grid. The day is the group header. %>
                   <span class="exds-browser-entry-time" title="<%= "Creation time" if flight && entry.started_at.nil? && !entry.flown_on %>"><%= browser_time(entry) || "--:--" %></span>
                   <% if flight %><%= render "flights/pilot", flight: entry, show_name: false %><% else %><span class="exds-browser-entry-kind"><%= sillage_icon "file-text", size: 16 %></span><% end %>
-                  <span class="exds-browser-cell is-mode"><%= entry.environment_label if flight %></span>
                   <span class="exds-browser-cell is-aircraft"><%= entry.aircraft&.registration.presence || (browser_blank if flight) %></span>
-                  <span class="exds-browser-cell is-location"><% if flight %><% if entry.tunnel? %><span class="exds-browser-cell-prefix">Tunnel<%= " \u00b7 " if entry.location.present? %></span><% end %><%= entry.location.presence || browser_blank %><% end %></span>
+                  <span class="exds-browser-cell is-location"><% if flight %><span class="exds-browser-location-mode" title="<%= mode %>"><%= sillage_icon(tunnel ? "fan" : "plane", size: 13) %></span><%= entry.location.presence || browser_blank %><% end %></span>
                   <% seconds = browser_duration(entry) if flight %>
                   <span class="exds-browser-cell is-flown <%= "is-blank" unless seconds %>"><%= seconds ? duration(seconds) : (browser_blank if flight) %></span>
                   <span class="exds-browser-entry-copy">

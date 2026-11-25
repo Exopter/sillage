@@ -8,6 +8,7 @@ module ApplicationHelper
     "pencil" => '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /><path d="m15 5 4 4" />',
     "palette" => '<path d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1.4-3.4 1.8 1.8 0 0 1 1.3-3.1H17A4 4 0 0 0 21 10c0-4-4-7-9-7Z"/><circle cx="7.5" cy="10" r=".5"/><circle cx="10" cy="6.5" r=".5"/><circle cx="14" cy="6.5" r=".5"/><circle cx="17" cy="9.5" r=".5"/>',
     "chevron-left" => '<path d="m15 18-6-6 6-6" />',
+    "fan" => '<circle cx="12" cy="12" r="2"/><path d="M10.5 10.7C6 7.5 9 2.5 13 3c2.8.3 3.3 2.1 1.5 3.9-1 1-1.5 2-1.5 3.3"/><path transform="rotate(120 12 12)" d="M10.5 10.7C6 7.5 9 2.5 13 3c2.8.3 3.3 2.1 1.5 3.9-1 1-1.5 2-1.5 3.3"/><path transform="rotate(240 12 12)" d="M10.5 10.7C6 7.5 9 2.5 13 3c2.8.3 3.3 2.1 1.5 3.9-1 1-1.5 2-1.5 3.3"/>',
     "ellipsis" => '<circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" />',
     "layout-grid" => '<rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" />',
     "list" => '<path d="M3 5h.01" /><path d="M3 12h.01" /><path d="M3 19h.01" /><path d="M8 5h13" /><path d="M8 12h13" /><path d="M8 19h13" />',

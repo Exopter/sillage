@@ -73,7 +73,7 @@
 .exds-browser-caption { margin: 6px 0 0; font-size: var(--fs-sm); line-height: 1.5; color: var(--text-muted); }
 .exds-browser-selection { container-type: inline-size; display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; margin: 0; }
 /* Flight log table: one grid for the whole list, so every row shares its columns. The day stays a sticky group header. */
-.exds-browser-entries { display: grid; grid-template-columns: auto auto 24px auto fit-content(14ch) fit-content(22ch) auto fit-content(16rem) minmax(max-content, 1fr); grid-auto-rows: min-content; align-content: start; column-gap: 16px; flex: 1; min-height: 0; overflow-y: auto; }
+.exds-browser-entries { display: grid; grid-template-columns: auto auto 24px fit-content(14ch) fit-content(22ch) auto fit-content(16rem) minmax(max-content, 1fr); grid-auto-rows: min-content; align-content: start; column-gap: 16px; flex: 1; min-height: 0; overflow-y: auto; }
 .exds-browser-entries > * { grid-column: 1 / -1; }
 .exds-browser-table-head, .exds-browser-entry { display: grid; grid-template-columns: subgrid; align-items: center; border-left: 3px solid transparent; }
 .exds-browser-table-head { position: sticky; top: 0; z-index: 2; height: 32px; border-bottom: 1px solid var(--border-rule); background: var(--surface-card); color: var(--text-muted); font: 600 var(--fs-xs)/1 var(--ex-font-mono); letter-spacing: .08em; text-transform: uppercase; }
@@ -95,18 +95,18 @@
 .exds-browser-entry-detail { flex: 0 1 auto; min-width: 0; margin: 0; color: var(--text-muted); font-size: inherit; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .exds-browser-cell { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--fs-sm); }
 .exds-browser-table-head .exds-browser-cell { font-size: inherit; }
-.exds-browser-cell.is-mode, .exds-browser-cell-blank { color: var(--text-muted); }
+.exds-browser-cell-blank { color: var(--text-muted); }
 .exds-browser-cell.is-flown { text-align: right; font-variant-numeric: tabular-nums; }
 .exds-browser-entry .exds-browser-cell.is-flown { font-family: var(--ex-font-mono); }
-.exds-browser-cell-prefix { display: none; }
+.exds-browser-location-mode { display: inline-flex; margin-inline-end: 5px; vertical-align: -2px; color: var(--text-muted); }
 .exds-browser-entry-meta { display: flex; align-items: center; justify-content: flex-end; gap: 12px; color: var(--text-muted); font-size: var(--fs-caption); font-variant-numeric: tabular-nums; }
 .exds-browser-entry-meta > span, .exds-browser-entry-cameras { display: inline-flex; align-items: center; gap: 4px; }
 .exds-browser-entry-meta .status-dot { gap: 6px; white-space: nowrap; font: 500 var(--fs-xs)/var(--fs-card) var(--ex-font-sans); letter-spacing: 0; text-transform: none; color: var(--text-muted); }
 .exds-browser-entry-meta .status-dot > span { flex-shrink: 0; width: 6px; height: 6px; }
-/* Less room: mode and aircraft leave first; they stay in the preview. */
+/* Less room: hide the aircraft column. */
 @container (max-width: 700px) {
   .exds-browser-entries { grid-template-columns: auto auto 24px fit-content(18ch) auto fit-content(16rem) minmax(max-content, 1fr); }
-  .exds-browser-cell:is(.is-mode, .is-aircraft) { display: none; }
+  .exds-browser-cell.is-aircraft { display: none; }
 }
 /* Narrow column or phone: no header, the description is never squeezed and the location moves under it. */
 @container (max-width: 600px) {
@@ -126,7 +126,6 @@
   /* A status needs the room that an absent flight time would only reserve. */
   .exds-browser-entry-link:has(.status-dot):has(.is-flown.is-blank) { grid-template-columns: 5ch 24px minmax(0, 1fr) auto; }
   .exds-browser-entry-link:has(.status-dot) > .is-flown.is-blank { display: none; }
-  .exds-browser-cell-prefix { display: inline; }
 }
 .exds-browser-selection .exds-selection-toolbar { border-radius: 0; box-shadow: none; padding: 12px; gap: 8px; flex-wrap: wrap; font-size: var(--fs-caption); }
 .exds-browser-selection .exds-selection-toolbar button, .exds-browser-selection .exds-selection-toolbar select { font-size: var(--fs-caption); }

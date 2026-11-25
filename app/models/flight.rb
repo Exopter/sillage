@@ -88,6 +88,10 @@ class Flight < ApplicationRecord
     environment.capitalize
   end
 
+  def logbook_tunnel?
+    location.to_s.strip.casecmp?(TUNNEL_LOCATION)
+  end
+
   # Angle of the tunnel airflow below the horizon, in degrees, for the set glide ratio.
   def tunnel_airflow_angle
     Math.atan(1 / tunnel_glide_ratio.to_f) * 180 / Math::PI if tunnel_glide_ratio

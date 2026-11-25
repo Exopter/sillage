@@ -29,8 +29,8 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     get flights_path(folder: @folder.id)
     assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
       assert_select ".exds-browser-entry-copy strong", text: @flight.description
-      assert_select ".exds-browser-cell.is-mode", text: "Tunnel"
-      assert_select ".exds-browser-cell.is-location", text: "Tunnel · Inclined Slovenia"
+      assert_select ".is-location", text: "Inclined Slovenia"
+      assert_select ".is-location > .exds-browser-location-mode[title='Tunnel'] > svg", 1
       assert_select ".exds-browser-entry-cameras[title='2 cameras']", text: "2 cameras"
     end
 
@@ -84,29 +84,29 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_select "section[aria-label='Flight videos'] form.video-upload-form[action='#{flight_path(@flight)}']", 1
   end
 
-  test "a tunnel flight row names its mode in its own column, without a badge" do
-    @flight.update!(environment: "tunnel", location: "Inclined Slovenia")
+  test "a flight at Inclined Slovenia has a fan icon beside its location" do
+    @flight.update!(environment: "sky", location: "Inclined Slovenia")
     get flights_path(folder: @folder.id)
     assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
       assert_select ".exds-browser-entry-copy strong", text: @flight.description
-      assert_select ".exds-browser-cell.is-mode", text: "Tunnel"
-      assert_select ".exds-browser-cell.is-location", text: "Tunnel · Inclined Slovenia"
-      assert_select ".mode-badge", count: 0
+      assert_select ".is-location", text: "Inclined Slovenia"
+      assert_select ".is-location > .exds-browser-location-mode[title='Tunnel'] > svg circle", 1
+      assert_select ".exds-browser-entry-link[aria-label$=', Tunnel']", 1
     end
   end
 
   test "flight rows are table rows under a day header, with the flight time instead of the recording length" do
     @flight.update!(duration_seconds: 4786, description: "Test flight", opening_at: @flight.exit_at + 103)
     get flights_path(folder: @folder.id)
-    assert_select ".exds-browser-entries[data-local-days='exds-browser-day'] > .exds-browser-table-head[aria-hidden='true'] .exds-browser-table-columns > span", 8
+    assert_select ".exds-browser-entries[data-local-days='exds-browser-day'] > .exds-browser-table-head[aria-hidden='true'] .exds-browser-table-columns > span", 7
     assert_select ".exds-browser-entries > .exds-browser-day[data-day-header]", text: "Fri 15 May 2026"
     assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
-      assert_select ".exds-browser-entry-link > *", 8
+      assert_select ".exds-browser-entry-link > *", 7
       assert_select ".status-dot", count: 0
       assert_select ".exds-browser-entry-time", text: "20:01"
       assert_select ".exds-browser-entry-copy strong", text: "Test flight"
       assert_select ".exds-browser-entry-link", text: /FLT-/, count: 0
-      assert_select ".exds-browser-cell.is-mode", text: "Sky"
+      assert_select ".is-location > .exds-browser-location-mode[title='Sky'] > svg", 1
       assert_select ".exds-browser-cell.is-aircraft", text: @flight.aircraft.registration
       assert_select ".exds-browser-cell.is-location", text: @flight.location
       assert_select ".exds-browser-cell.is-flown", text: "01:43"
@@ -114,7 +114,7 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     @flight.update!(status: "preparation", started_at: nil, flight_import: nil, aircraft: nil, duration_seconds: nil, exit_at: nil, opening_at: nil, description: "Draft flight")
     get flights_path(folder: @folder.id)
     assert_select ".exds-browser-entry[data-entry=?][data-day-at]", "flight:#{@flight.id}" do
-      assert_select ".exds-browser-entry-link > *", 8
+      assert_select ".exds-browser-entry-link > *", 7
       assert_select ".exds-browser-entry-meta .status-dot", text: "Preparation"
       assert_select ".exds-browser-entry-time[title='Creation time'] time[data-local-time='clock'][datetime]", 1
       # A placeholder description names nothing and is not shown as one.

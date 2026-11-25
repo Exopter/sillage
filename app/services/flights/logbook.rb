@@ -77,7 +77,10 @@ module Flights
       end
       scope = scope.none if @filter == "set_aside"
       scope = scope.where(pilot_id: @user.id) if @filter == "mine"
-      scope = scope.where(environment: @environment) if @environment
+      if @environment
+        at_tunnel = [ "LOWER(BTRIM(COALESCE(flights.location, ''), ?)) = ?", " \t\r\n\f\v", Flight::TUNNEL_LOCATION.downcase ]
+        scope = @environment == "tunnel" ? scope.where(*at_tunnel) : scope.where.not(*at_tunnel)
+      end
       if @query.present?
         scope = scope.left_joins(:aircraft, :flight_import).where(
           "flights.name ILIKE :q OR EXISTS (SELECT 1 FROM flight_comments WHERE flight_comments.flight_id = flights.id AND flight_comments.body ILIKE :q) OR flights.code ILIKE :q OR flights.location ILIKE :q OR aircraft.registration ILIKE :q OR (flight_imports.id IN (:import_ids) AND flight_imports.source_filename ILIKE :q)", q: pattern, import_ids: FlightImport.accessible_to(@user).select(:id))

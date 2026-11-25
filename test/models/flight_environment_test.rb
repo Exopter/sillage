@@ -43,14 +43,21 @@ class FlightEnvironmentTest < ActiveSupport::TestCase
     assert_not flight.valid?
   end
 
-  test "the logbook filters by mode and leaves recordings out of a mode" do
-    tunnel = @user.flights.create!(status: "preparation", environment: "tunnel")
+  test "the logbook filters by location and leaves recordings out of a mode" do
+    tunnel = @user.flights.create!(status: "preparation", environment: "sky", location: " inclined slovenia ")
     sky = @user.flights.create!(status: "preparation", environment: "sky")
+    elsewhere = @user.flights.create!(status: "preparation", environment: "tunnel", location: "Elsewhere")
     ids = Flights::Logbook.new(user: @user, filter: "all", environment: "tunnel").flight_ids
     assert_includes ids, tunnel.id
     assert_not_includes ids, sky.id
+    assert_not_includes ids, elsewhere.id
     entries = Flights::Logbook.new(user: @user, filter: "all", environment: "tunnel").page(1)
-    assert entries.all? { |entry| entry.is_a?(Flight) && entry.tunnel? }
+    assert entries.all? { |entry| entry.is_a?(Flight) && entry.logbook_tunnel? }
+
+    entries = Flights::Logbook.new(user: @user, filter: "all", environment: "sky").page(1)
+    assert_includes entries, sky
+    assert_includes entries, elsewhere
+    assert entries.all? { |entry| entry.is_a?(Flight) && !entry.logbook_tunnel? }
   end
 
   test "a bulk edit changes the mode of the selection only" do
