@@ -20,7 +20,7 @@
       <span>Serial number</span>
       <%= form.text_field :serial_number %>
     </label>
-    <% if Current.user.admin? %>
+    <% if can_manage_operations? %>
       <label>
         <span>State</span>
         <% if part.state == "installed" %>

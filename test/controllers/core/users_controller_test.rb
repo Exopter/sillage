@@ -34,23 +34,36 @@ class Core::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "Invite user"
     assert_select "form[action='#{core_users_path}'] input[name='user[email_address]']"
+    assert_select "select[name='user[role]'] option[value='operator']", text: "Operator"
     assert_select ".exds-form-actions a[href='#{core_users_path}']", text: "Cancel"
   end
 
-  test "invites users from Core" do
+  test "invites operators from Core" do
     sign_in_as users(:julien)
 
     assert_enqueued_emails 1 do
       post core_users_path, params: {
         user: {
           email_address: "new.operator@exopter.com",
-          role: "user"
+          role: "operator"
         }
       }
     end
 
     assert_redirected_to core_users_path
-    assert_equal "user", User.find_by!(email_address: "new.operator@exopter.com").role
+    assert_equal "operator", User.find_by!(email_address: "new.operator@exopter.com").role
+  end
+
+  test "assigns the Operator role to an existing user" do
+    sign_in_as users(:julien)
+    user = users(:operator)
+
+    get edit_core_user_path(user)
+    assert_select "select[name='user[role]'] option[value='operator']", text: "Operator"
+    patch core_user_path(user), params: { user: { role: "operator" } }
+
+    assert_redirected_to core_users_path
+    assert_equal "operator", user.reload.role
   end
 
   test "invites Flight Club members with a name, a rank and a member number" do

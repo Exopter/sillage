@@ -101,7 +101,7 @@ module Hangar
 
     def part_params
       allowed = %i[function_id manufacturer model serial_number notes]
-      allowed << :state if Current.user.admin?
+      allowed << :state if can_manage_operations?
       params.require(:part).permit(*allowed)
     end
 

@@ -13,7 +13,7 @@ module RoleAccess
   # Regular users prepare and log flights, and do everything on a flight they can see: its details,
   # comments, debrief, videos, deletion and the import of its recording. Each controller scopes the
   # flight to the ones visible to the user. Standalone recordings, Signal, hardware and selections of
-  # several flights stay with administrators.
+  # several flights require operations access.
   FLIGHT_ACTIONS = {
     "flights" => %w[new create edit update destroy],
     "flight_imports" => %w[new create],
@@ -32,7 +32,7 @@ module RoleAccess
   private
 
   def can_manage_operations?
-    Current.user&.admin? == true
+    Current.user&.operations_access? == true
   end
 
   def can_access_signal?
@@ -46,6 +46,7 @@ module RoleAccess
 
   def enforce_role_access
     return unless Current.user || resume_session
+    return deny_role_access("Administrator access is required.") if controller_path.start_with?("core/") && !Current.user.admin?
     return if can_manage_operations? || ACCOUNT_CONTROLLERS.include?(controller_path)
     return if FLIGHT_ACTIONS.fetch(controller_path, []).include?(action_name)
     return if (request.get? || request.head?) && READ_ACTIONS.fetch(controller_path, []).include?(action_name) &&
@@ -54,9 +55,9 @@ module RoleAccess
     deny_role_access
   end
 
-  def deny_role_access
+  def deny_role_access(message = nil)
     rooms = can_access_signal? ? "Flights and Signal" : "Flights"
-    message = "Your account works on the flights it can see and has read-only access to the rest of #{rooms}. Administrator access is required for this action."
+    message ||= "Your account works on the flights it can see and has read-only access to the rest of #{rooms}. Operator or Administrator access is required for this action."
     if request.format.json? || controller_path.start_with?("api/")
       render json: { error: message }, status: :forbidden
     else

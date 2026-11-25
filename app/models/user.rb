@@ -2,7 +2,7 @@ require "rotp"
 require "digest"
 
 class User < ApplicationRecord
-  ROLES = %w[admin user].freeze
+  ROLES = %w[admin operator user].freeze
   # `core_team` is the Exopter team edition; the other tiers are client memberships.
   MEMBERSHIP_TIERS = %w[pioneer explorer pathfinder trailblazer core_team].freeze
   MEMBER_NUMBER_SEQUENCE = "flight_club_member"
@@ -91,6 +91,10 @@ class User < ApplicationRecord
     role == "admin"
   end
 
+  def operations_access?
+    admin? || role == "operator"
+  end
+
   def disabled?
     disabled_at.present?
   end
@@ -100,7 +104,7 @@ class User < ApplicationRecord
   end
 
   def signal_access?
-    admin? || !member?
+    operations_access? || !member?
   end
 
   def wing_settings?
