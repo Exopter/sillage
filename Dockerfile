@@ -15,7 +15,7 @@ FROM docker.io/library/ruby:$RUBY_VERSION-slim-trixie AS base
 WORKDIR /rails
 
 RUN apt-get update -qq && \
-    apt-get upgrade -y && \
+    apt-get upgrade -y && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libzstd1)" ge '1.5.7+dfsg-1+deb13u1' && \
     apt-get install --no-install-recommends -y curl ffmpeg libjemalloc2 postgresql-client && \
     ln -s /usr/lib/$(uname -m)-linux-gnu/libjemalloc.so.2 /usr/local/lib/libjemalloc.so && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
