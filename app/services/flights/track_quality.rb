@@ -1,9 +1,9 @@
 module Flights
   # Derived geometry only. Never edits or removes the recorded measurements.
   class TrackQuality
-    VERSION = 1
+    VERSION = 2
     MAX_HORIZONTAL_ACCURACY_M = 10.0
-    MAX_VERTICAL_ACCURACY_M = 20.0
+    MAX_VERTICAL_ACCURACY_M = 50.0
     MAX_SPEED_ACCURACY_MPS = 1.0
     MAX_GAP_SECONDS = 5.0
     MIN_POSITION_RESIDUAL_M = 25.0

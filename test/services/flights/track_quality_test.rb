@@ -1,6 +1,15 @@
 require "test_helper"
 
 class Flights::TrackQualityTest < ActiveSupport::TestCase
+  test "accepts vertical uncertainty up to and including 50 metres" do
+    points = [ 20.001, 50.0, 50.001 ].map.with_index do |accuracy, index|
+      point(index, 1_000).merge(vertical_accuracy_m: accuracy)
+    end
+    result = Flights::TrackQuality.new(points).call
+    assert_equal [ 0, 1 ], result.points.pluck(:elapsed_seconds)
+    assert_equal 1, result.rejected_count
+  end
+
   test "excludes no fix, invalid 3D flags and poor accuracy without changing input" do
     points = [ point(0, 10_200).merge(lat: 0, lon: 0, gps_fix: 0),
       point(1, 1_200).merge(gps_flags: 0), point(2, 1_180).merge(horizontal_accuracy_m: 100),
