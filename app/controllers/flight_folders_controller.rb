@@ -85,7 +85,7 @@ class FlightFoldersController < ApplicationController
 
   def load_member_options
     owner_id = @folder&.user_id || Current.user.id
-    @member_options = User.active.where.not(id: owner_id).where.not(invitation_accepted_at: nil).order(:email_address)
+    @member_options = User.available_for_sharing.where.not(id: owner_id).order(:email_address)
   end
 
   def duplicate_name(view)
