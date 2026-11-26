@@ -84,7 +84,7 @@
               <%= tag.div class: "exds-browser-entry", aria: { current: selected.to_s }, draggable: (can_manage_operations? && accessible && flight).to_s, data: { entry: browser_key(entry), day_at: instant&.utc&.iso8601, day: (entry_day unless instant), action: "dragstart->flight-browser#startDrag" } do %>
                 <% if can_manage_operations? && accessible %><label><input type="checkbox" name="entries[]" value="<%= browser_key(entry) %>" <%= "checked" if flight && @bulk_ids&.include?(entry.id) %> data-table-selection-target="item" data-action="change->table-selection#update"><span class="sr-only">Select <%= browser_name(entry) %></span></label><% end %>
                 <%= link_to browser_preview_path(entry), class: "exds-browser-entry-link", draggable: false, data: { turbo_frame: "flight-preview", flight_browser_target: "entry", open_url: browser_open_path(entry), selected: selected, name: browser_name(entry), action: "click->flight-browser#select dblclick->flight-browser#open" }, aria: { label: ["Preview #{browser_name(entry)}", mode].compact.join(", ") } do %>
-                  <% entry_state, entry_status = flight ? (logbook_status(entry) || [ "ready", "Completed" ]) : recording_logbook_status(entry) %>
+                  <% entry_state, entry_status = flight ? logbook_status(entry) : recording_logbook_status(entry) %>
                   <%# One cell per column, always rendered so every row fills the shared grid. The day is the group header. %>
                   <span class="exds-browser-entry-time" title="<%= "Creation time" if flight && entry.started_at.nil? && !entry.flown_on %>"><%= browser_time(entry) || "--:--" %></span>
                   <% if flight %><%= render "flights/pilot", flight: entry, show_name: false %><% else %><span class="exds-browser-entry-kind"><%= sillage_icon "file-text", size: 16 %></span><% end %>
@@ -100,7 +100,7 @@
                   <span class="exds-browser-entry-meta">
                     <% if flight && browser_visibility(entry) == "private" %><span title="Private"><%= sillage_icon "lock-keyhole", size: 14 %><span class="sr-only">Private</span></span><% end %>
                     <% if flight && (cameras = @camera_counts&.fetch(entry.id, nil)) %><span class="exds-browser-entry-cameras" title="<%= pluralize(cameras, "camera") %>"><%= sillage_icon "video", size: 14 %><%= cameras %><span class="sr-only"> <%= "camera".pluralize(cameras) %></span></span><% end %>
-                    <span class="status-dot is-<%= entry_state %>" title="<%= entry_status %>"><span></span><%= entry_status %></span>
+                    <% if entry_status %><span class="status-dot is-<%= entry_state %>" title="<%= entry_status %>"><span></span><%= entry_status %></span><% end %>
                   </span>
                 <% end %>
               <% end %>

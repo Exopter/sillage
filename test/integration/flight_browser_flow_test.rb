@@ -27,7 +27,10 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_redirected_to flights_path(folder: @folder.id, selected: "flight:#{@flight.id}")
     assert_predicate @flight.reload, :completed?
     follow_redirect!
-    assert_select "#flight-preview .status-dot.is-ready", text: "Completed"
+    assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}", count: 1 do
+      assert_select ".status-dot", count: 0
+    end
+    assert_select "#flight-preview .status-dot", count: 0
     assert_select "#flight-preview summary[aria-label='Edit status']", count: 0
   end
 
@@ -128,7 +131,7 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_select ".exds-browser-entries > .exds-browser-day[data-day-header]", text: "Fri 15 May 2026"
     assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
       assert_select ".exds-browser-entry-link > *", 7
-      assert_select ".exds-browser-entry-meta .status-dot.is-ready", text: "Completed"
+      assert_select ".status-dot", count: 0
       assert_select ".exds-browser-entry-time", text: "20:01"
       assert_select ".exds-browser-entry-copy strong", text: "Test flight"
       assert_select ".exds-browser-entry-link", text: /FLT-/, count: 0

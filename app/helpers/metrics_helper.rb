@@ -19,11 +19,9 @@ module MetricsHelper
     logbook_value(value.present? ? duration(value) : nil)
   end
 
-  # Ordinary logged and analysed flights do not need a status badge.
   def logbook_status(flight)
     return [ "unknown", "Preparation" ] if flight.preparation?
-    return [ "ready", "Completed" ] if flight.completed?
-    return if flight.logged?
+    return if flight.completed? || flight.logged?
     return [ "live", "Live" ] if flight.live?
     # The debrief comes first: it is recorded on the spot, the recording is imported later.
     return [ "caution", "Waiting for debrief" ] if flight.debrief_expected?
