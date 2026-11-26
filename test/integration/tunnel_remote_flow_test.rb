@@ -206,8 +206,7 @@ class TunnelRemoteFlowTest < ActionDispatch::IntegrationTest
     get flight_path(flight)
     assert_select "section[aria-label='Waiting for debrief']", count: 0
     get flights_path
-    # A flight with nothing in progress, awaited or wrong shows no status.
-    assert_select ".exds-browser-entry .status-dot", count: 0
+    assert_select ".exds-browser-entry[data-entry=?] .status-dot.is-ready", "flight:#{flight.id}", text: "Completed"
     get preview_flights_path(id: flight.id, kind: "flight"), headers: { "Turbo-Frame" => "flight-preview" }
     assert_select ".status-dot", count: 0
   end

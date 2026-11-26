@@ -128,7 +128,7 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_select ".exds-browser-entries > .exds-browser-day[data-day-header]", text: "Fri 15 May 2026"
     assert_select ".exds-browser-entry[data-entry=?]", "flight:#{@flight.id}" do
       assert_select ".exds-browser-entry-link > *", 7
-      assert_select ".status-dot", count: 0
+      assert_select ".exds-browser-entry-meta .status-dot.is-ready", text: "Completed"
       assert_select ".exds-browser-entry-time", text: "20:01"
       assert_select ".exds-browser-entry-copy strong", text: "Test flight"
       assert_select ".exds-browser-entry-link", text: /FLT-/, count: 0
