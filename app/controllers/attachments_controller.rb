@@ -45,7 +45,8 @@ class AttachmentsController < ApplicationController
     when TunnelVideo
       record.flight&.visible_to?(Current.user) || false
     when FlightImport
-      FlightImport.accessible_to(Current.user).exists?(record.id)
+      record.source_file_downloadable_by?(attachment, Current.user) &&
+        FlightImport.accessible_to(Current.user).exists?(record.id)
     when SignalSession
       SignalSession.accessible_to(Current.user).exists?(record.id)
     else

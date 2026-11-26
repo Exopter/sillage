@@ -53,6 +53,13 @@ class FlightImport < ApplicationRecord
     activity_summary["reason"].in?(%w[source_missing source_unavailable])
   end
 
+  def source_file_downloadable_by?(file, user)
+    return false unless user
+    return true if user.admin?
+
+    import_type != "exofdr" && !file.filename.extension.to_s.casecmp?("bin")
+  end
+
   def include_in_flights!
     with_lock do
       raise ExoFdr::Error, "The original source file is missing from storage." if source_missing?

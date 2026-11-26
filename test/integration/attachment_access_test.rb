@@ -130,6 +130,62 @@ class AttachmentAccessTest < ActionDispatch::IntegrationTest
     assert_select "#analysis a[href=?]", attachment_path(import.source_files.sole)
   end
 
+  test "only administrators can see or download flight binaries while shared CSV remains available" do
+    @flight.update!(visibility: "team")
+    import = @flight.flight_import
+    import.source_files.attach(io: StringIO.new("recording"), filename: "flight.Bin")
+    binary = attachment_path(import.source_files.sole)
+    csv = flight_path(@flight, format: :csv)
+
+    get flight_path(@flight)
+    assert_select "#analysis a[href=?]", binary
+    get binary
+    assert_response :success
+    assert_equal "recording", response.body
+
+    member = users(:member)
+    member.complete_membership_welcome!
+    operator = users(:operator)
+    operator.update!(role: "operator")
+    [ member, operator ].each do |user|
+      sign_in_as user
+      get flight_path(@flight)
+      assert_select "#analysis a[href=?]", binary, count: 0
+      assert_select "#analysis a[href=?]", csv
+      get csv
+      assert_response :success
+      get binary
+      assert_response :not_found
+    end
+
+    @flight.track_points.delete_all
+    @flight.sensor_samples.delete_all
+    get flight_path(@flight)
+    assert_select "#raw-data-title", count: 0
+  end
+
+  test "recording details hide ExoFDR source downloads from non-admin owners even for renamed binaries" do
+    @flight.update!(visibility: "team")
+    owner = users(:operator)
+    owner.update!(role: "operator")
+    recording = owner.flight_imports.create!(source_filename: "recording.dat", import_type: "exofdr", target_flight: @flight)
+    recording.source_files.attach(io: StringIO.new("recording"), filename: "recording.dat")
+    source = attachment_path(recording.source_files.sole)
+    details = flights_path(recording: recording.id)
+
+    get details
+    assert_select "#recording-details a[href=?]", source
+
+    sign_in_as owner
+    get details
+    assert_select "#recording-details" do
+      assert_select "h3", text: "Source files", count: 0
+      assert_select "a[href=?]", source, count: 0
+    end
+    get source, headers: { "Range" => "bytes=0-3" }
+    assert_response :not_found
+  end
+
   test "a shared import offers only binaries referenced by the selected flight" do
     import = @flight.flight_import
     flights(:two).update!(flight_import: import)

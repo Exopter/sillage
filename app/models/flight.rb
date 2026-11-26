@@ -102,6 +102,8 @@ class Flight < ApplicationRecord
   end
 
   def raw_binaries_for(user)
+    return [] unless user&.admin?
+
     imports = FlightImport.accessible_to(user)
     linked = imports.where(target_flight_id: id).or(imports.where("details ->> 'signal_flight_id' = ?", id.to_s))
     linked = linked.or(imports.where(id: flight_import_id)) if flight_import_id

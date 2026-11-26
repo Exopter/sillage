@@ -62,11 +62,12 @@
       </section>
     <% end %>
 
-    <% if !recording.source_missing? && recording.source_files.attached? %>
+    <% source_files = recording.source_files.select { |file| recording.source_file_downloadable_by?(file, Current.user) } unless recording.source_missing? %>
+    <% if source_files.present? %>
       <section class="exds-browser-editor-section">
         <h3>Source files</h3>
         <dl class="exds-browser-metadata">
-          <% recording.source_files.each do |source| %>
+          <% source_files.each do |source| %>
             <div>
               <dt><%= number_to_human_size(source.byte_size) %></dt>
               <dd>
