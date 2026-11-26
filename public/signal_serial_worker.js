@@ -215,9 +215,12 @@ function decode(messageId, payload, coordinateFrame) {
   }
   if (messageId === 42001 && payload.length >= 32) {
     const differentialPa = f32(24), gLoad = f32(28)
+    // MAVLink 2 extension from firmware /70: absent on older recorders, NaN when unavailable.
+    const staticPa = payload.length >= 36 ? f32(32) : NaN
     return {name: "live_instruments", timeUs: String(u32(0) * 1000),
       attitude: decodeAttitude(u32(4), [f32(8), f32(12), f32(16), f32(20)], [NaN, NaN, NaN], "sensor_native"),
       differentialPa: Number.isFinite(differentialPa) ? differentialPa : null,
+      staticPa: Number.isFinite(staticPa) && staticPa > 0 ? staticPa : null,
       gLoad: Number.isFinite(gLoad) && gLoad >= 0 ? gLoad : null}
   }
 

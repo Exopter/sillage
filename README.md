@@ -176,6 +176,12 @@ The instrument and telemetry-strip `G load` readouts show the received three-axi
 accelerometer magnitude divided by 9.80665 m/s²: about 1 g at rest and 0 g in free
 fall, regardless of mounting orientation. This unsigned total load is derived
 only for display; stale or invalid acceleration shows no value.
+The raw telemetry strip shows `Pitot static` in hPa: the AUAV absolute channel
+on the pitot static line, sent in the `FDR_LIVE_INSTRUMENTS` extension field by
+integrated firmware `/70` and in `HIGHRES_IMU.abs_pressure` by the distributed
+Seat. It is an uncalibrated nominal reading, sampled at 1 Hz; recorders without
+it show no value. ExoFDR imports keep record type `15` as `STATIC_PRESSURE`
+sensor samples. They do not feed pressure altitude or flight analysis.
 
 Signal's top-bar module icons display Main (the tunnel prototype's Seat), Central,
 AirSpeed and Display independently: source identity, sensor readiness, storage,

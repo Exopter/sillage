@@ -495,7 +495,8 @@ class SignalFlowTest < ActionDispatch::IntegrationTest
     assert_select "#signal-development-status", count: 0
     assert_select ".signal-root button", minimum: 1
     assert_select ".signal-root button[data-action='signal-workspace#endSession']:not([disabled])"
-    assert_select ".signal-root [data-signal-workspace-target='sensorValue']", count: 7
+    assert_select ".signal-root [data-signal-workspace-target='sensorValue']", count: 8
+    assert_select ".signal-sensor-strip [data-signal-workspace-target='sensorValue'][data-sensor='staticPressure'] + small", text: "hPa"
     assert_select ".signal-aircraft[hidden]"
     assert_select ".signal-map-body[style]", count: 0
     assert_select "[data-signal-workspace-target='mapScene'][aria-label='Live GPS position on the 3D satellite map']"

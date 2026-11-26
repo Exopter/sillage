@@ -210,6 +210,9 @@ module ExoFdr
         when "airspeed"
           sensors << sensor_sample("AIRSPEED", record, recorded_at, elapsed,
             %w[sensor_pressure_pa differential_pressure_pa temperature_c airspeed_m_s]).merge(provenance(record, recording, blob))
+        when "static_pressure"
+          sensors << sensor_sample("STATIC_PRESSURE", record, recorded_at, elapsed,
+            %w[static_pressure_pa temperature_c]).merge(provenance(record, recording, blob))
         when "airspeed_diagnostic"
           keys = %w[diagnostic_version failure_reason_id failure_reason phase i2c_error sensor_status received_bytes
             bus_levels state_flags raw_hex last_successful_status attempt_duration_us measurement_attempts

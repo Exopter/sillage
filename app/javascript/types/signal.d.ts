@@ -4,7 +4,7 @@ export type ModuleStatusTelemetry = { name: "module_status"; timeBootMs: number;
 
 export type DecodedMessage =
   | ModuleStatusTelemetry
-  | { name: "live_instruments"; timeUs: string; attitude: AttitudeTelemetry | null; differentialPa: number | null; gLoad: number | null }
+  | { name: "live_instruments"; timeUs: string; attitude: AttitudeTelemetry | null; differentialPa: number | null; staticPa?: number | null; gLoad: number | null }
   | { name: "imu_quality"; trigger?: {groundFirst?: boolean; signal: boolean; revision: number; flight: number; index: number}; deviceId: string; bootId: number; timeBootMs: number; imuEpoch: number; firmware: string; headingAccuracyDeg: number | null; agesMs: number[]; validity: number; accuracy: number[] }
   | { name: "heartbeat"; customMode: number; type: number; autopilot: number; baseMode: number; systemStatus: number }
   | { name: "system_status"; sensorsPresent: number; sensorsEnabled: number; sensorsHealthy: number; loadPermille: number; voltageMv: number; batteryRemaining: number }

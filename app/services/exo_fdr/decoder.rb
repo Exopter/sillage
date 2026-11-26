@@ -15,7 +15,9 @@ module ExoFdr
       3 => "airspeed",
       4 => "system_event",
       5 => "marker",
-      6 => "airspeed_diagnostic"
+      6 => "airspeed_diagnostic",
+      # Types 7..14 belong to the Lite recorder.
+      15 => "static_pressure"
     }.freeze
     IMU_NAMES = {
       0x01 => "accelerometer",
@@ -183,7 +185,7 @@ module ExoFdr
 
       magic, version, role, device, boot, sequence, timestamp, flags, kind, size = payload.unpack("vCCQ<VVQ<vCC")
       valid = payload.bytesize >= 32 && magic == 0xD1F1 && version == 1 && DISTRIBUTED_ROLES.key?(role) &&
-        device.positive? && (device >> 48).zero? && kind.between?(1, 6) && size <= 96 && payload.bytesize == 32 + size
+        device.positive? && (device >> 48).zero? && RECORD_NAMES.key?(kind) && size <= 96 && payload.bytesize == 32 + size
       unless valid
         @stats["malformed_headers"] += 1
         return []
@@ -253,6 +255,7 @@ module ExoFdr
       when 4 then decode_system_event(payload)
       when 5 then decode_marker(payload)
       when 6 then decode_airspeed_diagnostic(payload)
+      when 15 then decode_static_pressure(payload)
       else { "raw_hex" => payload.unpack1("H*"), "payload_size" => payload.bytesize }
       end
     end
@@ -313,6 +316,14 @@ module ExoFdr
 
       marker_id, source_system, source_component, _reserved = payload.unpack("VCCv")
       { "marker_id" => marker_id, "source_system" => source_system, "source_component" => source_component }
+    end
+
+    # AUAV absolute channel on the pitot static line, nominal transfer function.
+    def decode_static_pressure(payload)
+      return raw_payload(payload) unless payload.bytesize == 15
+
+      raw, pressure, temperature = payload.unpack("a7e2")
+      { "raw_hex" => raw.unpack1("H*"), "static_pressure_pa" => pressure, "temperature_c" => temperature }
     end
 
     def decode_airspeed_diagnostic(payload)

@@ -52,7 +52,7 @@
   </button>
   <div id="signal-telemetry-readings">
     <div class="signal-telemetry-strip signal-sensor-strip" aria-label="Live sensor measurements">
-      <% [["accel", "Acceleration", "m/s²"], ["gyro", "Gyroscope", "rad/s"], ["mag", "Magnetometer", "µT"], ["pressure", "Pitot differential", "Pa"], ["temperature", "Pitot temperature", "°C"], ["gps", "GPS", "Fix / satellites"]].reject { |key, _, _| tunnel && key.in?(%w[mag gps]) }.each do |key, label, unit| %>
+      <% [["accel", "Acceleration", "m/s²"], ["gyro", "Gyroscope", "rad/s"], ["mag", "Magnetometer", "µT"], ["pressure", "Pitot differential", "Pa"], ["staticPressure", "Pitot static", "hPa"], ["temperature", "Pitot temperature", "°C"], ["gps", "GPS", "Fix / satellites"]].reject { |key, _, _| tunnel && key.in?(%w[mag gps]) }.each do |key, label, unit| %>
         <div><span><%= label %><% if %w[accel gyro mag].include?(key) %> <span data-signal-workspace-target="sensorAxes" title="F/R/D: forward, right, down. X/Y/Z: native sensor axes.">X/Y/Z</span><% end %></span><strong data-signal-workspace-target="sensorValue" data-sensor="<%= key %>">---</strong><small><%= unit %></small></div>
       <% end %>
     </div>

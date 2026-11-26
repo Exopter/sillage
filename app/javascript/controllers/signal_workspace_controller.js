@@ -560,7 +560,7 @@ export default class extends TypedController {
     this.frameTimes = []
     this.mavlinkSystemId = null
     this.mavlinkComponentId = null
-    this.worker = new Worker("/signal_serial_worker.js?v=module-status-42002")
+    this.worker = new Worker("/signal_serial_worker.js?v=static-pressure-70")
     this.worker.onmessage = ({ data }) => this.handleWorkerMessage(data)
     this.worker.onerror = () => this.showWarning("Telemetry decoding stopped. Reconnect the link.")
     if (!this.standby) this.setStatus(this.recorderStatusTarget, "Checking the recorder", "idle")
@@ -933,6 +933,7 @@ export default class extends TypedController {
       gLoad: formatNumber(this.telemetry.gLoad, 2),
       accel: vector(this.telemetry.accel), gyro: vector(this.telemetry.gyro), mag: vector(this.telemetry.mag),
       pressure: formatNumber(this.telemetry.pressure, 2), temperature: formatNumber(this.telemetry.temperature, 1),
+      staticPressure: formatNumber(this.telemetry.staticPressure == null ? null : this.telemetry.staticPressure / 100, 2),
       gps: fix == null ? "---" : `${fix < 2 ? "No fix" : fix === 2 ? "2D fix" : "3D fix"} · ${formatNumber(this.telemetry.satellites)} sats`
     }
     this.sensorValueTargets.forEach((target) => { target.textContent = values[target.dataset.sensor || ""] || "---" })

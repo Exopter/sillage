@@ -17,7 +17,7 @@ for (const name of ["qualityAttitude", "qualityHeading", "attitudeDetail", "head
 for (const name of ["radioStatus", "parserStatus", "dataStatus", "heading", "airspeed", "altitude", "verticalSpeed", "glide", "aircraftLabel"]) view[`${name}Target`] = {textContent: "", dataset: {}}
 // The flight dashboard has every optional target; the tunnel dashboard omits them.
 view.hasHeadingTarget = view.hasAltitudeTarget = view.hasMapSceneTarget = true
-view.sensorValueTargets = ["accel", "gyro", "mag", "pressure", "temperature", "gps", "gLoad"].map((sensor) => ({dataset: {sensor}, textContent: ""}))
+view.sensorValueTargets = ["accel", "gyro", "mag", "pressure", "staticPressure", "temperature", "gps", "gLoad"].map((sensor) => ({dataset: {sensor}, textContent: ""}))
 view.streamBadgeTargets = ["charts", "map", "instruments"].map((widget) => ({dataset: {}, textContent: "", closest: () => ({getAttribute: () => widget})}))
 view.port = {}
 view.acquisitionAuthorized = true
@@ -58,9 +58,10 @@ assert.equal(view.mavlinkSystemId, null, "radio status cannot resolve the FDR id
 assert.equal(view.pendingSamples.at(-1).sensor_type, "RADIO")
 assert.equal(view.pendingSamples.at(-1).readings.rssi, radio.rssi, "radio strength is persisted before aircraft telemetry arrives")
 assert.equal(view.pendingSamples.at(-1).readings.airTelemetryAgeMs, null)
-view.handleWorkerMessage(frame({name: "highres_imu", acceleration: [0, 0, 9.81], angularVelocity: [1, 2, 3], magneticField: [10, 20, 30], differentialPa: 61.25, temperatureC: 24}))
+view.handleWorkerMessage(frame({name: "highres_imu", acceleration: [0, 0, 9.81], angularVelocity: [1, 2, 3], magneticField: [10, 20, 30], absolutePa: 96325.5, differentialPa: 61.25, temperatureC: 24}))
 view.handleWorkerMessage(frame({name: "attitude", rollDeg: 10, pitchDeg: 20, yawDeg: 30}))
 view.refreshTelemetry()
+assert.equal(view.sensorValueTargets.find(target => target.dataset.sensor === "staticPressure").textContent, "963.25", "static pressure is shown in hPa")
 assert.equal(view.mavlinkSystemId, "1")
 assert.equal(view.mavlinkComponentId, "191")
 assert.equal(view.airspeedTarget.textContent, "36.0")
