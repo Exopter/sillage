@@ -15,6 +15,32 @@ class FlightBrowserFlowTest < ActionDispatch::IntegrationTest
     assert_select ".exds-browser-preview > header + a", count: 0
   end
 
+  test "a flight waiting for a recording can be completed from its preview" do
+    @flight.update!(status: "waiting_for_recording", flight_import: nil)
+    @flight.signal_sessions.create!(user: @owner, status: "completed")
+
+    get preview_flights_path(id: @flight.id, kind: "flight", folder: @folder.id), headers: { "Turbo-Frame" => "flight-preview" }
+    assert_select "summary[aria-label='Edit status'] .status-dot", text: "Waiting for recording"
+    assert_select "form[data-turbo-frame='flight-browser'] select[name='flight[status]'] option[value='completed']", text: "Completed"
+
+    patch flight_path(@flight), params: { flight: { status: "completed" }, return_to_browser: "1", folder: @folder.id }
+    assert_redirected_to flights_path(folder: @folder.id, selected: "flight:#{@flight.id}")
+    assert_predicate @flight.reload, :completed?
+    follow_redirect!
+    assert_select "#flight-preview .status-dot.is-ready", text: "Completed"
+    assert_select "#flight-preview summary[aria-label='Edit status']", count: 0
+  end
+
+  test "a status edit does not complete a flight with a recording" do
+    @flight.update!(status: "waiting_for_recording")
+
+    patch flight_path(@flight), params: { flight: { status: "completed" } }
+
+    assert_redirected_to flight_path(@flight)
+    assert_predicate @flight.reload, :waiting_for_recording?
+    assert_equal flight_imports(:one), @flight.flight_import
+  end
+
   test "a flight with tunnel cameras shows them in the list and plays them in the preview" do
     @flight.update!(environment: "tunnel", location: "Inclined Slovenia")
     side, top = %w[Side Top].map do |camera|

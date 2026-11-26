@@ -1,5 +1,5 @@
 class Flight < ApplicationRecord
-  STATUSES = %w[logged preparation live waiting_for_recording processing analysed review].freeze
+  STATUSES = %w[logged preparation live waiting_for_recording processing analysed review completed].freeze
   VIDEO_PROCESSING_STATUSES = %w[empty processing ready failed].freeze
   VIDEO_UPLOAD_EXTENSIONS = %w[.avi .m4v .mkv .mov .mp4 .webm].freeze
   LOCATION_SOURCES = %w[manual openstreetmap].freeze
@@ -192,6 +192,10 @@ class Flight < ApplicationRecord
     return @recording_expected unless @recording_expected.nil?
 
     recording_enabled?
+  end
+
+  def completable_without_recording?
+    waiting_for_recording? && flight_import_id.nil?
   end
 
   # A flight flown from the remote ends with a spoken debrief: once closed, it waits

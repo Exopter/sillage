@@ -62,7 +62,16 @@
       <% flight_time = browser_duration(entry) %>
       <% if !flight || flight_time.present? || entry.sample_count.positive? || entry.sensor_sample_count.positive? %><div><dt><%= flight ? "Flight time" : "Duration" %></dt><dd><%= logbook_duration(flight_time) %></dd></div><% end %>
       <% state, label = flight ? logbook_status(entry) : recording_logbook_status(entry) %>
-      <% if label %><div><dt>Status</dt><dd><span class="status-dot is-<%= state %>"><span></span><%= label %></span></dd></div><% end %>
+      <% editable_status = editable && label && entry.completable_without_recording? %>
+      <% if editable_status %>
+        <div><dt>Status</dt><dd>
+          <%= render layout: "flights/inline_edit", locals: { flight: entry, label: "status", fields: ->(form) { form.select :status, [[label, "waiting_for_recording"], ["Completed", "completed"]], {}, aria: { label: "Status" }, data: { action: "change->inline-edit#submit" } } } do %>
+            <span class="status-dot is-<%= state %>"><span></span><%= label %></span>
+          <% end %>
+        </dd></div>
+      <% elsif label %>
+        <div><dt>Status</dt><dd><span class="status-dot is-<%= state %>"><span></span><%= label %></span></dd></div>
+      <% end %>
     </dl>
     <% if flight %>
       <% if can_access_signal? && entry.live? && (live_session = entry.signal_sessions.where(status: %w[live syncing]).first) %>

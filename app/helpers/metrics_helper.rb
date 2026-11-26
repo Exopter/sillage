@@ -19,10 +19,10 @@ module MetricsHelper
     logbook_value(value.present? ? duration(value) : nil)
   end
 
-  # A status is shown only when something is in progress, awaited or wrong:
-  # a flight that is simply logged or analysed returns nothing.
+  # Ordinary logged and analysed flights do not need a status badge.
   def logbook_status(flight)
     return [ "unknown", "Preparation" ] if flight.preparation?
+    return [ "ready", "Completed" ] if flight.completed?
     return if flight.logged?
     return [ "live", "Live" ] if flight.live?
     # The debrief comes first: it is recorded on the spot, the recording is imported later.

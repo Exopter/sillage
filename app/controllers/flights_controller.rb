@@ -100,6 +100,7 @@ class FlightsController < ApplicationController
     @logging_preparation = @flight.preparation? && params[:intent] == "log"
     attributes = flight_params
     prepare_manual_location(attributes, current_location: @flight.location)
+    requested_status = attributes.delete(:status)
     video_upload = attributes.delete(:video_upload)
 
     if video_upload.present? && !video_upload?(video_upload)
@@ -107,12 +108,15 @@ class FlightsController < ApplicationController
       return
     end
 
-    @flight.flown_on ||= @flight.display_flown_on if !@flight.preparation? && attributes.key?(:location) && !attributes.key?(:flown_on)
-    @flight.folder_assignment_user = Current.user
-    @flight.assign_attributes(attributes)
-    @flight.status = "logged" if @logging_preparation
-    context = !@flight.preparation? && (attributes.key?(:flown_on) || attributes.key?(:location)) ? :logbook : nil
-    if @flight.save(context:)
+    saved = if requested_status == "completed"
+      @flight.with_lock do
+        status = "completed" if @flight.completable_without_recording?
+        save_flight_changes(attributes, status:)
+      end
+    else
+      save_flight_changes(attributes)
+    end
+    if saved
       @flight.capture_configuration!(replace: true) if @flight.saved_change_to_aircraft_id?
       enqueue_video_processing(video_upload) if video_upload.present?
       destination = if !@flight.visible_to?(Current.user)
@@ -217,6 +221,16 @@ class FlightsController < ApplicationController
     no_store
   end
 
+  def save_flight_changes(attributes, status: nil)
+    @flight.flown_on ||= @flight.display_flown_on if !@flight.preparation? && attributes.key?(:location) && !attributes.key?(:flown_on)
+    @flight.folder_assignment_user = Current.user
+    @flight.assign_attributes(attributes)
+    @flight.status = status if status
+    @flight.status = "logged" if @logging_preparation
+    context = !@flight.preparation? && (attributes.key?(:flown_on) || attributes.key?(:location)) ? :logbook : nil
+    @flight.save(context:)
+  end
+
   def cesium_ion_token
     ENV["CESIUM_ION_TOKEN"].presence ||
       Rails.application.credentials.dig(:cesium, :ion_token).presence
@@ -239,6 +253,7 @@ class FlightsController < ApplicationController
       :exit_at,
       :opening_at,
       :landing_at,
+      :status,
       :video_upload,
       :video_exit_offset_seconds,
       initial_comment_images: []
