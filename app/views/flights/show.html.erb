@@ -31,6 +31,7 @@
     ["Orientation samples (IMU)", @sensor_counts.fetch("IMU:rotation_vector", 0)]
   ]
   tunnel_videos = @flight.started_at ? @flight.tunnel_videos.ready.with_attached_file.playback_order.select(&:ready?) : []
+  independent_cameras = tunnel_videos.any? && tunnel_videos.all?(&:filmed_before_recording?)
 %>
 
 <h1 class="sr-only"><%= @flight.label %></h1>
@@ -46,7 +47,7 @@
         <div>
           <h2 id="flight-video-title"><%= t(@flight.tunnel? ? "flights.video.tunnel_title" : "flights.video.title") %></h2>
           <% if tunnel_videos.any? %>
-            <p><%= t("flights.video.tunnel_hint") %></p>
+            <p><%= t(independent_cameras ? "flights.video.debrief_camera_hint" : "flights.video.tunnel_hint") %></p>
           <% elsif @flight.sky? %>
             <p><%= t("flights.video.hint") %></p>
           <% end %>
@@ -75,7 +76,7 @@
       </div>
 
       <% if tunnel_videos.any? || uploaded_video %>
-        <%= render "flights/video_player", videos: tunnel_videos, uploaded: uploaded_video, viewer: true %>
+        <%= render "flights/video_player", videos: tunnel_videos, uploaded: uploaded_video, viewer: !independent_cameras %>
       <% end %>
       <% if uploaded_video && tunnel_videos.empty? %>
         <div class="video-sync-controls">
@@ -126,7 +127,7 @@
   data-flight-viewer-cesium-token-value="<%= @cesium_ion_token %>"
   data-flight-viewer-cesium-base-url-value="<%= Rails.application.config.x.cesium_base_url %>"
   data-flight-viewer-labels-value="<%= json_escape(t("flights.charts").to_json) %>"
-  <% if tunnel_videos.any? %>
+  <% if tunnel_videos.any? && !independent_cameras %>
     data-flight-viewer-video-start-elapsed-value="<%= tunnel_videos.first.start_elapsed_seconds %>"
   <% end %>
   <% if @flight.video_exit_offset_seconds.present? %>

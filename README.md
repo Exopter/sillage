@@ -328,9 +328,14 @@ The portal has no API: the client signs in, reads each 30-minute timeslot page
 and catalogues every clip by its media token. File names such as
 `#2_20261117_103824_Side.mp4` carry the recording start in portal local time
 (`TUNNEL_MEDIA_TIME_ZONE`, default `Europe/Ljubljana`). A clip is attached to
-the flight whose interval contains its start. The median delay between clip
+the flight whose interval contains its start, with a five-second allowance for
+a camera starting just before a unique normal flight. The median delay between clip
 start and flight end within the timeslot then recovers flights whose recorded
-start is wrong; unmatched clips stay catalogued for a later run. Candidates
+start is wrong. For a recording of at most ten seconds with a pilot debrief,
+the matcher checks the immediately preceding unassigned take. One camera's
+measured duration must place the end within three minutes before the marker
+(or five seconds after it). Ambiguous takes stay in the catalog. The player
+opens post-flight footage independently of the marker clock. Candidates
 are flights in Tunnel mode at `TUNNEL_MEDIA_LOCATION` only.
 
 In production the optimized clips are stored under `tunnel-videos/` in the

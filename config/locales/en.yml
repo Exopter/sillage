@@ -105,6 +105,7 @@ en:
       tunnel_cameras: "Camera of clip %{clip}"
       tunnel_actions: "Clip actions"
       tunnel_title: "Tunnel cameras"
+      debrief_camera_hint: "The cameras filmed this passage before the debrief. Play the footage on its own timeline."
       tunnel_hint: "Clips from the tunnel cameras are matched to this flight and aligned on the recording clock."
       tunnel_empty_title: "No camera clip yet"
       tunnel_empty: "Clips published by the tunnel cameras are matched to this flight on the recording clock."

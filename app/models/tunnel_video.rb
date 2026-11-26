@@ -2,7 +2,7 @@
 class TunnelVideo < ApplicationRecord
   STATUSES = %w[pending downloading ready failed ignored].freeze
   MINIMUM_DURATION_SECONDS = 10.0
-  MATCH_METHODS = %w[interval end_lag].freeze
+  MATCH_METHODS = %w[interval near_start end_lag post_flight_debrief].freeze
 
   belongs_to :flight, optional: true
   has_one_attached :file, service: Rails.configuration.x.tunnel_video_storage_service
@@ -29,6 +29,10 @@ class TunnelVideo < ApplicationRecord
 
   def ready?
     status == "ready" && file.attached?
+  end
+
+  def filmed_before_recording?
+    match_method == "post_flight_debrief" || (duration_seconds && flight&.started_at && recorded_at + duration_seconds <= flight.started_at)
   end
 
   # Flight timeline position of the first video frame.

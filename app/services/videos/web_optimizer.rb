@@ -1,9 +1,8 @@
-require "open3"
 require "tempfile"
 
 module Videos
   class WebOptimizer
-    class Error < StandardError; end
+    Error = MediaTools::Error
 
     Result = Struct.new(:io, :filename, :duration_seconds, keyword_init: true) do
       def close
@@ -14,8 +13,7 @@ module Videos
     def initialize(blob, ffmpeg_path: ENV.fetch("FFMPEG_PATH", "ffmpeg"), ffprobe_path: ENV.fetch("FFPROBE_PATH", "ffprobe"), timeout_seconds: 1_800)
       @blob = blob
       @ffmpeg_path = ffmpeg_path
-      @ffprobe_path = ffprobe_path
-      @timeout_seconds = timeout_seconds
+      @tools = MediaTools.new(ffprobe_path:, timeout_seconds:)
     end
 
     def call
@@ -31,7 +29,7 @@ module Videos
       result = Result.new(
         io: output,
         filename: optimized_filename,
-        duration_seconds: probe_duration(output.path)
+        duration_seconds: @tools.probe_duration(output.path)
       )
     ensure
       input&.close!
@@ -40,7 +38,7 @@ module Videos
 
     private
 
-    attr_reader :blob, :ffmpeg_path, :ffprobe_path
+    attr_reader :blob, :ffmpeg_path
 
     def download_input
       extension = blob.filename.extension_with_delimiter.presence || ".video"
@@ -55,7 +53,7 @@ module Videos
     end
 
     def run_ffmpeg(input_path, output_path)
-      run!(
+      @tools.run!(
         ffmpeg_path,
         "-hide_banner",
         "-y",
@@ -77,51 +75,6 @@ module Videos
         "-movflags", "+faststart",
         output_path
       )
-    end
-
-    def probe_duration(path)
-      stdout = run!(
-        ffprobe_path,
-        "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
-        path
-      ).first
-
-      duration = Float(stdout)
-      duration.positive? ? duration : nil
-    rescue ArgumentError
-      nil
-    end
-
-    def run!(*command)
-      stdout, stderr, status = Open3.popen3(*command, pgroup: true) do |input, output, errors, process|
-        input.close
-        readers = [ output, errors ].map do |stream|
-          Thread.new do
-            buffer = +""
-            loop do
-              buffer << stream.readpartial(16_384)
-              buffer = buffer.byteslice(-65_536, 65_536) if buffer.bytesize > 65_536
-            end
-          rescue EOFError
-            buffer
-          end
-        end
-        unless process.join(@timeout_seconds)
-          Process.kill("TERM", -process.pid) rescue Errno::ESRCH
-          Process.kill("KILL", -process.pid) unless process.join(2)
-          raise Error, "#{command.first} exceeded the processing time limit"
-        end
-        [ *readers.map(&:value), process.value ]
-      ensure
-        readers&.each { |reader| reader.kill if reader.alive? }
-      end
-      raise Error, "#{command.first} failed: #{stderr.presence || stdout}" unless status.success?
-
-      [ stdout, stderr ]
-    rescue Errno::ENOENT
-      raise Error, "#{command.first} is not installed"
     end
 
     def optimized_filename

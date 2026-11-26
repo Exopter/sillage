@@ -50,6 +50,38 @@ class TunnelMedia::MatcherTest < ActiveSupport::TestCase
     assert_equal %w[89 89 89], TunnelMedia::Matcher.new.call(clips, flights).map { |match| match.flight.name }
   end
 
+  test "a five-second debrief can follow a measured take by more than two minutes" do
+    take = clip("15:00:00")
+    marker = flight("late", "15:04:36", "15:04:41")
+    matcher = TunnelMedia::Matcher.new
+    assert_empty matcher.call([ take ], [ marker ], durations: { take => 120 })
+    assert_empty matcher.call([ take ], [ marker ], debriefed: [ marker ])
+    match, = matcher.call([ take ], [ marker ], debriefed: [ marker ], durations: { take => 120 })
+    assert_equal [ marker, "post_flight_debrief" ], [ match.flight, match.method ]
+  end
+
+  test "a later take, an intervening flight, competing debriefs or excessive delay break the association" do
+    take = clip("15:00:00")
+    marker = flight("late", "15:02:15", "15:02:20")
+    other = flight("other", "15:02:26", "15:02:31")
+    match = ->(flights, blocked = []) do
+      TunnelMedia::Matcher.new.call([ take ], flights, debriefed: flights, durations: { take => 120 }, blocked:)
+    end
+    assert_empty match.call([ marker ], [ clip("15:01:10") ])
+    assert_empty match.call([ marker, other ])
+    assert_empty match.call([ marker, flight("other", "15:01:10", "15:01:35") ])
+    assert_empty match.call([ flight("too late", "15:06:00", "15:06:05") ])
+  end
+
+  test "small camera clock differences match a normal flight only when it is unique" do
+    take = clip("15:00:00")
+    nearby = flight("flight", "15:00:03", "15:02:00")
+    matcher = TunnelMedia::Matcher.new
+    assert_equal [ "near_start" ], matcher.call([ take ], [ nearby ]).map(&:method)
+    assert_empty matcher.call([ take ], [ nearby, flight("other", "15:00:04", "15:02:02") ])
+    assert_empty matcher.call([ take ], [ flight("short", "15:00:03", "15:00:08") ])
+  end
+
   private
 
   def clip(time)

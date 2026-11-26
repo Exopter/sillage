@@ -1,7 +1,9 @@
 require "test_helper"
+require_relative "../../support/method_replacement"
 
 class TunnelMedia::SyncTest < ActiveSupport::TestCase
   include ActiveJob::TestHelper
+  include MethodReplacement
 
   NOW = Time.utc(2026, 11, 17, 12)
   SLOT = Time.utc(2026, 11, 17, 9, 0).to_i
@@ -105,6 +107,46 @@ class TunnelMedia::SyncTest < ActiveSupport::TestCase
     assert_empty again.requested
   end
 
+  test "reconciles cached cameras using one measured duration when the debrief follows flight" do
+    records = clips("09:10:00")
+    client = FakeClient.new(SLOT => FakeListing.new(records, [], []))
+    assert_equal 0, sync(client).call.matched
+    @first.update!(started_at: NOW.change(hour: 9, min: 14, sec: 35), ended_at: NOW.change(hour: 9, min: 14, sec: 40))
+    FlightDebrief.create!(flight: @first, uuid: SecureRandom.uuid, user: @first.user, transcript: "Last flight was stable.")
+    probe = Object.new
+    probe.define_singleton_method(:probe_duration) { |_path| 120.0 }
+    downloads = []
+    replace_method(TunnelMedia::Client, :download, ->(url, io) { downloads << url; io.write("source") }) do
+      replace_method(Videos::MediaTools, :new, -> { probe }) do
+        result = sync(client).reconcile
+        assert_equal [ 3, 2 ], [ result.matched, result.queued ]
+        assert_equal 0, sync(client).reconcile.matched
+      end
+    end
+    assert_equal [ records.detect { |r| r.camera == "Side" }.source_url ], downloads
+    assert_equal [ @first.id ], TunnelVideo.distinct.pluck(:flight_id)
+    assert_equal [ "post_flight_debrief" ], TunnelVideo.distinct.pluck(:match_method)
+  end
+
+  test "a later camera inherits its take's flight and an excluded take stays excluded" do
+    client = FakeClient.new(SLOT => FakeListing.new(clips("09:18:54", "09:23:45"), [], []))
+    sync(client).call
+    TunnelVideo.where(camera: "Front").update_all(flight_id: nil, match_method: nil)
+    TunnelVideo.where(flight: @second, camera: "Side").update_all(status: "ignored")
+    assert_equal 1, sync(client).reconcile.matched
+    assert_equal @first.id, TunnelVideo.find_by!(camera: "Front", clip_number: 1).flight_id
+    assert_nil TunnelVideo.find_by!(camera: "Front", clip_number: 2).flight_id
+  end
+
+  test "cached footage is matched even when portal sign-in fails" do
+    client = FakeClient.new(SLOT => FakeListing.new(clips("09:18:54"), [], []))
+    sync(client).call
+    TunnelVideo.update_all(flight_id: nil, match_method: nil)
+    client.define_singleton_method(:sign_in) { raise TunnelMedia::Client::Error, "temporarily unavailable" }
+    assert_raises(TunnelMedia::Client::Error) { sync(client).call }
+    assert_equal [ @first.id ], TunnelVideo.distinct.pluck(:flight_id)
+  end
+
   private
 
   def sync(client)
@@ -112,11 +154,11 @@ class TunnelMedia::SyncTest < ActiveSupport::TestCase
   end
 
   def clips(*times, day: 17)
-    times.flat_map do |time|
+    times.each_with_index.flat_map do |time, index|
       %w[Front Side Top].map do |camera|
         token = SecureRandom.hex(20)
-        TunnelMedia::Listing::Clip.new(media_token: token, filename: "#1_202611#{day}_#{time.delete(":")}_#{camera}.mp4",
-          source_url: "https://shop.example.test/index.php?media_token=#{token}", camera:, clip_number: 1,
+        TunnelMedia::Listing::Clip.new(media_token: token, filename: "##{index + 1}_202611#{day}_#{time.delete(":")}_#{camera}.mp4",
+          source_url: "https://shop.example.test/index.php?media_token=#{token}", camera:, clip_number: index + 1,
           recorded_at: Time.utc(2026, 11, day, *time.split(":").map(&:to_i)))
       end
     end

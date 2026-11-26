@@ -5,7 +5,6 @@ module TunnelMedia
 
     RESCAN_WINDOW = 2.days
     MATCH_WINDOW = 30.days
-    FLIGHT_MARGIN = 1.hour
     AWAITING_WINDOW = 3.days
 
     # Only tunnel flights at the portal's site receive clips.
@@ -27,8 +26,18 @@ module TunnelMedia
 
     def call
       discovered, skipped = discover
-      matched = match
-      Result.new(discovered:, matched:, queued: queue_downloads, skipped_filenames: skipped)
+      result = reconcile
+      result.discovered = discovered
+      result.skipped_filenames = skipped
+      result
+    rescue Client::Error
+      reconcile
+      raise
+    end
+
+    def reconcile(range = nil)
+      matched = Catalog.new(configuration: @configuration, matcher: @matcher).call(range || ((@now - MATCH_WINDOW)..@now))
+      Result.new(discovered: 0, matched:, queued: queue_downloads(range), skipped_filenames: [])
     end
 
     private
@@ -63,19 +72,11 @@ module TunnelMedia
       TunnelVideo.insert_all(rows, unique_by: :media_token).length
     end
 
-    def match
-      clips = TunnelVideo.unmatched.where(recorded_at: (@now - MATCH_WINDOW)..).to_a
-      return 0 if clips.empty?
-
-      range = (clips.map(&:recorded_at).min - FLIGHT_MARGIN)..(clips.map(&:recorded_at).max + FLIGHT_MARGIN)
-      @matcher.call(clips, self.class.eligible_flights(@configuration).where(started_at: range).to_a).count do |match|
-        match.clip.update!(flight: match.flight, match_method: match.method)
-      end
-    end
-
-    def queue_downloads
+    def queue_downloads(range)
       # Every camera is catalogued; only the configured ones are stored.
-      TunnelVideo.where(status: "pending", camera: @configuration.cameras).where.not(flight_id: nil).count do |video|
+      pending = TunnelVideo.where(status: "pending", camera: @configuration.cameras).where.not(flight_id: nil)
+      pending = pending.where(recorded_at: range) if range
+      pending.count do |video|
         TunnelVideoDownloadJob.perform_later(video)
       end
     end

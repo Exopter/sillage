@@ -23,6 +23,16 @@ class TunnelVideosTest < ActionDispatch::IntegrationTest
     assert_select ".video-sync-actions .video-upload-form input[type='file'][name='flight[video_upload]']", 1
   end
 
+  test "a post-flight debrief plays its camera footage from the beginning independently of the marker" do
+    @flight.update!(environment: "tunnel", ended_at: @flight.started_at + 5.seconds)
+    [ @side, @top ].each { |video| video.update!(recorded_at: @flight.started_at - 140, duration_seconds: 120, match_method: "post_flight_debrief") }
+    get flight_path(@flight)
+    assert_response :success
+    assert_select "div[data-controller='video-source'] video[src='#{attachment_path(@side.file.attachment)}']"
+    assert_select "button[data-video-source-target='source']", 2
+    assert_select "[data-flight-viewer-video-start-elapsed-value]", 0
+  end
+
   test "an uploaded video joins the tunnel cameras as one more source" do
     @flight.video.attach(io: StringIO.new("0123456789"), filename: "own.mp4", content_type: "video/mp4", identify: false)
     @flight.update!(video_exit_offset_seconds: 4.5)
