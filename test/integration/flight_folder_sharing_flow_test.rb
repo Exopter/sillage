@@ -156,17 +156,23 @@ class FlightFolderSharingFlowTest < ActionDispatch::IntegrationTest
     assert_equal "private", own.effective_visibility
   end
 
-  test "owner manages membership atomically and rejects unaccepted or missing accounts" do
+  test "owner can share with invited users and membership updates remain atomic" do
     sign_in_as @owner
     get edit_flight_folder_path(@folder), headers: { "Turbo-Frame" => "folder-sharing" }
     assert_select "turbo-frame#folder-sharing dialog"
     assert_select ".exds-browser-member-list input[type='hidden'][name='flight_folder[member_ids][]'][value=?]", @member.id.to_s
     assert_select "input[type='checkbox']", count: 0
-    [ users(:invited).id, 999_999_999, @owner.id ].each do |id|
+    patch flight_folder_path(@folder), params: { flight_folder: { visibility: "shared", member_ids: [ @member.id, users(:invited).id ] } }
+    assert_response :redirect
+    assert_equal [ @member.id, users(:invited).id ].sort, @folder.reload.member_ids.sort
+    get edit_flight_folder_path(@folder), headers: { "Turbo-Frame" => "folder-sharing" }
+    assert_select ".exds-browser-member-list", text: /invitation pending/
+
+    [ 999_999_999, @owner.id ].each do |id|
       patch flight_folder_path(@folder), params: { flight_folder: { visibility: "public", member_ids: [ id ] } }
       assert_response :not_found
       assert_equal "shared", @folder.reload.visibility
-      assert_equal [ @member.id ], @folder.member_ids
+      assert_equal [ @member.id, users(:invited).id ].sort, @folder.member_ids.sort
     end
     patch flight_folder_path(@folder), params: { return_to_browser: "1", flight_folder: { visibility: "public", member_ids: [ "" ] } }
     assert_redirected_to flights_path(folder: @folder.id)
@@ -177,12 +183,12 @@ class FlightFolderSharingFlowTest < ActionDispatch::IntegrationTest
   test "member search is authenticated bounded and excludes ineligible or selected people" do
     get member_search_flight_folders_path(q: "exopter")
     assert_response :success
-    assert_equal [ @owner.id ], response.parsed_body.fetch("members").map { |member| member.fetch("id") }
+    assert_equal [ @owner.id, users(:invited).id ].sort, response.parsed_body.fetch("members").map { |member| member.fetch("id") }.sort
     assert_equal %w[email id], response.parsed_body.fetch("members").first.keys.sort
     assert_match "no-store", response.headers["Cache-Control"]
 
     get member_search_flight_folders_path(q: "exopter", exclude_ids: [ @owner.id ])
-    assert_empty response.parsed_body.fetch("members")
+    assert_equal [ users(:invited).id ], response.parsed_body.fetch("members").map { |member| member.fetch("id") }
     [ "", "e", "%_" ].each do |query|
       get member_search_flight_folders_path(q: query)
       assert_empty response.parsed_body.fetch("members")

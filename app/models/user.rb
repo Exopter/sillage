@@ -69,6 +69,9 @@ class User < ApplicationRecord
   scope :active, -> { where(disabled_at: nil) }
   # An invited user can be given flights before accepting the invitation.
   scope :available_as_pilot, -> { active }
+  scope :available_for_sharing, -> {
+    active.where("invitation_accepted_at IS NOT NULL OR invitation_sent_at >= ?", INVITATION_VALIDITY.ago)
+  }
   scope :admins, -> { where(role: "admin") }
 
   def self.default_admin

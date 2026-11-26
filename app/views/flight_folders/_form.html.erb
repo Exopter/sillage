@@ -34,7 +34,7 @@
     </ul>
     <p class="exds-browser-caption" data-folder-members-target="empty" <%= "hidden" if selected_members.any? %>>No members added yet.</p>
     <template data-folder-members-target="template"><%= render "member", member: nil %></template>
-    <p class="exds-browser-caption">Members can view every flight, add their own flights and manage this folder. Changes apply when you save.</p>
+    <p class="exds-browser-caption">Members can view every flight, add their own flights and manage this folder. Invited people can access it after accepting their invitation. Changes apply when you save.</p>
   </fieldset>
   <p class="exds-browser-caption">Every flight in this folder inherits its visibility. Unfiled flights use their individual visibility. Its creator and its members can rename, recolor, share or delete it.</p>
   <% if folder.persisted? && !folder.owned_by?(Current.user) %><p class="exds-browser-caption">Created by <%= folder.user.email_address %>, who always keeps access.</p><% end %>
