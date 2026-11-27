@@ -15,6 +15,10 @@ Rails.application.routes.draw do
 
   constraints ->(request) { landing_hosts.include?(request.host) } do
     root "landing#show", as: :landing_root
+    get "preview" => "landing#preview", as: :landing_preview
+    get "privacy" => "site_pages#privacy", as: :site_privacy
+    get "support" => "site_pages#support", as: :site_support
+    get "legal" => "site_pages#legal", as: :site_legal
   end
 
   resource :session, only: %i[new create destroy]
@@ -103,6 +107,18 @@ Rails.application.routes.draw do
   end
 
   namespace :api do
+    # Exopter mobile app.
+    namespace :app do
+      namespace :v1 do
+        resource :session, only: :create
+        resource :two_factor_session, only: :create, path: "two-factor-session"
+        delete "tokens/current", to: "tokens#destroy", as: :current_token
+        resource :account, only: :show
+        resources :recorders, only: :index
+        get "firmware/latest", to: "firmware_releases#latest", as: :latest_firmware
+      end
+    end
+
     namespace :v1 do
       resource :recorder_connections, only: :update, controller: "recorder_connections", path: "recorder-connections"
       get "recorder-connections", to: "recorder_connections#index"

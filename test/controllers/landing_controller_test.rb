@@ -11,10 +11,10 @@ class LandingControllerTest < ActionDispatch::IntegrationTest
     restore_env("SILLAGE_LANDING_BASIC_AUTH_PASSWORD", @auth_password)
   end
 
-  test "shows the landing page on the local landing host" do
+  test "shows the full landing preview on the local landing host" do
     host! "landing.localhost:3000"
 
-    get root_path
+    get landing_preview_path
 
     assert_response :success
     assert_select "body.landing-page"
@@ -34,26 +34,26 @@ class LandingControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "shows the landing page on the production apex host" do
+  test "shows the full landing preview on the production apex host" do
     host! "exopter.com"
 
-    get root_path
+    get landing_preview_path
 
     assert_response :success
     assert_select "body.landing-page"
     assert_select "a[href='#airframe']", "Airframe"
   end
 
-  test "requires basic auth when landing credentials are configured" do
+  test "requires basic auth on the preview when landing credentials are configured" do
     ENV["SILLAGE_LANDING_BASIC_AUTH_USERNAME"] = "exopter"
     ENV["SILLAGE_LANDING_BASIC_AUTH_PASSWORD"] = "correct-password"
     host! "exopter.com"
 
-    get root_path
+    get landing_preview_path
 
     assert_response :unauthorized
 
-    get root_path, headers: {
+    get landing_preview_path, headers: {
       "HTTP_AUTHORIZATION" => ActionController::HttpAuthentication::Basic.encode_credentials(
         "exopter",
         "correct-password"
@@ -62,6 +62,35 @@ class LandingControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "body.landing-page"
+  end
+
+  test "shows the public holding page with legal links even when the preview is protected" do
+    ENV["SILLAGE_LANDING_BASIC_AUTH_USERNAME"] = "exopter"
+    ENV["SILLAGE_LANDING_BASIC_AUTH_PASSWORD"] = "correct-password"
+    host! "exopter.com"
+
+    get root_path
+
+    assert_response :success
+    assert_select "body.site-page"
+    assert_select "h1", "Coming soon"
+    assert_select ".site-hold-mark svg", count: 1
+    assert_select ".site-footer a[href='#{site_support_path}']", "Support"
+    assert_select ".site-footer a[href='#{site_privacy_path}']", "Privacy"
+    assert_select ".site-footer a[href='#{site_legal_path}']", "Legal notice"
+    assert_select "script[type='importmap']", count: 0
+  end
+
+  test "serves the public support, privacy and legal pages" do
+    host! "exopter.com"
+
+    { site_support_path => "Support", site_privacy_path => "Privacy policy", site_legal_path => "Legal notice" }.each do |path, title|
+      get path
+
+      assert_response :success
+      assert_select "h1", title
+      assert_select "a[href='mailto:support@exopter.com']"
+    end
   end
 
   test "keeps the Sillage app root on the Sillage host" do

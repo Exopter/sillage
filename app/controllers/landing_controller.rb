@@ -1,12 +1,18 @@
 require "digest"
 
 class LandingController < ApplicationController
-  layout "landing"
   allow_unauthenticated_access
-  before_action :authenticate_landing_access
+  before_action :authenticate_landing_access, only: :preview
 
+  # Public holding page of exopter.com.
   def show
+    render layout: "site"
+  end
+
+  # The full product landing, kept behind basic auth until launch.
+  def preview
     @sillage_url = sillage_url
+    render layout: "landing"
   end
 
   private

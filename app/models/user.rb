@@ -24,6 +24,7 @@ class User < ApplicationRecord
   has_one_attached :avatar
 
   has_many :sessions, dependent: :destroy
+  has_many :app_tokens, dependent: :destroy
   has_many :feedbacks, dependent: :restrict_with_error
   has_many :flight_imports, dependent: :restrict_with_error
   has_many :flights, dependent: :restrict_with_error
@@ -42,6 +43,12 @@ class User < ApplicationRecord
 
   generates_token_for :invitation, expires_in: INVITATION_VALIDITY do
     [ email_address, invitation_sent_at&.to_i, invitation_accepted_at&.to_i ]
+  end
+
+  # Second step of the mobile app sign-in, after a valid password. The token is
+  # signed, not encrypted, so it carries a digest of the password hash, never the hash.
+  generates_token_for :app_two_factor, expires_in: 5.minutes do
+    [ Digest::SHA256.hexdigest(password_digest.to_s), otp_last_verified_at&.to_i ]
   end
 
   validates :email_address, presence: true, uniqueness: { case_sensitive: false }

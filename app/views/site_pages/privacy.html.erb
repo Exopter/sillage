@@ -1,0 +1,37 @@
+<% content_for :title, "Privacy policy" %>
+
+<main class="site-document">
+  <%= link_to landing_root_path, class: "site-document-home", aria: { label: "Exopter home" } do %>
+    <%= image_tag "logo-wordmark.svg", alt: "Exopter" %>
+  <% end %>
+
+  <h1>Privacy policy</h1>
+  <p class="site-lede">How Exopter handles personal data in the Exopter app, ExoFDR recorders and Sillage. Last updated <%= @updated_on.to_fs(:long) %>.</p>
+
+  <h2>Who is responsible</h2>
+  <p>Exopter is the data controller. Contact: <a href="mailto:<%= @contact_email %>"><%= @contact_email %></a>.</p>
+
+  <h2>What we collect</h2>
+  <ul>
+    <li><strong>Account</strong>: name, email address, password (stored as a hash) and, when enabled, a two-factor secret. Used to sign you in and to attribute flights to you.</li>
+    <li><strong>Flight recordings</strong>: data recorded by your ExoFDR recorder and sent to Sillage, including position, altitude, speed, attitude and sensor readings. Used to show and analyse your flights in Sillage.</li>
+    <li><strong>Recorders</strong>: recorder identifiers, names, firmware versions and the Wi-Fi network names you save on them. Used to link recorders to your account, offload recordings and offer firmware updates. Wi-Fi passwords are written to the recorder and are not stored by Sillage.</li>
+    <li><strong>Technical data</strong>: IP address and device name at sign-in, kept with the session to protect your account.</li>
+  </ul>
+  <p>The app does not use advertising, analytics or tracking, and does not share data with data brokers. We do not sell personal data.</p>
+
+  <h2>Bluetooth</h2>
+  <p>The app uses Bluetooth only to talk to your ExoFDR recorders. It does not use Bluetooth to locate you.</p>
+
+  <h2>Legal basis</h2>
+  <p>We process this data to provide the service you signed up for (performance of a contract) and to keep it secure (legitimate interest).</p>
+
+  <h2>Where data is stored</h2>
+  <p>Sillage runs on servers in the European Union. Recordings and account data are kept while your account is active. When an account is deleted, its personal data is deleted within 30 days, except where the law requires us to keep it.</p>
+
+  <h2>Your rights</h2>
+  <p>You can ask to access, correct, export or delete your data, or object to its processing, by writing to <a href="mailto:<%= @contact_email %>"><%= @contact_email %></a>. You can also lodge a complaint with your data protection authority; in France, the CNIL.</p>
+
+  <h2>Changes</h2>
+  <p>We will update this page when our practices change and show the date of the last update above.</p>
+</main>

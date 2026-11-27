@@ -1,0 +1,27 @@
+<% content_for :title, "Support" %>
+
+<main class="site-document">
+  <%= link_to landing_root_path, class: "site-document-home", aria: { label: "Exopter home" } do %>
+    <%= image_tag "logo-wordmark.svg", alt: "Exopter" %>
+  <% end %>
+
+  <h1>Support</h1>
+  <p class="site-lede">Help with the Exopter app, ExoFDR recorders and Sillage accounts.</p>
+
+  <h2>Contact</h2>
+  <p>Write to <a href="mailto:<%= @contact_email %>"><%= @contact_email %></a>. Include the recorder identifier (ECU-…) shown in the app when the question is about a recorder.</p>
+
+  <h2>Signing in</h2>
+  <p>The app signs in with your Sillage account. Sillage accounts are created by invitation. To reset a forgotten password, use <a href="https://sillage.exopter.com/passwords/new">Forgot password</a> in Sillage. Accounts with two-factor authentication enter the code from their authenticator app after the password.</p>
+
+  <h2>Recorders</h2>
+  <ul>
+    <li>Keep the recorder within a few metres of the phone and switched on (hold its button three seconds).</li>
+    <li>To link a recorder, press its button once when the app asks. A recorder that already belongs to an account is not listed.</li>
+    <li>Recordings are offloaded only while the recorder is not recording.</li>
+    <li>During a firmware update, keep the phone next to the recorder until it restarts. If the update fails, the recorder goes back to its previous firmware on its own.</li>
+  </ul>
+
+  <h2>Deleting your account</h2>
+  <p>Write to <a href="mailto:<%= @contact_email %>"><%= @contact_email %></a> from the address of your account. We delete the account and its personal data as described in the <%= link_to "privacy policy", site_privacy_path %>.</p>
+</main>
