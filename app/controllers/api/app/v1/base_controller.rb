@@ -38,6 +38,17 @@ module Api
           }
         end
 
+        def recorder_payload(ownership)
+          {
+            id: ownership.id,
+            device_id: ownership.embedded_controller.device_id,
+            name: ownership.name,
+            model: "lite",
+            last_seen_at: ownership.last_seen_at&.iso8601,
+            last_flight_at: ownership.last_flight_at&.iso8601
+          }
+        end
+
         def prevent_response_caching
           response.headers["Cache-Control"] = "no-store"
         end

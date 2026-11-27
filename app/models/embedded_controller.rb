@@ -19,6 +19,10 @@ class EmbeddedController < ApplicationRecord
   has_many :fdr_recording_commands, dependent: :restrict_with_error
   has_many :wifi_credentials, through: :fdr_wifi_profiles
   has_many :device_activities, -> { recent }, dependent: :restrict_with_error
+  has_many :recorder_ownerships, dependent: :restrict_with_error
+  has_one :active_recorder_ownership, -> { active }, class_name: "RecorderOwnership"
+  has_many :recorder_claims, dependent: :destroy
+  has_many :lite_recording_uploads, dependent: :restrict_with_error
 
   normalizes :device_id, with: ->(identifier) { FdrIdentity::DeviceId.normalize(identifier) }
   normalizes :device_model, :last_seen_firmware, with: ->(value) { value.to_s.strip.presence }
@@ -147,6 +151,26 @@ class EmbeddedController < ApplicationRecord
       update!(fdr_auth_key_ciphertext: encrypted)
       key
     end
+  end
+
+  # Linked to an account from the mobile app.
+  def app_owned?
+    recorder_ownerships.active.exists?
+  end
+
+  # Stores a key generated elsewhere (a mobile app claim) as installed.
+  def install_fdr_auth_key!(key, at: Time.current)
+    raise ArgumentError, "The key must be #{FDR_AUTH_KEY_BYTES} bytes." unless key.bytesize == FDR_AUTH_KEY_BYTES
+
+    encrypted = self.class.fdr_auth_encryptor.encrypt_and_sign(
+      Base64.strict_encode64(key),
+      purpose: FDR_AUTH_ENCRYPTION_PURPOSE
+    )
+    update!(fdr_auth_key_ciphertext: encrypted, fdr_auth_key_installed_at: at)
+  end
+
+  def revoke_fdr_auth_key!
+    update!(fdr_auth_key_ciphertext: nil, fdr_auth_key_installed_at: nil)
   end
 
   def fdr_auth_key

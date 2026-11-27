@@ -114,7 +114,14 @@ Rails.application.routes.draw do
         resource :two_factor_session, only: :create, path: "two-factor-session"
         delete "tokens/current", to: "tokens#destroy", as: :current_token
         resource :account, only: :show
-        resources :recorders, only: :index
+        resources :recorders, only: %i[index update destroy] do
+          collection do
+            resources :claims, only: :create, module: :recorders, as: :recorder_claims, param: :claim_id do
+              post :confirm, on: :member
+            end
+          end
+          put "recordings/:file_id", to: "recorders/recordings#update", as: :recording
+        end
         get "firmware/latest", to: "firmware_releases#latest", as: :latest_firmware
       end
     end

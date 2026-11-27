@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_27_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_27_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -460,6 +460,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_27_200000) do
     t.index ["installable_type", "installable_id"], name: "index_installations_on_installable"
   end
 
+  create_table "lite_recording_uploads", force: :cascade do |t|
+    t.bigint "embedded_controller_id", null: false
+    t.bigint "recorder_ownership_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "flight_import_id"
+    t.bigint "file_id", null: false
+    t.bigint "byte_size", null: false
+    t.string "sha256", null: false
+    t.string "status", default: "queued", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["embedded_controller_id", "sha256"], name: "one_upload_per_recorder_digest", unique: true
+    t.index ["embedded_controller_id"], name: "index_lite_recording_uploads_on_embedded_controller_id"
+    t.index ["flight_import_id"], name: "index_lite_recording_uploads_on_flight_import_id"
+    t.index ["recorder_ownership_id"], name: "index_lite_recording_uploads_on_recorder_ownership_id"
+    t.index ["user_id"], name: "index_lite_recording_uploads_on_user_id"
+  end
+
   create_table "operator_events", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "event_type", default: "marker", null: false
@@ -506,6 +524,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_27_200000) do
     t.index ["manufacturer", "serial_number"], name: "index_parts_on_manufacturer_and_serial_number", unique: true, where: "((serial_number IS NOT NULL) AND ((serial_number)::text <> ''::text))"
   end
 
+  create_table "recorder_claims", force: :cascade do |t|
+    t.bigint "embedded_controller_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "recorder_ownership_id"
+    t.string "token", null: false
+    t.text "key_ciphertext"
+    t.datetime "expires_at", null: false
+    t.datetime "confirmed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["embedded_controller_id"], name: "index_recorder_claims_on_embedded_controller_id"
+    t.index ["recorder_ownership_id"], name: "index_recorder_claims_on_recorder_ownership_id"
+    t.index ["token"], name: "index_recorder_claims_on_token", unique: true
+    t.index ["user_id"], name: "index_recorder_claims_on_user_id"
+  end
+
   create_table "recorder_connections", force: :cascade do |t|
     t.bigint "embedded_controller_id", null: false
     t.datetime "last_seen_at", null: false
@@ -516,6 +550,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_27_200000) do
     t.index ["last_seen_at"], name: "index_recorder_connections_on_last_seen_at"
     t.index ["user_id", "observer_id", "transport", "embedded_controller_id"], name: "index_recorder_connections_on_observer", unique: true
     t.index ["user_id"], name: "index_recorder_connections_on_user_id"
+  end
+
+  create_table "recorder_ownerships", force: :cascade do |t|
+    t.bigint "embedded_controller_id", null: false
+    t.bigint "user_id", null: false
+    t.string "name", null: false
+    t.datetime "linked_at", null: false
+    t.datetime "unlinked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["embedded_controller_id"], name: "index_recorder_ownerships_on_embedded_controller_id"
+    t.index ["embedded_controller_id"], name: "one_owner_per_recorder", unique: true, where: "(unlinked_at IS NULL)"
+    t.index ["user_id"], name: "index_recorder_ownerships_on_user_id"
   end
 
   create_table "sensor_samples", force: :cascade do |t|
@@ -897,13 +944,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_27_200000) do
   add_foreign_key "imu_checks", "imu_checks", column: "calibration_id"
   add_foreign_key "imu_checks", "users"
   add_foreign_key "installations", "aircraft"
+  add_foreign_key "lite_recording_uploads", "embedded_controllers"
+  add_foreign_key "lite_recording_uploads", "flight_imports"
+  add_foreign_key "lite_recording_uploads", "recorder_ownerships"
+  add_foreign_key "lite_recording_uploads", "users"
   add_foreign_key "operator_events", "flights"
   add_foreign_key "operator_events", "signal_sessions"
   add_foreign_key "part_installations", "assemblies"
   add_foreign_key "part_installations", "parts"
   add_foreign_key "parts", "functions"
+  add_foreign_key "recorder_claims", "embedded_controllers"
+  add_foreign_key "recorder_claims", "recorder_ownerships"
+  add_foreign_key "recorder_claims", "users"
   add_foreign_key "recorder_connections", "embedded_controllers"
   add_foreign_key "recorder_connections", "users"
+  add_foreign_key "recorder_ownerships", "embedded_controllers"
+  add_foreign_key "recorder_ownerships", "users"
   add_foreign_key "sensor_samples", "active_storage_blobs", column: "source_blob_id"
   add_foreign_key "sensor_samples", "fdr_recordings"
   add_foreign_key "sensor_samples", "flights"

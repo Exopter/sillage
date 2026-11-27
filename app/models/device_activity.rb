@@ -19,7 +19,9 @@ class DeviceActivity < ApplicationRecord
     "recording_mode_requested" => "Persistent recording mode requested",
     "mavlink_identity_observed" => "MAVLink identity observed",
     "installed_in_aircraft" => "Physical asset installed",
-    "removed_from_aircraft" => "Physical asset removed"
+    "removed_from_aircraft" => "Physical asset removed",
+    "app_linked" => "Linked to an account from the mobile app",
+    "app_unlinked" => "Unlinked from the mobile app"
   }.freeze
 
   belongs_to :embedded_controller

@@ -25,6 +25,9 @@ class User < ApplicationRecord
 
   has_many :sessions, dependent: :destroy
   has_many :app_tokens, dependent: :destroy
+  has_many :recorder_ownerships, dependent: :restrict_with_error
+  has_many :recorder_claims, dependent: :destroy
+  has_many :lite_recording_uploads, dependent: :restrict_with_error
   has_many :feedbacks, dependent: :restrict_with_error
   has_many :flight_imports, dependent: :restrict_with_error
   has_many :flights, dependent: :restrict_with_error
