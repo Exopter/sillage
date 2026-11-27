@@ -12,8 +12,7 @@ module Api
             return render_error :unauthorized, "challenge_expired", "Sign in again."
           end
 
-          # Phones whose clock runs up to a minute and a half ahead still sign in.
-          unless user.verify_totp(params.require(:otp_code), drift_ahead: 90)
+          unless user.verify_totp(params.require(:otp_code))
             log_refused_code(user, params[:otp_code].to_s)
             return render_error :unauthorized, "invalid_code", "Invalid authentication code."
           end

@@ -214,10 +214,10 @@ class User < ApplicationRecord
     ROTP::TOTP.new(secret, issuer: "Sillage").provisioning_uri(email_address)
   end
 
-  def verify_totp(code, secret: totp_secret, drift_ahead: 30)
+  def verify_totp(code, secret: totp_secret)
     return false if code.blank? || secret.blank?
 
-    ROTP::TOTP.new(secret, issuer: "Sillage").verify(code.to_s.delete(" "), drift_behind: 30, drift_ahead:).present?
+    ROTP::TOTP.new(secret, issuer: "Sillage").verify(code.to_s.delete(" "), drift_behind: 30, drift_ahead: 30).present?
   end
 
   def enable_totp!(secret)
