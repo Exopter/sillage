@@ -93,6 +93,36 @@ class LandingControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "provides branded link previews for every public Exopter page" do
+    host! "exopter.com"
+    titles = {
+      landing_root_path => "Exopter",
+      site_support_path => "Support | Exopter",
+      site_privacy_path => "Privacy policy | Exopter",
+      site_legal_path => "Legal notice | Exopter"
+    }
+
+    titles.each do |path, title|
+      get path, params: { utm_source: "test" }
+
+      assert_response :success
+      assert_no_match(/\bwing\b/i, response.body)
+      assert_select "link[rel='canonical'][href=?]", "https://exopter.com#{path}", count: 1
+      assert_select "meta[property='og:url'][content=?]", "https://exopter.com#{path}", count: 1
+      assert_select "meta[property='og:title'][content=?]", title, count: 1
+      assert_select "meta[name='twitter:title'][content=?]", title, count: 1
+      description = assert_select("meta[name='description']", count: 1).first["content"]
+      assert description.present?
+      assert_select "meta[property='og:description'][content=?]", description, count: 1
+      assert_select "meta[name='twitter:description'][content=?]", description, count: 1
+
+      assert_select "meta[name='twitter:card'][content='summary_large_image']", count: 1
+      image_url = assert_select("meta[property='og:image']", count: 1).first["content"]
+      assert_match(%r{\Ahttps://exopter\.com/assets/exopter-social(?:-[a-z0-9]+)?\.png\z}, image_url)
+      assert_select "meta[name='twitter:image'][content=?]", image_url, count: 1
+    end
+  end
+
   test "keeps the Sillage app root on the Sillage host" do
     host! "sillage.exopter.com"
 

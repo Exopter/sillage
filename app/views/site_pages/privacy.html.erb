@@ -1,4 +1,5 @@
 <% content_for :title, "Privacy policy" %>
+<% content_for :description, "How Exopter handles personal data in the Exopter app, ExoFDR recorders and Sillage." %>
 
 <main class="site-document">
   <%= link_to landing_root_path, class: "site-document-home", aria: { label: "Exopter home" } do %>
@@ -6,7 +7,7 @@
   <% end %>
 
   <h1>Privacy policy</h1>
-  <p class="site-lede">How Exopter handles personal data in the Exopter app, ExoFDR recorders and Sillage. Last updated <%= @updated_on.to_fs(:long) %>.</p>
+  <p class="site-lede"><%= content_for(:description) %> Last updated <%= @updated_on.to_fs(:long) %>.</p>
 
   <h2>Who is responsible</h2>
   <p>Exopter is the data controller. Contact: <a href="mailto:<%= @contact_email %>"><%= @contact_email %></a>.</p>

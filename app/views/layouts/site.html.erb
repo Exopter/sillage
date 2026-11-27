@@ -1,11 +1,32 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" prefix="og: https://ogp.me/ns#">
   <head>
-    <title><%= content_for?(:title) ? "#{content_for(:title)} | Exopter" : "Exopter" %></title>
+    <% page_title = content_for?(:title) ? "#{content_for(:title)} | Exopter" : "Exopter" %>
+    <% description = content_for(:description) %>
+    <% canonical_url = "https://exopter.com#{request.path.chomp("/").presence || "/"}" %>
+    <% social_image = image_url("exopter-social.png", host: "https://exopter.com") %>
+    <% social_image_alt = "Exopter symbol and wordmark on a dark background" %>
+    <title><%= page_title %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="application-name" content="Exopter">
     <meta name="theme-color" content="#0a080e">
-    <%= yield :head %>
+    <meta name="description" content="<%= description %>">
+    <link rel="canonical" href="<%= canonical_url %>">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Exopter">
+    <meta property="og:title" content="<%= page_title %>">
+    <meta property="og:description" content="<%= description %>">
+    <meta property="og:url" content="<%= canonical_url %>">
+    <meta property="og:image" content="<%= social_image %>">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="<%= social_image_alt %>">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="<%= page_title %>">
+    <meta name="twitter:description" content="<%= description %>">
+    <meta name="twitter:image" content="<%= social_image %>">
+    <meta name="twitter:image:alt" content="<%= social_image_alt %>">
     <link rel="icon" href="/icon.svg?v=exopter-20261115" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=exopter-20261115">
     <%= stylesheet_link_tag "exopter_fonts", "exopter_design_system", "exopter_semantics", "site" %>
