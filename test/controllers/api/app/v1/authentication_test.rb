@@ -62,6 +62,18 @@ module Api
           assert_equal "challenge_expired", response.parsed_body["error"]
         end
 
+        test "a code from a phone whose clock runs a minute ahead is accepted" do
+          user = users(:julien)
+          secret = ROTP::Base32.random_base32
+          user.enable_totp!(secret)
+          post api_app_v1_session_path, params: { email: user.email_address, password: PASSWORD }, as: :json
+          challenge = response.parsed_body.fetch("challenge")
+
+          post api_app_v1_two_factor_session_path, params: { challenge:, otp_code: ROTP::TOTP.new(secret).at(Time.current + 60) }, as: :json
+
+          assert_response :created
+        end
+
         test "the challenge does not reveal the password hash" do
           user = users(:julien)
           user.enable_totp!(ROTP::Base32.random_base32)
