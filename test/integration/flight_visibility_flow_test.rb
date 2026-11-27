@@ -89,6 +89,8 @@ class FlightVisibilityFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "owner can share and revoke access immediately without transferring ownership" do
+    # Public flights reach operators and admins; the user role needs a shared folder.
+    @other.update!(role: "operator")
     patch flight_path(@private), params: { flight: { visibility: "team", user_id: @other.id } }
     assert_redirected_to flight_path(@private)
     assert_equal "team", @private.reload.visibility

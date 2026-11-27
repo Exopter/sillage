@@ -49,7 +49,7 @@ class SignalRadioHistoryTest < ActionDispatch::IntegrationTest
       get signal_session_radio_history_path(@session.uuid, format:)
       assert_response :not_found
     end
-    @flight.update!(visibility: "team")
+    share_flight(@flight, with: users(:operator))
     get signal_session_radio_history_path(@session.uuid)
     assert_response :success
     @session.update!(status: "discarded")

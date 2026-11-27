@@ -8,7 +8,7 @@ class SignalSessionChannelTest < ActionCable::Channel::TestCase
   end
 
   test "collaborators can subscribe to a shared flight session" do
-    @flight.update!(visibility: "team")
+    share_flight(@flight, with: users(:operator))
     subscribe uuid: @session.uuid
     assert subscription.confirmed?
     assert_has_stream_for @session
@@ -23,7 +23,7 @@ class SignalSessionChannelTest < ActionCable::Channel::TestCase
   end
 
   test "Flight Club members cannot subscribe even when the flight is shared" do
-    @flight.update!(visibility: "team")
+    share_flight(@flight, with: users(:member))
     stub_connection current_user: users(:member)
     subscribe uuid: @session.uuid
     assert subscription.rejected?
@@ -31,7 +31,7 @@ class SignalSessionChannelTest < ActionCable::Channel::TestCase
   end
 
   test "an existing stream stops transmitting when flight access is revoked" do
-    @flight.update!(visibility: "team")
+    share_flight(@flight, with: users(:operator))
     subscribe uuid: @session.uuid
     callback = nil
     subscription.define_singleton_method(:stream_from) do |broadcasting, handler, **|
@@ -41,7 +41,7 @@ class SignalSessionChannelTest < ActionCable::Channel::TestCase
     subscription.subscribed
     callback.call({ "type" => "telemetry" })
     assert_equal [ { "type" => "telemetry" } ], transmissions
-    @flight.update!(visibility: "private")
+    unshare_flight(@flight)
     callback.call({ "type" => "private telemetry" })
     assert_equal 1, transmissions.size
     assert_no_streams

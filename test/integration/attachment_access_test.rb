@@ -31,11 +31,11 @@ class AttachmentAccessTest < ActionDispatch::IntegrationTest
     sign_in_as users(:operator)
     get attachment_path(@video)
     assert_response :not_found
-    @flight.update!(visibility: "team")
+    share_flight(@flight, with: users(:operator))
     get attachment_path(@video), headers: { "Range" => "bytes=0-3" }
     assert_response :partial_content
     assert_equal "0123", response.body
-    @flight.update!(visibility: "private")
+    unshare_flight(@flight)
     get attachment_path(@video), headers: { "Range" => "bytes=0-3" }
     assert_response :not_found
   end
@@ -76,7 +76,7 @@ class AttachmentAccessTest < ActionDispatch::IntegrationTest
   end
 
   test "sharing a flight exposes its own sources but not archives containing private siblings" do
-    @flight.update!(visibility: "team")
+    share_flight(@flight, with: users(:operator))
     @flight.video_upload.attach(io: StringIO.new("original"), filename: "original.mp4", content_type: "video/mp4")
     import = @flight.flight_import
     import.source_files.attach(io: StringIO.new("private telemetry"), filename: "source.csv")
@@ -131,7 +131,7 @@ class AttachmentAccessTest < ActionDispatch::IntegrationTest
   end
 
   test "only administrators can see or download flight binaries while shared CSV remains available" do
-    @flight.update!(visibility: "team")
+    share_flight(@flight, with: [ users(:member), users(:operator) ])
     import = @flight.flight_import
     import.source_files.attach(io: StringIO.new("recording"), filename: "flight.Bin")
     binary = attachment_path(import.source_files.sole)
@@ -238,7 +238,7 @@ class AttachmentAccessTest < ActionDispatch::IntegrationTest
     sign_in_as users(:operator)
     get flight_path(@flight, format: :csv)
     assert_response :not_found
-    @flight.update!(visibility: "team")
+    share_flight(@flight, with: users(:operator))
     get flight_path(@flight, format: :csv)
     assert_response :success
   end

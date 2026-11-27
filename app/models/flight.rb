@@ -72,7 +72,10 @@ class Flight < ApplicationRecord
 
   scope :recent, -> { order(started_at: :desc, created_at: :desc) }
   scope :visible_to, ->(user) {
-    user ? where(user_id: user.id).or(where(folder_id: nil, visibility: "team")).or(where(folder_id: FlightFolder.visible_to(user).select(:id))) : none
+    next none unless user
+
+    scope = where(user_id: user.id).or(where(folder_id: FlightFolder.visible_to(user).select(:id)))
+    user.sees_public_flights? ? scope.or(where(folder_id: nil, visibility: "team")) : scope
   }
   scope :with_effective_visibility, ->(value) {
     value == "private" ? where(folder_id: nil, visibility: "private").or(where(folder_id: FlightFolder.where(visibility: "private").select(:id))) :
@@ -125,7 +128,7 @@ class Flight < ApplicationRecord
   end
 
   def visible_to?(user)
-    user.present? && (owned_by?(user) || (folder ? folder.visible_to?(user) : visibility == "team"))
+    user.present? && (owned_by?(user) || (folder ? folder.visible_to?(user) : visibility == "team" && user.sees_public_flights?))
   end
 
   def effective_visibility

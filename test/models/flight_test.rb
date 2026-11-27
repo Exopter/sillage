@@ -79,12 +79,33 @@ class FlightTest < ActiveSupport::TestCase
     assert_not flight.visible_to?(users(:operator))
     assert_not flight.visible_to?(nil)
     flight.update!(visibility: "team")
-    assert flight.visible_to?(users(:operator))
+    assert_not flight.visible_to?(users(:operator)), "public flights are hidden from the user role"
+    users(:operator).update!(role: "operator")
+    assert flight.visible_to?(users(:operator).reload)
     assert_not flight.visible_to?(nil)
     assert_empty Flight.visible_to(nil)
     flight.update!(user: users(:operator), visibility: "private")
     assert_not flight.visible_to?(users(:julien))
     assert_not_includes Flight.visible_to(users(:julien)), flight
+  end
+
+  test "the user role sees its own flights and what is shared with it, never public ones" do
+    member = users(:member)
+    team_flight = flights(:one)
+    team_flight.update!(visibility: "team")
+    open_folder = FlightFolder.create!(user: users(:julien), name: "Open folder", visibility: "public")
+    shared = FlightFolder.create!(user: users(:julien), name: "Shared", visibility: "shared")
+    FlightFolderMembership.create!(flight_folder: shared, user: member)
+    own = member.flights.create!(name: "Mine")
+
+    assert_not team_flight.visible_to?(member)
+    assert_not open_folder.visible_to?(member)
+    assert shared.visible_to?(member)
+    assert_includes Flight.visible_to(member), own
+    assert_not_includes Flight.visible_to(member), team_flight
+    assert_not_includes FlightFolder.visible_to(member), open_folder
+    users(:operator).update!(role: "operator")
+    assert team_flight.visible_to?(users(:operator).reload)
   end
 
   test "height uses the lowest altitude as ground reference" do

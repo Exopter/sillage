@@ -105,6 +105,12 @@ class User < ApplicationRecord
     admin? || role == "operator"
   end
 
+  # Public flights and folders are for operators and admins; the user role sees its own
+  # flights and what is shared with it.
+  def sees_public_flights?
+    operations_access?
+  end
+
   def disabled?
     disabled_at.present?
   end

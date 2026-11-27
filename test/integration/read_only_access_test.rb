@@ -4,7 +4,7 @@ class ReadOnlyAccessTest < ActionDispatch::IntegrationTest
   setup do
     @viewer = users(:operator)
     @flight = flights(:one)
-    @flight.update!(visibility: "team")
+    share_flight(@flight, with: [ @viewer, users(:member) ])
     @own_flight = @viewer.flights.create!(name: "Viewer flight", status: "logged", visibility: "private", flown_on: Date.current, location: "Test location")
     @folder = @viewer.flight_folders.create!(name: "Viewer folder")
     @own_flight.update!(folder: @folder)
@@ -238,7 +238,8 @@ class ReadOnlyAccessTest < ActionDispatch::IntegrationTest
 
     # The recording of a visible flight is imported by whoever sees it; a recording without a flight is not.
     target = users(:julien).flights.create!(pilot: users(:julien), status: "logged", flown_on: Date.current, location: "Test location",
-      visibility: "team", fdr: @assembly)
+      fdr: @assembly)
+    share_flight(target, with: @viewer)
     get new_flight_import_path(flight_id: target.id)
     assert_response :success
     assert_select "form[action='#{flight_imports_path}'] input[name='flight_import[target_flight_id]'][value='#{target.id}']", count: 1

@@ -278,7 +278,8 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
   private
 
   test "a logged flight always carries a video section where whoever sees it adds a video" do
-    flight = log_entry(visibility: "team")
+    flight = log_entry
+    share_flight(flight, with: users(:operator))
     preview = preview_flights_path(id: flight.id)
     get preview
     assert_response :success
@@ -314,7 +315,8 @@ class FlightLogFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "a logged flight opens as a flight page like any other" do
-    flight = log_entry(visibility: "team")
+    flight = log_entry
+    share_flight(flight, with: users(:operator))
     assert_not flight.logbook_view?
     get flights_path(selected: "flight:#{flight.id}")
     assert_select ".exds-browser-preview-actions a[href=?]", flight_path(flight), text: /Open flight/

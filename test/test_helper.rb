@@ -68,6 +68,19 @@ module EmbeddedControllerTestHelper
   end
 end
 
+# The user role sees another pilot's flight only once it is shared with it through a folder.
+module FlightSharingTestHelper
+  def share_flight(flight, with:)
+    folder = FlightFolder.create!(user: flight.user, name: "Shared #{flight.id}-#{Array(with).map(&:id).join("-")}", visibility: "shared")
+    Array(with).each { |user| FlightFolderMembership.create!(flight_folder: folder, user:) }
+    flight.update!(folder:)
+  end
+
+  def unshare_flight(flight)
+    flight.update!(folder: nil, visibility: "private")
+  end
+end
+
 module ActiveSupport
   class TestCase
     # Run tests in parallel with specified workers
@@ -77,6 +90,7 @@ module ActiveSupport
     fixtures :all
 
     include EmbeddedControllerTestHelper
+    include FlightSharingTestHelper
 
     # Add more helper methods to be used by all tests here...
     teardown { Current.reset }

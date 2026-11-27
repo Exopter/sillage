@@ -95,7 +95,7 @@ class TunnelVideosTest < ActionDispatch::IntegrationTest
     assert_response :not_found
     assert_equal "ready", @side.reload.status
 
-    @flight.update!(visibility: "team")
+    share_flight(@flight, with: users(:operator))
     delete flight_tunnel_video_path(@flight, @side)
     assert_redirected_to flight_path(@flight)
     assert_equal "ignored", @side.reload.status

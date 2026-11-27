@@ -3,14 +3,15 @@ require "test_helper"
 class Signal::StartSessionTest < ActiveSupport::TestCase
   test "a collaborator starts a session on a visible flight and retains acquisition attribution" do
     flight = flights(:one)
-    flight.update!(status: "preparation", visibility: "team")
+    flight.update!(status: "preparation")
+    share_flight(flight, with: users(:operator))
     flight.update!(pilot: users(:member))
     session = Signal::StartSession.new(device_id: signal_recorder.device_id, user: users(:operator), flight_id: flight.id).call
     assert_equal flight, session.flight
     assert_equal users(:operator), session.user
     assert_equal users(:julien), flight.reload.user
     assert_equal users(:member), flight.pilot
-    flight.update!(visibility: "private")
+    unshare_flight(flight)
     assert_raises(Signal::StartSession::InvalidFlight) do
       Signal::StartSession.new(device_id: signal_recorder.device_id, user: users(:operator), flight_id: flight.id).call
     end
