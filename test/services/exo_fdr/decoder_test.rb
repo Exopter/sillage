@@ -67,6 +67,32 @@ class ExoFdr::DecoderTest < ActiveSupport::TestCase
     assert_equal 0, result.stats.fetch("sequence_gaps")
   end
 
+  test "decodes static pressure directly and inside a distributed envelope" do
+    seat, airspeed = 0x0000C8BE85F61B44, 0x0000748583F61B44
+    payload = [ [ "408b8e22739ce7" ].pack("H*"), 80_642.0, 25.0 ].pack("a7e2")
+    envelope = lambda do |role, device, sequence, kind, body|
+      [ 0xD1F1, 1, role, device, 1_234, sequence, 2_000_000, 1, kind, body.bytesize ].pack("vCCQ<VVQ<vCC") + body
+    end
+    binary = file_header +
+      record(type: 15, sequence: 0, timestamp_us: 1_000_000, payload:) +
+      record(type: 15, sequence: 1, timestamp_us: 1_100_000, payload: payload.byteslice(0, 14)) +
+      record(type: 32, sequence: 2, timestamp_us: 2_000_000, payload: envelope.call(1, seat, 0, 15, payload)) +
+      # Lite record types are not valid distributed observations.
+      record(type: 32, sequence: 3, timestamp_us: 2_100_000, payload: envelope.call(3, airspeed, 0, 7, payload))
+    result = ExoFdr::Decoder.new(StringIO.new(binary)).call
+
+    assert_equal %w[static_pressure static_pressure static_pressure], result.records.map { |row| row.fetch("type") }
+    direct, truncated, wrapped = result.records
+    assert_equal "408b8e22739ce7", direct.fetch("raw_hex")
+    assert_in_delta 80_642.0, direct.fetch("static_pressure_pa")
+    assert_in_delta 25.0, direct.fetch("temperature_c")
+    assert_equal 14, truncated.fetch("payload_size")
+    assert_not truncated.key?("static_pressure_pa")
+    assert_equal [ "seat", 15 ], wrapped.values_at("source_role", "type_id")
+    assert_in_delta 80_642.0, wrapped.fetch("static_pressure_pa")
+    assert_equal 1, result.stats.fetch("malformed_headers")
+  end
+
   test "recovers after a corrupt record and reports a sequence gap" do
     corrupted = record(type: 2, sequence: 1, timestamp_us: 2_000_000, payload: imu_payload).dup
     corrupted.setbyte(corrupted.length - 1, corrupted.getbyte(corrupted.length - 1) ^ 0xff)

@@ -82,6 +82,7 @@ export class SignalTelemetry {
       else for (const key of ["roll", "pitch", "heading"]) this.set(key, null, now)
       for (const key of ["accel", "gyro", "mag", "temperature"]) this.set(key, null, now)
       this.set("pressure", decoded.differentialPa, now)
+      this.set("staticPressure", decoded.staticPa ?? null, now)
       this.set("gLoad", decoded.gLoad, now)
       this.updatePitotAirspeed(decoded.differentialPa, decoded.timeUs, now)
     } else if (decoded.name === "highres_imu") {
@@ -91,6 +92,7 @@ export class SignalTelemetry {
       this.set("gyro", decoded.angularVelocity, now)
       this.set("mag", decoded.magneticField, now)
       this.set("pressure", decoded.differentialPa, now)
+      this.set("staticPressure", decoded.absolutePa ?? null, now)
       this.set("temperature", decoded.temperatureC, now)
       this.updatePitotAirspeed(decoded.differentialPa, decoded.timeUs, now)
     } else if (decoded.name === "attitude") {
@@ -176,6 +178,7 @@ export class SignalTelemetry {
       accel: acceleration, gyro: this.vector("gyro", now), mag: this.vector("mag", now),
       bodyFrame: this.bodyFrame,
       pressure: this.number("pressure", now), temperature: this.number("temperature", now),
+      staticPressure: this.number("staticPressure", now),
       fix: this.number("fix", now), satellites: this.number("satellites", now)
     }
   }
