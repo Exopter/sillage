@@ -111,9 +111,10 @@ Rails.application.routes.draw do
     namespace :app do
       namespace :v1 do
         resource :session, only: :create
+        resource :registration, only: :create
         resource :two_factor_session, only: :create, path: "two-factor-session"
         delete "tokens/current", to: "tokens#destroy", as: :current_token
-        resource :account, only: :show
+        resource :account, only: %i[show destroy]
         resources :recorders, only: %i[index update destroy] do
           collection do
             resources :claims, only: :create, module: :recorders, as: :recorder_claims, param: :claim_id do
